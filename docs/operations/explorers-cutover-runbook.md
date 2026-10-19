@@ -37,12 +37,14 @@ section says what each one means for the cutover.
    refused.** The deploy gate (#141) admits a deploy over an existing database only if
    `docs/replatform/evidence/recovery-receipt.json` was drilled at the database's migration
    head. The committed receipt is at `0056_explorers_app_enrichment_jobs`; the database will be at
-   `0057_retire_music_category`. The rehearsal ran the gate on its own backup and got
-   `DRILL_MARKER_MISMATCH` with the committed receipt and `admitted` with a fresh 0057 drill. This
-   matters on cutover day: if the first deploy migrates and then fails at `activate`, the re-run is
-   no longer a first deploy and is refused. That includes a rollback. **Before cutover, re-run the
-   fixture drill at 0057** (`docs/replatform/release-and-recovery.md`, "The monthly drill", fixture
-   form) **and commit the receipt.** It goes stale after 30 days, so do it close to cutover.
+   `0060_explorers_guide_budget_tier`, the head of `tunes/migrations/` and the compose file's
+   migration marker. The rehearsal (run when `main` was at 0057) ran the gate on its own backup and
+   got `DRILL_MARKER_MISMATCH` with the committed receipt and `admitted` with a fresh drill at the
+   head. This matters on cutover day: if the first deploy migrates and then fails at `activate`, the
+   re-run is no longer a first deploy and is refused. That includes a rollback, and the redeploy
+   that sets the trusted proxy (step 5.3). **Before cutover, re-run the fixture drill at 0060**
+   (`docs/replatform/release-and-recovery.md`, "The monthly drill", fixture form) **and commit the
+   receipt.** It goes stale after 30 days, so do it close to cutover.
 3. **Better Auth's rate limiter cannot see client addresses.** On the first request the API logs
    `Rate limiting could not determine a client IP and is falling back to a single shared
    per-path bucket`. `EXPLORERS_TRUSTED_PROXY_IP` fixes Express (`req.ip`), but Better Auth reads
@@ -56,7 +58,11 @@ section says what each one means for the cutover.
 ## 1. Prerequisites the owner must have
 
 Collect all of these before cutover day. **Nothing in this list goes into the repository.** The
-repo is public, so host addresses, keys and the captured nginx config stay out of it.
+repo is public, so host addresses, keys and the captured nginx config stay out of it. Every
+application value goes into the `explorers-production` GitHub environment instead, and every
+deploy renders `/opt/explorers/production.env` from it. Nobody edits that file by hand.
+[explorers-github-configuration.md](explorers-github-configuration.md) has each name, its format,
+where to get it and the exact `gh` command.
 
 ### Access
 
@@ -89,8 +95,8 @@ In Google Cloud console → APIs & Services → Credentials, on a **Web applicat
       Auth builds it from `EXPLORERS_PUBLIC_ORIGIN`.
 - [ ] The OAuth consent screen is **published** (not "Testing"), or only listed test users can
       sign in.
-- [ ] The client ID and secret become `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in
-      `production.env`, not GitHub secrets.
+- [ ] The client ID becomes the `explorers-production` environment variable `GOOGLE_CLIENT_ID`,
+      and the client secret becomes the environment secret `GOOGLE_CLIENT_SECRET`.
 
 ### S3 (private media)
 
@@ -98,16 +104,18 @@ In Google Cloud console → APIs & Services → Credentials, on a **Web applicat
       public access blocked. No CORS rule is needed: uploads go through the API, never straight
       from the browser to S3.
 - [ ] An IAM user limited to `s3:GetObject`, `s3:PutObject` and `s3:DeleteObject` on
-      `arn:aws:s3:::<bucket>/prod/*`. Its access key becomes `AWS_ACCESS_KEY_ID` and
-      `AWS_SECRET_ACCESS_KEY`. Nothing checks these at boot: wrong keys show up only when the first
-      upload fails (step 6.2).
+      `arn:aws:s3:::<bucket>/prod/*`. Its access key becomes the environment secrets
+      `EXPLORERS_S3_ACCESS_KEY_ID` and `EXPLORERS_S3_SECRET_ACCESS_KEY`, which the deploy writes as
+      `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. The names differ on purpose: the repository's
+      own `AWS_*` secrets belong to SES. Nothing checks these keys at boot. Wrong keys show up only
+      when the first upload fails (step 6.2).
 
 ### Backups (#141)
 
 - [ ] An **age identity on your own machine**, never on the host. `age-keygen -o explorers-backup.age`
       writes it and prints `# public key: age1...`. Keep a second copy of the identity offline.
-      Without it no backup can be decrypted. The public key becomes
-      `EXPLORERS_BACKUP_AGE_RECIPIENT`.
+      Without it no backup can be decrypted. The public key (`age-keygen -y explorers-backup.age`)
+      becomes the environment variable `EXPLORERS_BACKUP_AGE_RECIPIENT`.
 - [ ] The S3 IAM user above also needs `s3:ListBucket` on the bucket, limited to the
       `prod/backups/` prefix, so backups can be pruned. Whether it may also delete under
       `prod/backups/` is owner decision 2 in
@@ -121,38 +129,44 @@ In Google Cloud console → APIs & Services → Credentials, on a **Web applicat
 
 - [ ] A Google Maps **browser** key, restricted by HTTP referrer to `https://<host>/*`. It goes in
       `EXPLORERS_PUBLIC_JSON`, never in `production.env`.
-- [ ] `GOOGLE_BOOKS_API_KEY` and `TMDB_ACCESS_TOKEN`. Today they are GitHub secrets for the old
-      frontend build; they move to `production.env`. If either is missing, the API still boots
-      and then answers 503 to every Books or Movies search.
+- [ ] `GOOGLE_BOOKS_API_KEY` and `TMDB_ACCESS_TOKEN`. Today they are the GitHub secrets
+      `VITE_GOOGLE_BOOKS_API_KEY` and `VITE_TMDB_ACCESS_TOKEN`, used by the old frontend build.
+      The same values become environment secrets under the new names. GitHub cannot show a
+      secret, so copy each value from its provider. The deploy refuses to run if either is
+      missing.
 
 ### The secrets list, by name
 
-**Host: `/opt/explorers/production.env`** (root-owned, `0600`; the template is
-`deploy/production.env.example`):
+Everything is in GitHub. The tables in
+[explorers-github-configuration.md](explorers-github-configuration.md) give the format, the source
+and the `gh` command for each name.
 
-| Name | What |
+**GitHub environment `explorers-production`**. Create it with yourself as a required reviewer.
+That gives a second human gate after the typed `replace-explorers-host`.
+
+| Kind | Names |
 |---|---|
-| `DB_NAME`, `DB_MIGRATOR_USER`, `DB_RUNTIME_USER` | Plain identifiers; the two users must differ and must not be `postgres` or `music_runtime` |
-| `DB_MIGRATOR_PASSWORD_FILE_HOST`, `DB_RUNTIME_PASSWORD_FILE_HOST` | Paths; `explorers-bootstrap.sh` generates both files |
-| `MUSIC_GATE_ATTESTATION_KEY` | 32 or more random characters |
-| `EXPLORERS_PUBLIC_ORIGIN` | `https://<host>`, exactly |
-| `EXPLORERS_AUTH_SECRET` | 32 or more random characters |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | The production OAuth client |
-| `EXPLORERS_TRUSTED_PROXY_IP` | Leave the example value; step 5.3 sets the real one |
-| `EXPLORERS_MEDIA_S3_BUCKET`, `EXPLORERS_MEDIA_S3_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | S3 |
-| `GOOGLE_BOOKS_API_KEY`, `TMDB_ACCESS_TOKEN` | Catalog providers |
-| `EXPLORERS_BACKUP_AGE_RECIPIENT` | The age **public** key (`age1` + 58 characters). Every deploy after the first refuses without it |
-| `EXPLORERS_API_IMAGE_NAME`, `EXPLORERS_API_DIGEST`, `EXPLORERS_API_COMMIT` | Leave the placeholders; every deploy overrides them |
+| Environment secrets | `EXPLORERS_AUTH_SECRET`, `MUSIC_GATE_ATTESTATION_KEY` (both `openssl rand -hex 32`), `GOOGLE_CLIENT_SECRET`, `GOOGLE_BOOKS_API_KEY`, `TMDB_ACCESS_TOKEN`, `EXPLORERS_S3_ACCESS_KEY_ID`, `EXPLORERS_S3_SECRET_ACCESS_KEY` |
+| Environment variables | `GOOGLE_CLIENT_ID`, `EXPLORERS_MEDIA_S3_BUCKET`, `EXPLORERS_MEDIA_S3_REGION`, `EXPLORERS_BACKUP_AGE_RECIPIENT` (the age **public** key; every deploy after the first refuses without it), and `EXPLORERS_TRUSTED_PROXY_IP`, which stays unset until step 5.3 |
 
 **GitHub repository variables** (Settings → Secrets and variables → Actions → Variables):
 `EXPLORERS_PUBLIC_JSON`, `EXPLORERS_SERVER_NAME`, `EXPLORERS_TLS_CERTIFICATE`,
 `EXPLORERS_TLS_CERTIFICATE_KEY`, `EXPLORERS_NGINX_SITE_PATH`.
 
-**GitHub secrets:** `EXPLORERS_DEPLOY_HOST`, `EXPLORERS_DEPLOY_USER`, `EXPLORERS_DEPLOY_KEY`,
-`EXPLORERS_DEPLOY_KNOWN_HOSTS`, and optionally `DEPLOY_PORT`.
+**GitHub repository secrets:** `EXPLORERS_DEPLOY_HOST`, `EXPLORERS_DEPLOY_USER` and
+`EXPLORERS_DEPLOY_KEY` are already set. `EXPLORERS_DEPLOY_KNOWN_HOSTS` is new. `DEPLOY_PORT` is
+optional.
 
-**GitHub environment** `explorers-production`: add yourself as a required reviewer. That gives a
-second human gate after the typed `replace-explorers-host`.
+**Derived by the deploy, not set anywhere:**
+
+- `EXPLORERS_PUBLIC_ORIGIN` = `https://<EXPLORERS_SERVER_NAME>`
+- `DB_NAME`, `DB_MIGRATOR_USER`, `DB_RUNTIME_USER` = `explorers`, `explorers_migrator`,
+  `explorers_runtime`
+- The two password-file paths, under `/opt/explorers/secrets/`
+- The image placeholders
+
+**On the host, and only there:** the two database password files. `explorers-bootstrap.sh init`
+generates them, and they never leave the host.
 
 ---
 
@@ -168,24 +182,28 @@ sudo nginx -T > ~/nginx-T-before-cutover.txt
 ```
 
 **2.2 Bootstrap.** This checks Docker, compose, nginx, disk and memory, creates `/opt/explorers`
-(`0700`) and `/srv/explorers`, generates the two database password files, installs
-`production.env` from the example, and stops:
+(`0700`) and `/srv/explorers`, and generates the two database password files. Then it runs the
+checks in 2.4. It does not create `production.env`. The first deploy writes that file from GitHub.
 
 ```bash
-sudo bash ~/deploy/host/explorers-bootstrap.sh init <host> ~/deploy/production.env.example
+sudo bash ~/deploy/host/explorers-bootstrap.sh init <host>
 ```
 
-Expected: `ok:` lines for the tools, then
-`note: installed /opt/explorers/production.env from the example. Fill in every value...`, and
-exit code 1.
+Expected: `ok:` lines for the tools, `ok:   generated /opt/explorers/secrets/db-migrator` (and
+`db-runtime`), the same lines as 2.4, and exit code 0.
 
-**2.3 Fill in `production.env`** with `sudo nano /opt/explorers/production.env`, using the table
-in section 1. Generate the two random values on the host:
+**2.3 Set the `explorers-production` environment.** Follow
+[explorers-github-configuration.md](explorers-github-configuration.md) sections 0–2, on your own
+machine and not on the host. Those sections create the environment and its required reviewer, then
+set every secret and variable in section 1. Pipe the two random values straight into GitHub; nobody
+needs to see them:
 
 ```bash
-openssl rand -hex 32   # MUSIC_GATE_ATTESTATION_KEY
-openssl rand -hex 32   # EXPLORERS_AUTH_SECRET
+openssl rand -hex 32 | gh secret set --env explorers-production MUSIC_GATE_ATTESTATION_KEY
+openssl rand -hex 32 | gh secret set --env explorers-production EXPLORERS_AUTH_SECRET
 ```
+
+Leave `EXPLORERS_TRUSTED_PROXY_IP` unset; step 5.3 sets it. Nothing is edited on the host.
 
 **2.4 Check.** Repeat until it passes:
 
@@ -202,9 +220,14 @@ ok:   node v24.21.0
 ok:   ...G free under /var/lib/docker
 ok:   ...MB memory available
 ok:   /opt/explorers (0700) and /srv/explorers exist
-ok:   /opt/explorers/production.env is complete
+ok:   /opt/explorers/production.env does not exist yet: the first deploy writes it from the explorers-production GitHub environment
 ok:   nginx serves <host> from /etc/nginx/sites-enabled/<file>: set EXPLORERS_NGINX_SITE_PATH to that path
 ```
+
+After the first deploy the same check validates the installed file with
+`deploy/host/validate-production-env.sh`, which is also the workflow's validator. It then prints
+`ok:   /opt/explorers/production.env is complete`. A `FAIL:` line names the variable and the
+rule. Fix the value in GitHub and deploy again.
 
 The last line answers P2 open question 1: it names the file that serves `<host>` today. Set
 `EXPLORERS_NGINX_SITE_PATH` to that file. **If it is a symlink in `sites-enabled/`, use the
@@ -217,11 +240,19 @@ superuser from `DB_MIGRATOR_USER`; migration 0010 creates `music_runtime`; the m
 creates the runtime login. **Do not create a database** either: compose makes an empty one on
 first start.
 
-**2.5 Set the GitHub variables and secrets** from section 1. `EXPLORERS_PUBLIC_JSON` is one line:
+**2.5 Set the repository variables and the SSH secrets** from section 1
+([explorers-github-configuration.md](explorers-github-configuration.md) sections 3–4).
+`EXPLORERS_NGINX_SITE_PATH` is the file 2.4 named. `EXPLORERS_DEPLOY_KNOWN_HOSTS` is the one new
+SSH secret. `EXPLORERS_PUBLIC_JSON` is one line:
 
 ```json
 {"version":1,"environment":"production","origin":"https://<host>","apiPath":"/api","socketPath":"/socket.io","mapsBrowserKey":"<browser key>","analytics":{"enabled":false}}
 ```
+
+The configuration page has the one-liner that builds it for explorers.earth and reads the Maps key
+at a hidden prompt.
+
+The deploy workflow fails before any SSH connection if any of these is missing or breaks a rule.
 
 ---
 
@@ -233,7 +264,10 @@ Go only when every box is ticked.
       `publish_image` and `deploy_music` inputs, so publishing the image cannot deploy to the
       Music host.
 - [ ] Section 0, blocker 2 is fixed: `recovery-receipt.json` on `main` was drilled at the
-      migration head this deploy brings (today `0057_retire_music_category`) less than 30 days ago.
+      migration head this deploy brings (today `0060_explorers_guide_budget_tier`) less than 30 days ago.
+- [ ] Every name in section 1 is set: `gh secret list --env explorers-production` and
+      `gh variable list --env explorers-production` show them, and the environment has you as a
+      required reviewer.
 - [ ] `bash deploy/rehearsal/rehearse.sh all` passed on the exact commit you will deploy.
 - [ ] `explorers-bootstrap.sh check <host>` passes on the host, today.
 - [ ] `~/nginx-T-before-cutover.txt` exists on the host.
@@ -279,20 +313,25 @@ never tick it during the explorers cutover. When it finishes, copy the digest fr
 
 The workflow's host steps, in order:
 
+- "Render and validate production.env from the explorers-production environment" runs before
+  any host step. Expect `::notice::Environment variable EXPLORERS_TRUSTED_PROXY_IP is not set;
+  using 172.18.0.1...` and `production.env: every rule passes`. It prints no values.
 - "Upload the release": no output on success.
-- "Take a pre-deploy backup on the host": `no migrated canonical database on this host yet;
-  nothing to back up`. On any later deploy this is a real backup to S3.
+- "Take a pre-deploy backup on the host": `installed production.env from the
+  explorers-production environment (previous kept as /opt/explorers/production.env.previous)`,
+  then `no migrated canonical database on this host yet; nothing to back up`. On any later deploy
+  this is a real backup to S3.
 - "Refuse the deploy without recovery evidence": on the first deploy, the notice
   `The host has no migrated canonical database yet; the first deploy has nothing to back up.`
   On later deploys this is the gate from section 0, blocker 2.
 - "Stage the API": expect
 
 ```
-image migration head: 0057_retire_music_category; database migration head: <none, fresh database>
+image migration head: 0060_explorers_guide_budget_tier; database migration head: <none, fresh database>
  ... migrate-1 Exited ... api-1 Healthy
 API ready: ghcr.io/tandavkrishna27/explorers-tunes@sha256:...
 recorded the running image in /opt/explorers/image.env
-::warning::first deploy: EXPLORERS_TRUSTED_PROXY_IP is '172.18.0.1' but nginx reaches the API from '172.x.0.1'. Set it to 172.x.0.1 in /opt/explorers/production.env, then: docker compose ... up -d api
+::warning::first deploy: EXPLORERS_TRUSTED_PROXY_IP is '172.18.0.1' but nginx reaches the API from '172.x.0.1'. Set the explorers-production environment variable EXPLORERS_TRUSTED_PROXY_IP to 172.x.0.1 and redeploy (docs/operations/explorers-cutover-runbook.md, step 5.3)
 ```
 
 In "API acceptance checks", expect four `ok` lines: `/health/ready -> 200`,
@@ -302,21 +341,30 @@ In "Switch the SPA and the nginx site", expect `backed up <site> to
 /srv/explorers/nginx-backups/...`, `nginx: configuration file ... test is successful`, and
 `release <sha> is live`. **From here the new site is live** (section 4).
 
-**5.3 Set the trusted proxy (P2 Task 9 Step 9).** Copy the address from the warning, then on the
-host:
+**5.3 Set the trusted proxy (P2 Task 9 Step 9).** Copy the address from the warning. On your own
+machine, set the variable:
 
 ```bash
-sudo sed -i 's|^EXPLORERS_TRUSTED_PROXY_IP=.*|EXPLORERS_TRUSTED_PROXY_IP=<address from the warning>|' /opt/explorers/production.env
-sudo docker compose -f /opt/explorers/production.compose.yml --env-file /opt/explorers/production.env --env-file /opt/explorers/image.env up -d --wait api
+gh variable set --env explorers-production EXPLORERS_TRUSTED_PROXY_IP   # the address from the warning
 ```
 
-`up -d api` also re-runs the one-shot migration gate, which is a no-op at the same head. It took
-8 seconds in the rehearsal, and the API is briefly down while its container is replaced.
+Then **redeploy**. Run the workflow again exactly as in 5.2: the same `image_digest` and
+`replace-explorers-host`. The render step now writes the real address, and `stage` recreates the
+API with it. The database is migrated now, so this run is a later deploy:
+
+- it takes a real pre-deploy backup to S3
+- it needs the drill receipt from section 0, blocker 2
+
+Do not edit `/opt/explorers/production.env` on the host. The next deploy would overwrite the edit.
+
+Expect a short API outage while `stage` replaces the container. A same-schema redeploy in the
+rehearsal (section 9) gave at most 2.5s of 503s. Re-running the one-shot migration gate is a
+no-op at the same head.
 
 Do not use the plan's `docker inspect -f '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}'`.
 The API is on two networks, so that prints `172.20.0.1invalid IP`. The deploy prints the right
-address. Every later deploy **refuses** if the value and the gateway differ, because that means
-Docker re-created the network.
+address. Every later deploy **refuses** if the variable and the gateway differ, because that means
+Docker re-created the network. Set the variable to the new address and deploy again.
 
 To prove it took effect, run this on the host: two `X-Forwarded-For` values sent straight to
 the API must get separate rate-limit buckets.
@@ -409,7 +457,7 @@ anyone outside the team signs up. Rehearsed (section 9); mechanism and full proc
    sudo node /opt/explorers/platform-backup.mjs --environment prod --reason manual
    ```
 
-   Expected: three JSON lines, `"stage":"snapshot","migrationMarker":"0057_retire_music_category",...`,
+   Expected: three JSON lines, `"stage":"snapshot","migrationMarker":"0060_explorers_guide_budget_tier",...`,
    `"stage":"media","objects":<n>`, and `"stage":"published","manifestKey":"prod/backups/<stamp>-manual-<run>/manifest.json",...`.
    Exit 0. Anything else means there is no backup. Do not open sign-ups.
 3. On your machine, download that `manifest.json` and run the drill with your identity:
@@ -462,10 +510,11 @@ Where did it fail?
 │    ├─ No migration between the two commits
 │    │    → Re-run the workflow with the previous commit's digest. Rehearsed
 │    │      (v2 → v1): 21s, at most 2.5s of API 503s, journal unchanged.
-│    └─ A migration came in between (P3-9's 0058 will be the first)
+│    └─ A migration came in between
 │         The deploy refuses: "image bundles migrations up to X but the database
 │         is at Y; refusing an older image". The host is left exactly as it was,
-│         compose file included. Rehearsed (v3 at 0058 → v1 at 0057).
+│         compose file included. Rehearsed (v3 one migration ahead → v1, when
+│         main's head was 0057).
 │         → Fix forward. Forcing the old image is pointless: its migration gate
 │           exits with "unknown future migration in journal" and the API never
 │           starts (rehearsed; the journal stayed at 0058).
@@ -477,8 +526,18 @@ Where did it fail?
 ```
 
 Every deploy keeps the previous `production.compose.yml` as `production.compose.yml.previous`,
-the previous nginx site under `/srv/explorers/nginx-backups/`, and the last five releases under
-`/srv/explorers/releases/`.
+the previous `production.env` as `production.env.previous` (root, `0600`), the previous nginx site
+under `/srv/explorers/nginx-backups/`, and the last five releases under `/srv/explorers/releases/`.
+
+Rolling back a deploy re-runs the workflow, which renders `production.env` from the **current**
+`explorers-production` environment. Nothing restores `production.env.previous` automatically:
+
+- A `stage` refusal puts the compose file back but leaves the new `production.env`. That file is
+  the validated configuration in GitHub, and the running containers keep the values they started
+  with.
+- To return to an older configuration, change the values in GitHub and deploy again.
+- In an emergency only, `sudo cp -p /opt/explorers/production.env.previous
+  /opt/explorers/production.env` restores the last file until the next deploy.
 
 ---
 
@@ -494,6 +553,9 @@ deployment and `tunes-deploy.yml`), in the
 
 ## 9. Measured timings (rehearsal, 2026-10-18)
 
+The migration counts below are from that run, when `main`'s head was `0057`. Today's head is
+`0060_explorers_guide_budget_tier`.
+
 The stand-in was Ubuntu 24.04 with apt's Docker 29.1.3, Compose 2.40.3 and nginx 1.24.0, on a
 Windows workstation, with a registry on the local Docker network. **Pulls will be slower on the
 real host:** the API image is about 1.0 GB unpacked and `postgres:15-alpine` about 0.4 GB, and in
@@ -507,7 +569,7 @@ the rehearsal both came over a local network.
 | Assemble the release, render the site, pack | 2–3s | |
 | Pre-deploy backup phase on a fresh host | 1s | reports `fresh`; nothing to back up |
 | **First `stage`** (pull, empty DB → 57 migrations, gate, API healthy) | **36s** | longest step; 17s when postgres is already pulled |
-| Set the trusted proxy (`up -d --wait api`) | 8s | |
+| Set the trusted proxy (`up -d --wait api`) | 8s | measured with the old host-side edit; step 5.3 is now a redeploy, like the row "Redeploy, same schema" |
 | API acceptance checks | <1s | |
 | `activate` (site swap, `nginx -t`, reload, HTTPS check) | 1s | |
 | Taxonomy dry run + apply + re-apply | 4s | 335 terms |
@@ -577,4 +639,4 @@ Each of these is fixed in the repository or written into the steps above.
     `production.env.example` and unchecked, and every deploy after the first refuses without it.
     The example now has a deliberately invalid placeholder; `explorers-bootstrap.sh check`
     validates it and checks for Node 24.
-13. **The committed drill receipt is at 0056 while `main` is at 0057.** See section 0, blocker 2.
+13. **The committed drill receipt is at 0056 while `main` is at 0060.** See section 0, blocker 2.
