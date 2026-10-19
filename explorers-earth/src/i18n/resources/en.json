@@ -1145,6 +1145,12 @@
           "socialUrlInvalid": "Please enter a valid Instagram or LinkedIn URL",
           "socialUrlRequired": "Instagram or LinkedIn URL is required for person recommendations",
           "titleRequired": "Title is required"
+        },
+        "contactVisibility": {
+          "label": "Who can see the contact details",
+          "private": "Only me (private)",
+          "public": "Everyone on the public page",
+          "hint": "Contact name and number stay private unless you choose to share them."
         }
       },
       "cancel": "Cancel",

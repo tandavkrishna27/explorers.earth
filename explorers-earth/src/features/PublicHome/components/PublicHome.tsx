@@ -40,11 +40,11 @@ import {
   AdvancedMarker,
   Map,
   Pin,
-  useApiIsLoaded,
   useMap,
 } from "@vis.gl/react-google-maps";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import ErrorBoundary from "../../../components/ErrorBoundary";
+import { useMapsUsable } from "./useMapsUsable";
 import { usePublicHeaderDescriptor } from "./PublicHeaderDescriptorContext";
 import {
   isNonNullObject,
@@ -267,7 +267,7 @@ const MapPreviewFallback = ({ placeCount, compact = false }: { placeCount: numbe
 
 const PublicHome = memo(() => {
   const categoryStyles = usePublicCategoryThemeStyles();
-  const mapsApiLoaded = useApiIsLoaded();
+  const mapsApiLoaded = useMapsUsable();
   // Map previews are decorative hero slides. Keeping them static avoids loading
   // several interactive map instances (and markers) before a visitor asks for a map.
   const enableLiveMapPreviews = true;

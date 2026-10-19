@@ -186,7 +186,11 @@ export function recommendationContext(values: KeyValuePair, options: {
     sourceOfRecommendation: options.source,
     contactName: text(values.contactName),
     contactNumber: text(values.contactNumber),
-    contactVisibility: options.existing?.contactVisibility ?? "private",
+    // The form's own choice wins; an edit that did not touch it keeps the stored one.
+    contactVisibility:
+      values.contactVisibility === "public" || values.contactVisibility === "private"
+        ? values.contactVisibility
+        : options.existing?.contactVisibility ?? "private",
     placeSocialUrl: person ? null : text(values.socialLink),
     placeWebsiteUrl: person ? text(values.socialLink) : null,
     creatorSocialUrl: text(values.recommendationLink) ?? (person ? text(values.recommendation) : options.existing?.creatorSocialUrl ?? null),

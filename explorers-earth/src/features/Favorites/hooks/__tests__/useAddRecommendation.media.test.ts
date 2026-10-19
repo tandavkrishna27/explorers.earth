@@ -320,6 +320,14 @@ describe("the facts and the context a recommendation carries", () => {
     expect(edited.contactVisibility).toBe("public");
   });
 
+  it("takes contact visibility from the form control and defaults to private", () => {
+    const base = { contactName: "Priya", contactNumber: "+91 90000 00000" };
+    const options = { recommendationType: "place" as const, source: "self" as const };
+    expect(recommendationContext({ ...base, contactVisibility: "public" }, options).contactVisibility).toBe("public");
+    expect(recommendationContext({ ...base, contactVisibility: "private" }, { ...options, existing: { ...recommendationContext(base, options), contactVisibility: "public" } }).contactVisibility).toBe("private");
+    expect(recommendationContext({ ...base, contactVisibility: "bogus" }, options).contactVisibility).toBe("private");
+  });
+
   it("keeps person fields off a place and place links off a person", () => {
     const place = recommendationContext({ socialLink: "https://example.com/cafe", recommendation: "https://example.com/ravi", address: "Somewhere" }, { recommendationType: "place", source: "self" });
     expect(place).toMatchObject({ placeSocialUrl: "https://example.com/cafe", placeWebsiteUrl: null, personProfileUrl: null, personAddress: null });

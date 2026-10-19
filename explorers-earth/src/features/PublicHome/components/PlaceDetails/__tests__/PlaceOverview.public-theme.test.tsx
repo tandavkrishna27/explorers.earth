@@ -97,6 +97,10 @@ describe("PlaceOverview public theme surface", () => {
     expect(panel.style.getPropertyValue('--dash-text-light')).toBe('var(--category-muted)');
     expect(panel.style.getPropertyValue('--border-card')).toBe('var(--category-control-border)');
   });
+  it("shows no opening hours, because the place model has none", () => {
+    renderOverview({ category: true });
+    expect(screen.queryByText(/\d{1,2}:\d{2}\s?(am|pm)/i)).toBeNull();
+  });
   it("uses a contrast-safe category rating while preserving the default yellow rating", () => {
     renderOverview({ category: true, place: { ...place, user_rating: 8 } });
     expect(screen.getByText("Creator's Rating:").style.color).toBe('var(--category-rating)');
