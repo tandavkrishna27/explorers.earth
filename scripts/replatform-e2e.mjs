@@ -480,7 +480,7 @@ export function snapshotSource(root){
  // Follow relative source imports from the runner/helper roots, including additions
  // ignored by Git. Every resolved dependency must be tracked or an explicit overlay.
  const reviewed=new Set(['scripts/replatform-e2e.mjs',...tracked,...frontendRoot,...authority,placesHelper,appsHelper,appsRunner,appsAdmission,appsCustody,noStrapiMonitor,...guidesSources,...publicSources,...appsEnrichmentSources]);
- const overlay=new Set(['tunes/scripts/profile-browser-fixture.ts','tunes/scripts/books-browser-fixture.ts','tunes/scripts/movies-browser-fixture.ts','tunes/scripts/games-browser-fixture.ts','tunes/scripts/protected-browser-receipt.ts','tunes/scripts/lifecycle-browser-support.ts','tunes/scripts/lifecycle-browser-guards.ts']);
+ const overlay=new Set(['tunes/scripts/profile-browser-fixture.ts','tunes/scripts/books-browser-fixture.ts','tunes/scripts/movies-browser-fixture.ts','tunes/scripts/games-browser-fixture.ts','tunes/scripts/protected-browser-receipt.ts','tunes/scripts/lifecycle-browser-support.ts','tunes/scripts/lifecycle-browser-guards.ts','tunes/scripts/canonical-fixture-routes.ts']);
  const queue=[...authority,...overlay,appsHelper,appsRunner,appsAdmission,appsCustody,...guidesSources,...publicSources,...appsEnrichmentSources];const scanned=new Set();
  while(queue.length){const path=queue.pop();if(scanned.has(path)||! /\.(?:[cm]?js|tsx?)$/.test(path))continue;scanned.add(path);
   const text=readFileSync(join(root,path),'utf8');const imports=/\b(?:import|export)[\s\S]*?\bfrom\s+['"](\.[^'"]+)['"]|\bimport\s*\(\s*['"](\.[^'"]+)['"]\s*\)|\bimport\s+['"](\.[^'"]+)['"]/g;
