@@ -9,6 +9,9 @@ import {
 } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { EarthLoader } from "../components/EarthLoader";
+// The cold overlay's stacking rule lives here. Routes are code-split, so the chunk that normally
+// pulls this stylesheet in (the page behind the overlay) may not have loaded yet.
+import "../features/PublicHome/components/PublicBranding.css";
 import {
   createPublicShellReadiness,
   settlePublicIdentity,
