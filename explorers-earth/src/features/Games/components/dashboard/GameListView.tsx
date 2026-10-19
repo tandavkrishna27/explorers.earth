@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -463,6 +463,14 @@ const GameListView = () => {
         <div className="h-6 w-40 bg-white/5 animate-pulse rounded" />
         <div className="h-4 w-24 bg-white/5 animate-pulse rounded" />
         {[1,2,3,4].map(i => <div key={i} className="h-14 bg-white/5 animate-pulse rounded-lg" />)}
+      </div>
+    );
+  }
+
+  if (!list) {
+    return (
+      <div className="p-6">
+        <p className="text-red-400" role="alert">List not found. <Link to="/recommendations/games" className="text-blue-400 underline">Go back</Link></p>
       </div>
     );
   }

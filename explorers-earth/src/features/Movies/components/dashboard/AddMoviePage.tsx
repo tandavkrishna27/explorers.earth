@@ -6,7 +6,7 @@ import type { MovieCandidate } from '../../../../../../tunes/shared/explorersMov
 import { richNoteFromEditor } from '../../../../../../tunes/shared/explorersRichNoteContract';
 import useAuthStore from '../../../../store/store';
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft, Film, Star, Tv, Clock,
   Loader2, Check, Search, X, CheckCircle2, User, Upload,
@@ -249,6 +249,7 @@ const AddMoviePage = () => {
    if (alive()) { saveBusy.current=false;setSaving(false);saveController.current=undefined; }
   }
  };
+ const movieNotFound=isEdit&&!owner.loading&&!owner.error&&Boolean(owner.data)&&!owner.data!.movieLists[0]?.recommended_movies.some(value=>value.documentId===movieId);
  const posterUrl=buildPosterUrl(posterPath,'w342'),backdropUrl=buildBackdropUrl(backdropPath,'w780'),showForm=isEdit?formReady:Boolean(selected)||manual;
   return (
     <div className="min-h-screen text-dashboard">
@@ -296,6 +297,7 @@ const AddMoviePage = () => {
         {manual && <label className="flex items-center gap-2 text-sm text-dashboard">Type <select value={mediaType} onChange={event=>setMediaType(event.target.value==='tv'?'tv':'movie')} className="dt-input bg-dashboard-muted text-dashboard border border-dashboard-border rounded-lg px-3 py-2"><option value="movie" className="bg-dashboard-sidebar text-dashboard">Movie</option><option value="tv" className="bg-dashboard-sidebar text-dashboard">TV show</option></select></label>}
         {genreError && <p role="alert">Genres could not be loaded. Your existing selection is preserved.</p>}
         {owner.error && <p role="alert">Movie could not be loaded. <button onClick={owner.refetch}>Retry</button></p>}
+        {movieNotFound && <p role="alert" className="text-red-400">Movie not found. <Link to="/recommendations/movies" className="text-blue-400 underline">Go back</Link></p>}
         {/* Form — shown when movie selected (create) or data loaded (edit) */}
         {showForm && (
           <>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import { explorersApiClient } from "../../../../lib/explorersApiClient";
 import { useBooksOwnerContent } from "../../api/useBooksOwnerContent";
 import { useBookListCommands } from "../../api/useBookListCommands";
@@ -480,6 +480,16 @@ const BookListView = () => {
         {[1,2,3,4,5].map(i => (
           <div key={i} className="h-14 bg-white/5 animate-pulse rounded-lg" />
         ))}
+      </div>
+    );
+  }
+
+  // A list that is not this owner's (or does not exist) reads as absent: say so, like the
+  // Movies/Apps/Products/People list pages, instead of an empty "Draft" shell.
+  if (!list) {
+    return (
+      <div className="p-6" data-books-owner-state="missing">
+        <p className="text-red-400" role="alert">List not found. <Link to="/recommendations/books" className="text-blue-400 underline">Go back</Link></p>
       </div>
     );
   }
