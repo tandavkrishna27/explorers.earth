@@ -186,20 +186,20 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 320, height: 900
   test(`Task 6 repair rejected Retry is contained ${viewport.width}x${viewport.height}`, async ({ browser, baseURL }) => {
     const state = fixtureState({ pinned_nav_tabs: ['public_profile', 'public_apps'] });
     seedTask6App(state);
-    state.faults.set('PublicAppData', [
-      // Cold mount and the first retry are both replayed by strict effects in
-      // this development harness. Preserve the intended error → rejected
-      // retry → successful retry journey across those real requests.
-      { kind: 'error' }, { kind: 'error' },
-      { kind: 'offline' }, { kind: 'offline' },
-    ]);
+    // Identical concurrent reads now share one request, and whether a strict-effect replay joins
+    // the in-flight read or starts its own is a timing detail. So the fault script is re-armed
+    // for each phase instead of counting requests: every read of a phase fails the same way.
+    const failEveryRead = (kind: 'error' | 'offline') => state.faults.set('PublicAppData', Array.from({ length: 8 }, () => ({ kind })));
+    failEveryRead('error');
     const visitor = await openFixture(browser, baseURL!, state, { ...viewport, touch: viewport.width === 320 });
     try {
       await visitor.page.goto(`/${fixtureUser.username}/apps`);
       await expect(visitor.page.getByRole('heading', { name: 'Apps unavailable' })).toBeVisible();
+      failEveryRead('offline');
       await visitor.page.getByRole('button', { name: 'Retry' }).click({ force: true });
       await expect(visitor.page.locator('[aria-busy="true"]')).toHaveCount(0);
       await expect(visitor.page.getByRole('heading', { name: 'Apps unavailable' })).toBeVisible();
+      state.faults.set('PublicAppData', []);
       await visitor.page.getByRole('button', { name: 'Retry' }).click();
       await expect(visitor.page.getByText('Public apps', { exact: true })).toBeVisible();
       await expectTask6Shell(visitor.page);
