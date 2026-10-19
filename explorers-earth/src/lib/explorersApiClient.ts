@@ -24,7 +24,7 @@ import {productEntityDtoSchema,resolveManualProductSchema} from '../../../tunes/
 import {personEntityDtoSchema,resolveManualPersonSchema} from '../../../tunes/shared/explorersPersonContract';
 import {placeEntityDtoSchema,resolveManualPlaceSchema} from '../../../tunes/shared/explorersPlaceContract';
 import {guideAggregateDtoSchema,attachGuideCoverSchema,createGuideSectionSchema,reorderGuideSectionsSchema,
- writeGuideDetailsSchema,writeGuideSectionSchema} from '../../../tunes/shared/explorersGuideContract';
+ writeGuideDetailsSchema,writeGuideSectionSchema,guideRevisionSchema} from '../../../tunes/shared/explorersGuideContract';
 
 export type CompleteOwnerContent<T> = Readonly<{complete:true;items:readonly T[];snapshot:string;accountId:string;generation:number}>;
 const completedSets=new WeakSet<object>();
@@ -466,7 +466,7 @@ export const explorersApiClient = {
   },
   async removeMyGuideSection(collectionId:string,sectionId:string,revision:number,key:string,signal?:AbortSignal){
    return guideCommand(collectionId,`/sections/${encodeURIComponent(commandInput(contentIdSchema,sectionId))}`,'DELETE',
-    commandInput(writeGuideDetailsSchema.pick({revision:true}),{revision}),key,signal);
+    commandInput(guideRevisionSchema,{revision}),key,signal);
   },
   async reorderMyGuideSections(collectionId:string,input:z.input<typeof reorderGuideSectionsSchema>,key:string,signal?:AbortSignal){
    return guideCommand(collectionId,'/sections/order','PATCH',commandInput(reorderGuideSectionsSchema,input),key,signal);

@@ -502,6 +502,7 @@
   "common": {
     "cancel": "ਰੱਦ ਕਰੋ",
     "error": "An error occurred. Please try again later.",
+    "free": "ਮੁਫ਼ਤ",
     "hidePassword": "Hide password",
     "loading": "Loading...",
     "noResults": "No results found",

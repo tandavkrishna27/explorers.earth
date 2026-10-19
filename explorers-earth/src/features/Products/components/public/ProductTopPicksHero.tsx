@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, ChevronLeft, ChevronRight, Star } from "lucide-react";
 import type { RecommendedProduct } from "../../types";
-import { buildImageUrl, formatPrice } from "../../utils/productHelpers";
+import { buildImageUrl } from "../../utils/productHelpers";
+import { useFormatMoney } from "../../../../lib/money";
 
 interface ProductTopPicksHeroProps {
   products: RecommendedProduct[];
@@ -12,6 +13,7 @@ interface ProductTopPicksHeroProps {
 }
 
 const ProductTopPicksHero = ({ products, onProductClick, showManageButton = false, onManageClick }: ProductTopPicksHeroProps) => {
+  const formatMoney = useFormatMoney();
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   
@@ -54,7 +56,7 @@ const ProductTopPicksHero = ({ products, onProductClick, showManageButton = fals
     ? buildImageUrl(activeProduct.images[0])
     : (activeProduct.logo_url ? buildImageUrl(activeProduct.logo_url) : "https://images.unsplash.com/photo-1505740420928-5e560c06d30e");
 
-  const priceStr = formatPrice(activeProduct.price, activeProduct.currency);
+  const priceStr = formatMoney(activeProduct.price, activeProduct.currency);
   const brand = activeProduct.brand;
   const rating = activeProduct.user_rating;
 

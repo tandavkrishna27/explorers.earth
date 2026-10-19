@@ -502,6 +502,7 @@
   "common": {
     "cancel": "റദ്ദാക്കുക",
     "error": "An error occurred. Please try again later.",
+    "free": "സൗജന്യം",
     "hidePassword": "Hide password",
     "loading": "Loading...",
     "noResults": "No results found",

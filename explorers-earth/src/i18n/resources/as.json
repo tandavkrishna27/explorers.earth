@@ -502,6 +502,7 @@
   "common": {
     "cancel": "বাতিল কৰক",
     "error": "An error occurred. Please try again later.",
+    "free": "বিনামূল্যে",
     "hidePassword": "Hide password",
     "loading": "Loading...",
     "noResults": "No results found",

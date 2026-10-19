@@ -35,6 +35,7 @@ COPY tunes/shared/explorersMovieMediaContract.ts /workspace/tunes/shared/explore
 COPY tunes/shared/explorersAppContract.ts /workspace/tunes/shared/explorersAppContract.ts
 COPY tunes/shared/explorersAppEnrichmentContract.ts /workspace/tunes/shared/explorersAppEnrichmentContract.ts
 COPY tunes/shared/explorersProductContract.ts /workspace/tunes/shared/explorersProductContract.ts
+COPY tunes/shared/currency.ts /workspace/tunes/shared/currency.ts
 COPY tunes/shared/explorersPersonContract.ts /workspace/tunes/shared/explorersPersonContract.ts
 COPY tunes/shared/explorersPublicPeopleSectorContract.ts /workspace/tunes/shared/explorersPublicPeopleSectorContract.ts
 COPY tunes/shared/explorersPlaceContract.ts /workspace/tunes/shared/explorersPlaceContract.ts

@@ -90,6 +90,8 @@ function projectGuide(row: any, account: {id: string; handle: string}) {
   // consumer reads is true by construction rather than by a column lookup.
   Visibility: true,
   Estimated_Budget: row.estimated_budget === null ? null : Number(row.estimated_budget),
+  // The amount is meaningless without it, and no currency is ever assumed.
+  Estimated_Budget_Currency: row.estimated_budget === null ? null : row.budget_currency ?? null,
   Budget_Type: row.budget_tier === null || row.budget_tier === undefined ? null : GUIDE_BUDGET_TIER_LABELS[row.budget_tier as keyof typeof GUIDE_BUDGET_TIER_LABELS] ?? null,
   is_Multicity: row.multi_city ?? false,
   slug: row.slug,
@@ -113,7 +115,7 @@ function projectGuide(row: any, account: {id: string; handle: string}) {
 
 const GUIDE_COLUMNS = `c.id,c.title,c.description,c.slug,c.display_order,c.pin_order,c.created_at,c.updated_at,
  cm.media_id AS cover_media_id,
- d.guide_type,d.multi_city,d.number_of_days,d.estimated_budget::text AS estimated_budget,d.budget_tier,
+ d.guide_type,d.multi_city,d.number_of_days,d.estimated_budget::text AS estimated_budget,d.budget_currency,d.budget_tier,
  d.best_time_to_visit,d.categories,d.tags,d.tips_notes,d.place_snapshot`;
 const GUIDE_JOIN = `FROM collections c
  JOIN creator_accounts a ON a.id=c.account_id

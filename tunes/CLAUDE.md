@@ -64,7 +64,8 @@ server/
 └── utils/
 
 shared/
-└── schema.ts           # Drizzle ORM schema (SINGLE SOURCE OF TRUTH for DB)
+├── schema.ts           # Drizzle ORM schema (SINGLE SOURCE OF TRUTH for DB)
+└── currency.ts         # ISO 4217 codes + minor units (SINGLE SOURCE OF TRUTH for money validation, used by the SPA too)
 ```
 
 ## Database

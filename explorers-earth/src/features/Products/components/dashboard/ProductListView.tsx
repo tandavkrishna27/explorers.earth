@@ -11,12 +11,13 @@ import Accordion from "../../../../components/ui/Accordian";
 import useAuthStore from "../../../../store/store";
 import { useProductsCommands, useProductsCallerCustody } from "../../api/query";
 import { useProductsOwner } from "../../hooks/useProductsOwner";
-import { deduplicateProducts, buildImageUrl, extractNoteText, formatPrice } from "../../utils/productHelpers";
+import { deduplicateProducts, buildImageUrl, extractNoteText } from "../../utils/productHelpers";
 import type { RecommendedProduct, ProductList } from "../../types";
 import Switch from "../../../../components/ui/Switch";
 import ProductDetailModal from "../public/ProductDetailModal";
 import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
 import QrCardTagline from "../../../../components/QrCardTagline";
+import { useFormatMoney } from "../../../../lib/money";
 
 const VITE_BASE_URL = import.meta.env.VITE_BASE_URL || "https://explorers.earth";
 
@@ -30,10 +31,11 @@ interface ProductRowProps {
 }
 
 const ProductRow = ({ product, onPinToggle, onEdit, onDelete, onClick, isPinning }: ProductRowProps) => {
+  const formatMoney = useFormatMoney();
   const [menuOpen, setMenuOpen] = useState(false);
   const notePreview = extractNoteText(product.user_recommendation_note);
   const imgUrl = buildImageUrl(product.logo_url);
-  const priceStr = formatPrice(product.price, product.currency);
+  const priceStr = formatMoney(product.price, product.currency);
 
   return (
     <div
