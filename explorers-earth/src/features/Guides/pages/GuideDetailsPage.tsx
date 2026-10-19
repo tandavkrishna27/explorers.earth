@@ -43,6 +43,7 @@ const GuideDetailsPage = () => {
   const [sectionToDelete, setSectionToDelete] = useState<{ id: string; title: string } | null>(null);
   const [activeTab, setActiveTab] = useState("journey");
   const [viewMode, setViewMode] = useState<"timeline" | "list">("list");
+  const [reorderingDays, setReorderingDays] = useState(false);
   const [selectedSection, setSelectedSection] = useState<any>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [selectedGooglePlace, setSelectedGooglePlace] = useState<{ visible: boolean; place: any }>({
@@ -121,7 +122,7 @@ const GuideDetailsPage = () => {
   // One bracketed owner read for this guide, its fields and every section. `guide` is the
   // mapped legacy shape the rest of this page already reads; `observation` is the branded
   // aggregate a section write states its revision from.
-  const { guide: ownedGuide, observation, content, loading, error, refresh: refetch } = useGuidesOwner(guideId);
+  const { guide: ownedGuide, observation, content, loading, error, refresh: refetch } = useGuidesOwner(guideId, true, { keepWhileRefreshing: true });
   const data = ownedGuide ? { guide: ownedGuide } : undefined;
 
   // Deleting a section goes through the guide aggregate at the current revision, so a
@@ -131,6 +132,24 @@ const GuideDetailsPage = () => {
     if (!observation) throw new Error("Guide could not be loaded. Refresh and try again.");
     const intent = GuidesClient.prepareIntent(observation);
     await GuidesClient.removeSection(intent, sectionId);
+    refetch();
+  };
+
+  // The complete new order of the days, written at the revision this page read. A guide
+  // changed elsewhere is reloaded rather than overwritten, so the owner sees what is there
+  // before moving anything again.
+  const reorderSections = async (sectionIds: string[]) => {
+    if (!observation) throw new Error("Guide could not be loaded. Refresh and try again.");
+    const intent = GuidesClient.prepareIntent(observation);
+    try {
+      await GuidesClient.reorderSections(intent, sectionIds);
+    } catch (failure) {
+      refetch();
+      if ((failure as { status?: number })?.status === 409) {
+        throw new Error("This guide was changed somewhere else. It has been reloaded; try moving the day again.");
+      }
+      throw failure;
+    }
     refetch();
   };
 
@@ -266,7 +285,7 @@ const GuideDetailsPage = () => {
     }
   }, [location.state, data?.guide]);
 
-  if (loading) {
+  if (loading && !data?.guide) {
     return (
       <div className="dashboard-theme flex justify-center items-center min-h-screen bg-dashboard-bg">
         <EarthLoader context="general" size="small" />
@@ -430,6 +449,7 @@ const GuideDetailsPage = () => {
             setOpenMenuId(openMenuId === sectionId ? null : sectionId)
           }
           onGuideUpdate={refetch}
+          dayOrder={{ open: reorderingDays, onOpenChange: setReorderingDays, onReorder: reorderSections }}
           onPlaceClick={(place) => {
             setSelectedGooglePlace({ visible: true, place });
           }}

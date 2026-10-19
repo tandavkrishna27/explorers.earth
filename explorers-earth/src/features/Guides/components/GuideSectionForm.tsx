@@ -1180,18 +1180,42 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Sequence - Smaller width */}
         <div className="md:col-span-1">
-          <label className="text-dashboard block font-medium mb-2 font-poppins text-sm">
-            Day <span className="text-red-500">*</span>
+          <label htmlFor="guide-day-number" className="text-dashboard block font-medium mb-2 font-poppins text-sm">
+            Day {!sectionId && <span className="text-red-500">*</span>}
           </label>
-          <input
-            type="number"
-            className="w-full px-3 py-2 bg-dashboard-bg border border-dashboard-muted rounded-lg text-dashboard placeholder-dashboard-light focus:outline-none focus:ring-2 focus:ring-dashboard-accent/50 focus:border-dashboard-accent transition-all duration-200 font-poppins"
-            placeholder="#"
-            value={sequence}
-            onChange={(e) => setSequence(parseInt(e.target.value) || 1)}
-            min={1}
-            required
-          />
+          {sectionId ? (
+            // A day's number is its position in the guide. Editing it here was never saved,
+            // so an existing day shows its number and is moved from the guide page instead.
+            <>
+              <output
+                id="guide-day-number"
+                aria-describedby="guide-day-number-hint"
+                className="block w-full px-3 py-2 bg-dashboard-bg border border-dashboard-muted rounded-lg text-dashboard font-poppins"
+              >
+                {sequence}
+              </output>
+              <p id="guide-day-number-hint" className="mt-1 text-xs text-dashboard-light font-poppins">
+                To move this day, use Reorder days on the guide page.
+              </p>
+            </>
+          ) : (
+            <>
+              <input
+                id="guide-day-number"
+                type="number"
+                aria-describedby="guide-day-number-hint"
+                className="w-full px-3 py-2 bg-dashboard-bg border border-dashboard-muted rounded-lg text-dashboard placeholder-dashboard-light focus:outline-none focus:ring-2 focus:ring-dashboard-accent/50 focus:border-dashboard-accent transition-all duration-200 font-poppins"
+                placeholder="#"
+                value={sequence}
+                onChange={(e) => setSequence(parseInt(e.target.value) || 1)}
+                min={1}
+                required
+              />
+              <p id="guide-day-number-hint" className="mt-1 text-xs text-dashboard-light font-poppins">
+                Later days move down by one.
+              </p>
+            </>
+          )}
         </div>
 
         {/* Title - Larger width */}
