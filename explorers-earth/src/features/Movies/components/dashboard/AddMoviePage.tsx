@@ -292,7 +292,7 @@ const AddMoviePage = () => {
         )}
 
         {!isEdit && <button onClick={()=>{handleClear();setManual(true);}}>Add manually</button>}
-        {manual && <label>Type <select value={mediaType} onChange={event=>setMediaType(event.target.value==='tv'?'tv':'movie')}><option value="movie">Movie</option><option value="tv">TV show</option></select></label>}
+        {manual && <label className="flex items-center gap-2 text-sm text-dashboard">Type <select value={mediaType} onChange={event=>setMediaType(event.target.value==='tv'?'tv':'movie')} className="dt-input bg-dashboard-muted text-dashboard border border-dashboard-border rounded-lg px-3 py-2"><option value="movie" className="bg-dashboard-sidebar text-dashboard">Movie</option><option value="tv" className="bg-dashboard-sidebar text-dashboard">TV show</option></select></label>}
         {genreError && <p role="alert">Genres could not be loaded. Your existing selection is preserved.</p>}
         {owner.error && <p role="alert">Movie could not be loaded. <button onClick={owner.refetch}>Retry</button></p>}
         {/* Form — shown when movie selected (create) or data loaded (edit) */}

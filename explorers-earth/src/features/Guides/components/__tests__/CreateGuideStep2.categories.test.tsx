@@ -100,3 +100,21 @@ it("continues without a budget type and passes null", () => {
   expect(screen.queryByText(/please select a budget type/i)).not.toBeInTheDocument();
   expect(onNext).toHaveBeenCalledWith(expect.objectContaining({ budgetType: null, numberOfDays: 3 }));
 });
+
+// Enter adds what was typed, the same as clicking "Add", and does not submit anything.
+it("adds a typed category with Enter and clears the box", () => {
+  renderStep([["Food"]]);
+  const input = search("Street art");
+  fireEvent.keyDown(input, { key: "Enter" });
+  expect(screen.getByRole("button", { name: "Remove Street art" })).toBeInTheDocument();
+  expect(input).toHaveValue("");
+  // A typed name that matches a suggestion selects the suggestion; Enter on a selected one keeps it.
+  search("food");
+  fireEvent.keyDown(screen.getByPlaceholderText(/categories\.\.\./i), { key: "Enter" });
+  expect(screen.getByRole("button", { name: "Remove Food" })).toBeInTheDocument();
+  search("Food");
+  fireEvent.keyDown(screen.getByPlaceholderText(/categories\.\.\./i), { key: "Enter" });
+  expect(screen.getByRole("button", { name: "Remove Food" })).toBeInTheDocument();
+  fireEvent.keyDown(screen.getByPlaceholderText(/categories\.\.\./i), { key: "Enter" });
+  expect(screen.getAllByRole("button", { name: /^Remove / })).toHaveLength(2);
+});

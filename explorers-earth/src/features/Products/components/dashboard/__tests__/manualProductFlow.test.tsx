@@ -127,6 +127,9 @@ describe('native manual Products', () => {
   mount(); fill('Title', 'No link');
   expect(screen.getByRole('button', {name: 'Save product'})).toBeDisabled();
   expect(ProductsClient.observeCollection).not.toHaveBeenCalled();
+  const url = screen.getByLabelText('Product URL');
+  expect(url).toBeRequired();
+  expect(url).toHaveAccessibleDescription(/required.*save/i);
  });
 
  it('waits for uploaded snapshot readiness before saving', async () => {

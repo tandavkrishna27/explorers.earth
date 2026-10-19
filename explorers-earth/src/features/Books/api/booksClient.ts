@@ -1,3 +1,4 @@
+import {shareOwnerRead} from '../../../lib/sharedOwnerRead';
 import { explorersApiClient, assertCompleteMyCategoryContent, ExplorersApiError, type CompleteMyCategoryContent, type RecommendationObservation } from '../../../lib/explorersApiClient';
 import { bookViewModel, collectionViewModel } from './booksViewModel';
 import type { BookList } from '../types';
@@ -5,7 +6,9 @@ import useAuthStore from '../../../store/store';
 
 export type BooksOwnerContent={observation:CompleteMyCategoryContent;lists:BookList[];details:ReadonlyMap<string,RecommendationObservation>};
 export const booksCommandKey=()=>crypto.randomUUID();
-export async function readBooksOwnerContent(signal?:AbortSignal):Promise<BooksOwnerContent> {
+/** Concurrent readers on one page share one read (see shareOwnerRead). */
+export function readBooksOwnerContent(signal?:AbortSignal):Promise<BooksOwnerContent>{return shareOwnerRead('books',signal,shared=>readBooksOwnerContentOnce(shared));}
+async function readBooksOwnerContentOnce(signal?:AbortSignal):Promise<BooksOwnerContent> {
  const controller=new AbortController();let terminal=false,firstError:unknown;
  const forwardAbort=()=>controller.abort(signal?.reason);signal?.addEventListener('abort',forwardAbort,{once:true});if(signal?.aborted)forwardAbort();
  const fail=(error:unknown):never=>{if(!terminal){terminal=true;firstError=error;controller.abort(error);}throw firstError;};

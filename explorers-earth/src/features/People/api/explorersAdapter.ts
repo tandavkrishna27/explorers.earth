@@ -1,3 +1,4 @@
+import {shareOwnerRead} from '../../../lib/sharedOwnerRead';
 import {PeopleClient,type CompletePeopleOwnerContent} from './peopleClient';
 import {peopleViewModel,type PersonOwnerView} from './peopleViewModel';
 import {ExplorersApiError,type RecommendationObservation} from '../../../lib/explorersApiClient';
@@ -7,7 +8,9 @@ import useAuthStore from '../../../store/store';
 // bracketing category reads, a bounded fan-out of detail reads, and no partially
 // hydrated view ever returned.
 export type PeopleOwnerContent={observation:CompletePeopleOwnerContent;view:Readonly<PersonOwnerView>;details:ReadonlyMap<string,RecommendationObservation>};
-export async function readPeopleOwnerContent(signal?:AbortSignal):Promise<PeopleOwnerContent>{
+/** Concurrent readers on one page share one read (see shareOwnerRead). */
+export function readPeopleOwnerContent(signal?:AbortSignal):Promise<PeopleOwnerContent>{return shareOwnerRead('people',signal,shared=>readPeopleOwnerContentOnce(shared));}
+async function readPeopleOwnerContentOnce(signal?:AbortSignal):Promise<PeopleOwnerContent>{
  const controller=new AbortController();let terminal=false,firstError:unknown;
  const forwardAbort=()=>controller.abort(signal?.reason);signal?.addEventListener('abort',forwardAbort,{once:true});if(signal?.aborted)forwardAbort();
  const fail=(error:unknown):never=>{if(!terminal){terminal=true;firstError=error;controller.abort(error);}throw firstError;};

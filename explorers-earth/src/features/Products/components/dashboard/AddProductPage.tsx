@@ -180,9 +180,11 @@ export default function AddProductPage() {
     {owner.error && <p role="alert">{owner.error.message}</p>}
 
     <label className="block">Title<input value={title} onChange={event => setTitle(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
-    <label className="block">Product URL
-     <input value={productUrl} onChange={event => setProductUrl(event.target.value)} disabled={saving || Boolean(productId)} placeholder="https://example.com/widget" className="block w-full bg-dashboard-muted rounded-xl p-3" />
+    {/* The asterisk is drawn by CSS so the field's accessible name stays "Product URL". */}
+    <label className="block"><span className="after:content-['_*'] after:text-red-500">Product URL</span>
+     <input value={productUrl} onChange={event => setProductUrl(event.target.value)} disabled={saving || Boolean(productId)} required aria-required="true" aria-describedby={productId ? undefined : 'product-url-required'} placeholder="https://example.com/widget" className="block w-full bg-dashboard-muted rounded-xl p-3" />
     </label>
+    {!productId && <p id="product-url-required" className="text-xs text-dashboard-muted">Required: Save stays off until the product's link is added (its official or shop page).</p>}
     {productId
      ? <p className="text-sm text-dashboard-muted">The product URL identifies the product itself and is shared with everyone who recommends it, so it cannot be changed here.</p>
      : <p className="text-sm text-dashboard-muted">Details are not fetched automatically. Fill in whatever you know; nothing you type is discarded.</p>}

@@ -1,3 +1,4 @@
+import {shareOwnerRead} from '../../../lib/sharedOwnerRead';
 import {ProductsClient,type CompleteProductsOwnerContent} from './productsClient';
 import {productsViewModel,type ProductOwnerView} from './productsViewModel';
 import {ExplorersApiError,type RecommendationObservation} from '../../../lib/explorersApiClient';
@@ -6,7 +7,9 @@ import useAuthStore from '../../../store/store';
 // Ticket 4.4. Same orchestration contract as the Apps and Games adapters: two bracketing
 // category reads, a bounded fan-out of detail reads, and no partially hydrated view.
 export type ProductsOwnerContent={observation:CompleteProductsOwnerContent;view:Readonly<ProductOwnerView>;details:ReadonlyMap<string,RecommendationObservation>};
-export async function readProductsOwnerContent(signal?:AbortSignal):Promise<ProductsOwnerContent>{
+/** Concurrent readers on one page share one read (see shareOwnerRead). */
+export function readProductsOwnerContent(signal?:AbortSignal):Promise<ProductsOwnerContent>{return shareOwnerRead('products',signal,shared=>readProductsOwnerContentOnce(shared));}
+async function readProductsOwnerContentOnce(signal?:AbortSignal):Promise<ProductsOwnerContent>{
  const controller=new AbortController();let terminal=false,firstError:unknown;
  const forwardAbort=()=>controller.abort(signal?.reason);signal?.addEventListener('abort',forwardAbort,{once:true});if(signal?.aborted)forwardAbort();
  const fail=(error:unknown):never=>{if(!terminal){terminal=true;firstError=error;controller.abort(error);}throw firstError;};
