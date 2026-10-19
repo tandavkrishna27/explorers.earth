@@ -74,15 +74,15 @@ describe("runtime route/event/job inventory", () => {
       expect.objectContaining({ method: "GET", path: "/api/music/entitlement", classification: "local-music-owner" }),
       expect.objectContaining({ method: "GET", path: "/api/music/dashboard", classification: "local-music-owner" }),
     ]));
-    // Taxonomy adds the eleventh fallback outside recommendation routes; the Places
-    // pin-storage routes add the twelfth through seventeenth, one ALL guard per pin
-    // operation, each answering 405 INVALID_INPUT with no actor resolution.
+    // Taxonomy adds the eleventh fallback outside recommendation routes. The Places
+    // pin-storage routes used to add six more ALL guards (twelfth through seventeenth);
+    // P5-8a removed them with explorersPlacePinsRoutes.ts, so 22 -> 16.
     // Pin the count so every new surface receives an explicit method-boundary review.
-    // The eighteenth is P1's canonical retired-surface boundary,
+    // One of them is P1's canonical retired-surface boundary,
     // tunes/server/routes/canonicalRetiredSurfaceRoutes.ts, which answers 410 on every
     // method for a retired path and calls next() for everything else.
     expect(inventory.routes.filter((route) => route.method === "ALL"
-      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(22);
+      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(16);
     // Decision D2. GET reports the address and must not write; POST performs it, which is
     // also what RFC 8058 one-click unsubscribe sends. Both are public: the authority is
     // the purpose-bound HMAC in the token, not the caller.
