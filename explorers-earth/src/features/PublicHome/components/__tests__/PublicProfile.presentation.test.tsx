@@ -289,7 +289,7 @@ describe("PublicProfile recommendation presentation", () => {
       false,
     ],
     ["cinematic-dark", "banner-top", "#FFFFFF", "#FFFFFF", false],
-    ["minimal-light", "full-wallpaper-image", "#FFFFFF", "#FFFFFF", false],
+    ["minimal-light", "full-wallpaper-image", "#0F172A", "#0F172A", false],
   ])(
     "uses a contrasting currentColor icon foreground for %s with %s wallpaper",
     (preset, wallpaperMode, socialColor, locationColor, usesMetadataScrim) => {
@@ -320,6 +320,27 @@ describe("PublicProfile recommendation presentation", () => {
       expect(metadata).not.toHaveClass("bg-black/75", "backdrop-blur-md");
     },
   );
+
+  it.each([
+    ["minimal-light", "banner-top", true],
+    ["cinematic-dark", "banner-top", true],
+    ["minimal-light", "full-wallpaper-image", false],
+    ["minimal-light", "solid-color", false],
+  ])("gives the %s bio over a %s cover its own readable panel only where a cover can sit behind it", (preset, wallpaperMode, panel) => {
+    state.account = makeAccount({
+      Bio: "<p>Readable biography</p>",
+      social_media: { theme_settings: themeSettings({ preset, wallpaperMode }) },
+    });
+
+    renderProfile();
+    const bio = screen.getByTestId("public-profile-bio");
+
+    expect(bio).toHaveStyle("color: var(--text-primary)");
+    if (panel) expect(bio.style.background).toBe("var(--profile-bio-scrim)");
+    else expect(bio.style.background).toBe("");
+    // No opacity on the text itself: it would erode the contrast the colours were chosen for.
+    expect(bio).not.toHaveClass("opacity-90");
+  });
 
   it("keeps the accessible avatar control without an accent ring", () => {
     renderProfile();

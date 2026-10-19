@@ -1,4 +1,5 @@
-import { getThemeTokenStyles } from "../../Profile/constants/themePresets";
+import { getThemeTokenStyles, THEME_PRESETS } from "../../Profile/constants/themePresets";
+import { resolveReadableProfileTheme } from "../../Profile/constants/profileReadability";
 import {
   getPreferredRecommendationCategory,
   isRecommendationCategoryVisible,
@@ -186,14 +187,20 @@ const PublicProfile = memo(() => {
     }),
     [accountData?.social_media],
   );
+  // Identity text sits over the cover (banner-top) or over the page (the other layouts); the
+  // colours come from the same contrast-checked resolution as the theme tokens.
+  const readable = resolveReadableProfileTheme(
+    THEME_PRESETS[themeSettings.preset] ?? THEME_PRESETS["cinematic-dark"],
+    { wallpaperMode: themeSettings.wallpaperMode, accentColor: themeSettings.accentColor, customTextColor: themeSettings.customTextColor },
+  );
   const usesImageHeaderTreatment =
     themeSettings.wallpaperMode === "banner-top" ||
     themeSettings.wallpaperMode === "full-wallpaper-image";
   const headerPrimaryColor = usesImageHeaderTreatment
-    ? "#FFFFFF"
+    ? themeSettings.wallpaperMode === "banner-top" ? readable.headerPrimary : readable.primary
     : "var(--text-primary)";
   const headerSecondaryColor = usesImageHeaderTreatment
-    ? "#FFFFFF"
+    ? themeSettings.wallpaperMode === "banner-top" ? readable.headerSecondary : readable.primary
     : themeSettings.wallpaperMode === "ambient-gradient"
       ? "var(--text-primary)"
       : "var(--text-secondary)";
@@ -846,7 +853,9 @@ const PublicProfile = memo(() => {
           <div className="mt-0 max-w-3xl md:flex flex-col item-center justify-center mx-auto">
             <div className="py-3">
               <div
-                className="font-poppins text-xs leading-relaxed line-clamp-3 break-words overflow-hidden text-ellipsis opacity-90" style={{ color: "var(--text-primary)" }}
+                data-testid="public-profile-bio"
+                className={`font-poppins text-xs leading-relaxed line-clamp-3 break-words overflow-hidden text-ellipsis${themeSettings.wallpaperMode === "banner-top" ? " rounded-xl px-4 py-3" : ""}`}
+                style={{ color: "var(--text-primary)", ...(themeSettings.wallpaperMode === "banner-top" ? { background: "var(--profile-bio-scrim)" } : {}) }}
                 dangerouslySetInnerHTML={{ __html: sanitizedProfileBio }}
               />
               </div>

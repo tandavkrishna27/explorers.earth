@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
-import { getThemeTokenStyles } from "../../Profile/constants/themePresets";
+import { getThemeTokenStyles, THEME_PRESETS } from "../../Profile/constants/themePresets";
+import { resolveReadableProfileTheme } from "../../Profile/constants/profileReadability";
 import { normalizeThemeSettings } from "../../Profile/constants/recommendationsPresentation";
 import { usePublicAccountIdentity } from "../api/PublicAccountIdentityProvider";
 import { useLocation, useParams } from "react-router-dom";
@@ -148,8 +149,13 @@ export default function PublicProfileThemeProvider({ children, showShellChrome =
   const observesRootBanner = isProfileRoot && theme.wallpaperMode === 'banner-top' && showShellChrome;
   const { headerOverHero, shellRef } = useRootHeroHeaderIntersection(observesRootBanner);
   const categoryHeader = useCategoryArtworkHeaderIntersection(shellRef, matched && isCategoryRoute && showShellChrome, location.key);
-  const headerOverDarkArtwork = isProfileRoot && (theme.wallpaperMode === 'full-wallpaper-image' || (theme.wallpaperMode === 'banner-top' && headerOverHero));
-  const headerInk = headerOverDarkArtwork ? '#FFFFFF' : undefined;
+  // White only where a dark scrim is guaranteed behind the header: over the banner cover. The
+  // full wallpaper takes the preset's page colour, so its header uses the text colour that was
+  // verified against that page (white on dark presets, ink on Minimal Light).
+  const readable = useMemo(() => resolveReadableProfileTheme(THEME_PRESETS[theme.preset] ?? THEME_PRESETS['cinematic-dark'], theme), [theme]);
+  const headerInk = isProfileRoot && theme.wallpaperMode === 'banner-top' && headerOverHero ? readable.headerPrimary
+    : isProfileRoot && theme.wallpaperMode === 'full-wallpaper-image' ? readable.primary
+    : undefined;
   const analytics = useTrackAnalytics({
     accountId: account?.documentId || "",
     pageName: routeCategory ? PUBLIC_HEADER_ANALYTICS_PAGES[routeCategory] || "public-profile" : "public-profile",
