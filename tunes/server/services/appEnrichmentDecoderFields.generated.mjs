@@ -4553,6 +4553,8 @@ var mediaDtoSchema = external_exports.object({
   caption: external_exports.string().nullable()
 }).strict();
 var shortText = external_exports.string().trim().max(500);
+var POSTAL_CODE_PATTERN = /^(?=.*[\p{L}\p{N}])[\p{L}\p{N} -]{2,10}$/u;
+var postalCodeSchema = external_exports.string().trim().refine((value) => value === "" || POSTAL_CODE_PATTERN.test(value), "Invalid postal code");
 var addressSchema = external_exports.object({
   address: shortText.optional(),
   streetNumber: shortText.optional(),
@@ -4571,6 +4573,7 @@ var addressSchema = external_exports.object({
   about: external_exports.string().max(5e3).optional(),
   businessDescription: external_exports.string().max(5e3).optional()
 }).strict();
+var addressInputSchema = addressSchema.extend({ postalCode: postalCodeSchema.optional() }).strict();
 var publicAddressSchema = addressSchema.extend({
   placeId: shortText.optional(),
   places: external_exports.null().optional()
@@ -4682,8 +4685,8 @@ var updateAccountInputSchema = external_exports.object({
   mobileNumberVisible: external_exports.boolean().optional(),
   bioPlain: nullableText.optional(),
   bioRich: richTextSchema.nullable().optional(),
-  primaryAddress: addressSchema.nullable().optional(),
-  additionalAddresses: external_exports.array(addressSchema).max(20).optional(),
+  primaryAddress: addressInputSchema.nullable().optional(),
+  additionalAddresses: external_exports.array(addressInputSchema).max(20).optional(),
   publicAddress: publicAddressSchema.nullable().optional(),
   profilePlaceDetails: placeDetailsSchema.nullable().optional(),
   categories: external_exports.array(external_exports.object({ category: retiredCategoryKeySchema, isPublic: external_exports.boolean(), displayOrder: external_exports.number().int().nonnegative(), pinnedOrder: external_exports.number().int().nonnegative().nullable() }).strict()).optional(),

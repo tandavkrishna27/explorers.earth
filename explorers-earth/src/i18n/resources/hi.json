@@ -422,7 +422,8 @@
         "primaryAddressRequired": "प्राथमिक पता आवश्यक है",
         "profileImageAlt": "Profile",
         "resetLinkSentSuccess": "रीसेट लिंक सफलतापूर्वक भेजा गया!",
-        "stateRequired": "राज्य आवश्यक है"
+        "stateRequired": "राज्य आवश्यक है",
+        "postalCodeInvalid": "मान्य पिन/पोस्टल कोड दर्ज करें (2-10 अक्षर, अंक, स्पेस या हाइफ़न)"
       },
       "password": {
         "considerLonger": "बेहतर सुरक्षा के लिए अधिक विविधता के साथ लंबे पासवर्ड का उपयोग करने पर विचार करें",

@@ -442,7 +442,8 @@
         "primaryAddressRequired": "Primary address is required",
         "profileImageAlt": "Profile",
         "resetLinkSentSuccess": "Reset link sent successfully!",
-        "stateRequired": "State is required"
+        "stateRequired": "State is required",
+        "postalCodeInvalid": "Enter a valid postal code (2-10 letters, numbers, spaces or hyphens)"
       },
       "password": {
         "considerLonger": "Consider using a longer password with more variety for better security",

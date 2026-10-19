@@ -420,7 +420,8 @@
         "primaryAddressRequired": "Hauptadresse ist erforderlich",
         "profileImageAlt": "Profile",
         "resetLinkSentSuccess": "Reset-Link erfolgreich gesendet!",
-        "stateRequired": "Bundesland ist erforderlich"
+        "stateRequired": "Bundesland ist erforderlich",
+        "postalCodeInvalid": "Gib eine gültige Postleitzahl ein (2-10 Buchstaben, Ziffern, Leerzeichen oder Bindestriche)"
       },
       "password": {
         "considerLonger": "Erwägen Sie die Verwendung eines längeren Passworts mit mehr Vielfalt für bessere Sicherheit",

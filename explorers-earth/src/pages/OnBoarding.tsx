@@ -1,3 +1,5 @@
+import { buildOnboardingAccountUpdate } from "./onboardingPayload";
+import { isValidPostalCode } from "../../../tunes/shared/explorersContract";
 import { mapsBrowserKey } from "../lib/publicRuntimeConfig";
 import AuthForm from "../features/Authentication/components/AuthForm";
 import {
@@ -242,9 +244,10 @@ const addressValidationSchema = (t: any) =>
     state: Yup.string().required(
       t("auth.validations.onboarding.stateRequired")
     ),
-    postalCode: Yup.string().required(
-      t("auth.validations.onboarding.postalCodeRequired")
-    ),
+    postalCode: Yup.string()
+      .trim()
+      .required(t("auth.validations.onboarding.postalCodeRequired"))
+      .test("postal-code-format", t("auth.validations.onboarding.postalCodeInvalid"), (value) => isValidPostalCode(value)),
   });
 
 /**
@@ -686,19 +689,8 @@ const OnBoarding = () => {
         if (profile) uploaded.push(profile.id);
         const background = tempBackgroundImage ? await explorersApiClient.createMedia(tempBackgroundImage, "background") : null;
         if (background) uploaded.push(background.id);
-        const type = String(currentFormData.accountType).toLowerCase();
-        await explorersApiClient.updateAccount({ expectedRevision: current.revision,
-          handle: currentFormData.username.trim().toLowerCase(), displayName: currentFormData.accountName.trim(),
-          accountType: type.includes("business") ? "Business" : type.includes("creator") ? "Creator" : "Personal",
-          bioPlain: currentFormData.bio?.trim() || null,
-          mobileNumber: currentFormData.mobile_number?.trim() || null,
-          primaryAddress: currentFormData.primaryAddress ? { address: currentFormData.primaryAddress } : null,
-          additionalAddresses: [{ address: currentFormData.address || "", city: currentFormData.city || "",
-            country: currentFormData.country || "", state: currentFormData.state || "", streetName: currentFormData.streetName || "" }],
-          ...(profile ? { profileImageId: profile.id } : {}),
-          ...(background ? { backgroundImageId: background.id } : {}),
-          onboardingStatus: "complete",
-        });
+        await explorersApiClient.updateAccount(buildOnboardingAccountUpdate(currentFormData, current.revision, {
+          profileImageId: profile?.id, backgroundImageId: background?.id }));
         await refetch();
         const onboardingKey = `onboarding_${current.id}`;
         localStorage.setItem(onboardingKey, JSON.stringify({ status: "completed", timestamp: Date.now() }));

@@ -420,7 +420,8 @@
         "primaryAddressRequired": "La dirección principal es requerida",
         "profileImageAlt": "Profile",
         "resetLinkSentSuccess": "¡Enlace de restablecimiento enviado exitosamente!",
-        "stateRequired": "El estado es requerido"
+        "stateRequired": "El estado es requerido",
+        "postalCodeInvalid": "Introduce un código postal válido (de 2 a 10 letras, números, espacios o guiones)"
       },
       "password": {
         "considerLonger": "Considera usar una contraseña más larga con más variedad para mejor seguridad",
