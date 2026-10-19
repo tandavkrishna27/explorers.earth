@@ -497,7 +497,28 @@
         "willBeConvertedLowercase": "Benutzername wird in Kleinbuchstaben umgewandelt",
         "willConvertToLowercase": "Der Benutzername wird in Kleinbuchstaben umgewandelt"
       }
-    }
+    },
+    "brand": {
+      "tagline": "Jeder Ort verbindet uns"
+    },
+    "loginPage": {
+      "title2": "Willkommen zurück, Entdecker.",
+      "sub2": "Deine Karte ist genau dort, wo du sie verlassen hast.",
+      "googleUnavailable": "Die Anmeldung mit Google ist nicht verfügbar. Bitte versuche es erneut.",
+      "signOutUnavailable": "Die Abmeldung auf dem Server ist weiterhin nicht verfügbar. Bitte versuche es erneut.",
+      "seoDescription": "Melde dich mit Google bei deinem explorers-Konto an.",
+      "signOutIncomplete": "Die Abmeldung auf dem Server ist unvollständig. Melde dich erneut ab, bevor du dieses Konto verwendest.",
+      "cancelled": "Die Anmeldung mit Google wurde abgebrochen oder konnte nicht abgeschlossen werden. Bitte versuche es erneut.",
+      "retrySignOut": "Abmeldung erneut versuchen",
+      "recoverPrompt": "Du musst ein deaktiviertes Konto wiederherstellen?",
+      "recoverCta": "Mit Google wiederherstellen"
+    },
+    "terms": {
+      "prefix": "Mit dem Fortfahren stimmst du unseren",
+      "terms": "Nutzungsbedingungen",
+      "privacy": "Datenschutzerklärung"
+    },
+    "secureSignIn": "Sichere Anmeldung"
   },
   "common": {
     "cancel": "Abbrechen",
@@ -509,7 +530,8 @@
     "showPassword": "Passwort anzeigen",
     "signInWithGoogle": "Mit Google anmelden",
     "signUpWithGoogle": "Mit Google registrieren",
-    "submit": "Absenden"
+    "submit": "Absenden",
+    "and": "und"
   },
   "contact": {
     "closingMessage": "Wir sind ein kleines Team mit einer großen Vision — Ihre Gedanken sind uns wichtig. Kontaktieren Sie uns und lassen Sie uns etwas Lokales und Globales zusammen aufbauen.",
@@ -1291,7 +1313,12 @@
       "signUp": "Registrieren",
       "claimFreePage": "Fordern Sie eine kostenlose Seite an",
       "claimFree": "Anspruchsfrei"
-    }
+    },
+    "profileImageAlt": "Profilbild",
+    "user": "Nutzer",
+    "accountSettings": "Kontoeinstellungen",
+    "login": "Anmelden",
+    "register": "Registrieren"
   },
   "hero": {
     "headline": "Alle Ihre Empfehlungen – ein Link, ein QR",
@@ -1300,7 +1327,7 @@
     "inputPlaceholder": "Ihr Name",
     "ctaButton": "Fordern Sie Ihre Explorer-Seite an",
     "signupPrompt": "Melden Sie sich jetzt an, um Ihr Exemplar zu erhalten",
-    "headlinePrefix": "Alles deins",
+    "headlinePrefix": "Alle deine",
     "rotatingWords": [
       "Empfehlungen",
       "Kurationen",
@@ -1950,7 +1977,10 @@
     "places": "Places",
     "profile": "Profil",
     "recommendations": "Empfehlungen",
-    "settings": "Einstellungen"
+    "settings": "Einstellungen",
+    "accountImageAlt": "Konto",
+    "account": "Konto",
+    "viewPublicProfile": "Öffentliches Profil ansehen"
   },
   "toast": {
     "error": {
@@ -2396,7 +2426,17 @@
       "regionLabel": "Recommendations",
       "retry": "Try again",
       "retrying": "Retrying…"
-    }
+    },
+    "unavailable": "Profil nicht verfügbar",
+    "notFound": "Profil nicht gefunden",
+    "notFoundText": "Dieses Nutzerprofil ist nicht verfügbar.",
+    "partialData": "Einige Profildaten sind nicht verfügbar.",
+    "sections": "Profilbereiche",
+    "gallery": "Galerie",
+    "businessDetails": "Geschäftsdaten",
+    "noPhotosTitle": "Noch keine Fotos",
+    "noPhotosText": "Dieser Nutzer hat noch keine Fotos geteilt. Schau später wieder vorbei!",
+    "visitWebsite": "Website besuchen"
   },
   "useCases": {
     "cta": {
@@ -2475,5 +2515,12 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "home": {
+    "shareProfile": "Profil teilen"
+  },
+  "imageCropper": {
+    "success": "Bild erfolgreich zugeschnitten",
+    "error": "Fehler beim Zuschneiden des Bildes"
   }
 }

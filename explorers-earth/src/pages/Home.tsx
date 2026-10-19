@@ -832,11 +832,11 @@ const Home = memo(() => {
 
                   {/* Share Profile Button overlaid on top-right corner of map */}
                   <div
-                    title="Share Profile"
+                    title={t("home.shareProfile", "Share Profile")}
                     onClick={() => setShowProfileShareModal(true)}
                     className="absolute top-2 right-2 bg-[#3B82F6] hover:bg-[#2563EB] border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5 cursor-pointer z-10 transition-all shadow-md"
                   >
-                    <span className="text-[10px] font-bold !text-white uppercase tracking-wider font-poppins">Share Profile</span>
+                    <span className="text-[10px] font-bold !text-white uppercase tracking-wider font-poppins">{t("home.shareProfile", "Share Profile")}</span>
                     <ShareIcon color="white" size={10} />
                   </div>
                 </div>

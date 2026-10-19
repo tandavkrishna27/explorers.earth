@@ -1300,14 +1300,14 @@
     "inputPlaceholder": "Adınız",
     "ctaButton": "Explorer sayfanızı talep edin",
     "signupPrompt": "Şimdi sizinkini almak için kaydolun",
-    "headlinePrefix": "Hepsi senin",
+    "headlinePrefix": "Tüm",
     "rotatingWords": [
-      "öneriler",
-      "kürasyonlar",
-      "koleksiyonlar",
-      "favoriler"
+      "önerilerin",
+      "seçkilerin",
+      "koleksiyonların",
+      "favorilerin"
     ],
-    "headlineSuffix": "tek bir bağlantıda ve QR.",
+    "headlineSuffix": "tek bir bağlantıda ve QR'da.",
     "badge": "Sonsuza kadar özgür",
     "globalStrip": "Explorer'lar dünya çapında önerileri paylaşıyor",
     "preview": {

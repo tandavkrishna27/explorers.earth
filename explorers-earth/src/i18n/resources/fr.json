@@ -497,7 +497,28 @@
         "willBeConvertedLowercase": "Le nom d'utilisateur sera converti en minuscules",
         "willConvertToLowercase": "Le nom d'utilisateur sera converti en minuscules"
       }
-    }
+    },
+    "brand": {
+      "tagline": "Chaque lieu nous relie"
+    },
+    "loginPage": {
+      "title2": "Content de vous revoir, explorateur.",
+      "sub2": "Votre carte est exactement là où vous l'avez laissée.",
+      "googleUnavailable": "La connexion avec Google est indisponible. Veuillez réessayer.",
+      "signOutUnavailable": "La déconnexion du serveur est toujours indisponible. Veuillez réessayer.",
+      "seoDescription": "Connectez-vous à votre compte explorers avec Google.",
+      "signOutIncomplete": "La déconnexion du serveur est incomplète. Réessayez de vous déconnecter avant d'utiliser ce compte.",
+      "cancelled": "La connexion avec Google a été annulée ou n'a pas pu aboutir. Veuillez réessayer.",
+      "retrySignOut": "Réessayer la déconnexion",
+      "recoverPrompt": "Besoin de restaurer un compte désactivé ?",
+      "recoverCta": "Récupérer avec Google"
+    },
+    "terms": {
+      "prefix": "En continuant, vous acceptez nos",
+      "terms": "Conditions",
+      "privacy": "Politique de confidentialité"
+    },
+    "secureSignIn": "Connexion sécurisée"
   },
   "common": {
     "cancel": "Annuler",
@@ -509,7 +530,8 @@
     "showPassword": "Afficher le mot de passe",
     "signInWithGoogle": "Se connecter avec Google",
     "signUpWithGoogle": "S'inscrire avec Google",
-    "submit": "Soumettre"
+    "submit": "Soumettre",
+    "and": "et"
   },
   "contact": {
     "closingMessage": "Nous sommes une petite équipe avec une grande vision — vos pensées nous importent. Contactez-nous et construisons quelque chose de local et global ensemble.",
@@ -1291,7 +1313,12 @@
       "signUp": "S'inscrire",
       "claimFreePage": "Réclamez une page gratuite",
       "claimFree": "Réclamation gratuite"
-    }
+    },
+    "profileImageAlt": "Photo de profil",
+    "user": "Utilisateur",
+    "accountSettings": "Paramètres du compte",
+    "login": "Connexion",
+    "register": "S'inscrire"
   },
   "hero": {
     "headline": "Toutes vos recommandations - un lien, un QR",
@@ -1300,12 +1327,12 @@
     "inputPlaceholder": "votre nom",
     "ctaButton": "Réclamez votre page Explorer",
     "signupPrompt": "Inscrivez-vous pour obtenir le vôtre maintenant",
-    "headlinePrefix": "Tout votre",
+    "headlinePrefix": "Toutes vos",
     "rotatingWords": [
       "recommandations",
-      "curations",
+      "sélections",
       "collections",
-      "favoris"
+      "favorites"
     ],
     "headlineSuffix": "en un seul lien et QR.",
     "badge": "Libre pour toujours",
@@ -1950,7 +1977,10 @@
     "places": "Places",
     "profile": "Profil",
     "recommendations": "Recommandations",
-    "settings": "Paramètres"
+    "settings": "Paramètres",
+    "accountImageAlt": "Compte",
+    "account": "Compte",
+    "viewPublicProfile": "Voir le profil public"
   },
   "toast": {
     "error": {
@@ -2396,7 +2426,17 @@
       "regionLabel": "Recommendations",
       "retry": "Try again",
       "retrying": "Retrying…"
-    }
+    },
+    "unavailable": "Profil indisponible",
+    "notFound": "Profil introuvable",
+    "notFoundText": "Ce profil utilisateur n'est pas disponible.",
+    "partialData": "Certaines données du profil sont indisponibles.",
+    "sections": "Sections du profil",
+    "gallery": "Galerie",
+    "businessDetails": "Informations professionnelles",
+    "noPhotosTitle": "Aucune photo pour le moment",
+    "noPhotosText": "Cet utilisateur n'a pas encore partagé de photos. Revenez plus tard !",
+    "visitWebsite": "Visiter le site web"
   },
   "useCases": {
     "cta": {
@@ -2475,5 +2515,12 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "home": {
+    "shareProfile": "Partager le profil"
+  },
+  "imageCropper": {
+    "success": "Image recadrée avec succès",
+    "error": "Erreur lors du recadrage de l'image"
   }
 }

@@ -1300,14 +1300,14 @@
     "inputPlaceholder": "a neved",
     "ctaButton": "Explorer oldal igénylése",
     "signupPrompt": "Regisztráljon, hogy megszerezze a sajátját",
-    "headlinePrefix": "Mind a tiéd",
+    "headlinePrefix": "Minden",
     "rotatingWords": [
-      "ajánlásokat",
-      "kurátorok",
-      "gyűjtemények",
-      "kedvencek"
+      "ajánlásod",
+      "válogatásod",
+      "gyűjteményed",
+      "kedvenced"
     ],
-    "headlineSuffix": "egy linkben és QR.",
+    "headlineSuffix": "egyetlen linkben és QR-kódban.",
     "badge": "Örökre ingyen",
     "globalStrip": "Az Explorer világszerte megosztja az ajánlásokat",
     "preview": {

@@ -497,7 +497,28 @@
         "willBeConvertedLowercase": "שם המשתמש יומר לאותיות קטנות",
         "willConvertToLowercase": "שם המשתמש יומר לאותיות קטנות"
       }
-    }
+    },
+    "brand": {
+      "tagline": "כל מקום מחבר בינינו"
+    },
+    "loginPage": {
+      "title2": "ברוך שובך, חוקר.",
+      "sub2": "המפה שלך נמצאת בדיוק איפה שהשארת אותה.",
+      "googleUnavailable": "ההתחברות עם Google אינה זמינה. נסה שוב.",
+      "signOutUnavailable": "ההתנתקות בשרת עדיין אינה זמינה. נסה שוב.",
+      "seoDescription": "התחבר לחשבון explorers שלך באמצעות Google.",
+      "signOutIncomplete": "ההתנתקות בשרת לא הושלמה. נסה להתנתק שוב לפני השימוש בחשבון זה.",
+      "cancelled": "ההתחברות עם Google בוטלה או שלא הושלמה. נסה שוב.",
+      "retrySignOut": "נסה להתנתק שוב",
+      "recoverPrompt": "צריך לשחזר חשבון מושבת?",
+      "recoverCta": "שחזור באמצעות Google"
+    },
+    "terms": {
+      "prefix": "בהמשך אתה מאשר את:",
+      "terms": "תנאי השימוש",
+      "privacy": "מדיניות הפרטיות"
+    },
+    "secureSignIn": "התחברות מאובטחת"
   },
   "common": {
     "cancel": "ביטול",
@@ -509,7 +530,8 @@
     "showPassword": "הצג סיסמה",
     "signInWithGoogle": "התחבר עם Google",
     "signUpWithGoogle": "הירשם עם Google",
-    "submit": "שלח"
+    "submit": "שלח",
+    "and": "וכן"
   },
   "contact": {
     "closingMessage": "אנחנו צוות קטן עם חזון גדול — המחשבות שלכם חשובות לנו. צרו קשר ובואו נבנה משהו מקומי וגלובלי יחד.",
@@ -1291,7 +1313,12 @@
       "signUp": "הירשם",
       "claimFreePage": "תבע דף בחינם",
       "claimFree": "תבע חינם"
-    }
+    },
+    "profileImageAlt": "תמונת פרופיל",
+    "user": "משתמש",
+    "accountSettings": "הגדרות חשבון",
+    "login": "התחברות",
+    "register": "הרשמה"
   },
   "hero": {
     "headline": "כל ההמלצות שלך - קישור אחד, אחד QR",
@@ -1300,14 +1327,14 @@
     "inputPlaceholder": "השם שלך",
     "ctaButton": "תבע את דף Explorer שלך",
     "signupPrompt": "הירשם כדי לקבל את שלך עכשיו",
-    "headlinePrefix": "כל שלך",
+    "headlinePrefix": "כל",
     "rotatingWords": [
-      "המלצות",
-      "אוצרות",
-      "אוספים",
-      "מועדפים"
+      "ההמלצות שלך",
+      "הבחירות שלך",
+      "האוספים שלך",
+      "המועדפים שלך"
     ],
-    "headlineSuffix": "בקישור אחד ו-QR.",
+    "headlineSuffix": "בקישור אחד וב-QR.",
     "badge": "חינם לנצח",
     "globalStrip": "Explorers חולקים המלצות ברחבי העולם",
     "preview": {
@@ -1950,7 +1977,10 @@
     "places": "Places",
     "profile": "פרופיל",
     "recommendations": "המלצות",
-    "settings": "הגדרות"
+    "settings": "הגדרות",
+    "accountImageAlt": "חשבון",
+    "account": "חשבון",
+    "viewPublicProfile": "הצג פרופיל ציבורי"
   },
   "toast": {
     "error": {
@@ -2396,7 +2426,17 @@
       "regionLabel": "Recommendations",
       "retry": "Try again",
       "retrying": "Retrying…"
-    }
+    },
+    "unavailable": "הפרופיל אינו זמין",
+    "notFound": "הפרופיל לא נמצא",
+    "notFoundText": "פרופיל המשתמש הזה אינו זמין.",
+    "partialData": "חלק מנתוני הפרופיל אינם זמינים.",
+    "sections": "אזורי הפרופיל",
+    "gallery": "גלריה",
+    "businessDetails": "פרטי העסק",
+    "noPhotosTitle": "עדיין אין תמונות",
+    "noPhotosText": "המשתמש הזה עדיין לא שיתף תמונות. חזור מאוחר יותר!",
+    "visitWebsite": "בקר באתר"
   },
   "useCases": {
     "cta": {
@@ -2475,5 +2515,12 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "home": {
+    "shareProfile": "שתף פרופיל"
+  },
+  "imageCropper": {
+    "success": "התמונה נחתכה בהצלחה",
+    "error": "שגיאה בחיתוך התמונה"
   }
 }

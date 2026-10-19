@@ -499,7 +499,28 @@
         "willBeConvertedLowercase": "उपयोगकर्ता नाम को छोटे अक्षरों में बदल दिया जाएगा",
         "willConvertToLowercase": "उपयोगकर्ता नाम को छोटे अक्षरों में बदल दिया जाएगा"
       }
-    }
+    },
+    "brand": {
+      "tagline": "हर जगह हमें जोड़ती है"
+    },
+    "loginPage": {
+      "title2": "वापसी पर स्वागत है, एक्सप्लोरर।",
+      "sub2": "आपका मैप वहीं है जहाँ आपने उसे छोड़ा था।",
+      "googleUnavailable": "Google साइन-इन उपलब्ध नहीं है। कृपया फिर से कोशिश करें।",
+      "signOutUnavailable": "सर्वर साइन-आउट अभी भी उपलब्ध नहीं है। कृपया फिर से कोशिश करें।",
+      "seoDescription": "Google से अपने explorers खाते में साइन इन करें।",
+      "signOutIncomplete": "सर्वर साइन-आउट अधूरा है। इस खाते का उपयोग करने से पहले फिर से साइन आउट करें।",
+      "cancelled": "Google साइन-इन रद्द हो गया या पूरा नहीं हो सका। कृपया फिर से कोशिश करें।",
+      "retrySignOut": "साइन-आउट फिर से आज़माएँ",
+      "recoverPrompt": "क्या निष्क्रिय खाता बहाल करना है?",
+      "recoverCta": "Google से पुनर्प्राप्त करें"
+    },
+    "terms": {
+      "prefix": "जारी रखकर आप हमारी इन बातों से सहमत होते हैं:",
+      "terms": "शर्तें",
+      "privacy": "गोपनीयता नीति"
+    },
+    "secureSignIn": "सुरक्षित साइन-इन"
   },
   "common": {
     "cancel": "रद्द करें",
@@ -511,7 +532,8 @@
     "showPassword": "पासवर्ड दिखाएं",
     "signInWithGoogle": "Google से साइन इन करें",
     "signUpWithGoogle": "Google से साइन अप करें",
-    "submit": "जमा करें"
+    "submit": "जमा करें",
+    "and": "और"
   },
   "contact": {
     "closingMessage": "हम एक बड़ी दृष्टि के साथ एक छोटी टीम हैं — आपके विचार हमारे लिए महत्वपूर्ण हैं। संपर्क करें और आइए मिलकर कुछ स्थानिक और वैश्विक बनाएं।",
@@ -1293,7 +1315,12 @@
       "signUp": "साइन अप करें",
       "claimFreePage": "मुफ़्त पेज का दावा करें",
       "claimFree": "निःशुल्क दावा करें"
-    }
+    },
+    "profileImageAlt": "प्रोफ़ाइल फ़ोटो",
+    "user": "उपयोगकर्ता",
+    "accountSettings": "खाता सेटिंग",
+    "login": "लॉगिन",
+    "register": "रजिस्टर करें"
   },
   "hero": {
     "headline": "आपकी सभी सिफ़ारिशें - एक लिंक, एक QR",
@@ -1302,14 +1329,14 @@
     "inputPlaceholder": "आपका नाम",
     "ctaButton": "अपने Explorer पेज पर दावा करें",
     "signupPrompt": "अपनी सूचियाँ पाने के लिए अभी साइन अप करें",
-    "headlinePrefix": "सब आपका हैं",
+    "headlinePrefix": "आपके सभी",
     "rotatingWords": [
-      "सिफारिशों",
-      "क्यूरेशन",
+      "सुझाव",
+      "चयन",
       "संग्रह",
       "पसंदीदा"
     ],
-    "headlineSuffix": "एक लिंक में और QR.",
+    "headlineSuffix": "एक लिंक और QR में।",
     "badge": "हमेशा के लिए मुफ़्त",
     "globalStrip": "Explorers दुनिया भर में अनुशंसाएँ साझा करते हैं",
     "preview": {
@@ -1952,7 +1979,10 @@
     "places": "Places",
     "profile": "प्रोफ़ाइल",
     "recommendations": "सुझाव",
-    "settings": "सेटिंग्स"
+    "settings": "सेटिंग्स",
+    "accountImageAlt": "खाता",
+    "account": "खाता",
+    "viewPublicProfile": "सार्वजनिक प्रोफ़ाइल देखें"
   },
   "toast": {
     "error": {
@@ -2398,7 +2428,17 @@
       "regionLabel": "Recommendations",
       "retry": "Try again",
       "retrying": "Retrying…"
-    }
+    },
+    "unavailable": "प्रोफ़ाइल उपलब्ध नहीं है",
+    "notFound": "प्रोफ़ाइल नहीं मिली",
+    "notFoundText": "यह उपयोगकर्ता प्रोफ़ाइल उपलब्ध नहीं है।",
+    "partialData": "प्रोफ़ाइल का कुछ डेटा उपलब्ध नहीं है।",
+    "sections": "प्रोफ़ाइल अनुभाग",
+    "gallery": "गैलरी",
+    "businessDetails": "व्यवसाय विवरण",
+    "noPhotosTitle": "अभी तक कोई फ़ोटो नहीं",
+    "noPhotosText": "इस उपयोगकर्ता ने अभी तक कोई फ़ोटो साझा नहीं की है। बाद में फिर देखें!",
+    "visitWebsite": "वेबसाइट देखें"
   },
   "useCases": {
     "cta": {
@@ -2477,5 +2517,12 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "home": {
+    "shareProfile": "प्रोफ़ाइल शेयर करें"
+  },
+  "imageCropper": {
+    "success": "छवि सफलतापूर्वक क्रॉप हुई",
+    "error": "छवि क्रॉप करने में त्रुटि"
   }
 }

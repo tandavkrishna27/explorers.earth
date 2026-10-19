@@ -120,7 +120,7 @@ const Sidebar = () => {
           >
             <img
               src={avatarUrl}
-              alt="account"
+              alt={t("sidebar.accountImageAlt", "Account")}
               className="h-8 w-8 rounded-full object-cover border border-dashboard flex-shrink-0"
             />
             {isOpen && (
@@ -148,9 +148,9 @@ const Sidebar = () => {
                   />
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-dashboard truncate">
-                      {account?.displayName || account?.handle || "User"}
+                      {account?.displayName || account?.handle || t("header.user", "User")}
                     </p>
-                    <p className="text-xs text-dashboard-muted">Account</p>
+                    <p className="text-xs text-dashboard-muted">{t("sidebar.account", "Account")}</p>
                   </div>
                 </div>
                 <div className="py-1.5">
@@ -165,7 +165,7 @@ const Sidebar = () => {
                     <div className="w-5 h-5 flex items-center justify-center">
                       <Profile fill="currentColor" />
                     </div>
-                    <span>View public profile</span>
+                    <span>{t("sidebar.viewPublicProfile", "View public profile")}</span>
                   </button>
                   <button
                     type="button"
