@@ -188,7 +188,11 @@ it('retains the exact prior native business AST and rejects altered waits assert
  expect(actualSource.split(amendedClick)).toHaveLength(2);expect(actualSource.split('import {test,expect,errors,type APIRequestContext')).toHaveLength(2);
  // Ratified business amendment: revert only the finite native click completion
  // race handling plus its SDK import; the full original f917 chain stays exact.
- const source=actualSource.replace(amendedClick,priorClick).replace('import {test,expect,errors,type APIRequestContext','import {test,expect,type APIRequestContext').replace("import {types as nativeTypes} from 'node:util';\r\n",'').replace('const guidesNativeTimeoutPrototype=errors.TimeoutError.prototype;\r\n','');
+ const amendedHeaders=["expect(h['cache-control']).toBe('public, no-cache');","publicAttachment?'public, no-cache':'no-store'"],priorHeaders=["expect(h['cache-control']).toBe('public, max-age=300, must-revalidate');","publicAttachment?'public, max-age=300, must-revalidate':'no-store'"];for(const literal of amendedHeaders)expect(actualSource.split(literal)).toHaveLength(2);
+ // Ratified business amendment: public media now answers 'public, no-cache' (revalidate every
+ // request) instead of 'public, max-age=300, must-revalidate'; only those two expectations are reverted.
+ const headerPrior=amendedHeaders.reduce((text,literal,index)=>text.replace(literal,priorHeaders[index]),actualSource);
+ const source=headerPrior.replace(amendedClick,priorClick).replace('import {test,expect,errors,type APIRequestContext','import {test,expect,type APIRequestContext').replace("import {types as nativeTypes} from 'node:util';\r\n",'').replace('const guidesNativeTimeoutPrototype=errors.TimeoutError.prototype;\r\n','');
 
 
  // Explicit approved business amendments stay in the fingerprint. Removing only
@@ -235,7 +239,9 @@ it('actual pinned TSX loader serializes both observers across fresh documents fo
 
 it('binds the explicit completion-race business amendment and rejects its harmful mutations',()=>{
  const actualSource=readFileSync(new URL('../../../../explorers-earth/e2e/replatform/guides.spec.ts',import.meta.url),'utf8');
- const current='92cc691359cadc8915f401f3a5935c73305ab73ab2a9292110c73b53749a8d62';expect(fingerprint(actualSource)).toBe(current);// MECHANISM PARTITION, pinned. A mutant is caught either because the projection REFUSES to
+ const current='92cc691359cadc8915f401f3a5935c73305ab73ab2a9292110c73b53749a8d62';const headerAmendments=[["expect(h['cache-control']).toBe('public, no-cache');","expect(h['cache-control']).toBe('public, max-age=300, must-revalidate');"],["publicAttachment?'public, no-cache':'no-store'","publicAttachment?'public, max-age=300, must-revalidate':'no-store'"]];for(const [amended] of headerAmendments)expect(actualSource.split(amended)).toHaveLength(2);
+ // The public-media Cache-Control amendment ('public, no-cache') is the only difference from the previously pinned digest.
+ expect(fingerprint(headerAmendments.reduce((text,[amended,prior])=>text.replace(amended,prior),actualSource))).toBe(current);expect(fingerprint(actualSource)).toBe('e8f2a16ccb4faee8f6b1b0277751de3b10e04e3fc5b90180a173e5a33b3b6876');// MECHANISM PARTITION, pinned. A mutant is caught either because the projection REFUSES to
 // build (a gate trip: fingerprint() returns undefined, which !== the frozen value, so the
 // comparison below passes trivially) or because it builds and the fingerprint DIFFERS. Both
 // are real detection, but `.not.toBe(frozen)` cannot tell them apart -- and that is exactly
