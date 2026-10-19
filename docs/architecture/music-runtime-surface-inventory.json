@@ -564,7 +564,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
-      "line": 142
+      "line": 144
     },
     {
       "method": "GET",
@@ -574,7 +574,7 @@
       "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
-      "line": 190
+      "line": 199
     },
     {
       "method": "PUT",
@@ -684,7 +684,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersCanonicalAnalyticsRoutes.ts",
-      "line": 56
+      "line": 65
     },
     {
       "method": "GET",

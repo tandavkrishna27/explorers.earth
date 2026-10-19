@@ -38,6 +38,15 @@ export function createCanonicalAnalyticsDependencies(pool: Pool, auth: Explorers
             catch {
                 return false;
             }
+        }, isPageOwner: async (request, accountId) => {
+            // Anonymous visitors carry no cookie, so they cost no session lookup.
+            if (!request.headers.cookie) return false;
+            try {
+                return (await requireActor(request, auth, pool)).accountId === accountId;
+            }
+            catch {
+                return false;
+            }
         }, validatePublicTarget: async () => true, allowWrite: (request, key) => limiter.allow(request, key),
     };
 }
@@ -47,7 +56,7 @@ export function createCanonicalAnalyticsDependencies(pool: Pool, auth: Explorers
  */
 export function createIngestOnlyAnalyticsDependencies(pool: Pool): ExplorersAnalyticsRouteDependencies {
     const service = new AnalyticsService(pool), limiter = new InMemoryAnalyticsRateLimiter();
-    return { service: { ingest: canonicalIngest(service), readAccountEvents: async () => [] }, authorizeOwner: async () => false,
+    return { service: { ingest: canonicalIngest(service), readAccountEvents: async () => [] }, authorizeOwner: async () => false, isPageOwner: async () => false,
         validatePublicTarget: async () => true, allowWrite: (request, key) => limiter.allow(request, key) };
 }
 export function setupCanonicalAnalyticsRoutes(app: Express, pool: Pool, auth: ExplorersAuth) {

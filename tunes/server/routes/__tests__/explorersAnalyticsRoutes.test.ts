@@ -15,7 +15,7 @@ const input = {
   },
 };
 
-const buildApp = ({ authorized = true } = {}) => {
+const buildApp = ({ authorized = true, owner = false } = {}) => {
   const service = {
     ingest: vi.fn().mockResolvedValue({
       status: "committed",
@@ -25,6 +25,7 @@ const buildApp = ({ authorized = true } = {}) => {
     readAccountEvents: vi.fn().mockResolvedValue([{ eventId: "evt-1" }]),
   };
   const authorizeOwner = vi.fn().mockResolvedValue(authorized);
+  const isPageOwner = vi.fn().mockResolvedValue(owner);
   const validatePublicTarget = vi.fn().mockResolvedValue(true);
   const allowWrite = vi.fn().mockReturnValue(true);
   const app = express();
@@ -33,6 +34,7 @@ const buildApp = ({ authorized = true } = {}) => {
   setupExplorersAnalyticsRoutes(app, {
     service,
     authorizeOwner,
+    isPageOwner,
     validatePublicTarget,
     allowWrite,
   });
@@ -40,6 +42,7 @@ const buildApp = ({ authorized = true } = {}) => {
     app,
     service,
     authorizeOwner,
+    isPageOwner,
     validatePublicTarget,
     allowWrite,
   };
@@ -83,6 +86,28 @@ describe("explorers analytics routes", () => {
       expect.objectContaining({ getIp: expect.any(Function) }),
     );
     expect(JSON.stringify(response.body)).not.toContain("203.0.113.90");
+  });
+
+  it("accepts but does not store an owner's view of their own page", async () => {
+    const { app, service, isPageOwner } = buildApp({ owner: true });
+    const { request } = await loopback.open({ app });
+    const response = await request.post("/api/explorers/analytics/events").send(input);
+
+    // The retired-duplicate receipt: acknowledged as final by the client, with no stored row.
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ status: "committed", duplicate: true, retired: true });
+    expect(isPageOwner).toHaveBeenCalledWith(expect.anything(), "account-1");
+    expect(service.ingest).not.toHaveBeenCalled();
+  });
+
+  it("stores a signed-in visitor's view of someone else's page", async () => {
+    const { app, service, isPageOwner } = buildApp({ owner: false });
+    const { request } = await loopback.open({ app });
+    const response = await request.post("/api/explorers/analytics/events").send(input);
+
+    expect(response.status).toBe(201);
+    expect(isPageOwner).toHaveBeenCalledWith(expect.anything(), "account-1");
+    expect(service.ingest).toHaveBeenCalledTimes(1);
   });
 
   it("returns 204 when analytics consent is denied", async () => {

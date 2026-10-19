@@ -129,6 +129,8 @@ const readScopeSchema = z.object({
 export interface ExplorersAnalyticsRouteDependencies {
   service: {ingest(input:z.infer<typeof explorersAnalyticsInputSchema>,context:{getIp:()=>string|null}):Promise<{status:'consent-denied'}|{status:'pending'|'dropped';duplicate:true}|{status:'committed';duplicate:boolean;documentId?:string;retired?:true}>;readAccountEvents(scope:{accountId:string;from:string;to:string},request?:object):Promise<unknown[]>};
   authorizeOwner: (request: Request, accountId: string) => Promise<boolean>;
+  /** True when the request's own session belongs to the account the event is about. */
+  isPageOwner: (request: Request, accountId: string) => Promise<boolean>;
   validatePublicTarget: (
     input: z.infer<typeof explorersAnalyticsInputSchema>,
   ) => Promise<boolean>;
@@ -169,6 +171,13 @@ export function setupExplorersAnalyticsRoutes(
       }
       if (!(await dependencies.validatePublicTarget(parsed.data))) {
         return res.status(404).json({ message: "Analytics target not found" });
+      }
+      // An owner viewing their own pages is not audience. Public pages no longer bootstrap
+      // the session, so the client cannot know it is the owner; the server can, from the
+      // cookie the request already carries. Acknowledged with the existing "no stored row"
+      // receipt (a retired duplicate), which every client accepts as final without retrying.
+      if (await dependencies.isPageOwner(req, parsed.data.accountId)) {
+        return res.status(200).json({ status: "committed", duplicate: true, retired: true });
       }
       const result = await dependencies.service.ingest(parsed.data, {
         getIp: () => req.ip || null,
