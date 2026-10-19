@@ -58,6 +58,8 @@ explorers-earth/src/components/auth/*
 explorers-earth/src/components/EarthLoader/*
 !explorers-earth/src/components/onboarding/
 explorers-earth/src/components/onboarding/*
+!explorers-earth/src/components/reorder/
+explorers-earth/src/components/reorder/*
 !explorers-earth/src/components/ui/
 explorers-earth/src/components/ui/*
 !explorers-earth/src/content/reference/
@@ -444,6 +446,14 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/auth/authShell.css
 !explorers-earth/src/components/onboarding/OnboardingProgress.tsx
 !explorers-earth/src/components/onboarding/onboarding.css
+!explorers-earth/src/components/reorder/CategoryListsOrder.tsx
+!explorers-earth/src/components/reorder/ListItemOrder.tsx
+!explorers-earth/src/components/reorder/OrderPanel.tsx
+!explorers-earth/src/components/reorder/ReorderableFileStrip.tsx
+!explorers-earth/src/components/reorder/ReorderableList.tsx
+!explorers-earth/src/components/reorder/ReorderableMediaStrip.tsx
+!explorers-earth/src/components/reorder/moveItem.ts
+!explorers-earth/src/components/reorder/useMoveAnnouncer.tsx
 !explorers-earth/src/components/theme-provider.tsx
 !explorers-earth/src/components/ui/Accordian.tsx
 !explorers-earth/src/components/ui/AddLocationModal.tsx
@@ -625,6 +635,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Guides/api/guidesClient.ts
 !explorers-earth/src/features/Guides/api/guidesViewModel.ts
 !explorers-earth/src/features/Guides/components/ActivityCard.tsx
+!explorers-earth/src/features/Guides/components/ActivityPhotoOrder.tsx
 !explorers-earth/src/features/Guides/components/BudgetInputModal.tsx
 !explorers-earth/src/features/Guides/components/CreateGuidePage.tsx
 !explorers-earth/src/features/Guides/components/CreateGuideStep1.tsx
@@ -633,6 +644,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Guides/components/GuideCard.tsx
 !explorers-earth/src/features/Guides/components/GuideDetails/BudgetTable.tsx
 !explorers-earth/src/features/Guides/components/GuideDetails/BudgetTimeline.tsx
+!explorers-earth/src/features/Guides/components/GuideDetails/DayOrderPanel.tsx
 !explorers-earth/src/features/Guides/components/GuideDetails/EditGeneralTipsModal.tsx
 !explorers-earth/src/features/Guides/components/GuideDetails/EditJourneyRouteModal.tsx
 !explorers-earth/src/features/Guides/components/GuideDetails/EditStayModal.tsx
@@ -655,6 +667,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Guides/components/GuideDetails/TransportationTimeline.tsx
 !explorers-earth/src/features/Guides/components/GuideDetails/VisibilityToggle.tsx
 !explorers-earth/src/features/Guides/components/GuideSectionForm.tsx
+!explorers-earth/src/features/Guides/components/PlaceMoveButtons.tsx
 !explorers-earth/src/features/Guides/components/PlaceholderTab.tsx
 !explorers-earth/src/features/Guides/components/PublicGuideCard.tsx
 !explorers-earth/src/features/Guides/components/Shared/DescriptionRenderer.tsx
@@ -665,6 +678,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Guides/components/TopPicksMobileHero.tsx
 !explorers-earth/src/features/Guides/components/TravelModeSelector.tsx
 !explorers-earth/src/features/Guides/context/GuideEditingProvider.tsx
+!explorers-earth/src/features/Guides/hooks/useGuidePublishNotice.tsx
 !explorers-earth/src/features/Guides/hooks/useGuidesOwner.ts
 !explorers-earth/src/features/Guides/index.ts
 !explorers-earth/src/features/Guides/pages/GuideDetailsPage.tsx
@@ -972,6 +986,8 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/lib/publicRuntimeConfig.ts
 !explorers-earth/src/lib/publicRuntimeContract.ts
 !explorers-earth/src/lib/queryClient.ts
+!explorers-earth/src/lib/reorderCategoryLists.ts
+!explorers-earth/src/lib/reorderListItems.ts
 !explorers-earth/src/lib/sessionBootstrap.ts
 !explorers-earth/src/lib/sharedOwnerRead.ts
 !explorers-earth/src/lib/utils.ts
