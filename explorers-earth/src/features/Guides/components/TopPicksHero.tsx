@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, ChevronLeft, ChevronRight, Star } from "lucide-react";
 import type { Guide } from "../types";
+import { guideDescriptionText } from "../../../utils/guideDescriptionText";
 
 interface TopPicksHeroProps {
   guides: Guide[];
@@ -22,27 +23,8 @@ const getBudgetTypeLabel = (value: string | null): string => {
   return budgetTypeMap[value] || value;
 };
 
-const renderGuideDescription = (description: any) => {
-  if (!description) return "No description provided.";
-
-  if (typeof description === "string") {
-    return description;
-  }
-
-  if (Array.isArray(description)) {
-    return description
-      .map((block: any) => {
-        if (block.type === "paragraph") {
-          return block.children?.map((child: any) => child.text).join(" ");
-        }
-        return "";
-      })
-      .filter(Boolean)
-      .join(" ");
-  }
-
-  return "No description provided.";
-};
+const renderGuideDescription = (description: any) =>
+  guideDescriptionText(description).trim() || "No description provided.";
 
 const TopPicksHero = ({ guides, onGuideClick, showManageButton = false, onManageClick }: TopPicksHeroProps) => {
   const [activeIndex, setActiveIndex] = useState(0);

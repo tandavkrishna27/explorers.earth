@@ -15,6 +15,7 @@ import BudgetIcon from "../../../../assets/icons/BudgetIcon";
 import TipsIcon from "../../../../assets/icons/TipsIcon";
 import { getAvailableTabs } from "../../utils/guideHelpers";
 import { parseTimeline } from "../../utils/guideDataParser";
+import { guideDescriptionText } from "../../../../utils/guideDescriptionText";
 
 interface SectionCardProps {
   section: any;
@@ -215,22 +216,7 @@ const SectionCard: React.FC<SectionCardProps> = ({
               {/* Description */}
               {section.Description && (
                 <div className="text-dashboard-light text-sm leading-relaxed font-poppins font-normal mt-2">
-                  {typeof section.Description === "string" ? (
-                    <p className="line-clamp-2">{section.Description}</p>
-                  ) : Array.isArray(section.Description) ? (
-                    <div className="line-clamp-2">
-                      {section.Description.map((block: any, idx: number) => {
-                        if (block.type === "paragraph") {
-                          return (
-                            <p key={idx} className="inline">
-                              {block.children?.map((child: any) => child.text).join(" ")}{" "}
-                            </p>
-                          );
-                        }
-                        return null;
-                      })}
-                    </div>
-                  ) : null}
+                  <p className="line-clamp-2">{guideDescriptionText(section.Description)}</p>
                 </div>
               )}
 

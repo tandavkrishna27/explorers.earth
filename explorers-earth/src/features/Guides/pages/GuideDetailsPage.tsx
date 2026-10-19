@@ -34,6 +34,7 @@ import ConfirmationModal from "../../../components/ui/ConfirmationModal";
 import useAuthStore from "../../../store/store";
 import { CategoryVisibilityModal } from "../../../components/CategoryVisibilityModal";
 import { ListVisibilityModal } from "../../../components/ListVisibilityModal";
+import { guideDescriptionText } from "../../../utils/guideDescriptionText";
 
 const GuideDetailsPage = () => {
   const { guideId } = useParams<{ guideId: string }>();
@@ -303,13 +304,7 @@ const GuideDetailsPage = () => {
   const guideTitle = guide.Title || "Travel Guide";
   
   // Convert description to string if it is Strapi rich text block format
-  const guideDescriptionText = (() => {
-    // The canonical collection carries a plain-text description, so there is no rich-block
-    // form to unwrap here any more.
-    if (!guide.Description) return "";
-    if (typeof guide.Description === "string") return guide.Description;
-    return "";
-  })();
+  const guideDescription = guideDescriptionText(guide.Description);
 
   const guideType = guide.Guide_Type || "";
   // Category and Best_Time_To_Visit are arrays canonically and were string-or-array in
@@ -339,7 +334,7 @@ const GuideDetailsPage = () => {
   }
 
   const pageTitle = `${guideTitle}${citiesText ? ` - ${citiesText}` : ""} | Travel Guide | explorers`;
-  const metaDescription = guideDescriptionText || `Explore ${guideTitle}, ${isItineraryBased ? "an itinerary-based" : "a"} travel guide${citiesText ? ` covering ${citiesText}` : ""}${guideCategory ? ` in ${guideCategory} category` : ""}. Discover curated travel recommendations, ${sectionsCount > 0 ? `${sectionsCount} detailed sections including ` : ""}journey plans, accommodations, transportation, budget tips${bestTimeToVisit ? `, and best time to visit: ${bestTimeToVisit}` : ""}, and local insights.`;
+  const metaDescription = guideDescription || `Explore ${guideTitle}, ${isItineraryBased ? "an itinerary-based" : "a"} travel guide${citiesText ? ` covering ${citiesText}` : ""}${guideCategory ? ` in ${guideCategory} category` : ""}. Discover curated travel recommendations, ${sectionsCount > 0 ? `${sectionsCount} detailed sections including ` : ""}journey plans, accommodations, transportation, budget tips${bestTimeToVisit ? `, and best time to visit: ${bestTimeToVisit}` : ""}, and local insights.`;
 
   const guideKeywords = [
     guideTitle,

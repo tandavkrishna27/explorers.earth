@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import EditIcon from "../../../../assets/icons/EditIcon";
 import SwitchButton from "../../../../components/ui/SwitchButton";
 import type { Guide } from "../../types";
+import { guideDescriptionText } from "../../../../utils/guideDescriptionText";
 
 interface GuideHeaderProps {
   guide: Guide;
@@ -72,32 +73,13 @@ const GuideHeader: React.FC<GuideHeaderProps> = ({ guide, guideId, onVisibilityC
       );
     }
 
-    if (typeof guide.Description === "string") {
-      return (
-        <p className="text-sm md:text-base opacity-90 line-clamp-3">
-          {guide.Description}
-        </p>
-      );
-    }
-
-    if (Array.isArray(guide.Description)) {
-      return (
-        <div className="text-sm md:text-base opacity-90 line-clamp-3">
-          {(guide.Description as any[]).map((block: any, idx: number) => {
-            if (block.type === "paragraph") {
-              return (
-                <span key={idx}>
-                  {block.children?.map((child: any) => child.text).join(" ")}
-                </span>
-              );
-            }
-            return null;
-          })}
-        </div>
-      );
-    }
-
-    return null;
+    const text = guideDescriptionText(guide.Description).trim();
+    if (!text) return null;
+    return (
+      <p className="text-sm md:text-base opacity-90 line-clamp-3">
+        {text}
+      </p>
+    );
   };
 
   return (

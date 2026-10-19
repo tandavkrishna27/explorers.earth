@@ -405,26 +405,7 @@ const ItineraryView: React.FC<ItineraryViewProps> = ({
                     {/* Description */}
                     {section.Description && (
                       <div className="text-dashboard-light text-sm leading-relaxed font-poppins font-normal">
-                        {typeof section.Description === "string" ? (
-                          <p className="line-clamp-3">{section.Description}</p>
-                        ) : Array.isArray(section.Description) ? (
-                          <div className="line-clamp-3">
-                            {section.Description.map(
-                              (block: any, idx: number) => {
-                                if (block.type === "paragraph") {
-                                  return (
-                                    <p key={idx} className="inline">
-                                      {block.children
-                                        ?.map((child: any) => child.text)
-                                        .join(" ")}{" "}
-                                    </p>
-                                  );
-                                }
-                                return null;
-                              }
-                            )}
-                          </div>
-                        ) : null}
+                        <p className="line-clamp-3">{guideDescriptionText(section.Description)}</p>
                       </div>
                     )}
 
