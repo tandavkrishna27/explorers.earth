@@ -216,6 +216,46 @@ export function requireExactContainerAbsent(result: {
   }
 }
 
+type ContainerInspectResult = Parameters<typeof requireExactContainerAbsent>[0];
+
+// `docker stop` returns once the container has stopped, but the daemon removes an
+// --rm (AutoRemove) container asynchronously afterwards, so an immediate inspect can
+// still return it in State "removing". Only that exact case is worth waiting for: a
+// running container, one without AutoRemove, another ID or any Docker error is not
+// going to disappear on its own and fails the absence proof at once.
+export function isContainerRemovalPending(result: ContainerInspectResult, containerId: string): boolean {
+  if (result.error || result.signal || result.status !== 0) return false;
+  try {
+    const inspected: unknown = JSON.parse(result.stdout);
+    if (!Array.isArray(inspected) || inspected.length !== 1) return false;
+    const container = inspected[0] as {
+      Id?: unknown;
+      State?: { Status?: unknown; Running?: unknown };
+      HostConfig?: { AutoRemove?: unknown };
+    };
+    return container.Id === containerId
+      && container.HostConfig?.AutoRemove === true
+      && container.State?.Running === false
+      && ["removing", "exited", "dead"].includes(String(container.State?.Status));
+  } catch {
+    return false;
+  }
+}
+
+export async function awaitExactContainerAbsent(
+  inspect: () => ContainerInspectResult,
+  containerId: string,
+  { timeoutMs = 15_000, intervalMs = 250 }: { timeoutMs?: number; intervalMs?: number } = {},
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  let result = inspect();
+  while (isContainerRemovalPending(result, containerId) && Date.now() < deadline) {
+    await new Promise((settle) => setTimeout(settle, intervalMs));
+    result = inspect();
+  }
+  requireExactContainerAbsent(result, containerId);
+}
+
 export function preferredQualificationPort(taskId: string): number {
   let hash = 2_166_136_261;
   for (const character of taskId) {
