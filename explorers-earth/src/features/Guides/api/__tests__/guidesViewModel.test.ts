@@ -158,9 +158,18 @@ describe('guide mapping', () => {
   expect(guide.slug).toBe('kerala-in-five-days');
   expect(guide.Visibility).toBe(true);
   expect(guide.display_order).toBe(3);
-  expect(guide.Guide_Type).toBe('itinerary');
+  expect(guide.Guide_Type).toBe('Itinerary');
   expect(guide.is_Multicity).toBe(true);
   expect(guide.Number_Of_Days).toBe(5);
+ });
+
+ it('shows the wizard labels for the guide type and budget tier, and nothing when unset', () => {
+  const themed = toGuide(collection as never, {...aggregate, details: {...aggregate.details, guideType: 'collection', budgetTier: 'mid-range'}} as never);
+  expect(themed.Guide_Type).toBe('Theme');
+  expect(themed.Budget_Type).toBe('Mid_Range');
+  const bare = toGuide(collection as never, {...aggregate, details: {...aggregate.details, guideType: null, budgetTier: null}} as never);
+  expect(bare.Guide_Type).toBeUndefined();
+  expect(bare.Budget_Type).toBeNull();
  });
 
  it('maps the budget to a number and the place snapshot to the legacy field names', () => {

@@ -299,7 +299,7 @@ const Header = memo(() => {
                     <div className="w-5 h-5 text-dashboard">
                       <SettingsIcon fill="currentColor" />
                     </div>
-                    <span className="font-medium">Settings</span>
+                    <span className="font-medium">{t("sidebar.settings")}</span>
                   </motion.button>
 
                   <motion.button
@@ -314,7 +314,7 @@ const Header = memo(() => {
                     <div className="w-5 h-5 text-dashboard">
                       <LogoutIcon size="20" />
                     </div>
-                    <span className="font-medium">Logout</span>
+                    <span className="font-medium">{t("sidebar.logout")}</span>
                   </motion.button>
                 </div>
               </>

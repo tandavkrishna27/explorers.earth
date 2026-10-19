@@ -91,6 +91,20 @@ it('canonical POST boots without Strapi and maps strict statuses; anonymous summ
     expect((await request(app).post('/api/explorers/analytics/events').send({ ...f.input, consent: false })).status).toBe(204);
     expect((await request(app).post('/api/explorers/analytics/events').send({ ...f.input, event: { ...f.input.event, timestamp: '1970-01-01T00:00:00Z' }, eventId: `old-${randomUUID()}` })).status).toBe(422);
 });
+it('records an anonymous public-page event without consent, keeping the country and never the address', async () => {
+    const f = await fixture(), app = createCanonicalApp(pool, resolveExplorersAuthConfig({ EXPLORERS_PUBLIC_ORIGIN: 'http://127.0.0.1:51474', EXPLORERS_AUTH_SECRET: 'analytics-fixture-secret-'.repeat(3), GOOGLE_CLIENT_ID: 'fixture', GOOGLE_CLIENT_SECRET: 'fixture' })).app;
+    const { consent: _consent, ...withoutConsent } = f.input;
+    const anonymous = { ...withoutConsent, basis: 'anonymous-v1' as const, event: { ...f.input.event, utmParams: { utm_source: 'qr_code_scan', utm_medium: 'qr_code' }, referrerOrigin: 'https://news.example' } };
+    expect((await request(app).post('/api/explorers/analytics/events').set('Cookie', 'explorers.session_token=not-a-session').send(anonymous)).status).toBe(201);
+    const row = (await pool.query('SELECT row_to_json(e)::text AS json, consent_version, utm, referrer_origin, category FROM analytics_events e WHERE account_id=$1', [f.accountId])).rows[0];
+    expect(row).toMatchObject({ consent_version: 'explorers-anonymous-v1', utm: { utm_source: 'qr_code_scan', utm_medium: 'qr_code' }, referrer_origin: 'https://news.example', category: 'books' });
+    expect(row.json).not.toMatch(/127\.0\.0\.1|::1|::ffff|session_token|not-a-session/);
+    const second = { ...anonymous, eventId: `anon-${randomUUID()}` };
+    await service.recordAnalyticsEvent(second, { requestId: 'anon', resolveCountry: () => 'in' });
+    expect((await pool.query('SELECT country_code,consent_version FROM analytics_events WHERE client_event_id=$1', [second.eventId])).rows[0]).toEqual({ country_code: 'IN', consent_version: 'explorers-anonymous-v1' });
+    expect((await request(app).post('/api/explorers/analytics/events').send({ ...anonymous, basis: 'tracked' })).status).toBe(400);
+    expect((await request(app).post('/api/explorers/analytics/events').send(withoutConsent)).status).toBe(400);
+});
 it('lost COMMIT acknowledgement retries one stored event and transaction failure leaves neither row', async () => {
     const f = await fixture();
     let lost = false;

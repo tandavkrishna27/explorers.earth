@@ -11,7 +11,6 @@ const PAGE_GROUPS: Record<string, { label: string; color: string; pages: string[
   places:   { label: 'Places',  color: '#3b82f6', pages: ['public-home', 'recommendation-detail'] },
   profile:  { label: 'Profile', color: '#ec4899', pages: ['public-profile'] },
   guides:   { label: 'Guides',  color: '#f97316', pages: ['public-guides'] },
-  music:    { label: 'Music',   color: '#a78bfa', pages: ['public-music'] },
   movies:   { label: 'Movies',  color: '#60a5fa', pages: ['public-movies'] },
   books:    { label: 'Books',   color: '#f59e0b', pages: ['public-books'] },
   games:    { label: 'Games',   color: '#34d399', pages: ['public-games'] },

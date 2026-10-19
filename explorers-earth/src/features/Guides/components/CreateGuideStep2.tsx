@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, type KeyboardEvent } from "react";
 import Button from "../../../components/ui/Button";
 import { useGuidesOwner } from "../hooks/useGuidesOwner";
 
@@ -177,6 +177,19 @@ const CreateGuideStep2: React.FC<CreateGuideStep2Props> = ({
     setCategorySearchQuery("");
   };
 
+  // Enter adds what was typed, like the "Add" option. A name matching a suggestion (or an
+  // already chosen category) in any case uses that spelling and never toggles it off.
+  const handleCategoryKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    const typed = categorySearchQuery.trim();
+    if (!typed) return;
+    const same = (value: string) => value.toLowerCase() === typed.toLowerCase();
+    const chosen = selectedCategories.find(same);
+    if (chosen) { setCategorySearchQuery(""); return; }
+    handleCategoryToggle(availableCategories.find(same) ?? typed);
+  };
+
   // Handle category removal from selected chips
   const handleCategoryRemove = (category: string) => {
     setSelectedCategories((prev) => prev.filter((c) => c !== category));
@@ -229,12 +242,7 @@ const CreateGuideStep2: React.FC<CreateGuideStep2Props> = ({
       return;
     }
 
-    // Validate budget type - mandatory
-    if (!budgetType) {
-      setError("Please select a budget type");
-      return;
-    }
-
+    // Budget type is optional: an unset tier is stored as null.
     onNext({
       numberOfDays: finalNumberOfDays,
       categories: selectedCategories,
@@ -449,7 +457,7 @@ const CreateGuideStep2: React.FC<CreateGuideStep2Props> = ({
               <svg className="w-4 h-4 text-dashboard-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Budget Type <span className="text-red-500">*</span>
+              Budget Type <span className="text-dashboard-light text-xs font-normal">(optional)</span>
             </label>
 
             <div className="relative" ref={budgetDropdownRef}>
@@ -580,6 +588,7 @@ const CreateGuideStep2: React.FC<CreateGuideStep2Props> = ({
                         setIsCategoryDropdownOpen(true);
                       }}
                       onFocus={() => setIsCategoryDropdownOpen(true)}
+                      onKeyDown={handleCategoryKeyDown}
                       placeholder={selectedCategories.length === 0 ? "Search and select categories..." : "Add more categories..."}
                       className="block w-full pl-3 pr-10 py-2 border border-dashboard rounded-md shadow-sm outline-none focus:ring-2 hover:ring-1 text-sm hover:ring-dashboard-accent font-poppins placeholder:text-dashboard-muted focus:ring-dashboard-accent bg-dashboard-sidebar text-dashboard"
                     />

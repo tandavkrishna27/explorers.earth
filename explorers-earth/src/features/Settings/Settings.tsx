@@ -1,7 +1,7 @@
 import { NavigationStatus } from "../navigation/NavigationStatus";
 import { useCategoryNavigation } from "../navigation/CategoryNavigationProvider";
 import { CATEGORY_IDS, type CategoryId } from "../navigation/categoryNavigationPolicy";
-import { memo, useState, useEffect, useMemo, useRef, type KeyboardEvent } from "react";
+import { memo, useState, useEffect, useMemo, useRef } from "react";
 import { UnpublishCategoryDialog } from "./components/UnpublishCategoryDialog";
 import EyeOffIcon from "../../assets/icons/EyeOffIcon";
 import EyeOnIcon from "../../assets/icons/EyeOnIcon";
@@ -31,24 +31,6 @@ const Settings = memo(() => {
 
 const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType<typeof useAccountLifecycleIdentity> }) => {
   const categoryNavigation = useCategoryNavigation();
-  // Tab state
-  const [activeTab, setActiveTab] = useState<'account' | 'billing'>('account');
-  const settingsTabs = ['account', 'billing'] as const;
-  const handleSettingsTabKeyDown = (
-    event: KeyboardEvent<HTMLButtonElement>,
-    index: number,
-  ) => {
-    let nextIndex = index;
-    if (event.key === 'ArrowLeft') nextIndex = (index - 1 + settingsTabs.length) % settingsTabs.length;
-    else if (event.key === 'ArrowRight') nextIndex = (index + 1) % settingsTabs.length;
-    else if (event.key === 'Home') nextIndex = 0;
-    else if (event.key === 'End') nextIndex = settingsTabs.length - 1;
-    else return;
-    event.preventDefault();
-    const nextTab = settingsTabs[nextIndex];
-    setActiveTab(nextTab);
-    document.getElementById(`settings-tab-${nextTab}`)?.focus();
-  };
   // navigate hook
   const navigate = useNavigate();
   // State for toggling password visibility
@@ -134,16 +116,16 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
   useEffect(() => {
     const openNavigation = () => {
       if (window.location.hash !== "#public-navigation" || settingsLoading) return;
-      setActiveTab("account"); setSearchQuery(""); setPinnedNavTabsSectionOpen(true);
+      setSearchQuery(""); setPinnedNavTabsSectionOpen(true);
     };
     openNavigation(); window.addEventListener("hashchange", openNavigation);
     return () => window.removeEventListener("hashchange", openNavigation);
   }, [settingsLoading]);
   useEffect(() => {
-    if (window.location.hash !== "#public-navigation" || settingsLoading || activeTab !== "account" || !pinnedNavTabsSectionOpen) return;
+    if (window.location.hash !== "#public-navigation" || settingsLoading || !pinnedNavTabsSectionOpen) return;
     navigationHeading.current?.scrollIntoView?.({ block: "start" });
     navigationHeading.current?.focus({ preventScroll: true });
-  }, [settingsLoading, activeTab, pinnedNavTabsSectionOpen]);
+  }, [settingsLoading, pinnedNavTabsSectionOpen]);
   const accountLifecycle = useMemo(() => createCanonicalAccountLifecycleService({ isCurrent: lifecycleIdentity.isCurrent }), [lifecycleIdentity]);
 
   useEffect(() => {
@@ -394,55 +376,8 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
     <div className="dashboard-theme min-h-screen bg-dashboard-bg">
       <div className="bg-dashboard-bg w-full h-full mx-auto max-w-3xl min-h-screen px-4 md:px-6 pt-8 md:pt-5 pb-24 md:pb-6">
 
-        {/* Tab Switcher - Command Palette Pill Style */}
-        <div className="w-full mb-6 flex justify-center">
-          <div
-            role="tablist"
-            aria-label="Settings sections"
-            className="flex items-center bg-dashboard-muted border border-dashboard font-poppins rounded-[24px] p-1"
-          >
-            <button
-              id="settings-tab-account"
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'account'}
-              aria-controls="settings-panel-account"
-              tabIndex={activeTab === 'account' ? 0 : -1}
-              onClick={() => setActiveTab('account')}
-              onKeyDown={(event) => handleSettingsTabKeyDown(event, 0)}
-              className={`min-h-11 px-4 py-2 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
-                activeTab === 'account'
-                  ? 'bg-dashboard-accent text-[var(--dash-accent-text)] shadow-sm'
-                  : 'bg-transparent text-dashboard-muted hover:text-dashboard'
-              }`}
-            >
-              Account
-            </button>
-            <button
-              id="settings-tab-billing"
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'billing'}
-              aria-controls="settings-panel-billing"
-              tabIndex={activeTab === 'billing' ? 0 : -1}
-              onClick={() => setActiveTab('billing')}
-              onKeyDown={(event) => handleSettingsTabKeyDown(event, 1)}
-              className={`min-h-11 px-4 py-2 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
-                activeTab === 'billing'
-                  ? 'bg-dashboard-accent text-[var(--dash-accent-text)] shadow-sm'
-                  : 'bg-transparent text-dashboard-muted hover:text-dashboard'
-              }`}
-            >
-              Billing
-            </button>
-          </div>
-        </div>
-
-        {activeTab === 'account' && (
-          <div
+        <div
             id="settings-panel-account"
-            role="tabpanel"
-            aria-labelledby="settings-tab-account"
             className="flex flex-col gap-1.5"
           >
             <ProfileAccountSettings section="account" />
@@ -826,7 +761,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
             {/* ── DANGER ZONE section ── */}
             {((matchesSearch("deactivate account block remove danger") || matchesSearch("delete account permanently remove danger"))) && (
               <>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-dashboard-muted mb-1 font-poppins">Danger Zone</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-dashboard-muted mb-1 font-poppins">{t("settings.dangerZone")}</p>
                 <div
                   className="rounded-xl overflow-hidden"
                   style={{ background: 'rgba(248,113,113,0.04)', border: '1px solid rgba(248,113,113,0.15)' }}
@@ -868,26 +803,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                 </div>
               </>
             )}
-          </div>
-        )}
-
-        {/* ── BILLING TAB ── */}
-        {activeTab === 'billing' && (
-          <div
-            id="settings-panel-billing"
-            role="tabpanel"
-            aria-labelledby="settings-tab-billing"
-            className="rounded-2xl px-4 py-4 sm:px-6 sm:py-6 border shadow-xl"
-            style={{
-              background: 'rgba(255,255,255,0.03)',
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)',
-              borderColor: 'rgba(255,255,255,0.08)',
-            }}
-          >
-            <ProfileAccountSettings section="billing" />
-          </div>
-        )}
+        </div>
       </div>
 
       <UnpublishCategoryDialog

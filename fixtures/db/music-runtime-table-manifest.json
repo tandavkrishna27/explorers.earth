@@ -2,7 +2,7 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0059_explorers_person_suppression_audit",
+    "expectedId": "0060_explorers_guide_budget_tier",
     "files": [
       "0001_runtime_baseline.sql",
       "0002_identity_lifecycle.sql",
@@ -62,7 +62,8 @@
       "0056_explorers_app_enrichment_jobs.sql",
       "0057_retire_music_category.sql",
       "0058_explorers_place_photo_backfill.sql",
-      "0059_explorers_person_suppression_audit.sql"
+      "0059_explorers_person_suppression_audit.sql",
+      "0060_explorers_guide_budget_tier.sql"
     ],
     "controlTables": [
       "music_schema_migrations",

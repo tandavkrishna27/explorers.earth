@@ -263,7 +263,8 @@
         "today": "Ma"
       },
       "timePeriod": "Időszak:",
-      "title": "Analitikai Irányítópult"
+      "title": "Analitikai Irányítópult",
+      "countsNote": "Az összesítések látogatásokat számolnak, nem egyedi látogatókat. A nyilvános oldalakat névtelenül, sütik nélkül mérjük."
     }
   },
   "auth": {
@@ -1934,7 +1935,8 @@
       "selectLanguage": "Válassza ki nyelvét"
     },
     "subtitle": "Kezelje fiókja beállításait és preferenciáit",
-    "title": "Beállítások"
+    "title": "Beállítások",
+    "dangerZone": "Veszélyzóna"
   },
   "sidebar": {
     "analytics": "Elemzés",

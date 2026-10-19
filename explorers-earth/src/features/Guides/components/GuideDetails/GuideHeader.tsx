@@ -142,6 +142,12 @@ const GuideHeader: React.FC<GuideHeaderProps> = ({ guide, guideId, onVisibilityC
             {guide.Guide_Type}
           </span>
         )}
+        {/* Budget tier, only when the owner chose one (legacy spelling: Mid_Range) */}
+        {guide.Budget_Type && (
+          <span className="px-3 py-1.5 text-xs font-medium bg-white/20 backdrop-blur-sm rounded-full text-white">
+            {guide.Budget_Type.replace(/_/g, "-")}
+          </span>
+        )}
       </div>
 
       {/* Title, Description and Budget - Bottom Left */}

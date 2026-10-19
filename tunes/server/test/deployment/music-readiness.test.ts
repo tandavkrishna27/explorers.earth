@@ -38,7 +38,7 @@ describe("Music liveness and readiness", () => {
   it("binds current-image readiness to the approved 0038 journal marker and approved SQL checksum", async () => {
     // A current image must refuse a historical journal or a different checksum.
     // The attestation is synthetic; its checksum comes from committed SQL bytes.
-    expect(CURRENT_MIGRATION_MARKER).toBe("0059_explorers_person_suppression_audit");
+    expect(CURRENT_MIGRATION_MARKER).toBe("0060_explorers_guide_budget_tier");
     const currentImage = {
       ...image,
       migrationMarker: CURRENT_MIGRATION_MARKER,

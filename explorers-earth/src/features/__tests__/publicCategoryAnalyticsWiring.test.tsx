@@ -19,6 +19,8 @@ import { PublicProfileFixedHeader } from '../PublicHome/components/PublicProfile
 
 const analyticsMocks = vi.hoisted(() => ({
   trackClick: vi.fn(),
+  trackInteraction: vi.fn(),
+  hookOptions: vi.fn(),
   appsOptions: vi.fn((accountId: string, pageUsername?: string, listId?: string) => ({
     accountId,
     pageUsername,
@@ -90,10 +92,10 @@ vi.mock('../PublicHome/api/usePublicProfileDetail', () => ({
 }));
 
 vi.mock('../../services/analyticsService', () => ({
-  useTrackAnalytics: () => ({
+  useTrackAnalytics: (options: unknown) => (analyticsMocks.hookOptions(options), {
     trackClick: analyticsMocks.trackClick,
     trackView: vi.fn(),
-    trackInteraction: vi.fn(),
+    trackInteraction: analyticsMocks.trackInteraction,
     loading: false,
     error: null,
   }),
@@ -390,6 +392,26 @@ describe('public category analytics wiring', () => {
       );
     },
   );
+
+  it('records a guide opened directly from a link as a guide open for that guide', async () => {
+    mockUseQuery.mockReturnValue({ data: undefined, loading: false } as ReturnType<typeof useQuery>);
+    gatewayFixtures.detailData = { guides: [{ documentId: 'guide-1', Title: 'Weekend in Goa', slug: 'weekend-in-goa', Guide_Type: 'Theme', guide_sections: [] }] };
+    render(
+      <MemoryRouter initialEntries={['/tk2727/guides/weekend-in-goa']}>
+        <PublicHeaderDescriptorProvider username="tk2727" profileName="TK">
+          <Routes>
+            <Route path="/:username/guides/:guideSlug" element={<PublicGuideDetailPage />} />
+          </Routes>
+        </PublicHeaderDescriptorProvider>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(analyticsMocks.trackInteraction).toHaveBeenCalledWith(
+      'guide-open', expect.objectContaining({ listId: 'guide-1', title: 'Weekend in Goa', guideType: 'Theme' }),
+    ));
+    expect(analyticsMocks.hookOptions).toHaveBeenCalledWith(expect.objectContaining({
+      accountId: 'account-1', pageName: 'public-guides', pageUsername: 'tk2727',
+    }));
+  });
 
   it('tracks direct people-sector views, item opens, and shares with the owning list ID', async () => {
     installQueryResults('people');

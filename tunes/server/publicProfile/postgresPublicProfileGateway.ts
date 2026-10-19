@@ -55,6 +55,15 @@ export class PostgresPublicProfileGateway implements PublicProfileGateway {
       ...(a.mobile_number_visible ? { mobile_number: a.mobile_number, mobile_number_visibility: true } : {}),
     };
     for (const [category, legacyFlag] of Object.entries(flag)) publicShell[legacyFlag] = settings.rows.some((row) => row.category === category && row.is_public) ? "Yes" : "No";
+    // How many lists (guides, for Guides) each public category shows a visitor. The SPA
+    // hides a pinned tab whose count is 0 without touching the owner's pin, so the tab
+    // returns on the next read after something is published. Private categories are absent.
+    const publicCounts = await this.db.query(`SELECT category,count(*)::int AS lists FROM collections
+      WHERE account_id=$1 AND visibility='public' AND publication_state='published' AND archived_at IS NULL
+      GROUP BY category`, [a.id]);
+    publicShell.public_navigation_counts = Object.fromEntries(Object.entries(flag)
+      .filter(([category]) => settings.rows.some((row) => row.category === category && row.is_public))
+      .map(([category, legacyFlag]) => [legacyFlag, publicCounts.rows.find((row) => row.category === category)?.lists ?? 0]));
     // The compatibility shell addresses nav tabs by legacy visibility flag, not by
     // category: navPinning's NAV_TAB_ORDER holds public_* ids and isTabVisible reads
     // account[tabId]. Emitting bare category names made every manual pin fall through

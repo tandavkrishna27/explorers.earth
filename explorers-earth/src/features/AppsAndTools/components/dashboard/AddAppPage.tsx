@@ -173,9 +173,11 @@ export default function AddAppPage() {
     {owner.error && <p role="alert">{owner.error.message}</p>}
 
     <label className="block">App title<input value={title} onChange={event => setTitle(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
-    <label className="block">App URL
-     <input value={appUrl} onChange={event => setAppUrl(event.target.value)} disabled={saving || Boolean(appId)} placeholder="https://example.com/app" className="block w-full bg-dashboard-muted rounded-xl p-3" />
+    {/* The asterisk is drawn by CSS so the field's accessible name stays "App URL". */}
+    <label className="block"><span className="after:content-['_*'] after:text-red-500">App URL</span>
+     <input value={appUrl} onChange={event => setAppUrl(event.target.value)} disabled={saving || Boolean(appId)} required aria-required="true" aria-describedby={appId ? undefined : 'app-url-required'} placeholder="https://example.com/app" className="block w-full bg-dashboard-muted rounded-xl p-3" />
     </label>
+    {!appId && <p id="app-url-required" className="text-xs text-dashboard-muted">Required: Save stays off until the app's link is added (its website or store page).</p>}
     {appId
      ? <p className="text-sm text-dashboard-muted">The app URL identifies the app itself and is shared with everyone who recommends it, so it cannot be changed here.</p>
      : <p className="text-sm text-dashboard-muted">Details are not fetched automatically. Fill in whatever you know; nothing you type is discarded.</p>}

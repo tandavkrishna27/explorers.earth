@@ -263,7 +263,8 @@
         "today": "Leo"
       },
       "timePeriod": "Kipindi cha Muda:",
-      "title": "Dashibodi ya Uchambuzi"
+      "title": "Dashibodi ya Uchambuzi",
+      "countsNote": "Jumla huhesabu ziara, si wageni wa kipekee. Kurasa za umma hupimwa bila kujulikana, bila vidakuzi."
     }
   },
   "auth": {
@@ -1934,7 +1935,8 @@
       "selectLanguage": "Chagua lugha yako"
     },
     "subtitle": "Simamia mipangilio na mapendeleo ya akaunti yako",
-    "title": "Mipangilio"
+    "title": "Mipangilio",
+    "dangerZone": "Eneo la hatari"
   },
   "sidebar": {
     "analytics": "Uchambuzi",

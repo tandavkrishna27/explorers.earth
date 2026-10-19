@@ -1,3 +1,4 @@
+import {shareOwnerRead} from '../../../lib/sharedOwnerRead';
 import {GuidesClient, type CompleteGuidesOwnerContent, type GuideObservation} from './guidesClient';
 import {toGuide} from './guidesViewModel';
 import {ExplorersApiError, type CollectionObservation} from '../../../lib/explorersApiClient';
@@ -30,7 +31,9 @@ export type GuidesOwnerContent = {
 const READER_COUNT = 4;
 const READ_BUDGET = 64 * 1024 * 1024;
 
-export async function readGuidesOwnerContent(signal?: AbortSignal): Promise<GuidesOwnerContent> {
+/** Concurrent readers on one page share one read (see shareOwnerRead). */
+export function readGuidesOwnerContent(signal?: AbortSignal):Promise<GuidesOwnerContent>{return shareOwnerRead('guides',signal,shared=>readGuidesOwnerContentOnce(shared));}
+async function readGuidesOwnerContentOnce(signal?: AbortSignal): Promise<GuidesOwnerContent> {
  const controller = new AbortController();
  let terminal = false;
  let firstError: unknown;

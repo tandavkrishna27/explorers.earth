@@ -8,7 +8,6 @@ interface ContentEngagementChartProps {
 
 // Page display config: internal page name → { label, color }
 const PAGE_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-  'public-music':  { label: 'Music',  color: '#a78bfa', icon: '🎵' },
   'public-movies': { label: 'Movies', color: '#60a5fa', icon: '🎬' },
   'public-books':  { label: 'Books',  color: '#f59e0b', icon: '📚' },
   'public-games':  { label: 'Games',  color: '#34d399', icon: '🎮' },
@@ -23,7 +22,7 @@ const MEDIA_PAGES = Object.keys(PAGE_CONFIG);
  * so we match via startsWith OR via metadata.originalElement which always holds the
  * clean prefix name ("game-card").
  */
-const ITEM_CLICK_PREFIXES = ['movie-card', 'book-card', 'game-card', 'song-request'];
+const ITEM_CLICK_PREFIXES = ['movie-card', 'book-card', 'game-card'];
 
 const isItemClick = (e: AnalyticsEvent) =>
   e.type === 'click' &&
@@ -32,10 +31,6 @@ const isItemClick = (e: AnalyticsEvent) =>
       e.element?.startsWith(prefix) ||
       e.metadata?.originalElement === prefix
   );
-
-const isSongRequest = (e: AnalyticsEvent) =>
-  e.type === 'click' &&
-  (e.element?.startsWith('song-request') || e.metadata?.originalElement === 'song-request');
 
 const ContentEngagementChart: React.FC<ContentEngagementChartProps> = ({ events }) => {
   // ── Per-page bar chart data ───────────────────────────────────────────────
@@ -79,7 +74,6 @@ const ContentEngagementChart: React.FC<ContentEngagementChartProps> = ({ events 
   // ── Aggregates ────────────────────────────────────────────────────────────
   const totalMediaViews  = chartData.reduce((s, d) => s + d.Views, 0);
   const totalItemClicks  = events.filter(e => MEDIA_PAGES.includes(e.page) && isItemClick(e)).length;
-  const songRequestCount = events.filter(isSongRequest).length;
 
   if (totalMediaViews === 0 && totalItemClicks === 0) {
     return (
@@ -87,7 +81,7 @@ const ContentEngagementChart: React.FC<ContentEngagementChartProps> = ({ events 
         <div className="text-center">
           <div className="text-2xl mb-1">🎭</div>
           <p className="text-sm">No media page activity yet.</p>
-          <p className="text-xs mt-1 opacity-60">Views from Music, Movies, Books &amp; Games will appear here.</p>
+          <p className="text-xs mt-1 opacity-60">Views from Movies, Books, Games &amp; Guides will appear here.</p>
         </div>
       </div>
     );
@@ -96,7 +90,7 @@ const ContentEngagementChart: React.FC<ContentEngagementChartProps> = ({ events 
   return (
     <div className="space-y-6">
       {/* ── KPI row ──────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <div className="dt-surface rounded-lg p-3 text-center">
           <p className="text-xl font-bold text-dashboard-accent">{totalMediaViews}</p>
           <p className="text-xs dt-subtext mt-0.5">Media Views</p>
@@ -104,10 +98,6 @@ const ContentEngagementChart: React.FC<ContentEngagementChartProps> = ({ events 
         <div className="dt-surface rounded-lg p-3 text-center">
           <p className="text-xl font-bold text-dashboard-accent">{totalItemClicks}</p>
           <p className="text-xs dt-subtext mt-0.5">Item Clicks</p>
-        </div>
-        <div className="dt-surface rounded-lg p-3 text-center">
-          <p className="text-xl font-bold text-dashboard-accent">{songRequestCount}</p>
-          <p className="text-xs dt-subtext mt-0.5">Song Requests</p>
         </div>
       </div>
 

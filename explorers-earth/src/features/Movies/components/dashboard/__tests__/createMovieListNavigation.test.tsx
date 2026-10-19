@@ -187,3 +187,13 @@ it.each([['manual','account'],['manual','route'],['parent','account'],['parent',
  const signal=stage==='manual'?resolve.mock.calls[0][2]:readParent.mock.calls[0][1];expect(signal?.aborted).toBe(true);expect(success).not.toHaveBeenCalled();expect(error).not.toHaveBeenCalled();expect(info).not.toHaveBeenCalled();
  if(stage==='manual')expect(readParent).not.toHaveBeenCalled();auth.setState(previous);
 });
+
+// The manual Type select used the browser's default white box, unreadable in dark mode.
+it('themes the manual Type select and its options with the dashboard colours',async()=>{
+ loginSurface();vi.spyOn(explorersApiClient,'getMovieGenres').mockResolvedValue({items:[]} as never);
+ render(<MemoryRouter initialEntries={['/recommendations/movies/list/add']}><Routes><Route path="/recommendations/movies/:listId/add" element={<AddMoviePage/>}/></Routes></MemoryRouter>);
+ await userEvent.click(screen.getByRole('button',{name:'Add manually'}));
+ const type=screen.getByRole('combobox',{name:'Type'});
+ expect(type).toHaveClass('dt-input','bg-dashboard-muted','text-dashboard');
+ for(const option of Array.from((type as HTMLSelectElement).options))expect(option).toHaveClass('bg-dashboard-sidebar','text-dashboard');
+});

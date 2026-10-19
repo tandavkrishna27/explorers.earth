@@ -214,6 +214,28 @@ export const guidePlaceSnapshotSchema=z.union([
 
 export const guideTypeSchema=z.enum(['itinerary','city','experience','collection']);
 export const guideBudgetTypeSchema=z.enum(['per-person','total']);
+// The trip's spending level, which needs no amount. Not budget_type: that qualifies an
+// estimated amount and is meaningless without one.
+export const guideBudgetTierSchema=z.enum(['backpacker','budget','mid-range','luxury','ultra-luxury']);
+
+// The labels the guide wizard and every guide surface show. Theme is the wizard's name for
+// a guide built around a subject rather than a day plan, which is the canonical collection
+// type; the tiers keep the legacy enum spelling the existing filters and labels key on.
+export const GUIDE_TYPE_LABELS={itinerary:'Itinerary',city:'City',experience:'Experience',collection:'Theme'} as const;
+export const GUIDE_BUDGET_TIER_LABELS={backpacker:'Backpacker',budget:'Budget','mid-range':'Mid_Range',luxury:'Luxury','ultra-luxury':'Ultra_Luxury'} as const;
+export type GuideBudgetTier=z.infer<typeof guideBudgetTierSchema>;
+/** A wizard or legacy label (or a canonical value) to the canonical guide type, or null. */
+export function guideTypeFromLabel(label:string|null|undefined):z.infer<typeof guideTypeSchema>|null{
+ if(!label)return null;
+ for(const [value,text] of Object.entries(GUIDE_TYPE_LABELS))if(text===label||value===label)return value as z.infer<typeof guideTypeSchema>;
+ return null;
+}
+/** A wizard tier label (or a canonical value) to the canonical tier, or null. */
+export function guideBudgetTierFromLabel(label:string|null|undefined):GuideBudgetTier|null{
+ if(!label)return null;
+ for(const [value,text] of Object.entries(GUIDE_BUDGET_TIER_LABELS))if(text===label||value===label)return value as GuideBudgetTier;
+ return null;
+}
 
 // The parent guide's own fields. Title, description, slug, visibility, display order and
 // pin order live on the collection itself and are not repeated here.
@@ -224,6 +246,8 @@ export const guideCollectionDetailsSchema=z.object({
  estimatedBudget:money.nullable(),
  budgetCurrency:currency.nullable(),
  budgetType:guideBudgetTypeSchema.nullable(),
+ // Optional in the wizard. Defaults to null so a writer that predates the tier still parses.
+ budgetTier:guideBudgetTierSchema.nullable().default(null),
  bestTimeToVisit:z.array(filled(100)).max(24),
  categories:z.array(filled(100)).max(24),
  tags,

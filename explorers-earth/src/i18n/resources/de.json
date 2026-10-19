@@ -263,7 +263,8 @@
         "today": "Heute"
       },
       "timePeriod": "Zeitraum:",
-      "title": "Analytik-Dashboard"
+      "title": "Analytik-Dashboard",
+      "countsNote": "Die Summen zählen Besuche, nicht einzelne Besucher. Öffentliche Seiten werden anonym und ohne Cookies gemessen."
     }
   },
   "auth": {
@@ -1934,7 +1935,8 @@
       "selectLanguage": "Wählen Sie Ihre Sprache"
     },
     "subtitle": "Verwalten Sie Ihre Kontoeinstellungen und Präferenzen",
-    "title": "Einstellungen"
+    "title": "Einstellungen",
+    "dangerZone": "Gefahrenbereich"
   },
   "sidebar": {
     "analytics": "Analysen",
