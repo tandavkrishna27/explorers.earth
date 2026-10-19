@@ -1510,7 +1510,9 @@
       "profileLabel": "Profile:",
       "title": "Username Change Confirmation",
       "warning": "Any QR codes or links with your old username will no longer work — you'll need to update and re-share them."
-    }
+    },
+    "dialog": "Dialog",
+    "close": "Close dialog"
   },
   "reactivateAccount": {
     "backToLogin": "Back to Login",

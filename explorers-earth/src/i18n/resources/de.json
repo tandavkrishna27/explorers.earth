@@ -1410,7 +1410,9 @@
       "profileLabel": "Profil:",
       "title": "Bestätigung der Benutzernamenänderung",
       "warning": "Alle QR-Codes oder Links mit Ihrem alten Benutzernamen funktionieren nicht mehr — Sie müssen sie aktualisieren und erneut teilen."
-    }
+    },
+    "dialog": "Dialog",
+    "close": "Dialog schließen"
   },
   "reactivateAccount": {
     "backToLogin": "Back to Login",

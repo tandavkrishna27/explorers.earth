@@ -1410,7 +1410,9 @@
       "profileLabel": "Perfil:",
       "title": "Confirmación de cambio de nombre de usuario",
       "warning": "Cualquier código QR o enlace con tu nombre de usuario anterior ya no funcionará: necesitarás actualizarlos y volver a compartirlos."
-    }
+    },
+    "dialog": "Diálogo",
+    "close": "Cerrar diálogo"
   },
   "reactivateAccount": {
     "backToLogin": "Back to Login",
