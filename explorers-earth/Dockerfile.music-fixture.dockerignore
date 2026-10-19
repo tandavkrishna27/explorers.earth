@@ -431,6 +431,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/ProtectedRoute.tsx
 !explorers-earth/src/components/PublicNav.tsx
 !explorers-earth/src/components/QrCardTagline.tsx
+!explorers-earth/src/components/RouteFallback.tsx
 !explorers-earth/src/components/RouteLoader.tsx
 !explorers-earth/src/components/SEO.tsx
 !explorers-earth/src/components/ScrollToTop.tsx
@@ -893,6 +894,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/navigation/categoryNavigationApi.ts
 !explorers-earth/src/features/navigation/categoryNavigationPolicy.ts
 !explorers-earth/src/hooks/useDeviceDetection.tsx
+!explorers-earth/src/hooks/useDialogA11y.ts
 !explorers-earth/src/hooks/useDistanceValidation.ts
 !explorers-earth/src/hooks/useFileUpload.ts
 !explorers-earth/src/hooks/useLogout.ts
@@ -954,11 +956,10 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/i18n/resources/vi.json
 !explorers-earth/src/i18n/resources/zh.json
 !explorers-earth/src/index.css
-!explorers-earth/src/layouts/DashboardLayout.tsx
-!explorers-earth/src/layouts/MobileLayout.tsx
 !explorers-earth/src/layouts/PublicColdEntryBoundary.tsx
 !explorers-earth/src/layouts/PublicLayout.tsx
 !explorers-earth/src/layouts/PublicRouteErrorBoundary.tsx
+!explorers-earth/src/layouts/ResponsiveLayout.tsx
 !explorers-earth/src/layouts/publicRouteReadiness.ts
 !explorers-earth/src/layouts/publicShellReadiness.ts
 !explorers-earth/src/lib/accountLocale.ts
@@ -1004,6 +1005,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/routes/ProtectedRoutes.tsx
 !explorers-earth/src/routes/PublicRoutes.tsx
 !explorers-earth/src/routes/StatePreservingRedirect.tsx
+!explorers-earth/src/routes/lazy.ts
 !explorers-earth/src/routes/validators/DashboardRouteValidator.tsx
 !explorers-earth/src/routes/validators/TabVisibilityGuard.tsx
 !explorers-earth/src/routes/validators/UsernameRootRedirect.tsx
@@ -1045,6 +1047,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/utils/qrCodeService.ts
 !explorers-earth/src/utils/rating.ts
 !explorers-earth/src/utils/resizeMediaToAspectRatio.ts
+!explorers-earth/src/utils/safeInternalPath.ts
 !explorers-earth/src/utils/setupStatusCalculations.ts
 !explorers-earth/src/utils/strapiBlocksConverter.ts
 !explorers-earth/src/utils/transformGooglePlace.ts
