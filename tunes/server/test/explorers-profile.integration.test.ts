@@ -75,6 +75,18 @@ describe("canonical profile", () => {
     expect(reserved.status).toBe(422);
   });
 
+  it("saves a postal code from onboarding and refuses an implausible one", async () => {
+    const owner = await persona();
+    const saved = await request(composed.app).patch("/api/explorers/v1/account").set("cookie", owner.cookie)
+      .set("origin", config.baseURL).send({ expectedRevision: 1, additionalAddresses: [{ city: "Leeds", postalCode: " LS1 4AP " }] });
+    expect(saved.status).toBe(200);
+    expect(saved.body.account.additionalAddresses[0]).toMatchObject({ city: "Leeds", postalCode: "LS1 4AP" });
+    const refused = await request(composed.app).patch("/api/explorers/v1/account").set("cookie", owner.cookie)
+      .set("origin", config.baseURL).send({ expectedRevision: 2, additionalAddresses: [{ postalCode: "<script>" }] });
+    expect(refused.status).toBe(422);
+    expect((await request(composed.app).get("/api/explorers/v1/me").set("cookie", owner.cookie)).body.account.additionalAddresses[0].postalCode).toBe("LS1 4AP");
+  });
+
   it("preserves blank optional fields and serializes two concurrent saves", async () => {
     const owner = await persona();
     const attempts = await Promise.all(["First", "Second"].map((displayName) =>
