@@ -611,7 +611,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
             <Button
               size="xsmall"
               variant="ghost"
-              onClickHandler={() => navigate("/recommendations")}
+              onClickHandler={() => navigate("/recommendations/places")}
               startIcon={<BackIcon stroke="var(--dash-accent)" size="size-6" />}
             />
           </div>

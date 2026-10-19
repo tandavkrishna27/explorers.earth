@@ -130,6 +130,10 @@ describe("useAddRecommendation selected-media persistence", () => {
       placePhotos: { photoMediaIds: ["media-1"] },
     });
     expect(mocks.navigate).toHaveBeenCalledTimes(1);
+    // The publish prompt lives on the Places page, so that is where the flow must return.
+    expect(mocks.navigate).toHaveBeenCalledWith("/recommendations/places", {
+      state: expect.objectContaining({ justAddedRecommendationToListId: expect.anything() }),
+    });
   });
 
   // Creator uploads used to go to mediaIds, which no public Places projection reads, so

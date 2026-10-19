@@ -309,7 +309,7 @@ export const useAddRecommendation = ({
       console.warn("Recommendation was saved, but refreshing its list failed:", error);
     }
 
-    navigate("/recommendations", {
+    navigate("/recommendations/places", {
       state: { justAddedRecommendationToListId: listId },
     });
     if (status === "saved") {
@@ -579,7 +579,7 @@ export const useAddRecommendation = ({
       editAttempt.current=null;
       toast.success("Recommendation Updated Successfully!!!");
       setIsLoading(false);
-      navigate("/recommendations");
+      navigate("/recommendations/places");
     } catch (error: any) {
       if(error instanceof ExplorersApiError && error.status===409)setEditConflict(true);
       console.error("Error updating place details:", error);
