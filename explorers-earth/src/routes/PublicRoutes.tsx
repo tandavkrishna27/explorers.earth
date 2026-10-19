@@ -17,6 +17,7 @@ import { PublicApps, PublicAppList } from "../features/AppsAndTools";
 import { PublicProducts, PublicProductList } from "../features/Products";
 import { PublicPeople, PublicPersonList, PublicPersonSector } from "../features/People";
 import { PublicAccountIdentityProvider } from "../features/PublicHome/api/PublicAccountIdentityProvider";
+import PublicHandleRedirect from "../features/PublicHome/components/PublicHandleRedirect";
 
 // Import layout
 import PublicLayout from "../layouts/PublicLayout";
@@ -29,9 +30,11 @@ const PublicRoutes = [
     element={
       <PublicColdEntryBoundary>
         <PublicAccountIdentityProvider>
-          <UsernameValidator>
-            <PublicLayout />
-          </UsernameValidator>
+          <PublicHandleRedirect>
+            <UsernameValidator>
+              <PublicLayout />
+            </UsernameValidator>
+          </PublicHandleRedirect>
         </PublicAccountIdentityProvider>
       </PublicColdEntryBoundary>
     }

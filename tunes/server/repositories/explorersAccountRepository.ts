@@ -1,5 +1,5 @@
 import type { Pool, PoolClient } from "pg";
-import { categoryKeys, type AccountDto, type UpdateAccountInput } from "../../shared/explorersContract";
+import { categoryKeys, HANDLE_CHANGE_COOLDOWN_DAYS, type AccountDto, type UpdateAccountInput } from "../../shared/explorersContract";
 
 const columns: Record<string, string> = {
   handle: "handle", displayName: "display_name", accountType: "account_type", onboardingStatus: "onboarding_status",
@@ -40,7 +40,8 @@ function knownThemeSettings(themeSettings: unknown): unknown {
 }
 
 export class AccountConflict extends Error {
-  constructor(readonly kind: "revision" | "handle") { super(kind); }
+  /** `handle_cooldown` carries `nextAllowedAt`: the handle was changed too recently. */
+  constructor(readonly kind: "revision" | "handle" | "handle_cooldown", readonly nextAllowedAt?: Date) { super(kind); }
 }
 export class AccountInvalidAttachment extends Error {}
 
@@ -56,8 +57,13 @@ export class ExplorersAccountRepository {
         WHERE pm.account_id=$1 AND m.status='ready'`, [accountId]);
     const feed = await query.query(`SELECT id,media_id,external_url,source,media_type,caption,details
       FROM profile_feed_items WHERE account_id=$1 ORDER BY display_order`, [accountId]);
+    // The row written when the handle last changed says when it may change again.
+    const lastChange = await query.query<{ allowed_at: Date | null }>(
+      `SELECT max(created_at)+make_interval(days=>$2) AS allowed_at FROM account_handle_holds WHERE account_id=$1`,
+      [accountId, HANDLE_CHANGE_COOLDOWN_DAYS]);
     const row = account.rows[0];
     if (!row) throw new Error("Account disappeared");
+    const allowedAt = lastChange.rows[0]?.allowed_at;
     const p = presentation.rows[0] ?? { theme_settings: {}, social_links: [], business_details: {} };
     const mediaDto = (slot: string) => {
       const asset = media.rows.find((value) => value.slot === slot);
@@ -66,6 +72,7 @@ export class ExplorersAccountRepository {
     };
     return { id: row.id, handle: row.handle, displayName: row.display_name, accountType: row.account_type,
       onboardingStatus: row.onboarding_status, status: row.status, revision: Number(row.revision),
+      handleChangeAllowedAt: allowedAt && allowedAt.getTime() > Date.now() ? allowedAt.toISOString() : null,
       publicProfile: row.public_profile, autoPinning: row.auto_pinning, locale: row.locale,
       mobileNumber: row.mobile_number, mobileNumberVisible: row.mobile_number_visible,
       bioPlain: row.bio_plain, bioRich: row.bio_rich, primaryAddress: row.primary_address,
@@ -81,12 +88,47 @@ export class ExplorersAccountRepository {
         source: item.source, type: item.media_type, caption: item.caption, details: item.details })) } as AccountDto;
   }
 
+  /**
+   * A handle change is refused while the account's last change is inside the cooldown, and
+   * while another account holds the handle it wants. Both checks run under advisory locks on
+   * the two handle keys, taken in key order, so a change away from a handle and a claim of it
+   * cannot both pass: the claimer waits for the change to commit and then sees its hold.
+   */
+  private async beginHandleChange(client: PoolClient, accountId: string, from: string | null, to: string): Promise<void> {
+    for (const key of [from, to].filter((value): value is string => value !== null).sort())
+      await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`explorers-handle:${key}`]);
+    const held = await client.query<{ account_id: string }>(
+      "SELECT account_id FROM account_handle_holds WHERE handle_key=$1 AND held_until>now()", [to]);
+    if (held.rows[0] && held.rows[0].account_id !== accountId) throw new AccountConflict("handle");
+    // Claiming a first handle is not a change, so it has no cooldown.
+    if (from === null) return;
+    const last = await client.query<{ allowed_at: Date | null; blocked: boolean | null }>(
+      `SELECT max(created_at)+make_interval(days=>$2) AS allowed_at,
+         max(created_at)+make_interval(days=>$2)>now() AS blocked FROM account_handle_holds WHERE account_id=$1`,
+      [accountId, HANDLE_CHANGE_COOLDOWN_DAYS]);
+    if (last.rows[0]?.blocked && last.rows[0].allowed_at) throw new AccountConflict("handle_cooldown", last.rows[0].allowed_at);
+  }
+
+  /** The handle just left is held for the cooldown, and one the account is taking back is released. */
+  private async recordHandleChange(client: PoolClient, accountId: string, from: string | null, to: string): Promise<void> {
+    await client.query("DELETE FROM account_handle_holds WHERE handle_key=$1 AND account_id=$2", [to, accountId]);
+    if (from === null) return;
+    await client.query(`INSERT INTO account_handle_holds(handle_key,account_id,held_until,created_at)
+      VALUES ($1,$2,now()+make_interval(days=>$3),now())
+      ON CONFLICT(handle_key) DO UPDATE SET account_id=EXCLUDED.account_id,held_until=EXCLUDED.held_until,created_at=EXCLUDED.created_at`,
+      [from, accountId, HANDLE_CHANGE_COOLDOWN_DAYS]);
+  }
+
   async update(accountId: string, input: UpdateAccountInput, expectedRevision: number): Promise<AccountDto> {
     const client = await this.db.connect();
     try {
       await client.query("BEGIN");
-      const current = await client.query<{ revision: string }>("SELECT revision::text FROM creator_accounts WHERE id=$1 FOR UPDATE", [accountId]);
+      const current = await client.query<{ revision: string; handle: string | null }>("SELECT revision::text,handle FROM creator_accounts WHERE id=$1 FOR UPDATE", [accountId]);
       if (!current.rows[0] || Number(current.rows[0].revision) !== expectedRevision) throw new AccountConflict("revision");
+      // Taken before the update so a refused handle changes nothing else in this save.
+      const handleChange = typeof input.handle === "string" && input.handle.toLowerCase() !== (current.rows[0].handle ?? "").toLowerCase()
+        ? { from: current.rows[0].handle?.toLowerCase() ?? null, to: input.handle.toLowerCase() } : undefined;
+      if (handleChange) await this.beginHandleChange(client, accountId, handleChange.from, handleChange.to);
       const entries = Object.entries(input).filter(([key, value]) => key in columns && value !== undefined);
       if (entries.length) {
         const clauses = entries.map(([key], index) => `${columns[key]}=$${index + 2}`);
@@ -108,6 +150,7 @@ export class ExplorersAccountRepository {
           WHERE account_id=$1 AND category='music'`,
           [accountId, Math.max(-1, ...written.map((item) => item.displayOrder)) + 1]);
       }
+      if (handleChange) await this.recordHandleChange(client, accountId, handleChange.from, handleChange.to);
       const p: Array<[string, unknown]> = [];
       if (input.themeSettings !== undefined) p.push(["theme_settings", input.themeSettings]);
       if (input.socialLinks !== undefined) p.push(["social_links", input.socialLinks]);

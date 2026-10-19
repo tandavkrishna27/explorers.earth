@@ -2361,7 +2361,8 @@
       "usernameCooldownUnknown": "Puedes cambiar tu nombre de usuario ahora",
       "usernameExpiring": "El nombre de usuario está expirando. Por favor, actualiza tu nombre de usuario",
       "usernameNotChanged": "El nombre de usuario no está cambiado. Por favor, cambia tu nombre de usuario",
-      "validationPending": "La validación está pendiente. Por favor, espera"
+      "validationPending": "La validación está pendiente. Por favor, espera",
+      "usernameCooldownUntil": "Podrás volver a cambiar tu nombre de usuario el {{date}}."
     }
   },
   "usernameClaim": {

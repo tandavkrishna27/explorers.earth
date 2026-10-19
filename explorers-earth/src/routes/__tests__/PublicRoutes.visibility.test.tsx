@@ -17,6 +17,8 @@ vi.mock("../../layouts/PublicColdEntryBoundary", () => ({
 
 vi.mock("../../features/PublicHome/api/PublicAccountIdentityProvider", () => ({
   PublicAccountIdentityProvider: ({ children }: { children: React.ReactNode }) => children,
+  // Read by the old-handle redirect; no shell means no redirect in these visibility checks.
+  usePublicAccountShell: () => undefined,
 }));
 
 vi.mock("../validators/TabVisibilityGuard", () => ({

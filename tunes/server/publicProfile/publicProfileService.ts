@@ -1,3 +1,4 @@
+import { handleRedirectMarker } from "./handleRedirect";
 import { canReadPublicCategory, type PublicCategory } from "./publicProfilePolicy";
 import {discardGamePublicResult,assertGamePublicOperation,runGamePublicRead,createGamePublicExecutor,type GamePublicOperation,type GamePublicExecutor} from './publicGamesProjection';
 import type {GamesPublicPage} from '../../shared/explorersGameOwnerContract';
@@ -7,6 +8,8 @@ export interface PublicProfileGateway {
   resolvePeopleSector?(username:string,sectorSlug:string,limit:number,cursor?:string):Promise<unknown>;
   resolveMovieGenre?(username:string,genreSlug:string,limit:number,cursor?:string):Promise<unknown>;
   resolveAccount(username: string): Promise<Record<string, unknown> | undefined>;
+  /** The current handle of the public account that released `username` within the hold, if any. */
+  resolveHandleRedirect?(username: string): Promise<string | undefined>;
   resolveCategory(username: string, category: PublicCategory, limit: number, cursor?: string,operation?:GamePublicOperation): Promise<unknown>;
   resolveDetail(username: string, category: PublicCategory, slug: string, limit: number, cursor?: string,operation?:GamePublicOperation): Promise<unknown>;
 }
@@ -101,7 +104,10 @@ export class PublicProfileService {
 
   async shell(username: string, options: PublicProfileReadOptions = {}): Promise<Record<string, unknown> | undefined> {
     const account = await this.account(username, Boolean(options.bypassCache));
-    return account?.public_profile === "Yes" ? account : undefined;
+    if (account) return account.public_profile === "Yes" ? account : undefined;
+    // Not a handle anyone holds now; it may be one an account just left (see handleRedirect).
+    const moved = await this.gateway.resolveHandleRedirect?.(username);
+    return moved ? handleRedirectMarker(moved) : undefined;
   }
 
   async detail(username: string, category: PublicCategory, slug: string, limit: number, options: PublicProfileReadOptions = {}): Promise<unknown | undefined> {

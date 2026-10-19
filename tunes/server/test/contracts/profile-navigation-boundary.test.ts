@@ -42,9 +42,11 @@ async function actualAccountRequest() {
  if(!method)throw new Error('Actual updateAccount method missing');
  const body=ts.transpileModule('const writer={'+method.getText(tree)+'};',{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
  let emitted:ReturnType<typeof request>|undefined;
- const writer=new Function('fetch','useAuthStore','responseBody',body+';return writer;')(
+ // The writer also checks the revision against what the owner's view showed (none here, so the
+ // check passes), announces a lost race, and tracks the revision it saved: stubbed collaborators.
+ const writer=new Function('fetch','useAuthStore','responseBody','viewedAccountRevision','announceRevisionConflict','settleViewedAccount','ExplorersApiError',body+';return writer;')(
   async (url:string,options:{method:string})=>{emitted=request(new URL(url,'https://fixture.invalid').href,options.method);return {};},
-  {getState:()=>({generation:1})},async ()=>({account:{revision:2}}));
+  {getState:()=>({generation:1})},async ()=>({account:{revision:2}}),()=>undefined,(error:unknown)=>error,()=>undefined,Error);
  await writer.updateAccount({expectedRevision:1});
  if(!emitted)throw new Error('Actual updateAccount did not emit a request');
  return emitted;

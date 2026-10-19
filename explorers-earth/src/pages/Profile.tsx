@@ -1,3 +1,5 @@
+import { handleCooldownFor, handleCooldownMessage } from "../features/Profile/handleCooldown";
+import { HANDLE_CHANGE_COOLDOWN_DAYS } from "../../../tunes/shared/explorersContract";
 import RemoveMediaButton from "../features/Profile/components/RemoveMediaButton";
 import { isRevisionConflict } from "../lib/revisionConflict";
 import { reportProfileSaveError } from "../features/Profile/profileSaveError";
@@ -1351,58 +1353,13 @@ const Profile = memo(() => {
 
   // inital values for the form
 
-  // --- Username Cooldown Logic ---
-  // IMPORTANT: Only UsersPermissionsUser timestamps should determine cooldown.
-  // Updating Account fields (bio, address, etc.) changes account.updatedAt and must NOT influence username cooldown.
-  function parseDate(dateStr: string | undefined): Date | null {
-    return dateStr ? new Date(dateStr) : null;
-  }
-  const now = new Date();
-  const userCreatedAt = parseDate(data.usersPermissionsUser?.createdAt);
-  const userUpdatedAt = parseDate(data.usersPermissionsUser?.updatedAt);
-  // Use the latest user timestamp as a proxy for last username change.
-  const lastUsernameChange = userUpdatedAt || userCreatedAt;
-  const cooldownMinutes = 1; // fixed 1 minute for testing; adjust manually for production
-  let minutesSinceChange = cooldownMinutes;
-  if (
-    lastUsernameChange instanceof Date &&
-    !isNaN(lastUsernameChange.getTime())
-  ) {
-    minutesSinceChange = Math.floor(
-      (now.getTime() - lastUsernameChange.getTime()) / (1000 * 60)
-    );
-  }
-  let usernameDisabled = minutesSinceChange < cooldownMinutes;
-  let usernameCooldownMessage = "";
-  if (!lastUsernameChange) {
-    usernameDisabled = false;
-    usernameCooldownMessage = t("toast.warning.usernameCooldownUnknown");
-  } else if (usernameDisabled) {
-    const nextChangeDate = new Date(
-      (lastUsernameChange as Date).getTime() + cooldownMinutes * 60 * 1000
-    );
-    const remaining = Math.max(0, cooldownMinutes - minutesSinceChange);
-    if (cooldownMinutes >= 1440) {
-      const remainingDays = Math.ceil(remaining / 1440);
-      usernameCooldownMessage = t("toast.warning.usernameCooldownDays", {
-        date: nextChangeDate.toLocaleDateString(),
-        days: remainingDays,
-      });
-    } else if (cooldownMinutes >= 60) {
-      const remainingHours = Math.ceil(remaining / 60);
-      usernameCooldownMessage = t("toast.warning.usernameCooldownHours", {
-        time: nextChangeDate.toLocaleTimeString(),
-        hours: remainingHours,
-      });
-    } else {
-      usernameCooldownMessage = t("toast.warning.usernameCooldownMinutes", {
-        time: nextChangeDate.toLocaleTimeString(),
-        minutes: remaining,
-      });
-    }
-  } else {
-    usernameCooldownMessage = t("toast.warning.usernameCooldownReady");
-  }
+  // --- Handle cooldown ---
+  // The server enforces one change per HANDLE_CHANGE_COOLDOWN_DAYS and reports when the next
+  // is allowed; the page only shows that date (it used to guess from a timestamp the
+  // canonical account does not carry, so it never locked and promised a cooldown that did not exist).
+  const handleCooldown = handleCooldownFor(accountQuery.data?.handleChangeAllowedAt);
+  const usernameDisabled = handleCooldown.locked;
+  const usernameCooldownMessage = handleCooldownMessage((key, options) => String(t(key, options as never)), handleCooldown.allowedAt);
 
   const initialValues = {
     ...((typeof account?.documentId === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(account.documentId))
@@ -2063,11 +2020,7 @@ const Profile = memo(() => {
               onClose={handleCancelUsernameChange}
               onConfirm={handleConfirmUsernameChange}
               newUsername={pendingFormValues?.username || ""}
-              cooldownDays={
-                cooldownMinutes < 60
-                  ? cooldownMinutes / 1440
-                  : cooldownMinutes / (24 * 60)
-              } // Convert minutes to days for display
+              cooldownDays={HANDLE_CHANGE_COOLDOWN_DAYS}
             />
 
             {/* Unsaved Changes Modal */}

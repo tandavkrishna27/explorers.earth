@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { accountScope, harness, mutationSubmit, removeMedia, toastError, toastSuccess } = vi.hoisted(() => ({
+const { accountScope, canonicalExtra, harness, mutationSubmit, removeMedia, toastError, toastSuccess } = vi.hoisted(() => ({
   accountScope: {
     current: {
       documentId: "account-1",
@@ -30,6 +30,7 @@ const { accountScope, harness, mutationSubmit, removeMedia, toastError, toastSuc
     profileFormProps: undefined as any,
     walkthroughEnabled: false,
   },
+  canonicalExtra: { current: {} as Record<string, unknown> },
   mutationSubmit: vi.fn(),
   removeMedia: vi.fn(),
   toastError: vi.fn(),
@@ -41,7 +42,7 @@ vi.mock("sonner", () => ({
 }));
 vi.mock("../../features/Profile/api/useCanonicalAccount", () => ({
   useCanonicalAccount: () => ({ data: { id: accountScope.current.documentId, handle: "tinoue",
-    onboardingStatus: "complete", revision: 1 }, isLoading: false, error: null, refetch: vi.fn() }),
+    onboardingStatus: "complete", revision: 1, ...canonicalExtra.current }, isLoading: false, error: null, refetch: vi.fn() }),
 }));
 vi.mock("../../features/Profile/api/profileClient", async (importOriginal) => ({
   ...await importOriginal<typeof import("../../features/Profile/api/profileClient")>(),
@@ -217,6 +218,7 @@ describe("Profile save orchestration", () => {
       profile_picture: null,
       bg_picture: null,
     };
+    canonicalExtra.current = {};
     harness.nextValues = {};
     harness.lastSubmit = undefined;
     harness.unsavedProps = undefined;
@@ -732,6 +734,27 @@ describe("Profile save orchestration", () => {
       expect.objectContaining({ action: expect.objectContaining({ label: "conflict.reload" }) }),
     );
     expect(toastError).not.toHaveBeenCalledWith("dashboard.profile.common.unexpectedError");
+  });
+
+  describe("handle cooldown", () => {
+    it("is open when the server reports no cooldown", () => {
+      render(<Profile />);
+      expect(harness.profileFormProps.usernameDisabled).toBe(false);
+      expect(harness.profileFormProps.usernameCooldownMessage).toBe("toast.warning.usernameCooldownReady");
+    });
+
+    it("locks the handle and names the date the server reports", () => {
+      canonicalExtra.current = { handleChangeAllowedAt: new Date(Date.now() + 29 * 86_400_000).toISOString() };
+      render(<Profile />);
+      expect(harness.profileFormProps.usernameDisabled).toBe(true);
+      expect(harness.profileFormProps.usernameCooldownMessage).toBe("toast.warning.usernameCooldownUntil");
+    });
+
+    it("does not lock for a cooldown that has already ended", () => {
+      canonicalExtra.current = { handleChangeAllowedAt: new Date(Date.now() - 1000).toISOString() };
+      render(<Profile />);
+      expect(harness.profileFormProps.usernameDisabled).toBe(false);
+    });
   });
 
   describe("removing the profile photo and cover image", () => {

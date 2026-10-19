@@ -2,6 +2,7 @@ import type { TFunction } from "i18next";
 import { toast } from "sonner";
 import { isRevisionConflict } from "../../lib/revisionConflict";
 import { showRevisionConflictToast } from "../../lib/conflictToast";
+import { handleCooldownMessage, nextAllowedAtFrom } from "./handleCooldown";
 
 /**
  * Tells the owner why a profile save failed. A save that lost to another tab or device
@@ -11,6 +12,11 @@ import { showRevisionConflictToast } from "../../lib/conflictToast";
 export function reportProfileSaveError(error: unknown, t: TFunction, reload: () => void = () => window.location.reload()): void {
   if (isRevisionConflict(error)) {
     showRevisionConflictToast(t("conflict.changedElsewhere"), t("conflict.reload"), reload);
+    return;
+  }
+  const nextAllowedAt = nextAllowedAtFrom(error);
+  if (nextAllowedAt) {
+    toast.error(handleCooldownMessage((key, options) => String(t(key, options as never)), nextAllowedAt));
     return;
   }
   if (typeof error === "object" && error !== null) {

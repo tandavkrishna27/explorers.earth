@@ -2492,7 +2492,8 @@
       "usernameCooldownUnknown": "You can change your username now",
       "usernameExpiring": "Username is expiring. Please update your username",
       "usernameNotChanged": "Username is not changed. Please change your username",
-      "validationPending": "Validation is pending. Please wait"
+      "validationPending": "Validation is pending. Please wait",
+      "usernameCooldownUntil": "You can change your username again on {{date}}."
     }
   },
   "usernameClaim": {

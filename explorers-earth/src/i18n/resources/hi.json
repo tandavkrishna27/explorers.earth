@@ -2363,7 +2363,8 @@
       "usernameCooldownUnknown": "You can change your username now",
       "usernameExpiring": "उपयोगकर्ता नाम समाप्त हो रहा है। कृपया अपना उपयोगकर्ता नाम अपडेट करें",
       "usernameNotChanged": "उपयोगकर्ता नाम नहीं बदला गया है। कृपया अपना उपयोगकर्ता नाम बदलें",
-      "validationPending": "सत्यापन लंबित है। कृपया प्रतीक्षा करें"
+      "validationPending": "सत्यापन लंबित है। कृपया प्रतीक्षा करें",
+      "usernameCooldownUntil": "आप अपना उपयोगकर्ता नाम {{date}} को फिर से बदल सकते हैं।"
     }
   },
   "usernameClaim": {

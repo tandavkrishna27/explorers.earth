@@ -89,7 +89,8 @@ export class ExplorersApiError extends Error {
   // route authority - so the outcome is UNKNOWN-but-probably-applied and the command must
   // stay retryable/undiscardable (see appEnrichmentClient's current()). A future handler must not
   // bucket 499 with transport failures or with authoritative 4xx rejections.
-  constructor(readonly status: number, readonly code: string, message: string) { super(message); }
+  // `details` carries the typed extras of a few refusals (a handle change reports when it is next allowed).
+  constructor(readonly status: number, readonly code: string, message: string, readonly details?: Readonly<Record<string, unknown>>) { super(message); }
 }
 
 export type CompleteTaxonomyCatalog=Readonly<Omit<TaxonomyCatalogPage,'items'|'nextCursor'>&{complete:true;items:readonly TaxonomyCatalogPage['items'][number][];nextCursor:null;accountId:string;generation:number}>;
@@ -261,7 +262,8 @@ async function responseBody<T>(response: Response, generation: number): Promise<
   handleExpiredSession(response, generation);
   const body = await response.json().catch(() => null);
   if (!response.ok) throw new ExplorersApiError(response.status, body?.error?.code ?? "UNAVAILABLE",
-    body?.error?.message ?? "Request failed");
+    body?.error?.message ?? "Request failed",
+    typeof body?.error?.nextAllowedAt === "string" ? { nextAllowedAt: body.error.nextAllowedAt } : undefined);
   return body as T;
 }
 

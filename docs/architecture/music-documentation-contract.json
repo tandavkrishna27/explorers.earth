@@ -89,7 +89,8 @@
     "0057_retire_music_category",
     "0058_explorers_place_photo_backfill",
     "0059_explorers_person_suppression_audit",
-    "0060_explorers_guide_budget_tier"
+    "0060_explorers_guide_budget_tier",
+    "0061_explorers_handle_holds"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",

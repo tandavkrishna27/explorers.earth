@@ -121,6 +121,8 @@ export async function runAccountLifecycleMaintenance(pool: Pool, storage: Object
         await db.query("DELETE FROM media_assets WHERE account_id=$1", [operation.account_id]);
         await db.query("DELETE FROM account_category_settings WHERE account_id=$1", [operation.account_id]);
         await db.query("DELETE FROM account_presentation WHERE account_id=$1", [operation.account_id]);
+        // The handles this account released are personal data too; none of them outlives it.
+        await db.query("DELETE FROM account_handle_holds WHERE account_id=$1", [operation.account_id]);
         await db.query(`UPDATE account_recovery_proofs SET revoked_at=clock_timestamp()
           WHERE account_id=$1 AND revoked_at IS NULL`, [operation.account_id]);
         await db.query(`UPDATE deletion_feedback SET reason=NULL,user_id=NULL,purged_at=clock_timestamp()

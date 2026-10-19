@@ -154,6 +154,8 @@ export const mediaDtoSchema = z.object({
 }).strict();
 export type MediaDto = z.infer<typeof mediaDtoSchema>;
 
+/** A handle can change once per this many days, and the handle it leaves is held for as long. */
+export const HANDLE_CHANGE_COOLDOWN_DAYS = 30;
 const shortText = z.string().trim().max(500);
 // Postal codes differ by country (SW1A 1AA, K1A 0B1, 100-0001, 110001), so the check is on
 // the alphabet and the length rather than on any one national format.
@@ -227,6 +229,8 @@ export const accountDtoSchema = z.object({
   onboardingStatus: z.enum(["incomplete", "complete"]),
   status: z.enum(["active", "suspended", "pending_deletion", "deleted"]),
   revision: z.number().int().positive().safe(),
+  /** When the handle may next be changed (ISO 8601); null when it may be changed now. */
+  handleChangeAllowedAt: z.string().datetime().nullable().optional(),
   publicProfile: z.boolean(),
   autoPinning: z.boolean(),
   locale: z.string(),
