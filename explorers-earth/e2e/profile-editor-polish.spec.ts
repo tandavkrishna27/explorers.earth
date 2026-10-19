@@ -842,9 +842,7 @@ const openDashboard = async (page: Page) => {
 const openSettings = async (page: Page) => {
   await page.goto("/settings", { waitUntil: "domcontentloaded" });
   await expect(page).toHaveURL(/\/settings$/);
-  await expect(
-    page.getByRole("tablist", { name: "Settings sections" }),
-  ).toBeVisible();
+  await expect(page.locator("#settings-panel-account")).toBeVisible();
 };
 
 const openAppearance = async (page: Page) => {
@@ -1310,7 +1308,7 @@ async function expectScrollStable(page: Page) {
 }
 
 test.describe("responsive and accessibility geometry gates", () => {
-  test("Settings keeps moved Account and Billing data usable across keyboard, reload, and responsive layouts", async ({
+  test("Settings keeps moved Account data usable, with no tab strip or Billing, across keyboard, reload, and responsive layouts", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -1320,13 +1318,10 @@ test.describe("responsive and accessibility geometry gates", () => {
       await openSettings(page);
       await expectNoDocumentOverflow(page);
 
-      const accountTab = page.getByRole("tab", { name: "Account", exact: true });
-      const billingTab = page.getByRole("tab", { name: "Billing", exact: true });
-      await expect(page.getByRole("tab")).toHaveCount(2);
-      await expect(accountTab).toHaveAttribute("aria-selected", "true");
-      await expect(accountTab).toHaveAttribute("tabindex", "0");
-      await expect(billingTab).toHaveAttribute("tabindex", "-1");
+      await expect(page.getByRole("tablist")).toHaveCount(0);
+      await expect(page.getByRole("tab", { name: "Billing", exact: true })).toHaveCount(0);
       await expect(page.locator("#settings-panel-account")).toBeVisible();
+      await expect(page.locator('[data-profile-account-settings="billing"]')).toHaveCount(0);
 
       const accountSettings = page.locator(
         '[data-profile-account-settings="account"]',
@@ -1339,49 +1334,10 @@ test.describe("responsive and accessibility geometry gates", () => {
       await expect(accountSettings.locator('input[name="accountType"]:checked'))
         .toHaveValue("personal");
 
-      await accountTab.focus();
-      await accountTab.press("ArrowRight");
-      await expect(billingTab).toBeFocused();
-      await expect(billingTab).toHaveAttribute("aria-selected", "true");
-      await expect(accountTab).toHaveAttribute("tabindex", "-1");
-      await expect(billingTab).toHaveAttribute("tabindex", "0");
-      await expect(page.locator("#settings-panel-billing")).toBeVisible();
-
-      const billingSettings = page.locator(
-        '[data-profile-account-settings="billing"]',
-      );
-      await billingSettings
-        .getByRole("button", { name: "Billing Address", exact: true })
-        .click();
-      const billingValues = await billingSettings.locator("input").evaluateAll(
-        (inputs) => inputs.map((input) => (input as HTMLInputElement).value),
-      );
-      expect(billingValues).toEqual(expect.arrayContaining([
-        "1 Fixture Lane, Test City",
-        "Test City",
-        "Test Country",
-      ]));
-
-      if (width === 375) {
-        for (const tab of [accountTab, billingTab]) {
-          const box = await tab.boundingBox();
-          expect(box?.height || 0).toBeGreaterThanOrEqual(44);
-          expect(box?.width || 0).toBeGreaterThanOrEqual(44);
-        }
-      }
-
       await page.reload({ waitUntil: "domcontentloaded" });
-      await expect(accountTab).toHaveAttribute("aria-selected", "true");
       await expect(page.locator("#settings-panel-account")).toBeVisible();
+      await expect(page.getByRole("tablist")).toHaveCount(0);
       await expectNoDocumentOverflow(page);
-
-      await accountTab.focus();
-      await accountTab.press("End");
-      await expect(billingTab).toBeFocused();
-      await expect(billingTab).toHaveAttribute("aria-selected", "true");
-      await billingTab.press("Home");
-      await expect(accountTab).toBeFocused();
-      await expect(accountTab).toHaveAttribute("aria-selected", "true");
     }
   });
 
