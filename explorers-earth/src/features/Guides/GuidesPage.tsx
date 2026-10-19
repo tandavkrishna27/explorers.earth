@@ -1,3 +1,4 @@
+import CategoryListsOrder from "../../components/reorder/CategoryListsOrder";
 import { NavigationStatus } from "../navigation/NavigationStatus";
 import { useCategoryNavigation } from "../navigation/CategoryNavigationProvider";
 import React, { useState, useMemo, useEffect } from "react";
@@ -7,6 +8,7 @@ import GuideCard from "./components/GuideCard";
 import TopPicksHero from "./components/TopPicksHero";
 import TopPicksMobileHero from "./components/TopPicksMobileHero";
 import { useGuidesOwner } from "./hooks/useGuidesOwner";
+import { reorderCategoryLists } from "../../lib/reorderCategoryLists";
 import { archiveGuide, GUIDE_PIN_LIMIT, setGuidePin, setGuidePublished } from "./api/guideListWrites";
 import GuideCardSkeleton from "../../components/ui/GuideCardSkeleton";
 import HeroSkeleton from "../../components/ui/HeroSkeleton";
@@ -55,7 +57,7 @@ const GuidesPage: React.FC = () => {
 
   // One bracketed owner read for every guide and its sections, replacing the Strapi
   // guides query. `lists` carries the editable collection observation each write needs.
-  const { guides: ownedGuides, content, loading, error, refresh: refetch } = useGuidesOwner();
+  const { guides: ownedGuides, content, loading, error, refresh: refetch } = useGuidesOwner(undefined, true, { keepWhileRefreshing: true });
   const [isDeleting, setIsDeleting] = useState(false);
   const observedList = (documentId: string) => content?.lists.get(documentId);
 
@@ -508,17 +510,14 @@ const GuidesPage: React.FC = () => {
 
   const handleSwapPinOrder = async (guideA: any, guideB: any) => {
     if (!guideA || !guideB) return;
-    const tempOrder = guideA.pin_order || 0;
-    const nextOrder = guideB.pin_order || 0;
-
     try {
-      const listA = observedList(guideA.documentId), listB = observedList(guideB.documentId);
-      if (!listA || !listB) throw new Error("Guides could not be loaded. Refresh and try again.");
-      // Two commands, so a failure between them leaves one guide moved. The reload below
-      // shows the real state rather than the order the swap intended, which is why the
-      // toast is not raised until both have succeeded.
-      await setGuidePin(listA, nextOrder);
-      await setGuidePin(listB, tempOrder);
+      // One command with the complete pinned order, so positions stay dense and a failure
+      // cannot leave one guide moved and the other not.
+      const ids = pinnedGuides.map((guide: any) => guide.documentId);
+      const a = ids.indexOf(guideA.documentId), b = ids.indexOf(guideB.documentId);
+      if (a < 0 || b < 0) throw new Error("Guides could not be loaded. Refresh and try again.");
+      [ids[a], ids[b]] = [ids[b], ids[a]];
+      await reorderCategoryLists("guides", "pinned", ids);
       refetch();
       toast.success("Order updated");
     } catch (error) {
@@ -1021,6 +1020,13 @@ const GuidesPage: React.FC = () => {
                 </div>
               )}
             </div>
+          )}
+
+          {/* The order set here is the order of your guides on your public page; pinned guides stay first. */}
+          {!isLoading && !error && (
+            <CategoryListsOrder category="guides" noun="Guide" nounPlural="guides"
+              lists={[...allGuides].sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0)).map((guide: any) => ({ id: guide.documentId, title: guide.Title ?? "" }))}
+              onChanged={() => { refetch(); }} />
           )}
 
           {/* Location Tags */}

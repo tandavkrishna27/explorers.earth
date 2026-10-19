@@ -1,3 +1,4 @@
+import CategoryListsOrder from "../../../../components/reorder/CategoryListsOrder";
 import { NavigationStatus } from "../../../navigation/NavigationStatus";
 import type { IntentAuthority } from "../../../navigation/categoryNavigationPolicy";
 import { useCategoryNavigation } from "../../../navigation/CategoryNavigationProvider";
@@ -262,7 +263,7 @@ const ProductsHome = () => {
   const accountDocumentId = useAuthStore(state => state.accountId), ownerGeneration = useAuthStore(state => state.generation);
   useEffect(() => { setShowCreateModal(false); setShowManageTopPicks(false); setSelectedProduct(null); setDropdownOpen(false); }, [accountDocumentId, ownerGeneration]);
 
-  const { data, loading, error, refetch } = useProductsOwner();
+  const { data, loading, error, refetch } = useProductsOwner(undefined, true, true);
 
   useEffect(() => {
     if (!loading) (window as any).__dashboardLoaded = true;
@@ -413,6 +414,10 @@ const ProductsHome = () => {
               </div>
             )
           )}
+
+          {/* The order set here is the order of these lists on your public page. */}
+
+          <CategoryListsOrder category="products" lists={lists.map((list: any) => ({ id: list.documentId, title: list.List_Name ?? list.title ?? "" }))} onChanged={() => { void refetch(); }} />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
             {lists.map((list) => (

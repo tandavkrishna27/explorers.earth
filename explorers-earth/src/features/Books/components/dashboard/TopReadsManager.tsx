@@ -178,6 +178,7 @@ const TopReadsManager = ({ books, allBooks, onClose, onRefetch }: TopReadsManage
           {unpinnedBooks.length > 0 && (
             <div>
               <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Available to pin</p>
+              {pinnedBooks.length >= 15 && <p role="status" className="text-xs text-amber-300 mb-2">Top Picks are full (15). Unpin one to pin another.</p>}
               <div className="space-y-1">
                 {unpinnedBooks.map((book) => {
                   const coverUrl = buildCoverUrl(book.cover_url_large || book.cover_url);
@@ -186,6 +187,7 @@ const TopReadsManager = ({ books, allBooks, onClose, onRefetch }: TopReadsManage
                       key={book.documentId}
                       onClick={() => handlePin(book)}
                       disabled={pinnedBooks.length >= 15}
+                    title={pinnedBooks.length >= 15 ? "Top Picks are full (15). Unpin one to pin another." : undefined}
                       className="flex items-center gap-2 py-2 border-b border-white/5 last:border-0 w-full text-left hover:bg-white/3 rounded transition-colors disabled:opacity-40"
                     >
                       <div className="w-8 h-11 flex-shrink-0 rounded overflow-hidden bg-white/5">
