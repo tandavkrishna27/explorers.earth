@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "../components/Sidenav";
 import Header from "../components/Header";
@@ -6,6 +6,7 @@ import Navbar from "../components/Navbar";
 import { DashboardRouteValidator } from "../routes/validators";
 import { DashboardThemeProvider } from "../contexts/DashboardThemeContext";
 import RouteLoader from "../components/RouteLoader";
+import RouteFallback from "../components/RouteFallback";
 import { EarthLoader } from "../components/EarthLoader";
 import { CategoryNavigationProvider } from "../features/navigation/CategoryNavigationProvider";
 import useDeviceDetection from "../hooks/useDeviceDetection";
@@ -99,9 +100,14 @@ const ResponsiveLayout = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isDesktop]);
 
-  const page = location.pathname.startsWith("/recommendations/books")
-    ? <Outlet />
-    : <CategoryNavigationProvider><Outlet /></CategoryNavigationProvider>;
+  // Suspense keeps the sidebar/header on screen while a route chunk downloads.
+  const page = (
+    <Suspense fallback={<RouteFallback />}>
+      {location.pathname.startsWith("/recommendations/books")
+        ? <Outlet />
+        : <CategoryNavigationProvider><Outlet /></CategoryNavigationProvider>}
+    </Suspense>
+  );
 
   return (
     <DashboardThemeProvider>

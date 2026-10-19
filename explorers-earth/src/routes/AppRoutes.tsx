@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
+import RouteFallback from "../components/RouteFallback";
 import usePageTracking from "../hooks/usePageTracking";
 import StatePreservingRedirect from "./StatePreservingRedirect";
 
@@ -15,6 +17,7 @@ const AppRoutes = () => {
   usePageTracking();
 
   return (
+    <Suspense fallback={<RouteFallback />}>
     <Routes>
       {/* Legacy Redirect Routes (handled before PublicRoutes :username/* matching).
           StatePreservingRedirect forwards location.state to the target page.
@@ -43,6 +46,7 @@ const AppRoutes = () => {
       {/* Catch-all Not Found Route - this will handle any unmatched routes */}
       <Route path="*" element={<NotFound />} />
     </Routes>
+    </Suspense>
   );
 };
 

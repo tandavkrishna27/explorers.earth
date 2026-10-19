@@ -1,5 +1,5 @@
 import { runtimeOrigin } from "../lib/publicRuntimeConfig";
-import { memo, useState, useEffect, useMemo, useRef } from "react";
+import { lazy, Suspense, memo, useState, useEffect, useMemo, useRef } from "react";
 import { usePlacesOwner } from "../features/Favorites/hooks/usePlacesOwner";
 import { useBooksOwnerContent } from "../features/Books/api/useBooksOwnerContent";
 import { useAppsOwner } from "../features/AppsAndTools/hooks/useAppsOwner";
@@ -17,7 +17,7 @@ import WhatsappIcon from "../assets/icons/WhatsappIcon";
 import TwitterIcon from "../assets/icons/TwitterIcon";
 import InstagramIcon from "../assets/icons/InstagramIcon";
 import ShareModal from "../components/ShareModal";
-import { GlobeDemo } from "../components/ui/GlobeDemo";
+const GlobeDemo = lazy(() => import("../components/ui/GlobeDemo").then((m) => ({ default: m.GlobeDemo })));
 import ThemedIcon from "../components/ui/ThemedIcon";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toUrlSlug } from "../utils/formatAddress";
@@ -31,7 +31,7 @@ import useSetupStore from "../store/useSetupStore";
 import ProfileSetupAccordion from "../components/ProfileSetupAccordion";
 import type { Guide } from "../features/Guides/types";
 import { getAllUserLocations } from "../utils/geoHelpers";
-import InteractiveMap from "../components/InteractiveMap";
+const InteractiveMap = lazy(() => import("../components/InteractiveMap"));
 import { calculateIsRecommendationsComplete } from "../utils/setupStatusCalculations";
 import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
 import { toProfileViewModel } from "../features/Profile/api/profileClient";
@@ -824,7 +824,7 @@ const Home = memo(() => {
                 >
                   {/* Interactive Map - Absolute positioned to fill container */}
                   <div className="absolute inset-0 z-0 pointer-events-auto overflow-hidden">
-                    <InteractiveMap locations={allUserLocations} defaultMapTypeId="satellite" />
+                    <Suspense fallback={null}><InteractiveMap locations={allUserLocations} defaultMapTypeId="satellite" /></Suspense>
                   </div>
 
                   {/* Gradient Overlay - Matching Profile Page */}
@@ -1533,7 +1533,7 @@ const Home = memo(() => {
                   )}
                 </div>
 
-                {(listNames?.length ?? 0) > 3 && activeTab === "places" && <GlobeDemo arcsData={arcsData ?? []} />}
+                {(listNames?.length ?? 0) > 3 && activeTab === "places" && <Suspense fallback={null}><GlobeDemo arcsData={arcsData ?? []} /></Suspense>}
               </div>
 
               {/* Share Modals */}

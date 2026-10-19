@@ -1,36 +1,43 @@
-import { ReactElement } from "react";
+import { lazy, type ReactElement } from "react";
+import { lazyNamed } from "./lazy";
 import { Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "../components/ProtectedRoute";
 
-// Import components
-import OnBoarding from "../pages/OnBoarding";
-import Profile from "../pages/Profile";
-import Favorites from "../pages/Favorites";
-import Analytics from "../pages/Analytics";
-import SettingsPage from "../pages/SettingsPage";
-import Home from "../pages/Home";
-import RecommendationsHub from "../pages/RecommendationsHub";
-import AddRecommendation from "../features/Favorites/components/AddRecommendation";
-import {
-  GuidesPage,
-  CreateGuidePage,
-  GuideDetailsPage,
-  GuideSectionFormPage,
-} from "../features/Guides";
-import { MoviesHome, MovieListView, AddMoviePage } from "../features/Movies";
-import { BooksHome, BookListView, AddBookPage } from "../features/Books";
-import { GamesHome, GameListView, AddGamePage } from "../features/Games";
-import { AppsHome, AppListView, AddAppPage } from "../features/AppsAndTools";
-import { ProductsHome, ProductListView, AddProductPage } from "../features/Products";
-import { PeopleHome, PersonListView, AddPersonPage } from "../features/People";
-import AddLinkedPeoplePage from "../features/Favorites/components/AddLinkedPeoplePage";
-import AddLinkedProductsPage from "../features/Favorites/components/AddLinkedProductsPage";
+const ResponsiveLayout = lazy(() => import("../layouts/ResponsiveLayout"));
 
-// Import layouts
-import ResponsiveLayout from "../layouts/ResponsiveLayout";
+const OnBoarding = lazy(() => import("../pages/OnBoarding"));
+const Profile = lazy(() => import("../pages/Profile"));
+const Favorites = lazy(() => import("../pages/Favorites"));
+const Analytics = lazy(() => import("../pages/Analytics"));
+const SettingsPage = lazy(() => import("../pages/SettingsPage"));
+const Home = lazy(() => import("../pages/Home"));
+const RecommendationsHub = lazy(() => import("../pages/RecommendationsHub"));
+const AddRecommendation = lazy(() => import("../features/Favorites/components/AddRecommendation"));
+const GuidesPage = lazyNamed(() => import("../features/Guides"), "GuidesPage");
+const CreateGuidePage = lazyNamed(() => import("../features/Guides"), "CreateGuidePage");
+const GuideDetailsPage = lazyNamed(() => import("../features/Guides"), "GuideDetailsPage");
+const GuideSectionFormPage = lazyNamed(() => import("../features/Guides"), "GuideSectionFormPage");
+const MoviesHome = lazyNamed(() => import("../features/Movies"), "MoviesHome");
+const MovieListView = lazyNamed(() => import("../features/Movies"), "MovieListView");
+const AddMoviePage = lazyNamed(() => import("../features/Movies"), "AddMoviePage");
+const BooksHome = lazyNamed(() => import("../features/Books"), "BooksHome");
+const BookListView = lazyNamed(() => import("../features/Books"), "BookListView");
+const AddBookPage = lazyNamed(() => import("../features/Books"), "AddBookPage");
+const GamesHome = lazyNamed(() => import("../features/Games"), "GamesHome");
+const GameListView = lazyNamed(() => import("../features/Games"), "GameListView");
+const AddGamePage = lazyNamed(() => import("../features/Games"), "AddGamePage");
+const AppsHome = lazyNamed(() => import("../features/AppsAndTools"), "AppsHome");
+const AppListView = lazyNamed(() => import("../features/AppsAndTools"), "AppListView");
+const AddAppPage = lazyNamed(() => import("../features/AppsAndTools"), "AddAppPage");
+const ProductsHome = lazyNamed(() => import("../features/Products"), "ProductsHome");
+const ProductListView = lazyNamed(() => import("../features/Products"), "ProductListView");
+const AddProductPage = lazyNamed(() => import("../features/Products"), "AddProductPage");
+const PeopleHome = lazyNamed(() => import("../features/People"), "PeopleHome");
+const PersonListView = lazyNamed(() => import("../features/People"), "PersonListView");
+const AddPersonPage = lazyNamed(() => import("../features/People"), "AddPersonPage");
+const AddLinkedPeoplePage = lazy(() => import("../features/Favorites/components/AddLinkedPeoplePage"));
+const AddLinkedProductsPage = lazy(() => import("../features/Favorites/components/AddLinkedProductsPage"));
 
-// One route tree for every viewport: ResponsiveLayout adapts to the width itself, so the
-// routed page is not remounted (and its unsaved input kept) when the window crosses 768px.
 const ProtectedRoutes = (): ReactElement[] => {
   const dashboardRoutes = (
     <Route key="dashboard-routes" path="/*" element={<ResponsiveLayout />}>

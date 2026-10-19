@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { Suspense, useCallback, useEffect, useMemo } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import PublicNav from "../components/PublicNav";
+import RouteFallback from "../components/RouteFallback";
 import {
   usePublicAccountIdentity,
 } from "../features/PublicHome/api/PublicAccountIdentityProvider";
@@ -42,7 +43,9 @@ function PublicLayoutInner() {
         shellRevealed={cold.shellRevealed}
         reportTerminal={reportTerminal}
       >
-        <Outlet context={outletContext} />
+        <Suspense fallback={<RouteFallback />}>
+          <Outlet context={outletContext} />
+        </Suspense>
       </PublicRouteErrorBoundary>
     </main>
   </PublicProfileThemeProvider>;
