@@ -1,4 +1,3 @@
-import { runtimeOrigin } from "../../../../lib/publicRuntimeConfig";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { explorersApiClient } from "../../../../lib/explorersApiClient";
@@ -13,6 +12,8 @@ import {
 import { AddIcon } from "../../../../assets/icons/AddIcon";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
+import { buildListPublicUrl, buildQrUrl } from "../../../../utils/listShareUrls";
+import { downloadQrSvgAsPng } from "../../../../utils/qrDownload";
 import Accordion from "../../../../components/ui/Accordian";
 import useAuthStore from "../../../../store/store";
 
@@ -24,7 +25,6 @@ import Switch from "../../../../components/ui/Switch";
 import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
 import QrCardTagline from "../../../../components/QrCardTagline";
 
-const VITE_BASE_URL = runtimeOrigin(import.meta.env.VITE_BASE_URL || window.location.origin);
 
 // ─────────────────────────────────────────────────────────────
 // Book Row in Recommendations Tab
@@ -162,7 +162,7 @@ const ManageTab = ({ list, onRefetch }: ManageTabProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const {update:updateBookList,archive:deleteBookList,loading:isUpdating}=useBookListCommands();
 
-  const shareUrl = `${VITE_BASE_URL}/${list.account?.username ?? "user"}/books/${list.slug}`;
+  const shareUrl = buildListPublicUrl(list.account?.username, "books", list.slug);
 
   const handleCopyUrl = async () => {
     await navigator.clipboard.writeText(shareUrl);
@@ -298,9 +298,9 @@ const ManageTab = ({ list, onRefetch }: ManageTabProps) => {
                 <p className="text-sm tracking-wide font-medium z-10 text-center leading-snug">My Books</p>
                 <div className="z-10 items-center flex flex-col pt-1">
                   <div className="p-2 bg-white rounded-xl shadow-md mb-3">
-                    <QRCodeSVG id="book-qr" value={shareUrl} size={90} />
+                    <QRCodeSVG id="list-qr-books" value={buildQrUrl(shareUrl)} size={90} />
                   </div>
-                  <QrCardTagline className="bg-amber-100 text-amber-900 px-4 py-1.5 font-poppins rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap" />
+                  <QrCardTagline category="books" className="bg-amber-100 text-amber-900 px-4 py-1.5 font-poppins rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap" />
                 </div>
               </div>
             </div>
@@ -330,28 +330,7 @@ const ManageTab = ({ list, onRefetch }: ManageTabProps) => {
               <div
                 className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
                 onClick={() => {
-                   const svg = document.getElementById('book-qr');
-                   if (svg) {
-                     const svgData = new XMLSerializer().serializeToString(svg);
-                     const canvas = document.createElement("canvas");
-                     const ctx = canvas.getContext("2d");
-                     const img = new Image();
-                     img.onload = () => {
-                       canvas.width = img.width + 40;
-                       canvas.height = img.height + 40;
-                       if (ctx) {
-                         ctx.fillStyle = "white";
-                         ctx.fillRect(0, 0, canvas.width, canvas.height);
-                         ctx.drawImage(img, 20, 20);
-                         const pngFile = canvas.toDataURL("image/png");
-                         const a = document.createElement("a");
-                         a.download = `QR_${list.slug}.png`;
-                         a.href = pngFile;
-                         a.click();
-                       }
-                     };
-                     img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
-                   }
+                   downloadQrSvgAsPng("list-qr-books", `QR_${list.slug}.png`, 20);
                 }}
               >
                 <div className="p-2 bg-white/5 rounded-full flex items-center justify-center border border-white/10">

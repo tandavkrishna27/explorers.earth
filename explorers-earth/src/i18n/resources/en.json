@@ -1249,7 +1249,7 @@
     "shareModal": {
       "copied": "Copied!",
       "copyLink": "Copy Link",
-      "linkCopiedToast": "Link Copied!!"
+      "linkCopiedToast": "Link copied!"
     }
   },
   "emailVerification": {
@@ -2527,6 +2527,18 @@
       "regionLabel": "Recommendations",
       "retry": "Try again",
       "retrying": "Retrying…"
+    }
+  },
+  "qrCard": {
+    "tagline": {
+      "apps": "Discover my favorite apps",
+      "products": "Discover my favorite products",
+      "people": "Connect with creators",
+      "movies": "Watch my favorites",
+      "books": "Read my favorites",
+      "games": "Play my favorites",
+      "places": "Travel like a local",
+      "profile": "Explore my picks"
     }
   }
 }

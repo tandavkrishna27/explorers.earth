@@ -1491,6 +1491,7 @@ const PublicHome = memo(() => {
                       : `${url}/${username}/places`
                   }
                   utmParams={utmParams}
+                  qrCategory="places"
                   backgroundImage={
                     selectedCity?.List_Name_Details?.thumbnail ||
                     accountData?.bg_picture?.url ||
@@ -1875,6 +1876,7 @@ const PublicHome = memo(() => {
                   isOpen={showShareModal}
                   onClose={() => setShowShareModal(false)}
                   url={`${url}/${username}/places`}
+                  qrCategory="places"
                   backgroundImage={
                     accountData?.bg_picture?.url ||
                     IMAGE_CONFIG.defaultImages.background

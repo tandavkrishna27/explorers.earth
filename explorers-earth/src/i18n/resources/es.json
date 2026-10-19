@@ -1227,7 +1227,7 @@
     "shareModal": {
       "copied": "¡Copiado!",
       "copyLink": "Copiar enlace",
-      "linkCopiedToast": "¡¡Enlace copiado!!"
+      "linkCopiedToast": "¡Enlace copiado!"
     }
   },
   "emailVerification": {
@@ -2474,6 +2474,18 @@
       ],
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
+    }
+  },
+  "qrCard": {
+    "tagline": {
+      "apps": "Descubre mis aplicaciones favoritas",
+      "products": "Descubre mis productos favoritos",
+      "people": "Conecta con creadores",
+      "movies": "Mira mis favoritas",
+      "books": "Lee mis favoritos",
+      "games": "Juega mis favoritos",
+      "places": "Viaja como un local",
+      "profile": "Explora mis selecciones"
     }
   }
 }

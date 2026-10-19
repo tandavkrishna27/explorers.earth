@@ -7,6 +7,8 @@ import {
 import { AddIcon } from "../../../../assets/icons/AddIcon";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
+import { buildListPublicUrl, buildQrUrl } from "../../../../utils/listShareUrls";
+import { downloadQrSvgAsPng } from "../../../../utils/qrDownload";
 import Accordion from "../../../../components/ui/Accordian";
 import useAuthStore from "../../../../store/store";
 import { useAppsCommands, useAppsCallerCustody } from "../../api/query";
@@ -17,8 +19,6 @@ import Switch from "../../../../components/ui/Switch";
 import AppDetailModal from "../public/AppDetailModal";
 import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
 import QrCardTagline from "../../../../components/QrCardTagline";
-
-const VITE_BASE_URL = import.meta.env.VITE_BASE_URL || "https://explorers.earth";
 
 interface AppRowProps {
   app: RecommendedApp;
@@ -170,7 +170,7 @@ const AppListView = () => {
   }, [location.state, location.pathname, listData?.documentId, apps.length, navigate]);
 
   const publicUrl = listData
-    ? `${VITE_BASE_URL}/${user?.username}/apps/${listData.slug}`
+    ? buildListPublicUrl(user?.username, "apps", listData.slug)
     : "";
 
   const handleCopy = async () => {
@@ -464,9 +464,9 @@ const AppListView = () => {
                     <p className="text-sm tracking-wide font-medium z-10 text-center leading-snug">My Recommendations</p>
                     <div className="z-10 items-center flex flex-col pt-1">
                       <div className="p-2 bg-white rounded-lg shadow-md mb-3">
-                        <QRCodeSVG value={publicUrl} size={90} />
+                        <QRCodeSVG id="list-qr-apps" value={buildQrUrl(publicUrl)} size={90} />
                       </div>
-                      <QrCardTagline className="bg-gray-200 text-black px-4 py-1.5 font-poppins rounded-full text-[11px] font-semibold whitespace-nowrap" />
+                      <QrCardTagline category="apps" className="bg-gray-200 text-black px-4 py-1.5 font-poppins rounded-full text-[11px] font-semibold whitespace-nowrap" />
                     </div>
                   </div>
                 </div>
@@ -491,24 +491,7 @@ const AppListView = () => {
                     <span className="font-poppins text-white text-xs whitespace-nowrap">{copied ? "Copied" : "Copy Link"}</span>
                   </div>
                   <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => {
-                     const svg = document.querySelector('svg');
-                     if (svg) {
-                       const svgData = new XMLSerializer().serializeToString(svg);
-                       const canvas = document.createElement("canvas");
-                       const ctx = canvas.getContext("2d");
-                       const img = new Image();
-                       img.onload = () => {
-                         canvas.width = img.width;
-                         canvas.height = img.height;
-                         ctx?.drawImage(img, 0, 0);
-                         const pngFile = canvas.toDataURL("image/png");
-                         const a = document.createElement("a");
-                         a.download = `QR_${listData?.List_Name || "List"}.png`;
-                         a.href = pngFile;
-                         a.click();
-                       };
-                       img.src = "data:image/svg+xml;base64," + btoa(svgData);
-                     }
+                     downloadQrSvgAsPng("list-qr-apps", `QR_${listData?.List_Name || "List"}.png`);
                   }}>
                     <button className="p-0 bg-transparent rounded-full flex items-center justify-center">
                       <Download size={22} className="text-white" strokeWidth={1.5} />

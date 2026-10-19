@@ -904,6 +904,7 @@ const Home = memo(() => {
                 isOpen={showRecommendationsShareModal}
                 onClose={() => setShowRecommendationsShareModal(false)}
                 url={`${url}/${canonicalHandle}/places`}
+                qrCategory="places"
                 utmParams={recommendationUtmParams}
                 backgroundImage={account?.bg_picture?.url || IMAGE_CONFIG.defaultImages.background}
               />
@@ -1074,6 +1075,7 @@ const Home = memo(() => {
                                     }))
                                   }
                                   url={`${url}/${canonicalHandle}/places/${toUrlSlug(item.List_Name)}`}
+                                  qrCategory="places"
                                   utmParams={recommendationUtmParams}
                                   backgroundImage={poster || account?.bg_picture?.url || IMAGE_CONFIG.defaultImages.background}
                                 />
@@ -1542,6 +1544,7 @@ const Home = memo(() => {
                 isOpen={showRecommendationsShareModal}
                 onClose={() => setShowRecommendationsShareModal(false)}
                 url={`${url}/${canonicalHandle}/places`}
+                qrCategory="places"
                 utmParams={recommendationUtmParams}
                 backgroundImage={account?.bg_picture?.url || IMAGE_CONFIG.defaultImages.background}
               />
@@ -1562,6 +1565,7 @@ const Home = memo(() => {
                 onClose={() => setShowCategoryShareModal(false)}
                 url={activeTabShareUrl}
                 utmParams={recommendationUtmParams}
+                qrCategory={activeTab === "guides" ? "places" : activeTab}
                 backgroundImage={account?.bg_picture?.url || IMAGE_CONFIG.defaultImages.background}
                 hideQRTab={activeTab === "guides"}
               />
