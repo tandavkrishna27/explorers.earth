@@ -112,7 +112,7 @@ describe('native manual Products', () => {
   expect(screen.getByLabelText('Currency')).toHaveValue('');
  });
 
- it('round-trips the specification map the owner entered', async () => {
+ it('round-trips the specification list the owner entered, in order', async () => {
   mount(); fill('Title', 'Specced'); fill('Product URL', 'https://example.com/specced');
   fireEvent.click(screen.getByRole('button', {name: 'Add specification'}));
   fill('Specification key 1', 'Weight'); fill('Specification value 1', '1kg');
@@ -120,7 +120,24 @@ describe('native manual Products', () => {
   fill('Specification key 2', 'Colour'); fill('Specification value 2', 'Black');
   fireEvent.click(screen.getByRole('button', {name: 'Save product'}));
   await screen.findByText('Saved list');
-  expect(draft()).toMatchObject({specifications: {Weight: '1kg', Colour: 'Black'}});
+  expect(draft()).toMatchObject({specifications: [{key: 'Weight', value: '1kg'}, {key: 'Colour', value: 'Black'}]});
+ });
+
+ it('saves specifications in the order the owner arranged them, announcing each move', async () => {
+  mount(); fill('Title', 'Ordered'); fill('Product URL', 'https://example.com/ordered');
+  for (const [key, value] of [['A', '1'], ['B', '2'], ['C', '3']]) {
+   fireEvent.click(screen.getByRole('button', {name: 'Add specification'}));
+   const n = screen.getAllByLabelText(/^Specification key/).length;
+   fill(`Specification key ${n}`, key); fill(`Specification value ${n}`, value);
+  }
+  expect(screen.getByRole('button', {name: 'Move specification 1 up'})).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', {name: 'Move specification 3 up'}));
+  fireEvent.click(screen.getByRole('button', {name: 'Move specification 1 down'}));
+  expect(screen.getByRole('status')).toHaveTextContent('Specification 1 moved to position 2 of 3.');
+  expect(screen.getByLabelText('Specification key 1')).toHaveValue('C');
+  fireEvent.click(screen.getByRole('button', {name: 'Save product'}));
+  await screen.findByText('Saved list');
+  expect(draft()).toMatchObject({specifications: [{key: 'C', value: '3'}, {key: 'A', value: '1'}, {key: 'B', value: '2'}]});
  });
 
  it('refuses to save without the product URL its storage requires', () => {

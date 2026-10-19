@@ -292,3 +292,31 @@ describe('images of one item: PATCH /recommendations/:id with mediaIds', () => {
     expect((await stored(items[0].id)).map(r => r.id)).toEqual([mine]);
   });
 });
+
+describe('product specifications: order is stored (0061)', () => {
+  const resolve = (owner: Owner, specifications: unknown) =>
+    send(owner, 'post', '/entities/resolve', { kind: 'manual', category: 'products', details: { title: `Spec ${randomUUID()}`, productUrl: `https://example.com/${randomUUID()}`, specifications } });
+  const storedSpecs = async (entityId: string) => (await pool.query('SELECT specifications s FROM product_entity_details WHERE entity_id=$1', [entityId])).rows[0].s;
+
+  it('stores an ordered list exactly as sent, including an order jsonb would have re-sorted', async () => {
+    const a = await persona();
+    const sent = [{ key: 'Zebra stripes', value: '1' }, { key: 'A', value: '2' }, { key: 'Mid', value: '3' }];
+    const done = await resolve(a, sent);
+    expect(done.status).toBe(200);
+    expect(await storedSpecs(done.body.entity.id)).toEqual(sent);
+    expect(done.body.entity.details.specifications).toEqual(sent);
+  });
+
+  it('still accepts the legacy object form and stores it as a list', async () => {
+    const a = await persona();
+    const done = await resolve(a, { Weight: '1kg' });
+    expect(done.status).toBe(200);
+    expect(await storedSpecs(done.body.entity.id)).toEqual([{ key: 'Weight', value: '1kg' }]);
+  });
+
+  it('refuses duplicate keys, malformed pairs and more than 200 entries', async () => {
+    const a = await persona();
+    for (const bad of [[{ key: 'A', value: '1' }, { key: 'A', value: '2' }], [{ key: 'A' }], [{ key: '', value: 'x' }], [{ key: 'A', value: 'x', extra: 1 }], Array.from({ length: 201 }, (_, i) => ({ key: `k${i}`, value: 'v' }))])
+      expect((await resolve(a, bad)).status).toBe(422);
+  });
+});

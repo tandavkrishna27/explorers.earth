@@ -160,6 +160,11 @@ describe("guide collection details", () => {
     locationEntityId: null, ...overrides,
   });
 
+  it("accepts up to three decimals and eleven integer digits in a budget, and no more", () => {
+    for (const ok of ["0", "12.3", "12.34", "12.345", "99999999999.999"]) expect(guideCollectionDetailsSchema.safeParse(details({ estimatedBudget: ok })).success).toBe(true);
+    for (const bad of ["12.3456", "123456789012", "-1", "1.", ".5", "01"]) expect(guideCollectionDetailsSchema.safeParse(details({ estimatedBudget: bad })).success).toBe(false);
+  });
+
   it("accepts a complete multi-city guide", () => {
     expect(guideCollectionDetailsSchema.parse(details()).numberOfDays).toBe(5);
   });

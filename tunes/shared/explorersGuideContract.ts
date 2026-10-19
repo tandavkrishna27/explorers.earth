@@ -37,6 +37,9 @@ const coordinate=(max:number)=>z.number().refine(Number.isFinite,'Invalid coordi
 // to the number the existing budget components expect; storage stays exact so a re-read
 // never drifts.
 const money=z.string().regex(/^(0|[1-9][0-9]{0,11})(\.[0-9]{1,2})?$/,'Invalid amount');
+// A guide's estimated budget is numeric(14,3) since 0061: up to eleven integer digits and three
+// decimals, so KWD, BHD and OMR amounts are stored exactly.
+const estimatedBudgetAmount=z.string().regex(/^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/,'Invalid amount');
 const currency=z.string().regex(/^[A-Z]{3}$/,'Invalid currency');
 // ISO 4217 is three uppercase letters; the provider id is Google's opaque place id.
 const providerPlaceId=z.string().trim().min(1).max(512).regex(/^[A-Za-z0-9_\-]+$/,'Invalid place id');
@@ -243,7 +246,7 @@ export const guideCollectionDetailsSchema=z.object({
  guideType:guideTypeSchema.nullable(),
  multiCity:z.boolean(),
  numberOfDays:z.number().int().min(1).max(365).nullable(),
- estimatedBudget:money.nullable(),
+ estimatedBudget:estimatedBudgetAmount.nullable(),
  budgetCurrency:currency.nullable(),
  budgetType:guideBudgetTypeSchema.nullable(),
  // Optional in the wizard. Defaults to null so a writer that predates the tier still parses.

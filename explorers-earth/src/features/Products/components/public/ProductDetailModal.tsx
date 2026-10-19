@@ -84,8 +84,11 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
   const gallery = (product.images || []).map(buildImageUrl).filter(Boolean);
   const allImages = mainImg ? [mainImg, ...gallery.filter((i) => i !== mainImg)] : gallery;
   const noteText = extractNoteText(product.user_recommendation_note);
-  const specs = product.specifications || {};
-  const hasSpecs = Object.keys(specs).length > 0;
+  // The owner's order: the ordered list when the server sends one, else the legacy object.
+  const specs: [string, string][] = product.specification_list
+    ? product.specification_list.map((entry) => [entry.key, entry.value])
+    : Object.entries(product.specifications || {});
+  const hasSpecs = specs.length > 0;
   const priceStr = formatPrice(product.price, product.currency);
   
   // Use the first gallery image as backdrop, or main image, or fallback workspace photo
@@ -216,7 +219,7 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
                     <div>
                       <p className="text-xs font-semibold text-[color:var(--category-muted,rgba(255,255,255,0.5))] uppercase tracking-wider mb-2">Specifications</p>
                       <div className="rounded-xl border border-[color:var(--category-border,rgba(255,255,255,0.1))] overflow-hidden bg-[var(--category-card,rgba(22,30,46,0.3))]">
-                        {Object.entries(specs).map(([key, val], i) => (
+                        {specs.map(([key, val], i) => (
                           <div key={key} className={`flex items-center px-4 py-2.5 text-xs ${i % 2 === 0 ? "bg-[var(--category-card,rgba(255,255,255,0.02))]" : ""}`}>
                             <span className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] w-1/3 font-medium">{key}</span>
                             <span className="text-[color:var(--category-text,rgba(255,255,255,0.8))] flex-1">{val}</span>
