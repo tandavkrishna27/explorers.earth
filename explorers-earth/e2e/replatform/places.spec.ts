@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
 import {createHash, randomUUID} from 'node:crypto';
 import {test, expect, type Browser, type Page, type TestInfo, type Locator, type Response as BrowserResponse, type Request as BrowserRequest, type ConsoleMessage} from '@playwright/test';
-import {assertFixtureOrigin} from './proxy-fixture-authority.mjs';
+import {assertFixtureOrigin, publicReadBudgetDelayMs} from './proxy-fixture-authority.mjs';
 import {installPlacesProviderTransport} from '../setup/places-provider-transport';
 import type {PlacesManifest, PlacesPersona} from '../../../tunes/scripts/places-browser-support';
 
@@ -139,7 +139,22 @@ async function equalMissing(pathname:string,missing:string,persona:PlacesPersona
   same(normalized(await foreign.json()),normalized(await absent.json()));
 }
 // eslint-disable-next-line no-empty-pattern -- the empty fixture pattern is frozen: root scripts/ seal tests assert this spec's exact source text, so `_` breaks them.
-test.beforeEach(async ({},info)=>{manifest=await control('reset',info) as PlacesManifest;});
+/**
+ * Canonical rate-limits public profile reads to 120 a minute (explorersPublicProfileRoutes.ts,
+ * draft-7 RateLimit header), and every case here spends that budget. Until P5-8a the four
+ * slower pin cases spread the cases over 2.4 minutes; back to back, the last mobile cases hit
+ * 429. Start each case with at least 90 reads left, the same budget wait no-strapi.spec uses.
+ */
+async function awaitPublicReadBudget() {
+  for(let attempt=0;attempt<3;attempt++){
+    const response=await api(`/profiles/${manifest.personas.ownerA.handle}`);
+    const untilReset=publicReadBudgetDelayMs(response.headers.get('ratelimit') ?? undefined);
+    if(response.status!==429&&untilReset===0)return;
+    await new Promise(done=>setTimeout(done,untilReset||1_000));
+  }
+  throw new Error('public read budget did not recover');
+}
+test.beforeEach(async ({},info)=>{manifest=await control('reset',info) as PlacesManifest;await awaitPublicReadBudget();});
 
 function recordPublicPages(page:Page,pathname:string,detail:boolean) {
   type RecordedPage={offset:number;limit:number;ids:string[];requestCursor?:string|null;terminal?:boolean;nextCursor?:string|null};
