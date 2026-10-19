@@ -113,6 +113,22 @@ export const updateRecommendationSchema = z.object({expectedRevision:contentRevi
   publicationState:publicationState.optional(),mediaIds:recommendationMediaIds.optional(),note:richNoteSchema.nullable().optional(),displayOverrides:displayOverridesSchema.optional(),bookContext:bookRecommendationContextSchema.optional(),movieContext:movieContextSchema.optional(),movieTermIds:z.array(contentIdSchema).max(32).refine(v=>new Set(v).size===v.length).optional(),appScreenshots:appScreenshotsSchema.optional(),productOffer:productOfferSchema.optional(),placeContext:placeRecommendationContextSchema.optional(),placePhotos:placePhotosSchema.optional(),placesTaxonomy:placesTaxonomyAssignmentSchema.optional(),peopleSectorTermId:peopleSectorAssignmentSchema.optional()}).strict().refine(value=>Object.keys(value).length>1,'At least one editable field required');
 export const reorderCollectionSchema = z.object({expectedRevision:contentRevision,
   orderedRecommendationIds:z.array(contentIdSchema).max(10000)}).strict();
+// Reorders an owner's lists within one category. The caller names the COMPLETE new order of
+// the lists it is ordering, never a single move, so the server can assign dense positions in
+// one statement and refuse any order composed against a different set of lists.
+//   display: every active list of the category, in the order they are listed.
+//   pinned:  exactly the lists that are currently pinned, in pin order.
+// expectedCategoryRevision is the category content revision the caller read, so an order
+// composed before another edit of the category is refused rather than applied to it.
+export const categoryListsOrderScopeSchema = z.enum(['display','pinned']);
+export const reorderCategoryListsSchema = z.object({expectedCategoryRevision:categoryContentRevisionSchema,scope:categoryListsOrderScopeSchema,
+  orderedCollectionIds:z.array(contentIdSchema.transform(v=>v.toLowerCase())).min(1).max(1000)
+    .refine(ids=>new Set(ids).size===ids.length,'Duplicate list')}).strict();
+export const categoryListsOrderResultSchema = z.object({category:contentCategorySchema,scope:categoryListsOrderScopeSchema,
+  categoryRevision:categoryContentRevisionSchema,
+  lists:z.array(z.object({id:contentIdSchema,position:z.number().int().nonnegative()}).strict()).min(1).max(1000)}).strict();
+export type ReorderCategoryListsInput = z.infer<typeof reorderCategoryListsSchema>;
+export type CategoryListsOrderResult = z.infer<typeof categoryListsOrderResultSchema>;
 export const collectionCoreDtoSchema = z.object({id:contentIdSchema,accountId:contentIdSchema,category:contentCategorySchema,
   title:contentTitle,slug:contentSlug,visibility:contentVisibility,publicationState,revision:contentRevision,
   description:collectionPlainText,heading:collectionHeading,coverMediaId:contentIdSchema.nullable()}).strict();

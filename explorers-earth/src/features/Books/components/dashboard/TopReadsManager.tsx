@@ -1,3 +1,4 @@
+import { useMoveAnnouncer } from "../../../../components/reorder/useMoveAnnouncer";
 import { useState, useRef, useEffect } from "react";
 import useAuthStore from "../../../../store/store";
 import { motion, Reorder } from "framer-motion";
@@ -18,6 +19,7 @@ interface TopReadsManagerProps {
 }
 
 const TopReadsManager = ({ books, allBooks, onClose, onRefetch }: TopReadsManagerProps) => {
+  const { announce, region } = useMoveAnnouncer();
   const generation = useAuthStore(state=>state.generation);
   const origin = useRef(generation);
   const current = () => useAuthStore.getState().generation === origin.current;
@@ -106,6 +108,7 @@ const TopReadsManager = ({ books, allBooks, onClose, onRefetch }: TopReadsManage
         </div>
 
         <div className="px-5 py-4 max-h-[65vh] overflow-y-auto space-y-5">
+          {region}
           {/* Pinned section */}
           <div>
             <p className="text-xs text-white/50 uppercase tracking-wider mb-2">
@@ -128,20 +131,20 @@ const TopReadsManager = ({ books, allBooks, onClose, onRefetch }: TopReadsManage
                     >
                       <div className="flex flex-col items-center gap-1 flex-shrink-0">
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleMoveUp(i); }}
+                          onClick={(e) => { e.stopPropagation(); handleMoveUp(i); announce(book.title, i, pinnedBooks.length); }}
                           aria-label={`Move ${book.title} up`}
                           disabled={i === 0 || saving || !content}
-                          className="text-white/20 hover:text-white disabled:opacity-0 transition-colors p-0.5"
+                          className="text-white/20 hover:text-white disabled:opacity-30 transition-colors p-2 -my-1.5"
                         >
-                          <ChevronUp size={12} />
+                          <ChevronUp size={16} aria-hidden="true" />
                         </button>
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleMoveDown(i); }}
+                          onClick={(e) => { e.stopPropagation(); handleMoveDown(i); announce(book.title, i + 2, pinnedBooks.length); }}
                           aria-label={`Move ${book.title} down`}
                           disabled={i === pinnedBooks.length - 1 || saving || !content}
-                          className="text-white/20 hover:text-white disabled:opacity-0 transition-colors p-0.5"
+                          className="text-white/20 hover:text-white disabled:opacity-30 transition-colors p-2 -my-1.5"
                         >
-                          <ChevronDown size={12} />
+                          <ChevronDown size={16} aria-hidden="true" />
                         </button>
                       </div>
                       <span className="text-xs text-white/30 w-4 text-center">{i + 1}</span>

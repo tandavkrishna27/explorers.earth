@@ -124,6 +124,18 @@ describe('native manual Apps', () => {
   expect(AppsClient.createManual).not.toHaveBeenCalled();
  });
 
+ it('offers Reorder apps for a list of two or more, and not for a list of one', async () => {
+  const app = (id: string, title: string) => ({ documentId: id, title, app_url: `https://example.com/${id}`, user_rating: null, user_recommendation_note: '', logo_url: null, developer: null, platforms: null, price_tier: null, download_url: null, description: null, screenshots: null, is_pinned: false });
+  const show = (apps: unknown[]) => { fixture.content.view.lists = [{ documentId: 'list-1', List_Name: 'List', slug: 'list', Visibility: false, recommended_apps: apps, account: { documentId: 'a1', username: 'owner' } }]; fixture.content = { ...fixture.content }; };
+  const view = <MockedProvider><MemoryRouter initialEntries={['/recommendations/apps/list-1']}><Routes><Route path="/recommendations/apps/:listId" element={<AppListView />} /></Routes></MemoryRouter></MockedProvider>;
+  show([app('a', 'Alpha')]); const first = render(view);
+  expect(screen.queryByRole('button', { name: 'Reorder apps' })).toBeNull(); first.unmount();
+  show([app('a', 'Alpha'), app('b', 'Beta')]); render(view);
+  fireEvent.click(screen.getByRole('button', { name: 'Reorder apps' }));
+  expect(screen.getByRole('list', { name: 'App order' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Move App 1 down' })).toBeEnabled();
+ });
+
  it('offers explicit recommendation publication without inheriting the list publication', async () => {
   const app = { documentId: 'app-a', title: 'Manual app', app_url: 'https://example.com/a', user_rating: null, user_recommendation_note: '', logo_url: null, developer: null, platforms: null, price_tier: null, download_url: null, description: null, screenshots: null, is_pinned: false, app_list: { documentId: 'list-1', List_Name: 'Published list' } };
   fixture.content.view.lists = [{ documentId: 'list-1', List_Name: 'Published list', slug: 'published', Visibility: true, recommended_apps: [app], account: { documentId: 'a1', username: 'owner' } }];

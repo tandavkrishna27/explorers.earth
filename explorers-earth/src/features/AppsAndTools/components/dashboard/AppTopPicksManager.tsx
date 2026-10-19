@@ -1,3 +1,4 @@
+import { useMoveAnnouncer } from "../../../../components/reorder/useMoveAnnouncer";
 import { useState } from "react";
 import { motion, Reorder } from "framer-motion";
 import { X, Star, Minus, Loader2, ChevronUp, ChevronDown } from "lucide-react";
@@ -20,6 +21,7 @@ const AppTopPicksManager = ({
   onClose,
   onRefetch,
 }: AppTopPicksManagerProps) => {
+  const { announce, region } = useMoveAnnouncer();
   const [pinnedApps, setPinnedApps] = useState<RecommendedApp[]>(
     [...apps].sort((a, b) => (a.pin_order ?? 999) - (b.pin_order ?? 999))
   );
@@ -117,6 +119,7 @@ const AppTopPicksManager = ({
         </div>
 
         <div className="px-5 py-4 max-h-[65vh] overflow-y-auto space-y-5">
+          {region}
           {/* Pinned section */}
           <div>
             <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Pinned (shown in top picks)</p>
@@ -134,18 +137,20 @@ const AppTopPicksManager = ({
                   >
                     <div className="flex flex-col items-center gap-1 flex-shrink-0">
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleMoveUp(i); }}
+                        onClick={(e) => { e.stopPropagation(); handleMoveUp(i); announce(app.title, i, pinnedApps.length); }}
+                        aria-label={`Move ${app.title} up`}
                         disabled={i === 0}
-                        className="text-white/20 hover:text-white disabled:opacity-0 transition-colors p-0.5"
+                        className="text-white/20 hover:text-white disabled:opacity-30 transition-colors p-2 -my-1.5"
                       >
-                        <ChevronUp size={12} />
+                        <ChevronUp size={16} aria-hidden="true" />
                       </button>
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleMoveDown(i); }}
+                        onClick={(e) => { e.stopPropagation(); handleMoveDown(i); announce(app.title, i + 2, pinnedApps.length); }}
+                        aria-label={`Move ${app.title} down`}
                         disabled={i === pinnedApps.length - 1}
-                        className="text-white/20 hover:text-white disabled:opacity-0 transition-colors p-0.5"
+                        className="text-white/20 hover:text-white disabled:opacity-30 transition-colors p-2 -my-1.5"
                       >
-                        <ChevronDown size={12} />
+                        <ChevronDown size={16} aria-hidden="true" />
                       </button>
                     </div>
                     <span className="text-xs text-white/30 w-4 text-center">{i + 1}</span>

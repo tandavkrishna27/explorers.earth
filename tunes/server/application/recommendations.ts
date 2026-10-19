@@ -2,7 +2,7 @@ import type { Pool } from 'pg';
 import { z } from 'zod/v3';
 import { collectionCoreDtoSchema, createCollectionResultSchema, recommendationCoreDtoSchema, createCollectionSchema, updateCollectionSchema,
   createRecommendationSchema, updateRecommendationSchema, reorderCollectionSchema, contentRevisionSchema,
-  contentIdSchema, commandKeySchema, topPickCategorySchema, categoryTopPicksInputSchema, categoryTopPicksResultSchema, type RequestContext } from '../../shared/explorersContract';
+  contentIdSchema, commandKeySchema, topPickCategorySchema, categoryTopPicksInputSchema, categoryTopPicksResultSchema, contentCategorySchema, reorderCategoryListsSchema, categoryListsOrderResultSchema, type RequestContext } from '../../shared/explorersContract';
 import type { Actor } from './actor';
 import { authorizeOperation } from './authorization';
 import { ExplorersRecommendationRepository, RecommendationFailure } from '../repositories/explorersRecommendationRepository';
@@ -105,6 +105,10 @@ export class RecommendationService {
       parseContent(contentIdSchema,id);const parsed=parseContent(reorderCollectionSchema,input);
       return collectionCoreDtoSchema.parse(await this.repository.reorderCollection(actor.accountId,id,parsed.expectedRevision,parsed.orderedRecommendationIds,this.key(context)));
     });
+  }
+  async reorderCategoryLists(actor:Actor,category:string,input:unknown,context:RequestContext) {
+    return this.authorized(actor,'collections:write',async()=>categoryListsOrderResultSchema.parse(await this.repository.reorderCategoryLists(
+      actor.accountId,parseContent(contentCategorySchema,category),parseContent(reorderCategoryListsSchema,input),this.key(context))));
   }
   async archiveCollection(actor:Actor,id:string,input:unknown,context:RequestContext) {
     return this.authorized(actor,'collections:write',async()=>{

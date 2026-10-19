@@ -7,7 +7,8 @@ import type { MovieList } from '../types';
 
 const invalidations = new EventTarget();
 export const invalidateMovies = () => invalidations.dispatchEvent(new Event('change'));
-export function useMoviesOwner(listId?: string, enabled = true, observer?: MoviesOwnerObserver) {
+/** `keep` retains the last read while a refresh of the same owner is in flight. */
+export function useMoviesOwner(listId?: string, enabled = true, observer?: MoviesOwnerObserver, keep = false) {
  const generation=useAuthStore(state=>state.generation), accountId=useAuthStore(state=>state.accountId);
  const [receivedContent,setContent]=useState<MoviesOwnerContent>();
  const [receivedScope,setReceivedScope]=useState('');
@@ -18,12 +19,12 @@ export function useMoviesOwner(listId?: string, enabled = true, observer?: Movie
  const observerRef=useRef(observer);observerRef.current=observer;
  const refetch=useCallback(()=>setRevision(value=>value+1),[]);
  useEffect(()=>{invalidations.addEventListener('change',refetch);return()=>invalidations.removeEventListener('change',refetch);},[refetch]);
- useEffect(()=>{const controller=new AbortController(),attempt=++active.current;setContent(undefined);setError(undefined);
+ useEffect(()=>{const controller=new AbortController(),attempt=++active.current;if(!keep)setContent(undefined);setError(undefined);
   const observe:MoviesOwnerObserver=event=>{const current=useAuthStore.getState();if(controller.signal.aborted||active.current!==attempt||current.generation!==generation||current.accountId!==accountId)return;try{observerRef.current?.(event);}catch{/* observational */}};
   if(!enabled||!accountId){observe({owner:!enabled?'disabled':'no-account'});setLoading(false);return()=>controller.abort();}
   setLoading(true);observe({owner:'pending'});void readMoviesOwnerContent(controller.signal,observe).then(value=>{if(!controller.signal.aborted&&active.current===attempt){setReceivedScope(scopeKey);setContent(value);observe({owner:'accepted'});}}).catch(value=>{if(!controller.signal.aborted&&active.current===attempt){setError(value instanceof Error?value:new Error('Movies could not be loaded'));observe({owner:'rejected'});}}).finally(()=>{if(!controller.signal.aborted&&active.current===attempt)setLoading(false);});
   return()=>controller.abort();
- },[generation,accountId,enabled,revision,scopeKey]);
+ },[generation,accountId,enabled,revision,scopeKey,keep]);
  const data=useMemo(()=>content?{movieLists:content.lists.filter(list=>!listId||list.documentId===listId) as MovieList[]}:undefined,[content,listId]);
  return {content,data,loading,error,refetch};
 }
