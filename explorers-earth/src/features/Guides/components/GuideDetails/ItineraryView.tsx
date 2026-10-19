@@ -22,6 +22,7 @@ import BudgetIcon from "../../../../assets/icons/BudgetIcon";
 import TipsIcon from "../../../../assets/icons/TipsIcon";
 import { getAvailableTabs } from "../../utils/guideHelpers";
 import { parseTimeline } from "../../utils/guideDataParser";
+import { guideDescriptionText } from "../../../../utils/guideDescriptionText";
 import MultiCityJourneyDisplay from "./MultiCityJourneyDisplay";
 import type { Guide } from "../../types";
 
@@ -501,7 +502,9 @@ const ItineraryView: React.FC<ItineraryViewProps> = ({
               ...(timeline.evening || []),
             ];
 
-            if (allPlaces.length === 0) return null;
+            // A section can be a title and overview with no places yet. It used to be
+            // skipped here, which left the owner looking at an empty itinerary.
+            const overview = allPlaces.length === 0 ? guideDescriptionText(section.Description).trim() : "";
 
             const cleanedTitle = cleanTitle(section.Title || `Day ${dayNum}`, dayNum);
 
@@ -600,6 +603,12 @@ const ItineraryView: React.FC<ItineraryViewProps> = ({
                       )}
                     </div>
                   </div>
+
+                  {overview && (
+                    <p className="text-dashboard-light text-sm sm:text-base leading-relaxed font-poppins">
+                      {overview}
+                    </p>
+                  )}
 
                   {/* Place Cards Grid - Matching Public Side */}
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">

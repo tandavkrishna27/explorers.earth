@@ -404,6 +404,10 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
               const transportSegments = getTransportSegments(day);
 
               if (allPlaces.length === 0) {
+                // A day can be written as a title and overview alone; show them rather
+                // than reducing the day to "no places".
+                const dayTitle = day.Title ? cleanTitle(day.Title, dayNum) : "";
+                const dayOverview = guideDescriptionText(day.Description).trim();
                 return (
                   <motion.div
                     key={day.documentId || `day-${dayNum}`}
@@ -413,6 +417,16 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
                     transition={{ duration: 0.3 }}
                     className="bg-[var(--category-card,#111827)] rounded-lg p-4 sm:p-6 border border-[var(--category-control-border,#374151)]"
                   >
+                    {dayTitle && (
+                      <h3 className="text-[var(--category-text,#FFFFFF)] font-poppins font-semibold text-base sm:text-lg mb-2">
+                        {dayTitle}
+                      </h3>
+                    )}
+                    {dayOverview && (
+                      <p className="text-[var(--category-muted,#D1D5DB)] font-poppins text-sm sm:text-base leading-relaxed mb-3">
+                        {dayOverview}
+                      </p>
+                    )}
                     <p className="text-[var(--category-muted,#9CA3AF)] font-poppins text-sm sm:text-base">
                       No places available for this day.
                     </p>
