@@ -107,4 +107,14 @@ window.addEventListener('load', async () => {
   }
 });
 
+// Neither hook above is reliable on its own: init() with in-memory resources emits
+// 'initialized' before that listener is attached, and the platform build imports this
+// module after the runtime config fetch, when window 'load' has usually fired already.
+// Load the saved bundle now so a fresh page does not stay English under lang="es".
+if (initialLanguage !== 'en' && !i18n.hasResourceBundle(initialLanguage, 'translation')) {
+  i18n.changeLanguage(initialLanguage).catch((error) => {
+    console.warn('Failed to load saved language:', error);
+  });
+}
+
 export default i18n;
