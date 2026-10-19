@@ -131,19 +131,30 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
     const value = t(fullKey, { defaultValue: fallback });
     return value === fullKey ? fallback : value;
   };
+  // A `#public-navigation` deep link is a one-shot navigation request: open the section and
+  // move focus once per navigation. It must not re-fire when `settingsLoading` flips again
+  // (cross-tab refresh, refetch), or it would re-open a section the user closed and steal
+  // focus from the control they are using - a Space keyup landing on the heading inside the
+  // section button then collapses the section under them.
+  const navigationRequestPending = useRef(true);
+  const navigationFocusPending = useRef(false);
+  const [navigationRequestId, setNavigationRequestId] = useState(0);
   useEffect(() => {
     const openNavigation = () => {
-      if (window.location.hash !== "#public-navigation" || settingsLoading) return;
-      setActiveTab("account"); setSearchQuery(""); setPinnedNavTabsSectionOpen(true);
+      if (window.location.hash !== "#public-navigation" || settingsLoading || !navigationRequestPending.current) return;
+      navigationRequestPending.current = false; navigationFocusPending.current = true;
+      setActiveTab("account"); setSearchQuery(""); setPinnedNavTabsSectionOpen(true); setNavigationRequestId(id => id + 1);
     };
-    openNavigation(); window.addEventListener("hashchange", openNavigation);
-    return () => window.removeEventListener("hashchange", openNavigation);
+    const onHashChange = () => { navigationRequestPending.current = true; openNavigation(); };
+    openNavigation(); window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
   }, [settingsLoading]);
   useEffect(() => {
-    if (window.location.hash !== "#public-navigation" || settingsLoading || activeTab !== "account" || !pinnedNavTabsSectionOpen) return;
+    if (!navigationFocusPending.current || settingsLoading || activeTab !== "account" || !pinnedNavTabsSectionOpen) return;
+    navigationFocusPending.current = false;
     navigationHeading.current?.scrollIntoView?.({ block: "start" });
     navigationHeading.current?.focus({ preventScroll: true });
-  }, [settingsLoading, activeTab, pinnedNavTabsSectionOpen]);
+  }, [settingsLoading, activeTab, pinnedNavTabsSectionOpen, navigationRequestId]);
   const accountLifecycle = useMemo(() => createCanonicalAccountLifecycleService({ isCurrent: lifecycleIdentity.isCurrent }), [lifecycleIdentity]);
 
   useEffect(() => {

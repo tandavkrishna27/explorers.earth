@@ -66,5 +66,27 @@ describe('Settings canonical navigation', () => {
     await waitFor(() => expect((window as any).__dashboardLoaded).toBe(true));
     await waitFor(() => expect(screen.getByRole('heading', { name: /Pinned Navigation Tabs/i })).toHaveFocus());
   });
+  it('does not re-run the one-shot hash focus or re-open a closed section when navigation refreshes', async () => {
+    const h = surfaceHarness(<Settings />); await h.ready();
+    await waitFor(() => expect(screen.getByRole('heading', { name: /Pinned Navigation Tabs/i })).toHaveFocus());
+    const pin = await screen.findByRole('checkbox', { name: 'Pin Games Tab' });
+    pin.focus(); expect(pin).toHaveFocus();
+    // A focus/cross-tab refresh drops verified content, so Settings loading flips true then false.
+    // Settings mirrors its loading state on window.__dashboardLoaded; record every write to it.
+    const loadedWrites: boolean[] = []; let loaded = (window as any).__dashboardLoaded;
+    Object.defineProperty(window, '__dashboardLoaded', { configurable: true, get: () => loaded, set: (v: boolean) => { loadedWrites.push(v); loaded = v; } });
+    await act(async () => { window.dispatchEvent(new Event('focus')); });
+    await h.ready(); await waitFor(() => expect(loadedWrites.at(-1)).toBe(true));
+    expect(loadedWrites).toContain(false);
+    expect(screen.getByRole('checkbox', { name: 'Pin Games Tab' })).toHaveFocus();
+    // Closing the section is the user's choice; a later refresh must not re-open it.
+    fireEvent.click(screen.getByRole('button', { name: /Pinned Navigation Tabs/i }));
+    expect(screen.queryByRole('checkbox', { name: 'Pin Games Tab' })).toBeNull();
+    loadedWrites.length = 0;
+    await act(async () => { window.dispatchEvent(new Event('focus')); });
+    await h.ready(); await waitFor(() => expect(loadedWrites.at(-1)).toBe(true));
+    expect(loadedWrites).toContain(false);
+    expect(screen.queryByRole('checkbox', { name: 'Pin Games Tab' })).toBeNull();
+  });
 });
 
