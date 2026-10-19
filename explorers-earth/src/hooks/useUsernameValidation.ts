@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { 
   validateUsername, 
   checkUsernameAvailability,
+  suggestAlternatives,
   UsernameValidationResult,
   UsernameAvailabilityResult 
 } from '../utils/usernameValidation';
@@ -41,6 +42,7 @@ export const useUsernameValidation = (): UseUsernameValidationResult => {
             ...validationResult,
             isValid: false,
             errors: [...validationResult.errors, availability.error || t('auth.validations.username.alreadyExists')],
+            suggestions: suggestAlternatives(validationResult.normalizedUsername),
             availability
           };
         }

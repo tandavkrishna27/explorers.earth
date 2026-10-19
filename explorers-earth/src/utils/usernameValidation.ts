@@ -174,13 +174,16 @@ export const suggestAlternatives = (username: string): string[] => {
     }
   } else {
     // Fallback suggestions
-    suggestions.push(`user${Math.floor(Math.random() * 9999) + 1}`);
+    suggestions.push(`member${Math.floor(Math.random() * 9999) + 1}`);
     suggestions.push(`localuser${currentYear.toString().slice(-2)}`);
     suggestions.push(`qruser${Math.floor(Math.random() * 999) + 1}`);
   }
 
-  // Remove duplicates and return first 5
-  return [...new Set(suggestions)].slice(0, 5);
+  // Never offer a handle the shared rules refuse (a reserved route such as "music" or the
+  // input itself): a suggestion must be something the creator can actually take (ONB-X02).
+  const usable = [...new Set(suggestions)].filter((candidate) => candidate !== username && handleRuleViolations(candidate).length === 0);
+  if (usable.length === 0) usable.push(`member${Math.floor(Math.random() * 9000) + 1000}`);
+  return usable.slice(0, 5);
 };
 
 /**
@@ -225,6 +228,29 @@ export const checkUsernameAvailability = async (
       error: 'Unable to check username availability. Please try again.'
     };
   }
+};
+
+export type HandleConfirmation = { ok: true } | { ok: false; error: string; suggestions: string[] };
+
+/**
+ * Final gate for onboarding step 1: the handle must be confirmed free, not merely well-formed.
+ * A taken handle, or a check that could not run, blocks (ONB-03). `own` is the handle this account
+ * already holds, which is not "taken" for the account itself.
+ */
+export const confirmHandleAvailable = async (
+  username: string,
+  messages: { taken: string; unavailable: string },
+  options: { own?: string | null; check?: typeof checkUsernameAvailability } = {},
+): Promise<HandleConfirmation> => {
+  const handle = username.trim().toLowerCase();
+  if (options.own && options.own.trim().toLowerCase() === handle) return { ok: true };
+  const result = await (options.check ?? checkUsernameAvailability)(handle);
+  if (result.isAvailable) return { ok: true };
+  // checkUsernameAvailability reports an outage with the "Unable to check" text.
+  const outage = /unable to check/i.test(result.error ?? '');
+  return outage
+    ? { ok: false, error: messages.unavailable, suggestions: [] }
+    : { ok: false, error: messages.taken, suggestions: suggestAlternatives(handle) };
 };
 
 /**

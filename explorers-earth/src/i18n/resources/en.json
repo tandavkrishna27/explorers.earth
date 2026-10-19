@@ -503,6 +503,7 @@
       },
       "username": {
         "alreadyExists": "Username already exists",
+        "unableToCheck": "Unable to check username availability. Please try again.",
         "available": "Username is available",
         "cannotBeAllNumbers": "Username cannot be all numbers",
         "cannotStartEndHyphen": "Username cannot start or end with a hyphen",
