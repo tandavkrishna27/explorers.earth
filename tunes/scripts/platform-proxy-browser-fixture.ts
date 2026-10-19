@@ -3,6 +3,7 @@ import {randomUUID,randomBytes,createHmac} from 'node:crypto';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 import pg from 'pg';
 import {createCanonicalApp} from '../server/auth/canonicalApp';
+import {registerBeforeCanonicalTerminator} from './canonical-fixture-routes';
 import {resolveExplorersAuthConfig} from '../server/auth/betterAuth';
 import {migrateMusicDatabase} from '../server/db/migrate';
 import {provisionMusicRuntimeLogin} from '../server/db/music-runtime-role';
@@ -51,7 +52,7 @@ for(const group of ['auth','profile','books','analytics']){
  if(group==='analytics')observerToken=randomBytes(32).toString('hex');
  writeFileSync('/private/sessions/'+group+'.json',JSON.stringify({origin:authority.origin,personas,recoveryProof,observerToken:group==='analytics'?observerToken:undefined,proxyAuthority:authority}),{mode:0o600});
 }
-composed.app.get('/api/__analytics-observer',async(req,res)=>{res.set('Cache-Control','no-store');if(req.headers.authorization!=='Bearer '+observerToken)return res.sendStatus(404);try{res.json({events:(await db.query('SELECT id,account_id,client_event_id,event_type,page,category,collection_id,recommendation_id,canonical_path FROM analytics_events ORDER BY received_at,id')).rows,receipts:(await db.query('SELECT account_id,client_event_id,event_id FROM analytics_event_receipts')).rows});}catch{res.sendStatus(500);}});
+registerBeforeCanonicalTerminator(composed.app,()=>{composed.app.get('/api/__analytics-observer',async(req,res)=>{res.set('Cache-Control','no-store');if(req.headers.authorization!=='Bearer '+observerToken)return res.sendStatus(404);try{res.json({events:(await db.query('SELECT id,account_id,client_event_id,event_type,page,category,collection_id,recommendation_id,canonical_path FROM analytics_events ORDER BY received_at,id')).rows,receipts:(await db.query('SELECT account_id,client_event_id,event_id FROM analytics_event_receipts')).rows});}catch{res.sendStatus(500);}});});
 const server=composed.app.listen(5000,'0.0.0.0',()=>writeFileSync('/private/ready.json',JSON.stringify({schema,seed:'canonical-fixture-only',runId:authority.runId}),{mode:0o600}));
 async function close(){await new Promise<void>((done)=>server.close(()=>done()));await runtime.end();await db.end();process.exit(0);}
 process.once('SIGTERM',close);process.once('SIGINT',close);

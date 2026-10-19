@@ -8,6 +8,7 @@ import { join, resolve, relative, isAbsolute } from 'node:path';
 import {pathToFileURL} from 'node:url';
 import pg from 'pg';
 import { createCanonicalApp } from '../server/auth/canonicalApp';
+import { registerBeforeCanonicalTerminator } from './canonical-fixture-routes';
 import { resolveExplorersAuthConfig } from '../server/auth/betterAuth';
 import {provisionMusicRuntimeLogin} from '../server/db/music-runtime-role';
 import {BookCatalog} from '../server/services/bookCatalog';
@@ -157,11 +158,11 @@ async function main(): Promise<number> {
     await seedBooks(db,selected.accountId,name);
   }
   const observerToken=randomBytes(32).toString('hex');
-  composed.app.get('/api/__analytics-observer',async(request,response)=>{
+  registerBeforeCanonicalTerminator(composed.app,()=>{composed.app.get('/api/__analytics-observer',async(request,response)=>{
     response.set('Cache-Control','no-store');
     if(request.headers.authorization!==`Bearer ${observerToken}`)return response.sendStatus(404);
     try{const events=(await db!.query('SELECT id,account_id,client_event_id,event_type,page,category,collection_id,recommendation_id,canonical_path FROM analytics_events ORDER BY received_at,id')).rows;const receipts=(await db!.query('SELECT account_id,client_event_id,event_id FROM analytics_event_receipts')).rows;response.json({events,receipts});}catch{response.sendStatus(500);}
-  });
+  });});
   const fixturePath = join(disposable, 'sessions.json');
   writeFileSync(fixturePath, JSON.stringify({ origin, personas,observerToken }), { mode: 0o600 });
   const viteConfig=analyticsViteConfiguration();

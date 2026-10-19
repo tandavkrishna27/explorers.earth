@@ -166,91 +166,95 @@ describe("private local media", () => {
       expect((await pool.query("SELECT status FROM media_assets WHERE id=$1", [f.id])).rows[0].status).toBe("ready");
     }, 30_000);
 
-    it.skipIf(!typed)(`${category} media: aged attachments survive cleanup until the last real relation detaches`, async () => {
-      const f = await fixture(); const first = await f.attach(); const second = await f.attach();
-      await pool.query("UPDATE media_assets SET created_at=now()-interval '25 hours' WHERE id=$1", [f.id]);
-      expect((await f.repository.abandoned(f.owner.accountId, "local")).map(row => row.id)).not.toContain(f.id);
-      await pool.query("UPDATE collections SET visibility='private',publication_state='draft',archived_at=now() WHERE account_id=$1", [f.owner.accountId]);
-      await pool.query("UPDATE recommendations SET publication_state='draft',archived_at=now() WHERE account_id=$1", [f.owner.accountId]);
-      expect((await f.repository.abandoned(f.owner.accountId, "local")).map(row => row.id)).not.toContain(f.id);
-      expect(await f.repository.markDelete(f.id, f.owner.accountId)).toBeUndefined();
-      await pool.query(`DELETE FROM ${table} WHERE recommendation_id=$1`, [first.recommendation]);
-      expect(await f.repository.markDelete(f.id, f.owner.accountId)).toBeUndefined();
-      expect((await f.repository.abandoned(f.owner.accountId, "local")).map(row => row.id)).not.toContain(f.id);
-      await pool.query(`DELETE FROM ${table} WHERE recommendation_id=$1`, [second.recommendation]);
-      // A second legitimate relation still blocks cleanup after final typed detach.
-      await pool.query("INSERT INTO recommendation_media(recommendation_id,account_id,media_id,display_order) VALUES($1,$2,$3,0)", [second.recommendation, f.owner.accountId, f.id]);
-      await pool.query("UPDATE collections SET visibility='public',publication_state='published',archived_at=NULL WHERE id=$1", [second.collection]);
-      await pool.query("UPDATE recommendations SET publication_state='published',archived_at=NULL WHERE id=$1", [second.recommendation]);
-      // Generic Apps/Places uploads do not inherit the typed gallery's public entitlement.
-      await visible(f, false);
-      expect(await f.repository.markDelete(f.id, f.owner.accountId)).toBeUndefined();
-      expect((await f.repository.abandoned(f.owner.accountId, "local")).map(row => row.id)).not.toContain(f.id);
-      await pool.query("DELETE FROM recommendation_media WHERE media_id=$1", [f.id]);
-      expect((await f.repository.abandoned(f.owner.accountId, "local")).map(row => row.id)).toContain(f.id);
-      const removed = await f.repository.markDelete(f.id, f.owner.accountId);
-      expect(removed).toMatchObject({ id: f.id, status: "pending_delete", storage_environment: "local" });
-      expect(removed?.object_key).toBeTruthy();
-      expect((await pool.query("SELECT status FROM media_assets WHERE id=$1", [f.id])).rows[0].status).toBe("pending_delete");
-    }, 30_000);
+    // Registered only where they apply, not skipped elsewhere: the Task-4 UAT lane treats
+    // any skipped assertion as non-final evidence.
+    if (typed) {
+      it(`${category} media: aged attachments survive cleanup until the last real relation detaches`, async () => {
+        const f = await fixture(); const first = await f.attach(); const second = await f.attach();
+        await pool.query("UPDATE media_assets SET created_at=now()-interval '25 hours' WHERE id=$1", [f.id]);
+        expect((await f.repository.abandoned(f.owner.accountId, "local")).map(row => row.id)).not.toContain(f.id);
+        await pool.query("UPDATE collections SET visibility='private',publication_state='draft',archived_at=now() WHERE account_id=$1", [f.owner.accountId]);
+        await pool.query("UPDATE recommendations SET publication_state='draft',archived_at=now() WHERE account_id=$1", [f.owner.accountId]);
+        expect((await f.repository.abandoned(f.owner.accountId, "local")).map(row => row.id)).not.toContain(f.id);
+        expect(await f.repository.markDelete(f.id, f.owner.accountId)).toBeUndefined();
+        await pool.query(`DELETE FROM ${table} WHERE recommendation_id=$1`, [first.recommendation]);
+        expect(await f.repository.markDelete(f.id, f.owner.accountId)).toBeUndefined();
+        expect((await f.repository.abandoned(f.owner.accountId, "local")).map(row => row.id)).not.toContain(f.id);
+        await pool.query(`DELETE FROM ${table} WHERE recommendation_id=$1`, [second.recommendation]);
+        // A second legitimate relation still blocks cleanup after final typed detach.
+        await pool.query("INSERT INTO recommendation_media(recommendation_id,account_id,media_id,display_order) VALUES($1,$2,$3,0)", [second.recommendation, f.owner.accountId, f.id]);
+        await pool.query("UPDATE collections SET visibility='public',publication_state='published',archived_at=NULL WHERE id=$1", [second.collection]);
+        await pool.query("UPDATE recommendations SET publication_state='published',archived_at=NULL WHERE id=$1", [second.recommendation]);
+        // Generic Apps/Places uploads do not inherit the typed gallery's public entitlement.
+        await visible(f, false);
+        expect(await f.repository.markDelete(f.id, f.owner.accountId)).toBeUndefined();
+        expect((await f.repository.abandoned(f.owner.accountId, "local")).map(row => row.id)).not.toContain(f.id);
+        await pool.query("DELETE FROM recommendation_media WHERE media_id=$1", [f.id]);
+        expect((await f.repository.abandoned(f.owner.accountId, "local")).map(row => row.id)).toContain(f.id);
+        const removed = await f.repository.markDelete(f.id, f.owner.accountId);
+        expect(removed).toMatchObject({ id: f.id, status: "pending_delete", storage_environment: "local" });
+        expect(removed?.object_key).toBeTruthy();
+        expect((await pool.query("SELECT status FROM media_assets WHERE id=$1", [f.id])).rows[0].status).toBe("pending_delete");
+      }, 30_000);
 
-    it.skipIf(!typed)(`${category} media: a detach through the typed writer is swept by the maintenance tick`, async () => {
-      // P5-10: no detach path calls deleteMedia, and that is deliberate - a detached asset
-      // stays the owner's and can be re-attached (guideMediaVisibility pins the re-attach).
-      // The object must still not be orphaned forever: once nothing references it, the
-      // scheduled sweep deletes it, with no further upload from this owner.
-      const f = await fixture(); const attachment = await f.attach();
-      await pool.query("UPDATE media_assets SET created_at=now()-interval '25 hours' WHERE id=$1", [f.id]);
-      const key = (await pool.query("SELECT object_key FROM media_objects WHERE media_id=$1", [f.id])).rows[0].object_key;
-      const removed: string[] = [];
-      const storage: ObjectStorage = { environment: "local", put: async () => undefined, get: async () => png,
-        delete: async (object) => { removed.push(object); } };
-      await runMediaCleanupMaintenance(pool, storage, 100);
-      expect((await f.repository.find(f.id))?.status).toBe("ready");
-      const db = await pool.connect();
-      try {
-        await db.query("BEGIN");
-        if (category === "apps") await writeAppScreenshots(db, attachment.recommendation, f.owner.accountId, []);
-        else await writePlacePhotos(db, attachment.recommendation, f.owner.accountId, []);
-        await db.query("COMMIT");
-      } catch (error) { await db.query("ROLLBACK"); throw error; } finally { db.release(); }
-      await runMediaCleanupMaintenance(pool, storage, 100);
-      expect((await pool.query("SELECT status FROM media_assets WHERE id=$1", [f.id])).rows[0].status).toBe("deleted");
-      expect(removed).toContain(key);
-    }, 30_000);
+      it(`${category} media: a detach through the typed writer is swept by the maintenance tick`, async () => {
+        // P5-10: no detach path calls deleteMedia, and that is deliberate - a detached asset
+        // stays the owner's and can be re-attached (guideMediaVisibility pins the re-attach).
+        // The object must still not be orphaned forever: once nothing references it, the
+        // scheduled sweep deletes it, with no further upload from this owner.
+        const f = await fixture(); const attachment = await f.attach();
+        await pool.query("UPDATE media_assets SET created_at=now()-interval '25 hours' WHERE id=$1", [f.id]);
+        const key = (await pool.query("SELECT object_key FROM media_objects WHERE media_id=$1", [f.id])).rows[0].object_key;
+        const removed: string[] = [];
+        const storage: ObjectStorage = { environment: "local", put: async () => undefined, get: async () => png,
+          delete: async (object) => { removed.push(object); } };
+        await runMediaCleanupMaintenance(pool, storage, 100);
+        expect((await f.repository.find(f.id))?.status).toBe("ready");
+        const db = await pool.connect();
+        try {
+          await db.query("BEGIN");
+          if (category === "apps") await writeAppScreenshots(db, attachment.recommendation, f.owner.accountId, []);
+          else await writePlacePhotos(db, attachment.recommendation, f.owner.accountId, []);
+          await db.query("COMMIT");
+        } catch (error) { await db.query("ROLLBACK"); throw error; } finally { db.release(); }
+        await runMediaCleanupMaintenance(pool, storage, 100);
+        expect((await pool.query("SELECT status FROM media_assets WHERE id=$1", [f.id])).rows[0].status).toBe("deleted");
+        expect(removed).toContain(key);
+      }, 30_000);
 
-    it.skipIf(!typed)(`${category} media: actual schema rejects unsafe typed relations and attached transitions`, async () => {
-      const f = await fixture(); const attachment = await f.attach();
-      await expect(pool.query("UPDATE media_assets SET status='pending_delete',delete_requested_at=now() WHERE id=$1", [f.id])).rejects.toMatchObject({ code: "23514" });
-      expect((await f.repository.find(f.id))?.status).toBe("ready");
-      for (const purpose of ["profile", "claim-evidence"] as const) {
-        const wrong = await upload(f.owner.cookie, png, "image/png", "profile"); expect(wrong.status).toBe(201);
-        if (purpose === "claim-evidence") await pool.query("UPDATE media_assets SET purpose='claim-evidence' WHERE id=$1", [wrong.body.media.id]);
-        await expect(pool.query(`INSERT INTO ${table}(recommendation_id,account_id,${slotColumn},media_id) VALUES($1,$2,1,$3)`, [attachment.recommendation, f.owner.accountId, wrong.body.media.id])).rejects.toMatchObject({ code: "23514" });
-      }
-      const unready = await upload(f.owner.cookie, png, "image/png", "recommendation"); expect(unready.status).toBe(201);
-      await pool.query("UPDATE media_assets SET status='pending_delete',delete_requested_at=now() WHERE id=$1", [unready.body.media.id]);
-      await expect(pool.query(`INSERT INTO ${table}(recommendation_id,account_id,${slotColumn},media_id) VALUES($1,$2,1,$3)`, [attachment.recommendation, f.owner.accountId, unready.body.media.id])).rejects.toMatchObject({ code: "23514" });
-      const other = await persona(); const foreign = await upload(other.cookie, png, "image/png", "recommendation"); expect(foreign.status).toBe(201);
-      // The composite ownership FK rejects before the deferred guard can run.
-      await expect(pool.query(`INSERT INTO ${table}(recommendation_id,account_id,${slotColumn},media_id) VALUES($1,$2,1,$3)`, [attachment.recommendation, f.owner.accountId, foreign.body.media.id])).rejects.toMatchObject({ code: "23503" });
-      expect((await f.repository.find(f.id))?.status).toBe("ready");
+      it(`${category} media: actual schema rejects unsafe typed relations and attached transitions`, async () => {
+        const f = await fixture(); const attachment = await f.attach();
+        await expect(pool.query("UPDATE media_assets SET status='pending_delete',delete_requested_at=now() WHERE id=$1", [f.id])).rejects.toMatchObject({ code: "23514" });
+        expect((await f.repository.find(f.id))?.status).toBe("ready");
+        for (const purpose of ["profile", "claim-evidence"] as const) {
+          const wrong = await upload(f.owner.cookie, png, "image/png", "profile"); expect(wrong.status).toBe(201);
+          if (purpose === "claim-evidence") await pool.query("UPDATE media_assets SET purpose='claim-evidence' WHERE id=$1", [wrong.body.media.id]);
+          await expect(pool.query(`INSERT INTO ${table}(recommendation_id,account_id,${slotColumn},media_id) VALUES($1,$2,1,$3)`, [attachment.recommendation, f.owner.accountId, wrong.body.media.id])).rejects.toMatchObject({ code: "23514" });
+        }
+        const unready = await upload(f.owner.cookie, png, "image/png", "recommendation"); expect(unready.status).toBe(201);
+        await pool.query("UPDATE media_assets SET status='pending_delete',delete_requested_at=now() WHERE id=$1", [unready.body.media.id]);
+        await expect(pool.query(`INSERT INTO ${table}(recommendation_id,account_id,${slotColumn},media_id) VALUES($1,$2,1,$3)`, [attachment.recommendation, f.owner.accountId, unready.body.media.id])).rejects.toMatchObject({ code: "23514" });
+        const other = await persona(); const foreign = await upload(other.cookie, png, "image/png", "recommendation"); expect(foreign.status).toBe(201);
+        // The composite ownership FK rejects before the deferred guard can run.
+        await expect(pool.query(`INSERT INTO ${table}(recommendation_id,account_id,${slotColumn},media_id) VALUES($1,$2,1,$3)`, [attachment.recommendation, f.owner.accountId, foreign.body.media.id])).rejects.toMatchObject({ code: "23503" });
+        expect((await f.repository.find(f.id))?.status).toBe("ready");
 
-      // A list cover cannot be unready in either direction, which is why no projection can
-      // emit a URL for one. Recorded here so a future migration cannot relax it silently.
-      // The asset must carry purpose 'collection': with 'recommendation' this would fail on
-      // guard_recommendation_media's purpose arm with the same 23514 and never exercise the
-      // status arm at all.
-      const unreadyCover = await upload(f.owner.cookie, png, "image/png", "collection"); expect(unreadyCover.status).toBe(201);
-      await pool.query("UPDATE media_assets SET status='uploading' WHERE id=$1", [unreadyCover.body.media.id]);
-      await expect(pool.query("INSERT INTO collection_media(collection_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3)",
-        [attachment.collection, f.owner.accountId, unreadyCover.body.media.id])).rejects.toMatchObject({ code: "23514" });
-      const readyCover = await upload(f.owner.cookie, png, "image/png", "collection"); expect(readyCover.status).toBe(201);
-      await pool.query("INSERT INTO collection_media(collection_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3)",
-        [attachment.collection, f.owner.accountId, readyCover.body.media.id]);
-      await expect(pool.query("UPDATE media_assets SET status='uploading' WHERE id=$1", [readyCover.body.media.id]))
-        .rejects.toMatchObject({ code: "23514" });
-    }, 30_000);
+        // A list cover cannot be unready in either direction, which is why no projection can
+        // emit a URL for one. Recorded here so a future migration cannot relax it silently.
+        // The asset must carry purpose 'collection': with 'recommendation' this would fail on
+        // guard_recommendation_media's purpose arm with the same 23514 and never exercise the
+        // status arm at all.
+        const unreadyCover = await upload(f.owner.cookie, png, "image/png", "collection"); expect(unreadyCover.status).toBe(201);
+        await pool.query("UPDATE media_assets SET status='uploading' WHERE id=$1", [unreadyCover.body.media.id]);
+        await expect(pool.query("INSERT INTO collection_media(collection_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3)",
+          [attachment.collection, f.owner.accountId, unreadyCover.body.media.id])).rejects.toMatchObject({ code: "23514" });
+        const readyCover = await upload(f.owner.cookie, png, "image/png", "collection"); expect(readyCover.status).toBe(201);
+        await pool.query("INSERT INTO collection_media(collection_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3)",
+          [attachment.collection, f.owner.accountId, readyCover.body.media.id]);
+        await expect(pool.query("UPDATE media_assets SET status='uploading' WHERE id=$1", [readyCover.body.media.id]))
+          .rejects.toMatchObject({ code: "23514" });
+      }, 30_000);
+    }
   }
 
   it("denies anonymous upload, spoofed MIME and bytes", async () => {

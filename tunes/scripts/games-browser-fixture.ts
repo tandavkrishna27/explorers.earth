@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve, relative, isAbsolute } from 'node:path';
 import pg from 'pg';
 import { createCanonicalApp } from '../server/auth/canonicalApp';
+import { registerBeforeCanonicalTerminator } from './canonical-fixture-routes';
 import { resolveExplorersAuthConfig } from '../server/auth/betterAuth';
 import {provisionMusicRuntimeLogin} from '../server/db/music-runtime-role';
 import {LocalObjectStorage} from '../server/services/objectStorage';
@@ -190,7 +191,7 @@ async function main(): Promise<number> {
   const publicCaseLayer=(composed.app as unknown as {router:{stack:unknown[]}}).router.stack.pop();
   (composed.app as unknown as {router:{stack:unknown[]}}).router.stack.unshift(publicCaseLayer);
   const controlledAccounts=new Map<string,string>();
-  composed.app.post('/api/__games-fixture/control',async(req,res)=>{
+  registerBeforeCanonicalTerminator(composed.app,()=>{composed.app.post('/api/__games-fixture/control',async(req,res)=>{
    if(req.ip!=='127.0.0.1'||req.get('origin')!==origin||req.get('x-games-fixture-capability')!==controlCapability)return void res.sendStatus(404);
    const body=req.body;if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).length!==1||(!['arm-storage','storage-state','release-storage','suspend-ownerA','restore-ownerA'].includes(body.action)&&!(typeof body.action==='string'&&/^public-(begin|end)-(desktop|mobile)-[0-9]$/.test(body.action))))return void res.sendStatus(422);
    try{
@@ -202,7 +203,7 @@ async function main(): Promise<number> {
     else if(body.action==='restore-ownerA')await db!.query("UPDATE creator_accounts SET status='active',suspended_at=NULL WHERE id=$1",[controlledAccounts.get('ownerA')]);
     res.json({entered:storageEntered});
    }catch{res.sendStatus(500);}
-  });
+  });});
   apiServer = await new Promise((done) => {
     const server = composed.app.listen(apiPort, '127.0.0.1', () => done(server));
   });

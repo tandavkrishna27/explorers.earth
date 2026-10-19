@@ -134,6 +134,7 @@ export const MUSIC_FIXTURE_TRIGGER_FINGERPRINTS = Object.freeze([
   Object.freeze({table:'entities',name:'entities_product_details_kind_guard',enabled:'O',type:17}),
   Object.freeze({table:'person_entity_details',name:'person_entity_details_guard',enabled:'O',type:21}),
   Object.freeze({table:'entities',name:'entities_person_details_kind_guard',enabled:'O',type:17}),
+  Object.freeze({table:'person_suppression_actions',name:'person_suppression_actions_append_only',enabled:'O',type:27}),
   Object.freeze({table:'place_entity_details',name:'place_entity_details_guard',enabled:'O',type:21}),
   Object.freeze({table:'entities',name:'entities_place_details_kind_guard',enabled:'O',type:17}),
   Object.freeze({table:'place_recommendation_context',name:'place_recommendation_context_kind_guard',enabled:'O',type:21}),

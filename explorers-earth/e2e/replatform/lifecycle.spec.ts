@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { test, expect, type BrowserContext, type Page } from '@playwright/test';
+import { test, expect, type BrowserContext, type Page, type Response } from '@playwright/test';
 import { LIFECYCLE_CASES, classifyLifecycleRequest } from '../../../tunes/scripts/lifecycle-browser-guards';
 type Owner = {
     userId: string;
@@ -182,8 +182,12 @@ async function verifyReplacement(page: Page, owner: number) {
     const issued = await control('session', owner);
     expect(issued.cookie === owners[owner].cookie).toBe(false);
     await session(page.context(), { ...owners[owner], cookie: issued.cookie });
-    const sessionResponse = page.waitForResponse(r => new URL(r.url()).pathname === '/api/auth/get-session');
-    const meResponse = page.waitForResponse(r => new URL(r.url()).pathname === `${base}/me`);
+    // Match only the refresh's own requests, i.e. those carrying the newly issued cookie. The
+    // app may still have a /me in flight for the previous owner's session, and that response
+    // can land after these listeners attach.
+    const carriesIssued = async (r: Response) => ((await r.request().allHeaders()).cookie ?? '').split('; ').includes(issued.cookie);
+    const sessionResponse = page.waitForResponse(async r => new URL(r.url()).pathname === '/api/auth/get-session' && await carriesIssued(r));
+    const meResponse = page.waitForResponse(async r => new URL(r.url()).pathname === `${base}/me` && await carriesIssued(r));
     await page.evaluate(async () => {
         const modulePath = '/src/lib/authClient.ts';
         const { authClient } = await import(modulePath);
