@@ -3,7 +3,7 @@ import useAuthStore from '../../store/store';
 import { ownerCollectionDtoSchema } from '../../../../tunes/shared/explorersOwnerContentContract';
 import type { Scope, CategoryId, Eligibility } from './categoryNavigationPolicy';
 export type NavigationContent = { counts: Partial<Record<CategoryId, number>>; eligibility: Partial<Record<CategoryId, Eligibility>> };
-const native = [['public_books','books'],['public_movie','movies'],['public_games','games']] as const;
+const native = [['public_recommendations','places'],['public_guides','guides'],['public_books','books'],['public_movie','movies'],['public_games','games'],['public_apps','apps'],['public_products','products'],['public_people','people']] as const;
 const unknown = (): NavigationContent => ({ counts: {}, eligibility: { public_books:'unknown',public_movie:'unknown',public_games:'unknown',public_recommendations:'unknown',public_guides:'unknown',public_apps:'unknown',public_products:'unknown',public_people:'unknown' } });
 /** Only a complete cookie-authorized native collection set can establish publication eligibility. */
 export async function readCanonicalNavigationContent(scope: Scope, isCurrent: () => boolean, signal?: AbortSignal): Promise<NavigationContent> {

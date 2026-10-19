@@ -78,7 +78,7 @@ export function surfaceHarness(child: React.ReactNode, options: { initial?: Reco
     // deferContent holds owner content pending while authority is already resolved.
     if (options.deferContent) await options.deferContent;
     const category = request.searchParams.get('category');
-    const listField = category === 'books' ? 'bookLists' : category === 'movies' ? 'movieLists' : category === 'games' ? 'gameLists' : category === 'places' ? 'placeLists' : undefined;
+    const listField = ({ books: 'bookLists', movies: 'movieLists', games: 'gameLists', places: 'placeLists', guides: 'guides', apps: 'appLists', products: 'productLists', people: 'personLists' } as Record<string, string>)[category ?? ''];
     if (!listField || failLists) throw new Error('Native lists unavailable');
     const items = (content[listField] as unknown[] ?? []).map((_item, index) => ({
       id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,

@@ -76,9 +76,9 @@ describe('CategoryNavigationProvider', () => {
   it('publishes exactly native content counts bound to current authority', async () => {
     const h=harness();
     vi.stubGlobal('fetch',vi.fn(async()=>new Response(JSON.stringify({version:'explorers-owner-content/v2',snapshot:'1',snapshotToken:'opaque',expiresAt:Date.now()+600000,items:[],nextCursor:null}),{headers:{'Content-Type':'application/json'}})));
-    await h.ready(); await waitFor(()=>expect(h.value.content?.counts).toEqual({public_books:0,public_movie:0,public_games:0}));
+    await h.ready(); await waitFor(()=>expect(h.value.content?.counts).toEqual({public_recommendations:0,public_guides:0,public_books:0,public_movie:0,public_games:0,public_apps:0,public_products:0,public_people:0}));
     expect(Object.keys(h.value.content!)).toEqual(['counts','eligibility']);
-    expect(h.value.content?.eligibility.public_apps).toBe('unknown');
+    expect(h.value.content?.eligibility.public_apps).toBe('no-content');
     act(()=>useAuthStore.getState().logout()); expect(h.value.content).toBeUndefined();
   });
   it('permits a new native pin when complete content is unavailable', async () => {
