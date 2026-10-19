@@ -263,7 +263,8 @@
         "today": "Vandaag"
       },
       "timePeriod": "Tijdsperiode:",
-      "title": "Analytisch Dashboard"
+      "title": "Analytisch Dashboard",
+      "countsNote": "Totalen tellen bezoeken, geen unieke bezoekers. Openbare pagina's worden anoniem gemeten, zonder cookies."
     }
   },
   "auth": {

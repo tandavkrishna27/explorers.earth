@@ -263,7 +263,8 @@
         "today": "Danas"
       },
       "timePeriod": "Vremensko razdoblje:",
-      "title": "Nadzorna ploča analitike"
+      "title": "Nadzorna ploča analitike",
+      "countsNote": "Ukupni zbrojevi broje posjete, a ne jedinstvene posjetitelje. Javne stranice mjere se anonimno, bez kolačića."
     }
   },
   "auth": {

@@ -12,7 +12,8 @@ function stable(value: unknown): unknown { if (Array.isArray(value))
 export function analyticsInputHash(input: ExplorersAnalyticsInput): Buffer {
     const mode = 'generic';
     const parsed = explorersAnalyticsInputSchema.parse(input), event = { ...parsed.event };
-    return createHash('sha256').update(JSON.stringify(stable({ mode, accountId: parsed.accountId, locationId: parsed.locationId ?? null, recommendationId: parsed.recommendationId ?? null, event }))).digest();
+    // The basis is part of the identity, so an anonymous retry cannot collide with a consented one.
+    return createHash('sha256').update(JSON.stringify(stable({ mode, ...(parsed.basis ? { basis: parsed.basis } : {}), accountId: parsed.accountId, locationId: parsed.locationId ?? null, recommendationId: parsed.recommendationId ?? null, event }))).digest();
 }
 export interface AnalyticsAggregateRow {
     dimension: string;
@@ -56,7 +57,7 @@ export class AnalyticsService {
     constructor(private readonly pool: Pool) { this.repository = new ExplorersAnalyticsEventRepository(pool); }
     async recordAnalyticsEvent(raw: ExplorersAnalyticsInput, context: AnalyticsRequestContext) {
         const input = explorersAnalyticsInputSchema.parse(raw);
-        if (!input.consent)
+        if (input.basis !== 'anonymous-v1' && input.consent !== true)
             return { status: 'consent-denied' as const };
         return this.repository.record(input, analyticsInputHash(input), context);
     }

@@ -263,7 +263,8 @@
         "today": "Hari Ini"
       },
       "timePeriod": "Periode Waktu:",
-      "title": "Dashboard Analytics"
+      "title": "Dashboard Analytics",
+      "countsNote": "Total menghitung kunjungan, bukan pengunjung unik. Halaman publik diukur secara anonim, tanpa cookie."
     }
   },
   "auth": {

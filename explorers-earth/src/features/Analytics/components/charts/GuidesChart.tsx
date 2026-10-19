@@ -22,13 +22,11 @@ const GuidesChart: React.FC<GuidesChartProps> = ({ events }) => {
     [guideEvents]
   );
 
+  // An open is the guide detail page rendering (element 'guide-open'), whether the visitor
+  // came from the list or straight from a shared link or QR code. The list's card click is
+  // not counted again, so a list-then-open visit is one open.
   const guideClicks = useMemo(
-    () =>
-      guideEvents.filter(
-        e =>
-          e.type === 'click' &&
-          (e.element?.startsWith('guide-card') || e.metadata?.originalElement === 'guide-card')
-      ),
+    () => guideEvents.filter(e => e.type === 'interaction' && e.element === 'guide-open'),
     [guideEvents]
   );
 

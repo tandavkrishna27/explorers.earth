@@ -28,6 +28,7 @@ import { measureGuideDayTabsStickyGeometry, measureGuideMainTabsStickyGeometry }
 import { isNonNullObject, PublicRouteErrorState, PublicRouteLoadingState, PublicRoutePartialNotice, settlePublicRouteRetries } from "./PublicRouteContentState";
 import { usePublicProfileShell } from "../api/usePublicProfileShell";
 import { usePublicProfileDetail } from "../api/usePublicProfileDetail";
+import { useTrackAnalytics } from "../../../services/analyticsService";
 import { PublicScrollContinuation } from "./PublicScrollContinuation";
 import { usePublicCategoryThemeStyles } from "./PublicCategoryThemeContext";
 
@@ -113,13 +114,36 @@ const PublicGuideDetailPage = memo(() => {
   };
 
 
-  const { loading: accountLoading, error: accountError, refetch: refetchAccount } = usePublicProfileShell(username);
+  const { data: shellAccount, loading: accountLoading, error: accountError, refetch: refetchAccount } = usePublicProfileShell(username);
   const page = usePublicProfileDetail(username, "guides", guideSlug);
   const { data, loading, error, refetch: refetchGuide } = page;
   const guide = useMemo(() => normalizeRenderableGuide((Array.isArray(data?.guides) ? data.guides : [])[0]), [data?.guides]);
   const hasUsableData = Boolean(guide);
   const queryError = accountError || error;
   const loadingState = accountLoading || loading;
+  // A guide reached straight from a shared link or QR code never passes through the list's
+  // guide-card click, so the open is recorded here, once per guide per page load.
+  const shellAccountId = isNonNullObject(shellAccount) && hasNonEmptyString(shellAccount.documentId) ? shellAccount.documentId : "";
+  const analytics = useTrackAnalytics({
+    accountId: shellAccountId,
+    pageName: "public-guides",
+    pageUsername: username,
+    autoTrackView: false,
+    ready: Boolean(guide),
+  });
+  const { trackInteraction } = analytics;
+  const openedGuideId = guide?.documentId;
+  const openedGuideTitle = guide?.Title;
+  const openedGuideType = (guide as { Guide_Type?: unknown } | undefined)?.Guide_Type;
+  useEffect(() => {
+    if (!openedGuideId || !shellAccountId) return;
+    trackInteraction("guide-open", {
+      listId: openedGuideId,
+      title: openedGuideTitle,
+      ...(typeof openedGuideType === "string" ? { guideType: openedGuideType } : {}),
+    });
+  }, [openedGuideId, openedGuideTitle, openedGuideType, shellAccountId, trackInteraction]);
+
   usePublicHeaderDescriptor(guide ? {
     navigationKey: location.key,
     title: guide.Title || "Guide",

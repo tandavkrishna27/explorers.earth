@@ -263,7 +263,8 @@
         "today": "Bugün"
       },
       "timePeriod": "Zaman Aralığı:",
-      "title": "Analitik Panosu"
+      "title": "Analitik Panosu",
+      "countsNote": "Toplamlar benzersiz ziyaretçileri değil, ziyaretleri sayar. Herkese açık sayfalar çerez olmadan anonim olarak ölçülür."
     }
   },
   "auth": {

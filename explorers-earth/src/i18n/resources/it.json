@@ -263,7 +263,8 @@
         "today": "Oggi"
       },
       "timePeriod": "Periodo di tempo:",
-      "title": "Dashboard Analytics"
+      "title": "Dashboard Analytics",
+      "countsNote": "I totali contano le visite, non i visitatori unici. Le pagine pubbliche sono misurate in forma anonima, senza cookie."
     }
   },
   "auth": {

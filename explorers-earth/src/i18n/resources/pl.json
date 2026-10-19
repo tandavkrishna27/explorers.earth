@@ -263,7 +263,8 @@
         "today": "Dzisiaj"
       },
       "timePeriod": "Okres czasu:",
-      "title": "Panel Analityczny"
+      "title": "Panel Analityczny",
+      "countsNote": "Sumy liczą odwiedziny, a nie unikalnych odwiedzających. Strony publiczne są mierzone anonimowo, bez plików cookie."
     }
   },
   "auth": {

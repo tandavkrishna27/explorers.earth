@@ -8,7 +8,7 @@ import {
 } from '../explorersAnalyticsClient';
 
 const payload: ExplorersAnalyticsWritePayload = {
-  consent: true,
+  basis: 'anonymous-v1',
   eventId: 'event-fixed-123',
   accountId: 'account-1',
   locationId: null,
@@ -42,15 +42,11 @@ describe('explorersAnalyticsClient', () => {
   it('accepts a retired committed duplicate without a document ID',async()=>{
     await expect(postExplorersAnalyticsEvent(payload,{fetchImpl:vi.fn(async()=>new Response('{"status":"committed","duplicate":true,"retired":true}',{status:200})),retryCount:0})).resolves.toBeUndefined();
   });
-  it('stops a transient retry if consent is withdrawn by the first request',async()=>{
-    const fetchImpl=vi.fn(async()=>{localStorage.clear();throw new TypeError('lost acknowledgement');});
-    await expect(postExplorersAnalyticsEvent(payload,{fetchImpl})).rejects.toThrow('consent');expect(fetchImpl).toHaveBeenCalledTimes(1);
-  });
-  it('never submits without current browser consent and stops pending polls after withdrawal',async()=>{
-    localStorage.clear();const fetchImpl=vi.fn().mockResolvedValue(new Response(null,{status:202}));
-    await expect(postExplorersAnalyticsEvent(payload,{fetchImpl})).rejects.toThrow('consent');expect(fetchImpl).not.toHaveBeenCalled();
-    localStorage.setItem('explorers-cookie-consent',JSON.stringify({analytics:true}));
-    await expect(postExplorersAnalyticsEvent(payload,{fetchImpl,sleep:async()=>{localStorage.clear();}})).rejects.toThrow('consent');expect(fetchImpl).toHaveBeenCalledTimes(1);
+  it('posts an anonymous event with no consent stored, no storage read and no cookies',async()=>{
+    localStorage.clear();const reads=vi.spyOn(Storage.prototype,'getItem');
+    const fetchImpl=vi.fn(async()=>new Response('{"status":"committed","duplicate":false}',{status:201}));
+    try{await expect(postExplorersAnalyticsEvent(payload,{fetchImpl,retryCount:0})).resolves.toBeUndefined();expect(reads).not.toHaveBeenCalled();}finally{reads.mockRestore();}
+    expect(fetchImpl).toHaveBeenCalledTimes(1);expect((fetchImpl.mock.calls[0] as unknown as [string,RequestInit])[1]).toMatchObject({credentials:'omit',referrerPolicy:'no-referrer'});
   });
   beforeEach(() => {
     localStorage.clear();
@@ -90,7 +86,7 @@ describe('explorersAnalyticsClient', () => {
     expect(id).not.toContain(payload.event.canonicalPath);
   });
 
-  it('posts a consented event to Local Tunes without an auth token', async () => {
+  it('posts an anonymous event to Local Tunes without an auth token', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ status: 'committed', duplicate: false }), {
         status: 201,

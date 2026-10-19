@@ -480,6 +480,10 @@ const AnalyticsDashboard: React.FC = () => {
               <p className="dt-subtext">
                 {t('analytics.dashboard.subtitle')}
               </p>
+              {/* There are no unique-visitor figures: public pages keep no visitor ID. */}
+              <p className="dt-subtext text-xs mt-1" data-testid="analytics-counts-note">
+                {t('analytics.dashboard.countsNote')}
+              </p>
             </div>
 
             {/* Time Filter Dropdown */}

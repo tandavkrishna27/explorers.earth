@@ -263,7 +263,8 @@
         "today": "Astăzi"
       },
       "timePeriod": "Perioadă de timp:",
-      "title": "Panou de Control Analiză"
+      "title": "Panou de Control Analiză",
+      "countsNote": "Totalurile numără vizitele, nu vizitatorii unici. Paginile publice sunt măsurate anonim, fără cookie-uri."
     }
   },
   "auth": {

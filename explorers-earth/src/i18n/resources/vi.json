@@ -263,7 +263,8 @@
         "today": "Hôm Nay"
       },
       "timePeriod": "Khoảng Thời Gian:",
-      "title": "Bảng Điều Khiển Phân Tích"
+      "title": "Bảng Điều Khiển Phân Tích",
+      "countsNote": "Tổng số đếm lượt truy cập, không phải khách truy cập duy nhất. Các trang công khai được đo ẩn danh, không dùng cookie."
     }
   },
   "auth": {

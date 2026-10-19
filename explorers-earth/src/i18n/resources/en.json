@@ -285,7 +285,8 @@
         "today": "Today"
       },
       "timePeriod": "Time Period:",
-      "title": "Analytics Dashboard"
+      "title": "Analytics Dashboard",
+      "countsNote": "Totals count visits, not unique visitors. Public pages are measured anonymously, without cookies."
     }
   },
   "auth": {

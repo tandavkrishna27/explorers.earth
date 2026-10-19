@@ -263,7 +263,8 @@
         "today": "Heute"
       },
       "timePeriod": "Zeitraum:",
-      "title": "Analytik-Dashboard"
+      "title": "Analytik-Dashboard",
+      "countsNote": "Die Summen zählen Besuche, nicht einzelne Besucher. Öffentliche Seiten werden anonym und ohne Cookies gemessen."
     }
   },
   "auth": {

@@ -263,7 +263,8 @@
         "today": "Ngayon"
       },
       "timePeriod": "Panahon:",
-      "title": "Dashboard ng Analytics"
+      "title": "Dashboard ng Analytics",
+      "countsNote": "Binibilang ng mga kabuuan ang mga pagbisita, hindi ang mga natatanging bisita. Sinusukat nang hindi nagpapakilala ang mga pampublikong pahina, nang walang cookies."
     }
   },
   "auth": {

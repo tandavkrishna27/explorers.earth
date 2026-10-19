@@ -6,12 +6,26 @@ import {
   type UTMParameters,
 } from '../utils/urlHelpers';
 import {
-  ANALYTICS_CONSENT_CHANGED_EVENT,
   createAnalyticsEventId,
-  hasAnalyticsConsent,
   postExplorersAnalyticsEvent,
   type ExplorersAnalyticsWritePayload,
 } from './explorersAnalyticsClient';
+
+// Public-page events are anonymous and need no consent banner, so they touch no browser
+// storage at all: deduplication and first-touch attribution live in memory for this page
+// load only and are gone on reload. Nothing here identifies a visitor.
+const sentThisPageLoad = new Set<string>();
+const attributionMemory = new Map<string, string>();
+const memoryStorage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> = {
+  getItem: (key) => attributionMemory.get(key) ?? null,
+  setItem: (key, value) => { attributionMemory.set(key, String(value)); },
+  removeItem: (key) => { attributionMemory.delete(key); },
+};
+/** Test seam: forget this page load's in-memory dedupe and attribution. */
+export function resetAnonymousAnalyticsMemory(): void {
+  sentThisPageLoad.clear();
+  attributionMemory.clear();
+}
 
 export interface AnalyticsEvent {
   type: 'view' | 'click' | 'interaction';
@@ -140,7 +154,6 @@ export const useTrackAnalytics = (
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasTrackedView, setHasTrackedView] = useState(false);
-  const [hasConsent, setHasConsent] = useState(hasAnalyticsConsent);
   const canonicalPath = window.location.pathname;
   const inFlight = useRef(new Set<string>());
   const lastCallTime = useRef(new Map<string, number>());
@@ -165,30 +178,20 @@ export const useTrackAnalytics = (
   );
 
   const isEventTrackedInSession = useCallback(
-    (eventType: string) => {
-      try {
-        return Boolean(sessionStorage.getItem(getSessionKey(eventType)));
-      } catch {
-        return false;
-      }
-    },
+    (eventType: string) => sentThisPageLoad.has(getSessionKey(eventType)),
     [getSessionKey],
   );
 
   const markEventAsTracked = useCallback(
     (eventType: string) => {
-      try {
-        sessionStorage.setItem(getSessionKey(eventType), 'true');
-      } catch {
-        // Analytics delivery succeeds even when browser deduplication storage is unavailable.
-      }
+      sentThisPageLoad.add(getSessionKey(eventType));
     },
     [getSessionKey],
   );
 
   const trackEvent = useCallback(
     async (event: TrackableEvent): Promise<boolean> => {
-      if (!ready || shouldSkipTracking || !hasAnalyticsConsent()) return false;
+      if (!ready || shouldSkipTracking) return false;
       if (!accountId) {
         setError('Account ID is required for tracking');
         return false;
@@ -216,8 +219,8 @@ export const useTrackAnalytics = (
       setError(null);
 
       try {
-        const utmParams = getSessionAttributionUtmParams();
-        const referrerOrigin = getSessionAttributionReferrerOrigin();
+        const utmParams = getSessionAttributionUtmParams({ storage: memoryStorage });
+        const referrerOrigin = getSessionAttributionReferrerOrigin({ storage: memoryStorage });
         const metadata = privacySafeMetadata(event.metadata) as
           | Record<string, unknown>
           | undefined;
@@ -235,7 +238,7 @@ export const useTrackAnalytics = (
             recommendationId
           : null;
         const delivery = retryDeliveries.current.get(eventKey) ?? {
-          consent: true,
+          basis: 'anonymous-v1' as const,
           eventId: createAnalyticsEventId(),
           accountId,
           locationId: dynamicLocationId ?? null,
@@ -324,20 +327,9 @@ export const useTrackAnalytics = (
   }, [accountId, canonicalPath, locationId, pageName, recommendationId]);
 
   useEffect(() => {
-    const refreshConsent = () => setHasConsent(hasAnalyticsConsent());
-    window.addEventListener(ANALYTICS_CONSENT_CHANGED_EVENT, refreshConsent);
-    return () =>
-      window.removeEventListener(
-        ANALYTICS_CONSENT_CHANGED_EVENT,
-        refreshConsent,
-      );
-  }, []);
-
-  useEffect(() => {
     if (
       autoTrackView &&
       ready &&
-      hasConsent &&
       accountId &&
       !hasTrackedView &&
       !shouldSkipTracking &&
@@ -349,7 +341,6 @@ export const useTrackAnalytics = (
     accountId,
     autoTrackView,
     ready,
-    hasConsent,
     hasTrackedView,
     locationId,
     shouldSkipTracking,

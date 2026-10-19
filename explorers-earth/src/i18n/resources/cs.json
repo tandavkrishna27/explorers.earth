@@ -263,7 +263,8 @@
         "today": "Dnes"
       },
       "timePeriod": "Časové Období:",
-      "title": "Analytický Dashboard"
+      "title": "Analytický Dashboard",
+      "countsNote": "Součty počítají návštěvy, ne unikátní návštěvníky. Veřejné stránky se měří anonymně, bez cookies."
     }
   },
   "auth": {

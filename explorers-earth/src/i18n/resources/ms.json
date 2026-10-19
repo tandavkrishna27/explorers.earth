@@ -263,7 +263,8 @@
         "today": "Hari Ini"
       },
       "timePeriod": "Tempoh Masa:",
-      "title": "Papan Pemuka Analitik"
+      "title": "Papan Pemuka Analitik",
+      "countsNote": "Jumlah mengira lawatan, bukan pelawat unik. Halaman awam diukur secara tanpa nama, tanpa kuki."
     }
   },
   "auth": {

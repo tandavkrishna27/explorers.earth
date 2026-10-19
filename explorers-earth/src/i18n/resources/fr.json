@@ -263,7 +263,8 @@
         "today": "Aujourd'hui"
       },
       "timePeriod": "Période:",
-      "title": "Tableau de Bord Analytics"
+      "title": "Tableau de Bord Analytics",
+      "countsNote": "Les totaux comptent les visites, pas les visiteurs uniques. Les pages publiques sont mesurées de façon anonyme, sans cookies."
     }
   },
   "auth": {

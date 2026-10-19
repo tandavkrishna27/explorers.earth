@@ -5,6 +5,7 @@ import * as analyticsClient from '../explorersAnalyticsClient';
 import useTrackAnalytics, {
   createAnalyticsOptions,
   getAccountIdFromUsername,
+  resetAnonymousAnalyticsMemory,
 } from '../analyticsService';
 
 vi.mock('../explorersAnalyticsClient', () => ({
@@ -28,6 +29,7 @@ describe('analyticsService', () => {
     createEventId.mockReturnValue('event-fixed-123');
     sessionStorage.clear();
     localStorage.clear();
+    resetAnonymousAnalyticsMemory();
     window.history.replaceState(
       {},
       '',
@@ -104,11 +106,12 @@ describe('analyticsService', () => {
       const hook=renderHook(()=>useTrackAnalytics({accountId:'acc1',pageName:'public-books',autoTrackView:false}));
       const metadata={id:'book-1',listId:'list-1',title:'original'};
       await act(async()=>{await hook.result.current.trackEvent({type:'click',element:'book-card',metadata});});
-      const original=JSON.stringify(postEvent.mock.calls[0][0]);metadata.title='changed';vi.setSystemTime(new Date('2026-08-25T10:00:00Z'));sessionStorage.clear();
+      const original=JSON.stringify(postEvent.mock.calls[0][0]);metadata.title='changed';vi.setSystemTime(new Date('2026-08-25T10:00:00Z'));
       await act(async()=>{await hook.result.current.trackEvent({type:'click',element:'book-card',metadata});});
       expect(JSON.stringify(postEvent.mock.calls[1][0])).toBe(original);
     });
-    it('auto-tracks a consented view through Local Tunes', async () => {
+    it('auto-tracks an anonymous view without asking for consent', async () => {
+      hasConsent.mockReturnValue(false);
       renderHook(() =>
         useTrackAnalytics({
           accountId: 'acc1',
@@ -119,7 +122,7 @@ describe('analyticsService', () => {
 
       await waitFor(() => expect(postEvent).toHaveBeenCalledTimes(1));
       expect(postEvent.mock.calls[0][0]).toMatchObject({
-        consent: true,
+        basis: 'anonymous-v1',
         eventId: 'event-fixed-123',
         accountId: 'acc1',
         event: {
@@ -130,81 +133,54 @@ describe('analyticsService', () => {
       });
     });
 
-    it('does not make any analytics request without explicit consent', async () => {
+    it('reads and writes no cookie and no browser storage, with or without consent', async () => {
       hasConsent.mockReturnValue(false);
-
-      const { result } = renderHook(() =>
-        useTrackAnalytics({
-          accountId: 'acc1',
-          pageName: 'public-profile',
-          autoTrackView: true,
-        }),
-      );
-
-      await act(async () => result.current.trackClick('profile-link'));
-      expect(postEvent).not.toHaveBeenCalled();
-      expect(result.current.loading).toBe(false);
+      // The auth store persists itself; analytics must add nothing of its own.
+      localStorage.clear();
+      const reads = vi.spyOn(Storage.prototype, 'getItem');
+      const writes = vi.spyOn(Storage.prototype, 'setItem');
+      const cookie = vi.spyOn(document, 'cookie', 'set');
+      try {
+        const { result } = renderHook(() =>
+          useTrackAnalytics({ accountId: 'acc1', pageName: 'public-profile', autoTrackView: true }),
+        );
+        await waitFor(() => expect(postEvent).toHaveBeenCalledTimes(1));
+        await act(async () => result.current.trackClick('profile-link', { id: 'rec-1' }));
+        await waitFor(() => expect(postEvent).toHaveBeenCalledTimes(2));
+        expect(reads).not.toHaveBeenCalled();
+        expect(writes).not.toHaveBeenCalled();
+        expect(cookie).not.toHaveBeenCalled();
+        expect(sessionStorage.length).toBe(0);
+        expect(localStorage.length).toBe(0);
+      } finally {
+        reads.mockRestore();
+        writes.mockRestore();
+        cookie.mockRestore();
+      }
+      const body = JSON.stringify(postEvent.mock.calls[0][0]);
+      expect(body).not.toMatch(/visitor|session|cookie|consent/i);
     });
 
-    it.each(['getItem', 'setItem'] as const)(
-      'delivers and releases request state when session storage %s throws',
-      async (operation) => {
-        const storageSpy = vi
-          .spyOn(window.sessionStorage, operation)
-          .mockImplementation(() => {
-            throw new DOMException('Storage unavailable', 'SecurityError');
-          });
-        const { result } = renderHook(() =>
-          useTrackAnalytics({
-            accountId: 'acc1',
-            pageName: 'public-profile',
-            autoTrackView: false,
-          }),
-        );
-
-        let committed = false;
-        try {
-          await act(async () => {
-            committed = await result.current.trackEvent({ type: 'view' });
-          });
-        } finally {
-          storageSpy.mockRestore();
-        }
-
-        expect(committed).toBe(true);
-        expect(postEvent).toHaveBeenCalledTimes(1);
-        expect(result.current.loading).toBe(false);
-        expect(result.current.error).toBeNull();
-      },
-    );
-
-    it('auto-tracks exactly once when a direct visitor grants analytics consent', async () => {
-      hasConsent.mockReturnValue(false);
-
-      renderHook(() =>
-        useTrackAnalytics({
-          accountId: 'acc1',
-          pageName: 'public-profile',
-          autoTrackView: true,
-        }),
+    it('keeps the first campaign touch across in-app navigation without storing it', async () => {
+      const first = renderHook(() =>
+        useTrackAnalytics({ accountId: 'acc1', pageName: 'public-profile', autoTrackView: true }),
       );
-
-      await act(async () => Promise.resolve());
-      expect(postEvent).not.toHaveBeenCalled();
-
-      hasConsent.mockReturnValue(true);
-      act(() => {
-        window.dispatchEvent(
-          new Event('explorers:analytics-consent-changed'),
-        );
-      });
-
       await waitFor(() => expect(postEvent).toHaveBeenCalledTimes(1));
-      act(() => {
-        window.dispatchEvent(
-          new Event('explorers:analytics-consent-changed'),
-        );
-      });
+      first.unmount();
+      window.history.replaceState({}, '', '/tk2727/movies');
+      renderHook(() => useTrackAnalytics({ accountId: 'acc1', pageName: 'public-movies', autoTrackView: true }));
+      await waitFor(() => expect(postEvent).toHaveBeenCalledTimes(2));
+      expect(postEvent.mock.calls[1][0].event.utmParams).toMatchObject({ utm_source: 'twitter' });
+      expect(sessionStorage.length).toBe(0);
+    });
+
+    it('counts a view once per page load, even when the page component remounts', async () => {
+      const first = renderHook(() =>
+        useTrackAnalytics({ accountId: 'acc1', pageName: 'public-profile', autoTrackView: true }),
+      );
+      await waitFor(() => expect(postEvent).toHaveBeenCalledTimes(1));
+      first.unmount();
+      renderHook(() => useTrackAnalytics({ accountId: 'acc1', pageName: 'public-profile', autoTrackView: true }));
       await act(async () => Promise.resolve());
       expect(postEvent).toHaveBeenCalledTimes(1);
     });
@@ -290,11 +266,8 @@ describe('analyticsService', () => {
       ]);
       expect(createEventId).toHaveBeenCalledTimes(1);
       expect(postEvent.mock.calls[1][0]).toEqual(postEvent.mock.calls[0][0]);
-      expect(
-        sessionStorage.getItem(
-          'analytics_public-profile_view_acc1_null_null_%2Ftk2727',
-        ),
-      ).toBe('true');
+      await act(async () => result.current.trackView());
+      expect(postEvent).toHaveBeenCalledTimes(2);
     });
 
     it('skips tracking when an authenticated user visits their own page', async () => {
@@ -514,11 +487,9 @@ describe('analyticsService', () => {
       await act(async () => result.current.trackInteraction('scroll'));
 
       await waitFor(() => expect(result.current.error).toBe('Local Tunes unavailable'));
-      expect(
-        sessionStorage.getItem(
-          'analytics_custom-page_interaction_acc1_null_null_%2Ftk2727',
-        ),
-      ).toBeNull();
+      postEvent.mockResolvedValueOnce(undefined);
+      await act(async () => result.current.trackInteraction('scroll'));
+      await waitFor(() => expect(postEvent).toHaveBeenCalledTimes(2));
     });
   });
 });

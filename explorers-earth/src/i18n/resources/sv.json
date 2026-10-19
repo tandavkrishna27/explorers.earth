@@ -263,7 +263,8 @@
         "today": "Idag"
       },
       "timePeriod": "Tidsperiod:",
-      "title": "Analytics-instrumentpanel"
+      "title": "Analytics-instrumentpanel",
+      "countsNote": "Summorna räknar besök, inte unika besökare. Offentliga sidor mäts anonymt, utan cookies."
     }
   },
   "auth": {
