@@ -15,6 +15,13 @@ describe("AccountDeletionLifecyclePanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /check deletion status/i }));
     expect(onCancel).toHaveBeenCalledOnce(); expect(onRetry).toHaveBeenCalledOnce();
   });
+  it("shows the scheduled deletion date only when the lifecycle carries a usable one", () => {
+    const { rerender } = render(<AccountDeletionLifecyclePanel
+      status={{ ...lifecycle("pending_deletion"), scheduledDeletionAt: "2026-11-18T00:00:00.000Z" }} onCancel={vi.fn()} onRetry={vi.fn()} />);
+    expect(screen.getByRole("status").querySelectorAll("p")).toHaveLength(2);
+    rerender(<AccountDeletionLifecyclePanel status={lifecycle("pending_deletion")} onCancel={vi.fn()} onRetry={vi.fn()} />);
+    expect(screen.getByRole("status").querySelectorAll("p")).toHaveLength(1);
+  });
   it("shows terminal completion without another destructive action", () => {
     render(<AccountDeletionLifecyclePanel status={lifecycle("deleted")} onCancel={vi.fn()} onRetry={vi.fn()} />);
     expect(screen.getByRole("status")).toHaveTextContent(/complete/i);

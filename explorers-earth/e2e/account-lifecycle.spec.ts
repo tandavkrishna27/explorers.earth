@@ -51,6 +51,8 @@ const reloadSettings = (page: Page) => page.reload({ waitUntil: "domcontentloade
 
 /** The danger-zone row, which is hidden while lifecycle authority is unresolved. */
 const deleteEntryPoint = (page: Page) => page.getByRole("button", { name: /^Delete your account\?/ });
+/** The modal's handle field; the profile form behind it has an input with the same placeholder. */
+const handleField = (page: Page) => page.locator("input.dt-input").and(page.getByPlaceholder("Enter your username"));
 const deactivateEntryPoint = (page: Page) => page.getByRole("button", { name: /^Deactivate your account\?/ });
 
 async function mockSettings(
@@ -204,7 +206,7 @@ async function openDeletionConfirmation(page: Page, reason = "  Leaving for now 
   await deleteEntryPoint(page).click();
   await expect(page.getByText(/permanently deleted after 30 days/)).toBeVisible();
   await page.getByRole("button", { name: "Continue with deletion" }).click();
-  await page.getByPlaceholder("Enter your username").fill("testuser");
+  await handleField(page).fill("testuser");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByPlaceholder("Please let us know the reason for leaving...").fill(reason);
   await page.getByRole("button", { name: "Continue", exact: true }).click();
@@ -214,7 +216,7 @@ async function openDeletionConfirmation(page: Page, reason = "  Leaving for now 
 /** Deactivation confirms against the handle the user types; it is never prefilled. */
 async function confirmDeactivation(page: Page) {
   await deactivateEntryPoint(page).click();
-  await page.getByPlaceholder("Enter your username").fill("testuser");
+  await handleField(page).fill("testuser");
   await page.getByRole("button", { name: "Deactivate My Account" }).click();
 }
 

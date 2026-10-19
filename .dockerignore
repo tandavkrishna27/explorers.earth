@@ -1029,6 +1029,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/utils/fileTypeDetection.ts
 !explorers-earth/src/utils/fileValidation.ts
 !explorers-earth/src/utils/formatAddress.ts
+!explorers-earth/src/utils/formatLifecycleDate.ts
 !explorers-earth/src/utils/geoHelpers.ts
 !explorers-earth/src/utils/getCroppedImage.ts
 !explorers-earth/src/utils/getCurrentDomain.ts
