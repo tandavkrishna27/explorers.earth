@@ -954,7 +954,7 @@ test('Apps registration: source closure requires tracked Apps runtime helper and
  const appsHelper='tunes/scripts/apps-browser-support.ts';const authority=['music-uat-database','music-fixture-secret','music-vitest-evidence','music-output-redaction','music-qualification-postgres'].map(name=>`tunes/scripts/${name}.ts`).concat(['tunes/scripts/music-local-private-files.ps1','tunes/scripts/windows-write-through.ps1']);
  const appsRunner='tunes/scripts/apps-browser-fixture.ts',appsAdmission='tunes/scripts/apps-canonical-admission.ts',appsCustody='tunes/scripts/apps-private-custody.ts';
  function execute({helperTracked=true,runnerTracked=true,admissionTracked=true,custodyTracked=true,ignoredImport=false,mutation=''}={}){
-  const tracked=[...authority,...guidesExecutedSources,...publicExecutedSources,...appsEnrichmentExecutedSources,'tunes/scripts/places-browser-support.ts','tunes/migrations/001.sql','tunes/server/auth/canonicalApp.ts',...(helperTracked?[appsHelper]:[]),...(runnerTracked?[appsRunner]:[]),...(admissionTracked?[appsAdmission]:[]),...(custodyTracked?[appsCustody]:[])];const virtualRoot=resolve('synthetic-custody-root');let commands=0;
+  const tracked=[...authority,...guidesExecutedSources,...publicExecutedSources,...appsEnrichmentExecutedSources,'tunes/scripts/places-browser-support.ts','tunes/scripts/no-strapi-outbound-monitor.ts','tunes/migrations/001.sql','tunes/server/auth/canonicalApp.ts',...(helperTracked?[appsHelper]:[]),...(runnerTracked?[appsRunner]:[]),...(admissionTracked?[appsAdmission]:[]),...(custodyTracked?[appsCustody]:[])];const virtualRoot=resolve('synthetic-custody-root');let commands=0;
   const fakeGit=(exe,args)=>{
    assert.equal(exe,'git');commands++;
    if(args[0]==='rev-parse')return 'a'.repeat(40);

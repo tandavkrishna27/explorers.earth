@@ -43,7 +43,7 @@ import { setupExplorersPublicProfileRoutes } from "./explorersPublicProfileRoute
 import { PublicProfileService } from "../publicProfile/publicProfileService";
 import { StrapiPublicProfileGateway } from "../publicProfile/strapiPublicProfileGateway";
 import { resolvePublicProfileGatewayConfig } from "../config/public-profile-gateway-config";
-import { createExplorersAnalyticsDependencies } from "../services/explorers-analytics-composition";
+import { createIngestOnlyAnalyticsDependencies } from "./explorersCanonicalAnalyticsRoutes";
 import { setupLocalMusicBoundary } from "./musicLocalBoundary";
 import { setupLocalMusicHealthRoutes } from "../deployment/music-local-health";
 import { assertValidatedLocalMusicProfile, type ValidatedLocalMusicProfile } from "../config/music-local-profile";
@@ -188,7 +188,7 @@ export async function registerRoutes(
   let canonicalAnalyticsEnabled=false;
   installProfileOptionalMusicIntegrations(localProfile, {
     nativeAuth: () => setupAuthRoutes(app),
-    analyticsPublishing: () => {setupExplorersAnalyticsRoutes(app, createExplorersAnalyticsDependencies());canonicalAnalyticsEnabled=true;},
+    analyticsPublishing: () => {setupExplorersAnalyticsRoutes(app, createIngestOnlyAnalyticsDependencies(pool));canonicalAnalyticsEnabled=true;},
     reactivation: () => setupReactivationRoutes(app, {
       reactivateMusic: async (identity) => { await lifecycle.reactivateBoundIdentity(identity); },
     }),
