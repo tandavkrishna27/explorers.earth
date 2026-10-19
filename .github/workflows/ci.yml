@@ -165,8 +165,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
-        run: npm run build
+      # The platform build is what explorers.yml deploys; the legacy `npm run build` is
+      # deployed by nothing and P6-8 deletes it (P6-5). The scanner's own test runs first,
+      # because nothing else runs explorers-earth/scripts/*.test.mjs.
+      - name: Build the platform SPA (what explorers.yml deploys)
+        run: |
+          node --test scripts/check-platform-bundle-strapi.test.mjs
+          npm run landing:check
+          npx tsc -b
+          npx vite build --config vite.platform.config.ts --mode platform
+          node scripts/check-music-production-bundle.mjs
+          node scripts/check-platform-bundle-strapi.mjs dist
 
   # ─────────────────────────────────────────
   # Job 4: Integration Tests

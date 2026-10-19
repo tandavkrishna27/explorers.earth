@@ -15,23 +15,12 @@ export interface SelectedExplorerAccount {
   documentId: string;
 }
 
-export interface SelectedExplorerAccountUploadTarget extends SelectedExplorerAccount {
-  id: string;
-}
-
 export type ExplorerAccountDocumentSelection =
   | { kind: "unknown" }
   | { kind: "missing" }
   | { kind: "incomplete" }
   | { kind: "ambiguous" }
   | { kind: "selected"; account: SelectedExplorerAccount };
-
-export type ExplorerAccountUploadTargetSelection =
-  | { kind: "unknown" }
-  | { kind: "missing" }
-  | { kind: "incomplete" }
-  | { kind: "ambiguous" }
-  | { kind: "selected"; account: SelectedExplorerAccountUploadTarget };
 
 export function selectExplorerAccountDocument(
   accounts: readonly ExplorerAccountCandidate[] | null | undefined,
@@ -45,23 +34,6 @@ export function selectExplorerAccountDocument(
   if (candidates.length !== accounts.length) return { kind: "incomplete" };
   if (candidates.length > 1) return { kind: "ambiguous" };
   return { kind: "selected", account: { documentId: candidates[0].documentId as string } };
-}
-
-export function selectExplorerAccountUploadTarget(
-  accounts: readonly ExplorerAccountCandidate[] | null | undefined,
-  accountDocumentId: string,
-  options: { authoritative: boolean },
-): ExplorerAccountUploadTargetSelection {
-  if (!options.authoritative || !Array.isArray(accounts)) return { kind: "unknown" };
-  if (accounts.length === 0) return { kind: "missing" };
-  if (accounts.length > 1) return { kind: "ambiguous" };
-  const candidate = accounts[0];
-  if (candidate.documentId !== accountDocumentId) return { kind: "missing" };
-  const rawId = candidate.id;
-  const serializedId = typeof rawId === "number" ? String(rawId) : rawId;
-  const numericId = typeof serializedId === "string" && /^[1-9]\d*$/.test(serializedId) ? Number(serializedId) : Number.NaN;
-  if (!Number.isSafeInteger(numericId)) return { kind: "incomplete" };
-  return { kind: "selected", account: { documentId: accountDocumentId, id: serializedId as string } };
 }
 
 export type ExplorerAccountSelection =

@@ -474,7 +474,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/deployment/music-health.ts",
-      "line": 43
+      "line": 34
     },
     {
       "method": "GET",
@@ -484,7 +484,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/deployment/music-health.ts",
-      "line": 47
+      "line": 38
     },
     {
       "method": "GET",
@@ -494,7 +494,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/deployment/music-health.ts",
-      "line": 70
+      "line": 61
     },
     {
       "method": "GET",
@@ -564,7 +564,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
-      "line": 143
+      "line": 142
     },
     {
       "method": "GET",
@@ -574,7 +574,7 @@
       "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
-      "line": 191
+      "line": 190
     },
     {
       "method": "PUT",
@@ -684,7 +684,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersCanonicalAnalyticsRoutes.ts",
-      "line": 51
+      "line": 56
     },
     {
       "method": "GET",

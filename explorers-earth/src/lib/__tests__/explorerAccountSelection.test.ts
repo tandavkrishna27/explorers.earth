@@ -3,7 +3,6 @@ import {
   selectCompletedAccount,
   selectExplorerAccountDocument,
   selectExplorerAccountState,
-  selectExplorerAccountUploadTarget,
 } from "../explorerAccountSelection";
 
 // Ported from features/music/__tests__/musicIdentityCoordinator.test.ts when the
@@ -43,7 +42,7 @@ describe("Explorer account selection", () => {
     expect(select([incomplete], { authoritative: false })).toEqual({ kind: "unknown" });
   });
 
-  it("selects onboarding and upload Account authority by immutable document ID, never order", () => {
+  it("selects onboarding Account authority by immutable document ID, never order", () => {
     const partial = { id: 7, documentId: "account-partial" };
     expect(selectExplorerAccountDocument([partial], { authoritative: true })).toEqual({
       kind: "selected", account: { documentId: "account-partial" },
@@ -53,22 +52,6 @@ describe("Explorer account selection", () => {
     expect(selectExplorerAccountDocument([{ id: 7 }], { authoritative: true })).toEqual({ kind: "incomplete" });
     expect(selectExplorerAccountDocument([partial, { id: 8, documentId: "account-b" }], { authoritative: true })).toEqual({ kind: "ambiguous" });
 
-    const accountA = [{ id: 42, documentId: "account-a" }];
-    const accountB = [{ id: "91", documentId: "account-b" }];
-    expect(selectExplorerAccountUploadTarget(accountA, "account-a", { authoritative: true })).toEqual({
-      kind: "selected", account: { documentId: "account-a", id: "42" },
-    });
-    expect(selectExplorerAccountUploadTarget(accountB, "account-b", { authoritative: true })).toEqual({
-      kind: "selected", account: { documentId: "account-b", id: "91" },
-    });
-    expect(selectExplorerAccountUploadTarget([...accountB, ...accountA], "account-a", { authoritative: true })).toEqual({ kind: "ambiguous" });
-    expect(selectExplorerAccountUploadTarget([{ id: 1, documentId: "account-a" }, { id: 2, documentId: "account-a" }], "account-a", { authoritative: true })).toEqual({ kind: "ambiguous" });
-    expect(selectExplorerAccountUploadTarget([{ documentId: "account-a" }], "account-a", { authoritative: true })).toEqual({ kind: "incomplete" });
-    expect(selectExplorerAccountUploadTarget([{ id: "not-numeric", documentId: "account-a" }], "account-a", { authoritative: true })).toEqual({ kind: "incomplete" });
-    expect(selectExplorerAccountUploadTarget([], "account-a", { authoritative: true })).toEqual({ kind: "missing" });
-    expect(selectExplorerAccountUploadTarget(undefined, "account-a", { authoritative: true })).toEqual({ kind: "unknown" });
-    expect(selectExplorerAccountUploadTarget(accountA, "account-c", { authoritative: true })).toEqual({ kind: "missing" });
-    expect(selectExplorerAccountUploadTarget(accountA, "account-a", { authoritative: false })).toEqual({ kind: "unknown" });
   });
 
 });

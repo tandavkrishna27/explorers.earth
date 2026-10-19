@@ -2580,3 +2580,70 @@ Codex's Windows sandbox refuses every shell call, so it ran without live reposit
 - **RDS deletion.** It requires listing the instance's databases and connections first.
 
 **The P5-1 signature Codex could not confirm** is confirmed. `9e73fb75` widens `readAccountEvents(scope, request?)` in `explorersAnalyticsRoutes.ts:131`, and passes `req` at `:201`.
+
+---
+
+## Found during execution
+
+Phase A (P6-1 to P6-5) was executed against `fork/main` = `5abc33cb` on 2026-10-19. Each row below is something the plan said that the code or a real run contradicted, and what was done instead. Line numbers in the plan above were not rewritten; re-locate them as the evidence standard says.
+
+### P6-1
+
+| # | The plan said | The code or a run said | Done |
+|---|---|---|---|
+| 1 | `...owner('/instagram', 'instagram')` | The `instagram` route literal no longer exists in `ProtectedRoutes.tsx` (P5-8 removed the surface), so the inventory test fails on a stale claim | Case removed. The table has 176 cases (178 tests with the inventory and self-test) |
+| 2 | `/google-auth/callback` is an ordinary auth page | `GoogleAuthRedirect` bootstraps the session and sends a signed-out visitor to `/login?error=oauth_failed` | The case asserts `lands: /^\/login$/`, with a comment |
+| 3 | `STUBS` names Google Fonts, the loader GIF and `flagcdn` | `RecommendationsHub.tsx` loads two CSS background textures from `www.transparenttextures.com/patterns/` | A named `transparenttextures` stub (image, `/patterns/` only). `local` was not widened |
+| 4 | Public cases pass once landing, broken-state and violation checks hold | **Canonical rate-limits public profile reads to 120 a minute** (`explorersPublicProfileRoutes.ts`, draft-7 `RateLimit` header). Back to back, the public cases exhausted it, and most public category pages rendered **"404 Page Not Found" on an unchanged URL**. The first green run passed all of them | Three changes, all in the spec: (a) before each public case the spec reads the budget and waits for the window when fewer than 40 reads remain; (b) any canonical `429` during a case fails it (`Monitor.throttled`); (c) every public category index, genre, subject and sector case carries the marker `[data-category-page]`, which every public category component renders and `NotFound` does not. Owner editor pages, the hub, home, profile and the profile root carry heading markers read from a green run |
+| 5 | Register the new runner dependency in `snapshotSource()` | `replatform-e2e.test.mjs` also runs `snapshotSource` against a synthetic Git whose tracked list is enumerated in the test; the new `--error-unmatch` call fails there with `not tracked` | `tunes/scripts/no-strapi-outbound-monitor.ts` added to that synthetic tracked list. No seal was touched |
+| 6 | Floors are set from the first green run | Measured: 176 executed cases, 572 distinct `/src/` modules, 45 distinct successful canonical API paths (46 on a later run). The handle is fixed for a run, so `/profiles/<handle>/…` paths do not inflate the count | `ROUTE_FLOOR = 176`, `MODULE_FLOOR = 500`, `API_FLOOR = 40` |
+| 7 | Confirm the diagnostics-channel shapes on Node `24.21.0` | This host runs Node `24.14.0`; the shapes were confirmed there (CI uses `24.21.0`) | Recorded; the monitor's own unit test re-proves them on every run |
+| 8 | `lifecycle-browser-support.test.ts` may pin the suite list | It asserts a subset | `no-strapi` added to the subset it checks |
+
+### P6-2
+
+| # | The plan said | The code or a run said | Done |
+|---|---|---|---|
+| 1 | The closure drops from 155 to 150 | At `5abc33cb` it is **157 → 152**. P5 added two canonical modules; the five that leave are the five the plan names | Both numbers are in the commit message |
+| 2 | The route, OpenAPI entry, matrix and inventory "all stay valid" | They do, but removing the unused `type ExplorersAnalyticsService` import shifts line numbers that `docs/architecture/music-runtime-surface-inventory.json` pins (`runtime-surface-inventory.test.ts`) | Regenerated with `npx tsx scripts/inventory-runtime-surfaces.ts --write`; `generate-music-authorization-matrix.ts` produced no change |
+| 3 | If neither existing test boots without an injected pool, add that case to `canonical-startup-listener.test.ts` | Neither does. That file is a stubbed unit test with no database, so it cannot hold a real boot | The case went into `server/test/music-runtime-role.integration.test.ts` (C5), which already provisions a real runtime login and protected secret files. It boots `startCanonicalServer` with **no injected pool and no `STRAPI_*` variable**, gets 401 from `/me` and 403 from the owner analytics read |
+| 4 | Integration tests need the exact CI URL on `55432` | On a host where `55432` is held by another lineage's database, `integration-global-setup.ts` also accepts a labelled C10 sidecar (`MUSIC_C10_STANDALONE_POSTGRES_*`, container named `music-c10-qualification-<commit7>-pg15`) | Used for the local runs; CI is unchanged |
+| 5 | `services/__tests__/explorers-analytics-service.test.ts`: trim or delete | Its publisher and receipt cases test deleted code | Trimmed to the schema cases and an `IdempotencyConflictError` case |
+| 6 | Import `pool` into `routes/index.ts` if absent | Already imported (`:10`) | Nothing to add |
+
+### P6-3
+
+| # | The plan said | The code or a run said | Done |
+|---|---|---|---|
+| 1 | Any `STRAPI_*` token in code is a violation; resolving more edges may surface real couplings | The widened scan reported `scripts/music-fixture-secret.ts:1410`, a list of `STRAPI_*` names in fixture tooling. Its only path into the closure is `import type {OwnedUatDatabaseAuthority} from './music-uat-database'` in `apps-canonical-admission.ts`: **type-only**, so esbuild and tsc erase it and nothing reaches a bundle | The walker skips whole-statement `import type` / `export type` (a mixed `import { type A, b }` is still an edge), with a control fixture. So decision 3's "`music-uat-database.ts` stays canonical through `apps-canonical-admission.ts`" holds for the **type graph only**, not the runtime closure |
+| 2 | `MINIMUM_MODULES` = 90% of the measured union | Union measured at **150**: canonical 143, migrate gate 11, taxonomy 8. Canonical alone falls from 152 because `security-containment.ts`, `shared/musicError.ts`, `registration-route-contract.ts` and the type-only fixture chain leave, while `@shared/*` and `#auth-runtime` modules join | `MINIMUM_MODULES = 135` |
+| 3 | Replace `codeOnly()` with a stripper on `ts.createScanner` | A bare scanner cannot tell a regex from a division or a template's tail without parser context | Built on `ts.createSourceFile`: every token's leading and trailing comment ranges are blanked, newlines kept. Edges are read from comment-free code too |
+| 4 | Nothing about CI order | `tunes.yml` ran the scan **before** any `npm ci`, and the new stripper needs tunes' `typescript` package | The step moved to just after `Test Tunes` (which installs tunes), with `if: !cancelled()`. Root `scripts/*.test.mjs` already run after the tunes install in `test.yml` |
+| 5 | `#auth-runtime`: walk it, or record why not | It is a six-line re-export of `better-auth` (`tunes/auth-runtime/index.js`) | Walked, through a `PACKAGE_IMPORTS` map |
+| 6 | Fixture override "used only by the test" | — | `--root <dir> --entry <path>`; the floor applies only to the real tree. Six fixtures under `scripts/__fixtures__/retired-deps/` (five named violations plus a clean control) |
+| 7 | `docker build ./tunes` proves the new esbuild imports | It does: the build succeeded locally | Also checked the output: the bundled `run-migration-gate.js` and every chunk it loads contain **no** `STRAPI_` string |
+
+### P6-4
+
+| # | The plan said | The code or a run said | Done |
+|---|---|---|---|
+| 1 | Step 2 lists exactly `AddRecommendation.tsx` and `Profile.tsx` | Confirmed: exactly those two | — |
+| 2 | `token` in `Profile.tsx` becomes unused | So does `documentId` (`user?.documentId`, read only by the deleted lookup), and `AddRecommendation.tsx`'s auth-store `token` (every remaining use reads a shadowing local `qrtoken`). Both fail `noUnusedLocals` | All three removed. `axios` stays in `AddRecommendation.tsx` (other callers) |
+| 3 | Delete only `selectExplorerAccountUploadTarget` and its cases | Its two types, `SelectedExplorerAccountUploadTarget` and `ExplorerAccountUploadTargetSelection`, have no other user | Deleted with it. The module and its test file stay |
+| 4 | `PROFILE_PICTURE_INPUT` is a lead; the input may sit behind a cropper | It does: `ImageCropper`'s hidden file input opens a crop modal, and the upload runs on the modal's **Confirm**. A 1x1 PNG crops to nothing | The case sets the file on the real input, clicks Confirm, and waits for `POST /api/explorers/v1/media`. It builds a 16x16 PNG itself |
+| 5 | Give `no-strapi` media storage the way the `places` suites do | `storage` is the only switch `createCanonicalApp` reads | The no-Strapi lane gets a `LocalObjectStorage` inside the private fixture directory, which cleanup already removes |
+
+### P6-5
+
+| # | The plan said | The code or a run said | Done |
+|---|---|---|---|
+| 1 | After P6-4, the phase-A scan prints no findings; `localhost:1337` is a phase-A marker | A real platform build after P6-4 still contains `localhost:1337` eight times: the image-URL builders pass it as `runtimeOrigin()`'s legacy argument, which `platformBuildLeaks.test.ts` deliberately allows (the plan's own inventory, "Seven image-URL builders (8 lines)"). Minified, a guarded and an unguarded use are indistinguishable, so the scan could never go green | `localhost:1337` moved to phase B, with the reason in the scanner. The source-level test still fails any unguarded use. The other two hosts stay in phase A |
+| 2 | Before P6-4 the scan fails on `undefined/upload` and `users_permissions_users` | Measured on a platform build of the P6-3 source: `undefined/upload`, `/upload/files/`, `users_permissions_users` (and `localhost:1337`) | Recorded as the scanner's bite. After P6-4: `platform bundle: 11092748 bytes of JS, no Strapi signature (phase A)` |
+| 3 | The floor is 6 MB from a 12.36 MB measurement | `scanBundle` counts UTF-16 characters, not bytes: 11.09 M characters (12.7 MB on disk) | Floor kept at 6,000,000 |
+| 4 | Check nothing pins the `Build` step | `platform-release-authority.ts` pins the job key `build` and name `🏗️ Build`, not the step | The job is unchanged; only the step is replaced |
+
+### Cross-ticket
+
+| # | The plan said | The code or a run said | Done |
+|---|---|---|---|
+| 1 | Seals that break are the printed-AST helpers in `replatform-e2e.test.mjs`; never regenerate a frozen constant | `scripts/fixtures/place-links-atomic-diagnostic-frozen.json` also pins a SHA-256 of **all** of `tunes/scripts/profile-browser-fixture.ts` as a protected source, so P6-1 Step 6 and P6-4 Step 4a, which both edit that runner, break the `static` lane | The protected hash is re-approved in the P6-1 and P6-4 commits, as `52677f52` and P3-4 (`cb61f167`) did for the same file. The frozen native source, identities and config are untouched |

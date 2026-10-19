@@ -4,7 +4,7 @@ import type { Pool } from "pg";
 import type { ExplorersAuth } from "../auth/betterAuth";
 import type { Actor } from "../application/actor";
 import { authorizeOperation, AuthorizationError } from "../application/authorization";
-import { requestIdFor } from "../security-containment";
+import { requestIdFor } from "../http/requestId";
 
 export async function requireActor(request: Request, auth: ExplorersAuth, db: Pick<Pool, "query">): Promise<Actor> {
   if (request.headers.authorization || request.headers["x-account-id"] || request.headers["x-user-id"]) {

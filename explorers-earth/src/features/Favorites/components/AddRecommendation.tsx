@@ -179,8 +179,6 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
   }, [recommendationType, type]);
   // ref for dropdown to handle outside clicks
   const dropdownRef = useRef<HTMLDivElement>(null);
-  // fetch the token from global state
-  const { token } = useAuthStore();
 
   // placeId from the params
   const { placeId } = useParams();
@@ -766,34 +764,10 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
   }, [isDropdownOpen]);
 
 
-  // Handle the removal of an image
-  const handleRemoveImage = async (image: GoogleMedia) => {
-    // deleting the images from the media library
-    if (type === "edit") {
-      try {
-        const res = await axios.delete(
-          `${import.meta.env.VITE_REST_API_URL}/upload/files/${image?.id}`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-        if (res) {
-          setFetchedGoogleMedia((prevMedia) =>
-            prevMedia.filter((img) => img !== image)
-          );
-          setFetchedImageDeleteModal(false);
-        }
-      } catch (error) {
-        console.error("Error deleting images:", error);
-        setFetchedImageDeleteModal(false);
-      }
-    }
-    setFetchedGoogleMedia((prevMedia) =>
-      prevMedia.filter((img) => img !== image)
-    );
+  // Removing an image only changes the draft. On save, the canonical update detaches it, and the
+  // media cleanup sweep removes the stored object (P5-6/P5-10).
+  const handleRemoveImage = (image: GoogleMedia) => {
+    setFetchedGoogleMedia((prevMedia) => prevMedia.filter((img) => img !== image));
     setFetchedImageDeleteModal(false);
   };
 

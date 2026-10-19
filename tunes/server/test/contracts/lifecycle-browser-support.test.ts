@@ -55,7 +55,7 @@ describe('owned lifecycle browser boundary', () => {
     });
     it('accepts only exact existing and lifecycle selectors', () => {
         expect(parseBrowserSuite(['--ack', ack])).toBe('profile');
-        for (const suite of ['auth', 'lifecycle', 'places', 'place-links'])
+        for (const suite of ['auth', 'lifecycle', 'places', 'place-links', 'no-strapi'])
             expect(parseBrowserSuite(['--suite', suite, '--ack', ack])).toBe(suite);
         for (const args of [[], ['--suite', 'music', '--ack', ack], ['--suite', 'lifecycle', '--ack', 'wrong'], ['--ack', ack, '--ack', ack], ['--suite', 'lifecycle', '--ack', ack, '--list']])
             expect(() => parseBrowserSuite(args)).toThrow();

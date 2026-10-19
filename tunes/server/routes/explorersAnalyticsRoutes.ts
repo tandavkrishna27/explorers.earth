@@ -4,7 +4,6 @@ import {AuthorizationError} from '../application/authorization';
 import {
   explorersAnalyticsInputSchema,
   IdempotencyConflictError,
-  type ExplorersAnalyticsService,
 } from "../services/explorers-analytics-service";
 
 const isStandaloneMusicCanonicalPath = (canonicalPath: string): boolean => {

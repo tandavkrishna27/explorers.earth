@@ -46,6 +46,7 @@
     "explorers:test:apps-browser": "tsx scripts/profile-browser-fixture.ts --suite apps",
     "explorers:test:public-parity-browser": "tsx scripts/profile-browser-fixture.ts --suite public-parity",
     "explorers:test:people-browser": "tsx scripts/profile-browser-fixture.ts --suite people",
+    "explorers:test:no-strapi-browser": "tsx scripts/profile-browser-fixture.ts --suite no-strapi",
     "explorers:test:apps-enrichment-browser": "tsx scripts/profile-browser-fixture.ts --suite apps-enrichment"
   },
   "dependencies": {
