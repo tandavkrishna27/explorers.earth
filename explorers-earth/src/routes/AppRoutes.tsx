@@ -1,5 +1,4 @@
 import { Routes, Route } from "react-router-dom";
-import useDeviceDetection from "../hooks/useDeviceDetection";
 import usePageTracking from "../hooks/usePageTracking";
 import StatePreservingRedirect from "./StatePreservingRedirect";
 
@@ -13,7 +12,6 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import NotFound from "../pages/NotFound";
 
 const AppRoutes = () => {
-  const { isDesktop } = useDeviceDetection();
   usePageTracking();
 
   return (
@@ -29,8 +27,8 @@ const AppRoutes = () => {
       {/* Auth Routes */}
       {AuthRoutes}
 
-      {/* Protected Routes - these receive the isDesktop prop */}
-      {ProtectedRoutes({ isDesktop })}
+      {/* Protected Routes */}
+      {ProtectedRoutes()}
       
       {/* Test: Subscription Plans route directly in AppRoutes */}
       <Route element={<ProtectedRoute />}>
