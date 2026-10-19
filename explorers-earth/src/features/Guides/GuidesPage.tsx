@@ -1,18 +1,17 @@
 import { NavigationStatus } from "../navigation/NavigationStatus";
-import type { IntentAuthority } from "../navigation/categoryNavigationPolicy";
 import { useCategoryNavigation } from "../navigation/CategoryNavigationProvider";
-import React, { useState, useRef, useMemo, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import GuideCard from "./components/GuideCard";
 import TopPicksHero from "./components/TopPicksHero";
 import TopPicksMobileHero from "./components/TopPicksMobileHero";
 import { useGuidesOwner } from "./hooks/useGuidesOwner";
-import { archiveGuide, setGuidePin, setGuidePublished } from "./api/guideListWrites";
+import { archiveGuide, GUIDE_PIN_LIMIT, setGuidePin, setGuidePublished } from "./api/guideListWrites";
 import GuideCardSkeleton from "../../components/ui/GuideCardSkeleton";
 import HeroSkeleton from "../../components/ui/HeroSkeleton";
 import Modal from "../../components/ui/Modal";
-import { CategoryVisibilityModal } from "../../components/CategoryVisibilityModal";
+import { useGuidePublishNotice } from "./hooks/useGuidePublishNotice";
 import { toast } from "sonner";
 import SEO from "../../components/SEO";
 import { createCanonicalUrl } from "../../utils/getCurrentDomain";
@@ -49,37 +48,10 @@ const GuidesPage: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [isManageModalOpen, setIsManageModalOpen] = useState<boolean>(false);
   const [mobileDropdownOpen, setMobileDropdownOpen] = useState<boolean>(false);
-  const [visibilityPrompt, setVisibilityPrompt] = useState<{
-    isOpen: boolean;
-    categoryName: string;
-    visibilityField: string;
-    origin?: IntentAuthority;
-    defaultValue: boolean;
-  } | null>(null);
+  const { notifyPublished, modal: publishNoticeModal } = useGuidePublishNotice("Guide is now Public");
 
   // Ticket 5.3. No account lookup: the canonical owner read is already scoped to the
   // signed-in owner, so there is nothing to filter by and nothing to wait for.
-  const location = useLocation();
-
-  const promptedLocation = useRef<string | null>(null);
-  useEffect(() => {
-    if (location.state?.justCreatedGuide && navigation.authority && promptedLocation.current !== location.key) {
-      promptedLocation.current = location.key;
-      const isPublic = navigation.snapshot?.visibility.public_guides === "Yes";
-      if (!isPublic && navigation.authority) {
-        setVisibilityPrompt({
-          origin: navigation.authority,
-          isOpen: true,
-          categoryName: "Guides",
-          visibilityField: "public_guides",
-          defaultValue: false,
-        });
-      }
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state, location.key, navigation.authority, navigation.snapshot]);
-
-
 
   // One bracketed owner read for every guide and its sections, replacing the Strapi
   // guides query. `lists` carries the editable collection observation each write needs.
@@ -455,7 +427,8 @@ const GuidesPage: React.FC = () => {
       // change - where any other caller would simply not have done it.
       await setGuidePublished(list, nextVisibility);
       refetch();
-      toast.success(`Guide is now ${nextVisibility ? "Public" : "Draft"}`);
+      if (nextVisibility) notifyPublished();
+      else toast.success("Guide is now Draft");
     } catch (failure: any) {
       toast.error(`Failed to update guide status: ${failure?.message ?? "unknown error"}`);
     }
@@ -469,6 +442,10 @@ const GuidesPage: React.FC = () => {
     let pinOrder = null;
 
     if (nextPinnedValue) {
+      if (pinnedGuides.length >= GUIDE_PIN_LIMIT) {
+        toast.error(`You can pin up to ${GUIDE_PIN_LIMIT} guides as Top Picks. Unpin one first.`);
+        return;
+      }
       if (!guide.Visibility) {
         toast.error("Only published guides can be pinned as Top Picks");
         return;
@@ -501,6 +478,10 @@ const GuidesPage: React.FC = () => {
 
     if (nextPinnedValue && !guide.Visibility) {
       toast.error("Only published guides can be pinned as Top Picks");
+      return;
+    }
+    if (nextPinnedValue && pinnedGuides.length >= GUIDE_PIN_LIMIT) {
+      toast.error(`You can pin up to ${GUIDE_PIN_LIMIT} guides as Top Picks. Unpin one first.`);
       return;
     }
 
@@ -1023,11 +1004,14 @@ const GuidesPage: React.FC = () => {
               ) : (
                 /* Empty Placeholder banner */
                 <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setIsManageModalOpen(true)}
+                  onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setIsManageModalOpen(true); } }}
                   className="w-full flex items-center justify-between p-4 rounded-[14px] border border-amber-500/25 bg-amber-500/5 hover:bg-amber-500/10 transition-all duration-300 cursor-pointer"
                 >
                   <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-[#fbbf24] font-poppins">
-                    <span className="text-amber-400">★</span> Manage Top Picks ({pinnedGuides.length}/{allGuides.length})
+                    <span className="text-amber-400">★</span> Manage Top Picks ({pinnedGuides.length}/{GUIDE_PIN_LIMIT})
                   </div>
                   <div className="flex items-center text-amber-500">
                     <svg className="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
@@ -1177,13 +1161,13 @@ const GuidesPage: React.FC = () => {
                   <span className="text-amber-400">★</span> Manage Top Picks
                 </h2>
                 <p className="text-xs text-white/50 mb-6">
-                  Pin up to 5 guides as Top Picks and reorder them to customize the hero slideshow on your profile.
+                  Pin up to {GUIDE_PIN_LIMIT} guides as Top Picks and reorder them to customize the hero slideshow on your profile.
                 </p>
 
                 {/* Pinned Section */}
                 <div className="mb-6">
                   <h3 className="text-xs font-semibold text-white/70 uppercase tracking-wider mb-3 flex items-center justify-between">
-                    <span>Pinned ({pinnedGuides.length})</span>
+                    <span>Pinned ({pinnedGuides.length} of {GUIDE_PIN_LIMIT})</span>
                     {pinnedGuides.length > 0 && <span className="text-[10px] text-white/40 normal-case font-normal">Use arrows to change order</span>}
                   </h3>
 
@@ -1296,9 +1280,9 @@ const GuidesPage: React.FC = () => {
                                 }
                                 handleModalPinToggle(guide, true);
                               }}
-                              disabled={!guide.Visibility}
+                              disabled={!guide.Visibility || pinnedGuides.length >= GUIDE_PIN_LIMIT}
                               className="text-xs bg-white/5 text-white/70 hover:bg-white/15 px-2.5 py-1.5 rounded-lg font-bold border border-white/10 transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
-                              title={!guide.Visibility ? "Only published guides can be pinned" : "Pin to Top Picks"}
+                              title={!guide.Visibility ? "Only published guides can be pinned" : pinnedGuides.length >= GUIDE_PIN_LIMIT ? `Top Picks are full (${GUIDE_PIN_LIMIT}). Unpin one first.` : "Pin to Top Picks"}
                             >
                               <svg className="w-3.5 h-3.5 text-white/55" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                 <path d="M19 12H5l4-4V3h6v5l4 4z" />
@@ -1326,18 +1310,7 @@ const GuidesPage: React.FC = () => {
           )}
         </div >
       </div >
-      {visibilityPrompt && (
-        <CategoryVisibilityModal
-          isOpen={visibilityPrompt.isOpen}
-          onClose={() => setVisibilityPrompt(null)}
-          categoryName={visibilityPrompt.categoryName}
-          visibilityField={visibilityPrompt.visibilityField} origin={visibilityPrompt.origin}
-          accountDocumentId={visibilityPrompt.origin?.accountDocumentId ?? ""}
-          onSuccess={() => {
-            refetch();
-          }}
-        />
-      )}
+      {publishNoticeModal}
     </>
   );
 };

@@ -1,6 +1,4 @@
-import { useCategoryNavigation } from "../../navigation/CategoryNavigationProvider";
 import { GuideEditingProvider } from "../context/GuideEditingProvider";
-import type { IntentAuthority } from "../../navigation/categoryNavigationPolicy";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -32,7 +30,7 @@ import TipsTimeline from "../components/GuideDetails/TipsTimeline";
 import GooglePlaceModal from "../../PublicHome/components/PublicGuideViews/GooglePlaceModal";
 import ConfirmationModal from "../../../components/ui/ConfirmationModal";
 import useAuthStore from "../../../store/store";
-import { CategoryVisibilityModal } from "../../../components/CategoryVisibilityModal";
+import { useGuidePublishNotice } from "../hooks/useGuidePublishNotice";
 import { ListVisibilityModal } from "../../../components/ListVisibilityModal";
 
 const GuideDetailsPage = () => {
@@ -57,15 +55,6 @@ const GuideDetailsPage = () => {
   const mainTabsRef = useRef<HTMLDivElement>(null);
   const guideHeaderRef = useRef<HTMLDivElement>(null);
 
-  const navigation = useCategoryNavigation();
-  const [visibilityPrompt, setVisibilityPrompt] = useState<{
-    isOpen: boolean;
-    categoryName: string;
-    visibilityField: string;
-    origin?: IntentAuthority;
-    defaultValue: boolean;
-  } | null>(null);
-
   const [listVisibilityPrompt, setListVisibilityPrompt] = useState<{
     isOpen: boolean;
     listName: string;
@@ -74,23 +63,8 @@ const GuideDetailsPage = () => {
   // Strapi users_permissions_user relation is not needed to name them.
   const { user } = useAuthStore();
 
-  const promptedLocation = useRef<string | null>(null);
-  useEffect(() => {
-    if (location.state?.justCreatedGuide && navigation.authority && promptedLocation.current !== location.key) {
-      promptedLocation.current = location.key;
-      const isPublic = navigation.snapshot?.visibility.public_guides === "Yes";
-      if (!isPublic && navigation.authority) {
-        setVisibilityPrompt({
-          origin: navigation.authority,
-          isOpen: true,
-          categoryName: "Guides",
-          visibilityField: "public_guides",
-          defaultValue: false,
-        });
-      }
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state, location.key, navigation.authority, navigation.snapshot]);
+  // Publishing (not creating) is what offers the category switch; see the hook.
+  const { notifyPublished, modal: publishNoticeModal } = useGuidePublishNotice();
 
   // Get sidebar width from CSS variable
   useEffect(() => {
@@ -514,7 +488,7 @@ const GuideDetailsPage = () => {
 
           {/* Guide Header Banner */}
           <div ref={guideHeaderRef} className="mb-8">
-            <GuideHeader guide={guide} guideId={guideId!} onVisibilityChange={refetch} />
+            <GuideHeader guide={guide} guideId={guideId!} onVisibilityChange={refetch} onPublished={notifyPublished} />
           </div>
 
           {/* Circular Tabs - Sticky when scrolled */}
@@ -657,20 +631,7 @@ const GuideDetailsPage = () => {
         isDanger={true}
         isLoading={!!deletingSection}
       />
-      {visibilityPrompt && (
-        <CategoryVisibilityModal
-          isOpen={visibilityPrompt.isOpen}
-          onClose={() => setVisibilityPrompt(null)}
-          categoryName={visibilityPrompt.categoryName}
-          visibilityField={visibilityPrompt.visibilityField} origin={visibilityPrompt.origin}
-          accountDocumentId={visibilityPrompt.origin?.accountDocumentId ?? ""}
-          onSuccess={() => {
-            // The canonical owner read is account-scoped, so reloading the guide is what
-            // reflects a category visibility change here.
-            refetch();
-          }}
-        />
-      )}
+      {publishNoticeModal}
       {listVisibilityPrompt && (
         <ListVisibilityModal
           isOpen={listVisibilityPrompt.isOpen}
@@ -683,7 +644,7 @@ const GuideDetailsPage = () => {
               if (!list) throw new Error("Guide could not be loaded. Refresh and try again.");
               await setGuidePublished(list, true);
               refetch();
-              toast.success(`"${listVisibilityPrompt.listName}" guide published!`);
+              notifyPublished();
             } catch (err: any) {
               toast.error(`Failed to publish: ${err.message}`);
             }
