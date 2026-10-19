@@ -23,6 +23,9 @@ import {placeDisplayFieldsSchema,placeEntityDetailsSchema,emptyPlaceDetails,empt
 
 export type CatalogKind = 'place'|'movie'|'book'|'game'|'app'|'product'|'person';
 export type ContentCategory = 'places'|'guides'|'movies'|'books'|'games'|'apps'|'products'|'people';
+/** Categories whose owner lists add and remove items through the shared membership route.
+ *  Places stay out: their memberships carry pin positions and location links. */
+const MEMBERSHIP_CATEGORIES:ReadonlySet<string>=new Set(['games','apps','products','people']);
 export type CollectionRecord = CollectionCoreDto;
 export type RecommendationRecord = RecommendationCoreDto;
 export class RecommendationFailure extends Error {
@@ -99,7 +102,7 @@ export class ExplorersRecommendationRepository {
         const scope=await db.query('SELECT category FROM collections WHERE id=$1 AND account_id=$2',[(input as {collectionId:string}).collectionId,accountId]);
         category=scope.rows[0]?.category;
         if(!category)throw new RecommendationFailure(404,'Collection unavailable');
-        if(category!=='games'&&category!=='apps')throw new RecommendationFailure(422,'Apps or Games membership required');
+        if(!MEMBERSHIP_CATEGORIES.has(category))throw new RecommendationFailure(422,'Membership category unsupported');
       }
       if(!category) {
         const recommendation=operation==='updateRecommendation'||operation==='archiveRecommendation'||operation==='replaceRecommendationEntity';
@@ -372,7 +375,7 @@ export class ExplorersRecommendationRepository {
       const collection=await this.lockCollection(db,accountId,collectionId,input.expectedCollectionRevision);
       const recommendation=await this.lockRecommendation(db,accountId,recommendationId,input.expectedRecommendationRevision);
       const category=collection.category;
-      if((category!=='games'&&category!=='apps')||recommendation.category!==category)throw new RecommendationFailure(422,'Apps or Games membership required');
+      if(!MEMBERSHIP_CATEGORIES.has(category)||recommendation.category!==category)throw new RecommendationFailure(422,'Membership category unsupported');
       const existing=await db.query('SELECT 1 FROM collection_items WHERE collection_id=$1 AND recommendation_id=$2',[collectionId,recommendationId]);
       if(attached){
         if(existing.rowCount)throw new RecommendationFailure(409,'Membership already exists');
