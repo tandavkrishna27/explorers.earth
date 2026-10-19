@@ -1,4 +1,5 @@
 import i18n from "i18next";
+import "../i18n/index.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import useAuthStore from "../store/store";
 import { authClient } from "./authClient";
@@ -17,6 +18,21 @@ describe("verified browser session", () => {
     expect(calls).toEqual(["/api/auth/get-session", "/api/explorers/v1/me"]);
     expect(useAuthStore.getState()).toMatchObject({ status: "active-complete", isAuthenticated: true, accountId: "account-a", token: null });
     expect(localStorage.getItem("qrtoken")).toBeNull();
+  });
+
+  it("saves the visitor's current language on a never-onboarded account instead of overriding it", async () => {
+    await i18n.changeLanguage("hi");
+    const change = vi.spyOn(i18n, "changeLanguage");
+    const patches: unknown[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
+      if (input === "/api/auth/get-session") return new Response(JSON.stringify({ user: { id: "user-a", email: "a@example.invalid" }, session: { id: "session-a" } }), { status: 200 });
+      if (init?.method === "PATCH") { patches.push(JSON.parse(String(init.body))); return new Response(JSON.stringify({ account: { id: "account-a", onboardingStatus: "incomplete", revision: 2, locale: "hi" } }), { status: 200 }); }
+      return new Response(JSON.stringify({ account: { id: "account-a", onboardingStatus: "incomplete", revision: 1, locale: "en" } }), { status: 200 });
+    }));
+    await authClient.refresh();
+    await vi.waitFor(() => expect(patches).toEqual([{ expectedRevision: 1, locale: "hi" }]));
+    expect(change).not.toHaveBeenCalled();
+    await i18n.changeLanguage("en");
   });
 
   it("applies the account's saved locale once the session is verified", async () => {
