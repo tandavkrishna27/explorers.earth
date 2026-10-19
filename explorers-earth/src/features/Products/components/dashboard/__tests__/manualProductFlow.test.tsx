@@ -232,6 +232,21 @@ describe('manual Products edit', () => {
   expect(vi.mocked(ProductsClient.updateRecommendation).mock.calls[0][1]).toMatchObject({mediaIds: [existing]});
  });
 
+ // Snapshots had a picker and a remove button but no order, so the first image uploaded stayed
+ // the lead image whatever the owner preferred.
+ it('saves snapshots in the order the owner arranged them', async () => {
+  const [a, b, c] = ['11111111-2222-3333-4444-555555555551', '11111111-2222-3333-4444-555555555552', '11111111-2222-3333-4444-555555555553'];
+  loaded([a, b, c]); vi.mocked(ProductsClient.updateRecommendation).mockResolvedValue({} as never);
+  render(editElement());
+  await screen.findAllByAltText('Product snapshot');
+  fireEvent.click(screen.getByRole('button', {name: 'Move Snapshot 3 up'}));
+  fireEvent.click(screen.getByRole('button', {name: 'Move Snapshot 1 down'}));
+  expect(screen.getAllByAltText('Product snapshot').map(image => image.getAttribute('src'))).toEqual([c, a, b].map(id => `/api/explorers/v1/media/${id}/content`));
+  fireEvent.click(screen.getByRole('button', {name: 'Save product'}));
+  await waitFor(() => expect(ProductsClient.updateRecommendation).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(ProductsClient.updateRecommendation).mock.calls[0][1]).toMatchObject({mediaIds: [c, a, b]});
+ });
+
  it('never sends the product URL as a display override', async () => {
   loaded(); vi.mocked(ProductsClient.updateRecommendation).mockResolvedValue({} as never);
   render(editElement());

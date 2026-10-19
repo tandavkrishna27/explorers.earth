@@ -1,3 +1,4 @@
+import ReorderableMediaStrip from '../../../../components/reorder/ReorderableMediaStrip';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, ShoppingBag, X } from 'lucide-react';
@@ -228,10 +229,7 @@ export default function AddProductPage() {
 
     <label className="block">Snapshots<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple disabled={saving || pending > 0} onChange={event => { void upload(Array.from(event.target.files ?? [])); event.target.value = ''; }} /></label>
     {pending > 0 && <p role="status">Uploading snapshots…</p>}
-    <div className="flex flex-wrap gap-3">{media.map(item => <div key={item.id}>
-     <img className="w-24 h-24 object-cover rounded" src={item.url} alt="Product snapshot" />
-     <button aria-label="Remove snapshot" disabled={saving} onClick={() => setMedia(value => value.filter(row => row.id !== item.id))}><X size={16} /></button>
-    </div>)}</div>
+    <ReorderableMediaStrip items={media} onChange={setMedia} noun="Snapshot" alt="Product snapshot" removeLabel="Remove snapshot" disabled={saving} />
 
     {error && <p role="alert">{error}</p>}
     <button onClick={save} disabled={saving || pending > 0 || !title.trim() || !productUrl.trim() || Boolean(priceProblem) || Boolean(productId && initialized.current !== scope)} className="bg-dashboard-accent text-white rounded-xl px-5 py-3">

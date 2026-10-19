@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import ReorderableList from '../ReorderableList';
+import ReorderableFileStrip from '../ReorderableFileStrip';
 import ReorderableMediaStrip, { type MediaStripItem } from '../ReorderableMediaStrip';
 import { moveItem } from '../moveItem';
 
@@ -103,5 +104,22 @@ describe('ReorderableMediaStrip', () => {
   it('renders nothing for an empty set', () => {
     const { container } = render(<ReorderableMediaStrip items={[]} onChange={() => {}} noun="Photo" alt="x" removeLabel="y" />);
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe('ReorderableFileStrip', () => {
+  const files = ['a', 'b', 'c'].map(name => new File([name], `${name}.png`, { type: 'image/png' }));
+  function Files({ onChange }: { onChange: (next: File[]) => void }) {
+    const [current, setCurrent] = useState(files);
+    return <ReorderableFileStrip files={current} previews={current.map(file => `blob:${file.name}`)} onChange={next => { setCurrent(next); onChange(next); }} noun="New photo" alt="New photo preview" removeLabel="Remove new photo" />;
+  }
+  it('reorders files that have not been uploaded yet, preserving file identity', async () => {
+    const onChange = vi.fn();
+    render(<Files onChange={onChange} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Move New photo 1 down' }));
+    expect(onChange.mock.calls[0][0].map((file: File) => file.name)).toEqual(['b.png', 'a.png', 'c.png']);
+    expect(onChange.mock.calls[0][0][1]).toBe(files[0]);
+    await userEvent.click(screen.getAllByRole('button', { name: 'Remove new photo' })[2]);
+    expect(onChange.mock.calls[1][0].map((file: File) => file.name)).toEqual(['b.png', 'a.png']);
   });
 });
