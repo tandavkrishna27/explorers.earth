@@ -138,7 +138,6 @@ async function equalMissing(pathname:string,missing:string,persona:PlacesPersona
   expect(foreign.status).toBe(404);expect(absent.status).toBe(404);
   same(normalized(await foreign.json()),normalized(await absent.json()));
 }
-// eslint-disable-next-line no-empty-pattern -- the empty fixture pattern is frozen: root scripts/ seal tests assert this spec's exact source text, so `_` breaks them.
 /**
  * Canonical rate-limits public profile reads to 120 a minute (explorersPublicProfileRoutes.ts,
  * draft-7 RateLimit header), and every case here spends that budget. Until P5-8a the four
@@ -154,6 +153,7 @@ async function awaitPublicReadBudget() {
   }
   throw new Error('public read budget did not recover');
 }
+// eslint-disable-next-line no-empty-pattern -- the empty fixture pattern is frozen: root scripts/ seal tests assert this spec's exact source text, so `_` breaks them.
 test.beforeEach(async ({},info)=>{manifest=await control('reset',info) as PlacesManifest;await awaitPublicReadBudget();});
 
 function recordPublicPages(page:Page,pathname:string,detail:boolean) {
