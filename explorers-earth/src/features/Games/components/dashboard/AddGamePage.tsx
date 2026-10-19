@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { friendlyErrorMessage } from "../../../../utils/friendlyError";
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Gamepad2, Loader2, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -20,7 +21,7 @@ export default function AddGamePage() {
  const owner = useGamesOwner(undefined, true), commands = useGamesCommands();
  const [existingId, setExistingId] = useState('');
  const existingGames = [...new Map((owner.content?.view.lists.flatMap(list => list.recommended_games) ?? []).filter(game => !owner.content?.view.lists.find(list => list.documentId === listId)?.recommended_games.some(member => member.documentId === game.documentId)).map(game => [game.documentId, game])).values()];
- const attachExisting = async () => { const captured = scope; try { await commands.membership(existingId, listId!, true); if (valid(captured)) navigate(`/recommendations/games/${listId}`); } catch (failure) { if (valid(captured)) setError(failure instanceof Error ? failure.message : 'Game could not be added'); } };
+ const attachExisting = async () => { const captured = scope; try { await commands.membership(existingId, listId!, true); if (valid(captured)) navigate(`/recommendations/games/${listId}`); } catch (failure) { if (valid(captured)) setError(friendlyErrorMessage(failure, 'Game could not be added')); } };
  const [title, setTitle] = useState(''), [note, setNote] = useState(''), [rating, setRating] = useState<number | null>(null);
  const [media, setMedia] = useState<{ id: string; url: string }[]>([]), [pending, setPending] = useState(0);
  const [saving, setSaving] = useState(false), [error, setError] = useState(''), [query, setQuery] = useState(''), [searchError, setSearchError] = useState('');
@@ -45,7 +46,7 @@ export default function AddGamePage() {
   for (const file of files) {
    if (!valid(captured)) return;
    try { const result = await GamesClient.upload(file, crypto.randomUUID()); if (!valid(captured)) return; setMedia(value => [...value, { id: result.id, url: `/api/explorers/v1/media/${result.id}/content` }]); }
-   catch (failure) { if (valid(captured)) setError(failure instanceof Error ? failure.message : 'Upload failed'); }
+   catch (failure) { if (valid(captured)) setError(friendlyErrorMessage(failure, 'Upload failed')); }
    finally { if (valid(captured)) setPending(value => value - 1); }
   }
  };
@@ -69,10 +70,10 @@ export default function AddGamePage() {
     assertCurrent(captured, operation); await GamesClient.createManual(intent.current.value, signal); assertCurrent(captured, operation);
    }
    invalidateGames(); toast.success('Game saved'); navigate(`/recommendations/games/${listId}`, { state: { justAddedRecommendation: true } });
-  } catch (failure) { if (valid(captured, operation)) setError(failure instanceof Error ? failure.message : 'Game could not be saved'); }
+  } catch (failure) { if (valid(captured, operation)) setError(friendlyErrorMessage(failure, 'Game could not be saved')); }
   finally { if (valid(captured, operation)) setSaving(false); }
  };
- const search = async () => { const captured = scope; setSearchError(''); try { await GamesClient.search({ query: query.trim(), limit: 24 }); if (valid(captured)) setSearchError('Provider game acquisition is unavailable. Your manual draft is preserved.'); } catch (failure) { if (valid(captured)) setSearchError(failure instanceof Error ? failure.message : 'Provider search unavailable'); } };
+ const search = async () => { const captured = scope; setSearchError(''); try { await GamesClient.search({ query: query.trim(), limit: 24 }); if (valid(captured)) setSearchError('Provider game acquisition is unavailable. Your manual draft is preserved.'); } catch (failure) { if (valid(captured)) setSearchError(friendlyErrorMessage(failure, 'Provider search unavailable')); } };
  // Edit controls require the actual complete owner observation. A loaded draft
  // stays owned by its original observation across refreshes and never rebases.
  if (gameId && initialized.current !== scope) {

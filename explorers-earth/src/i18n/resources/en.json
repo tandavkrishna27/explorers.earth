@@ -2540,5 +2540,10 @@
       "places": "Travel like a local",
       "profile": "Explore my picks"
     }
+  },
+  "validation": {
+    "urlRule": "Enter a web address starting with http:// or https://. Ports (like :8443) and usernames or passwords in the address are not allowed.",
+    "checkField": "Please check the {{field}} field.",
+    "generic": "Please check the highlighted fields and try again."
   }
 }

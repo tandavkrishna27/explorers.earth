@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { friendlyErrorMessage, urlFieldError } from "../../../../utils/friendlyError";
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, ShoppingBag, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -103,7 +104,7 @@ export default function AddProductPage() {
  const attachExisting = async () => {
   const captured = scope;
   try { await commands.membership(existingId, listId!, true); if (valid(captured)) navigate(`/recommendations/products/${listId}`); }
-  catch (failure) { if (valid(captured)) setError(failure instanceof Error ? failure.message : 'Product could not be added'); }
+  catch (failure) { if (valid(captured)) setError(friendlyErrorMessage(failure, 'Product could not be added')); }
  };
 
  const upload = async (files: File[]) => {
@@ -111,12 +112,15 @@ export default function AddProductPage() {
   for (const file of files) {
    if (!valid(captured)) return;
    try { const result = await ProductsClient.upload(file, crypto.randomUUID()); if (!valid(captured)) return; setMedia(value => [...value, { id: result.id, url: `/api/explorers/v1/media/${result.id}/content` }]); }
-   catch (failure) { if (valid(captured)) setError(failure instanceof Error ? failure.message : 'Upload failed'); }
+   catch (failure) { if (valid(captured)) setError(friendlyErrorMessage(failure, 'Upload failed')); }
    finally { if (valid(captured)) setPending(value => value - 1); }
   }
  };
 
+ const urlErrors = { productUrl: urlFieldError(productUrl), logoUrl: urlFieldError(logoUrl), buyUrl: urlFieldError(buyUrl) };
+ const hasUrlError = Object.values(urlErrors).some(Boolean);
  const save = async () => {
+  if (hasUrlError) return;
   if (!listId || pending || saving || !title.trim() || !productUrl.trim() || priceProblem || (productId && initialized.current !== scope)) return;
   const captured = scope, operation = ++active.current; controller.current?.abort(); controller.current = new AbortController(); const signal = controller.current.signal;
   setSaving(true); setError('');
@@ -144,7 +148,7 @@ export default function AddProductPage() {
     assertCurrent(captured, operation); await ProductsClient.createManual(intent.current.value, signal); assertCurrent(captured, operation);
    }
    invalidateProducts(); toast.success('Product saved'); navigate(`/recommendations/products/${listId}`, { state: { justAddedRecommendation: true } });
-  } catch (failure) { if (valid(captured, operation)) setError(failure instanceof Error ? failure.message : 'Product could not be saved'); }
+  } catch (failure) { if (valid(captured, operation)) setError(friendlyErrorMessage(failure, 'Product could not be saved')); }
   finally { if (valid(captured, operation)) setSaving(false); }
  };
 
@@ -184,6 +188,7 @@ export default function AddProductPage() {
     <label className="block"><span className="after:content-['_*'] after:text-red-500">Product URL</span>
      <input value={productUrl} onChange={event => setProductUrl(event.target.value)} disabled={saving || Boolean(productId)} required aria-required="true" aria-describedby={productId ? undefined : 'product-url-required'} placeholder="https://example.com/widget" className="block w-full bg-dashboard-muted rounded-xl p-3" />
     </label>
+    {urlErrors.productUrl && <p role="alert" className="text-sm text-red-400">{urlErrors.productUrl}</p>}
     {!productId && <p id="product-url-required" className="text-xs text-dashboard-muted">Required: Save stays off until the product's link is added (its official or shop page).</p>}
     {productId
      ? <p className="text-sm text-dashboard-muted">The product URL identifies the product itself and is shared with everyone who recommends it, so it cannot be changed here.</p>
@@ -191,6 +196,7 @@ export default function AddProductPage() {
 
     <label className="block">Brand<input value={brand} onChange={event => setBrand(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
     <label className="block">Logo URL<input value={logoUrl} onChange={event => setLogoUrl(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
+    {urlErrors.logoUrl && <p role="alert" className="text-sm text-red-400">{urlErrors.logoUrl}</p>}
 
     <label className="block">Price
      {/* Text, not number: the amount stays an exact decimal string end to end. */}
@@ -206,12 +212,13 @@ export default function AddProductPage() {
     <p className="text-sm text-dashboard-muted">An empty price means unknown, not free. Leave the currency as Unknown rather than guessing one.</p>
 
     <label className="block">Buy / Affiliate URL<input value={buyUrl} onChange={event => setBuyUrl(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
+    {urlErrors.buyUrl && <p role="alert" className="text-sm text-red-400">{urlErrors.buyUrl}</p>}
     <label className="block">Description<textarea value={description} onChange={event => setDescription(event.target.value)} disabled={saving} rows={3} className="block w-full bg-dashboard-muted rounded-xl p-3 resize-none" /></label>
 
     <fieldset><legend>Specifications</legend>
-     {specifications.map((entry, index) => <div key={index} className="flex gap-2">
-      <input aria-label={`Specification key ${index + 1}`} value={entry.key} disabled={saving} onChange={event => setSpecifications(value => value.map((row, at) => at === index ? { ...row, key: event.target.value } : row))} placeholder="Key (e.g. Color)" className="bg-dashboard-muted rounded-xl p-2" />
-      <input aria-label={`Specification value ${index + 1}`} value={entry.value} disabled={saving} onChange={event => setSpecifications(value => value.map((row, at) => at === index ? { ...row, value: event.target.value } : row))} placeholder="Value (e.g. Space Grey)" className="bg-dashboard-muted rounded-xl p-2" />
+     {specifications.map((entry, index) => <div key={index} className="flex min-w-0 gap-2">
+      <input aria-label={`Specification key ${index + 1}`} value={entry.key} disabled={saving} onChange={event => setSpecifications(value => value.map((row, at) => at === index ? { ...row, key: event.target.value } : row))} placeholder="Key (e.g. Color)" className="min-w-0 flex-1 bg-dashboard-muted rounded-xl p-2" />
+      <input aria-label={`Specification value ${index + 1}`} value={entry.value} disabled={saving} onChange={event => setSpecifications(value => value.map((row, at) => at === index ? { ...row, value: event.target.value } : row))} placeholder="Value (e.g. Space Grey)" className="min-w-0 flex-1 bg-dashboard-muted rounded-xl p-2" />
       <button aria-label={`Remove specification ${index + 1}`} disabled={saving} onClick={() => setSpecifications(value => value.filter((_row, at) => at !== index))}><X size={16} /></button>
      </div>)}
      <button disabled={saving || specifications.length >= 200} onClick={() => setSpecifications(value => [...value, { key: '', value: '' }])}>Add specification</button>
@@ -234,7 +241,7 @@ export default function AddProductPage() {
     </div>)}</div>
 
     {error && <p role="alert">{error}</p>}
-    <button onClick={save} disabled={saving || pending > 0 || !title.trim() || !productUrl.trim() || Boolean(priceProblem) || Boolean(productId && initialized.current !== scope)} className="bg-dashboard-accent text-white rounded-xl px-5 py-3">
+    <button onClick={save} disabled={hasUrlError || saving || pending > 0 || !title.trim() || !productUrl.trim() || Boolean(priceProblem) || Boolean(productId && initialized.current !== scope)} className="bg-dashboard-accent text-white rounded-xl px-5 py-3">
      {saving && <Loader2 className="inline animate-spin mr-2" size={16} />}Save product
     </button>
    </section>

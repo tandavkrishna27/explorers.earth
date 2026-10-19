@@ -1,4 +1,5 @@
 import { explorersApiClient } from '../../../../lib/explorersApiClient';
+import { friendlyErrorMessage } from "../../../../utils/friendlyError";
 import { useMoviesOwner, useMovieGenres, invalidateMovies } from '../../api/explorersAdapter';
 import { moviesCommandKey } from '../../api/moviesClient';
 import type { MovieCandidate } from '../../../../../../tunes/shared/explorersMovieContract';
@@ -243,7 +244,7 @@ const AddMoviePage = () => {
    if (!alive()) return;
    invalidateMovies();toast.success(isEdit?'Movie updated!':'Movie added!');navigate(`/recommendations/movies/${listId}`,{state:{justAddedRecommendation:true}});
   } catch(error) {
-   if (alive()) toast.error(error instanceof Error?error.message:'Failed to save. Your draft is preserved.');
+   if (alive()) toast.error(friendlyErrorMessage(error, 'Failed to save. Your draft is preserved.'));
   } finally {
    if (alive()) { saveBusy.current=false;setSaving(false);saveController.current=undefined; }
   }

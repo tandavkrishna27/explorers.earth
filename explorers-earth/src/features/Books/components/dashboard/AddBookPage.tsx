@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { friendlyErrorMessage, urlFieldError } from "../../../../utils/friendlyError";
 import { useNavigate, useParams } from "react-router-dom";
 import { explorersApiClient, type RecommendationObservation, type CollectionObservation } from "../../../../lib/explorersApiClient";
 import { useBooksOwnerContent } from "../../api/useBooksOwnerContent";
@@ -40,14 +41,14 @@ export const InlineSearch = ({ onSelect }: InlineSearchProps) => {
     const controller=new AbortController();const current={controller,sequence:++searchSequence.current,query,generation};authority.current=current;setResults([]);setCursor(null);setError(undefined);
     const active=()=>authority.current===current&&!controller.signal.aborted&&useAuthStore.getState().generation===generation;
     if(!query.trim()){setLoading(false);return()=>controller.abort();}
-    setLoading(true);timerRef.current=setTimeout(async()=>{try{const page=await explorersApiClient.searchBookCandidates({query,limit:12},controller.signal);if(active()){setResults(page.items);setCursor(page.nextCursor);}}catch(e){if(active())setError(e instanceof Error?e.message:'Book search failed');}finally{if(active())setLoading(false);}},350);
+    setLoading(true);timerRef.current=setTimeout(async()=>{try{const page=await explorersApiClient.searchBookCandidates({query,limit:12},controller.signal);if(active()){setResults(page.items);setCursor(page.nextCursor);}}catch(e){if(active())setError(friendlyErrorMessage(e, 'Book search failed'));}finally{if(active())setLoading(false);}},350);
     return()=>{controller.abort();if(timerRef.current)clearTimeout(timerRef.current);};
   },[query,generation]);
   const loadMore=async()=>{
     const current=authority.current;if(!current||!cursor||loading||current.controller.signal.aborted)return;
     const active=()=>authority.current===current&&!current.controller.signal.aborted&&useAuthStore.getState().generation===current.generation;
     setLoading(true);setError(undefined);
-    try{const page=await explorersApiClient.searchBookCandidates({query:current.query,limit:12,cursor},current.controller.signal);if(active()){setResults(old=>[...old,...page.items]);setCursor(page.nextCursor);}}catch(e){if(active())setError(e instanceof Error?e.message:'Book search failed');}finally{if(active())setLoading(false);}
+    try{const page=await explorersApiClient.searchBookCandidates({query:current.query,limit:12,cursor},current.controller.signal);if(active()){setResults(old=>[...old,...page.items]);setCursor(page.nextCursor);}}catch(e){if(active())setError(friendlyErrorMessage(e, 'Book search failed'));}finally{if(active())setLoading(false);}
   };
   return (
     <div className="space-y-4">
@@ -194,7 +195,7 @@ const AddBookPage = () => {
       const f=item.preview;setEntityId(entity.id);
       setSelectedBook({volume_id:item.externalId,title:item.title,subtitle:f.subtitle,authors:f.authors,year:f.yearText??"",cover_url:f.coverUrl??"",cover_url_large:f.coverLargeUrl??"",subjects:f.subjects,publisher:f.publisher,page_count:f.pageCount,google_rating:f.providerRating,description:f.description,isbn_13:f.isbn13??"",preview_link:f.previewLink,google_books_buy_link:item.buyLinkSuggestion});
       setBuyLinks(item.buyLinkSuggestion?[{name:"Google Books",url:item.buyLinkSuggestion,logo:"google-books"}]:[]);
-    }catch(e){toast.error(e instanceof Error?e.message:"Could not select Book");}
+    }catch(e){toast.error(friendlyErrorMessage(e, "Could not select Book"));}
   },[generation]);
   const handleManualBook = useCallback(async(draft:ManualBookDraft) => {
     const selection=++selectionSequence.current;
@@ -208,10 +209,11 @@ const AddBookPage = () => {
       if(selection!==selectionSequence.current||useAuthStore.getState().generation!==generation)return;
       setEntityId(entity.id);setIsManualBook(true);setManualOpen(false);setBuyLinks([]);
       setSelectedBook({volume_id:"",title,subtitle:null,authors,year:details.yearText??"",cover_url:"",cover_url_large:"",subjects:[],publisher:details.publisher??null,page_count:details.pageCount??null,google_rating:null,description:details.description??null,isbn_13:"",preview_link:null,google_books_buy_link:null});
-    }catch(e){toast.error(e instanceof Error?e.message:"Could not add this Book");}
+    }catch(e){toast.error(friendlyErrorMessage(e, "Could not add this Book"));}
   },[generation]);
+  const newLinkError = urlFieldError(newLinkUrl);
   const handleAddBuyLink = () => {
-    if (!newLinkUrl.trim()) return;
+    if (!newLinkUrl.trim() || newLinkError) return;
     setBuyLinks((prev) => [
       ...prev,
       { name: newLinkName.trim() || "Link", url: newLinkUrl.trim() },
@@ -239,7 +241,7 @@ const AddBookPage = () => {
       await explorersApiClient.setMyCategoryTopPicks(observed,pins,booksCommandKey(),signal);
       if(useAuthStore.getState().generation!==generation)return;
       toast.success(isEdit?"Book updated!":"Book added to list!");navigate(`/recommendations/books/${listId}`,{state:{justAddedRecommendation:true}});
-    }catch(e){if(useAuthStore.getState().generation===generation)toast.error(e instanceof Error?e.message:"Failed to save. Please try again.");}finally{if(useAuthStore.getState().generation===generation)setSaving(false);}
+    }catch(e){if(useAuthStore.getState().generation===generation)toast.error(friendlyErrorMessage(e, "Failed to save. Please try again."));}finally{if(useAuthStore.getState().generation===generation)setSaving(false);}
   };
   return (
     <div className="min-h-screen text-dashboard pb-32">
@@ -437,12 +439,13 @@ const AddBookPage = () => {
               <button
                 aria-label="Add link"
                 onClick={handleAddBuyLink}
-                disabled={!newLinkUrl.trim()}
+                disabled={!newLinkUrl.trim() || Boolean(newLinkError)}
                 className="px-3 py-2 rounded-xl bg-white/8 hover:bg-white/12 text-white/70 text-xs disabled:opacity-40 transition-colors flex items-center gap-1"
               >
                 <Plus size={12} /> Add
               </button>
             </div>
+            {newLinkError && <p role="alert" className="mt-1.5 text-xs text-red-400">{newLinkError}</p>}
           </div>
 
           {/* Manual Snapshots */}

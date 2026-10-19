@@ -2487,5 +2487,10 @@
       "places": "Viaja como un local",
       "profile": "Explora mis selecciones"
     }
+  },
+  "validation": {
+    "urlRule": "Introduce una dirección web que empiece por http:// o https://. No se permiten puertos (como :8443) ni nombres de usuario o contraseñas en la dirección.",
+    "checkField": "Revisa el campo {{field}}.",
+    "generic": "Revisa los campos marcados e inténtalo de nuevo."
   }
 }

@@ -99,7 +99,7 @@ describe('native manual People', () => {
 
  it('reports a malformed profile address before dispatching, and keeps the draft', async () => {
   mount(); fill('Full Name', 'Bad Link'); fill('Profile URL', 'notaurl');
-  expect(await screen.findByRole('alert')).toHaveTextContent('Enter a full http(s) profile address');
+  expect(await screen.findByRole('alert')).toHaveTextContent('Enter a web address starting with http');
   expect(screen.getByRole('button', {name: 'Save person'})).toBeDisabled();
   expect(PeopleClient.observeCollection).not.toHaveBeenCalled();
   expect(screen.getByLabelText('Full Name')).toHaveValue('Bad Link');

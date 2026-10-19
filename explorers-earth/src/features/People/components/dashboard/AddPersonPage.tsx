@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { friendlyErrorMessage, urlFieldError } from "../../../../utils/friendlyError";
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, Users, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -7,7 +8,7 @@ import type { RecommendationObservation, CompleteTaxonomyCatalog } from '../../.
 import { PeopleClient, type ManualPersonIntent } from '../../api/peopleClient';
 import { usePeopleCommands } from '../../api/query';
 import { invalidatePeople, usePeopleOwner } from '../../hooks/usePeopleOwner';
-import { PERSON_PLATFORMS, safePersonUrlSchema, type PersonPlatform } from '../../../../../../tunes/shared/explorersPersonContract';
+import { PERSON_PLATFORMS, type PersonPlatform } from '../../../../../../tunes/shared/explorersPersonContract';
 import { richNoteFromEditor } from '../../../../../../tunes/shared/explorersRichNoteContract';
 import TiptapEditor from '../../../Favorites/components/TiptapEditor';
 
@@ -68,7 +69,7 @@ export default function AddPersonPage() {
  useEffect(()=>{
   const captured=scope,abort=new AbortController();let live=true;
   setCatalog(undefined);setCatalogLoading(true);setCatalogError('');
-  PeopleClient.readSectorCatalog(abort.signal).then(value=>{if(live&&mounted.current&&currentScope.current===captured&&!abort.signal.aborted)setCatalog(value);},failure=>{if(live&&mounted.current&&currentScope.current===captured&&!abort.signal.aborted)setCatalogError(failure instanceof Error?failure.message:'Sectors could not be loaded');}).finally(()=>{if(live&&mounted.current&&currentScope.current===captured&&!abort.signal.aborted)setCatalogLoading(false);});
+  PeopleClient.readSectorCatalog(abort.signal).then(value=>{if(live&&mounted.current&&currentScope.current===captured&&!abort.signal.aborted)setCatalog(value);},failure=>{if(live&&mounted.current&&currentScope.current===captured&&!abort.signal.aborted)setCatalogError(friendlyErrorMessage(failure, 'Sectors could not be loaded'));}).finally(()=>{if(live&&mounted.current&&currentScope.current===captured&&!abort.signal.aborted)setCatalogLoading(false);});
   return()=>{live=false;abort.abort();};
  },[scope,catalogRetry]);
  useEffect(()=>{setSectorId('');setSectorTouched(false);setExistingSector(null);},[scope]);
@@ -99,8 +100,7 @@ export default function AddPersonPage() {
  const blank = (value: string) => { const trimmed = value.trim(); return trimmed === '' ? null : trimmed; };
 
  // Reported before any command is dispatched, so the draft is never discarded to find out.
- const urlProblem = profileUrl.trim() !== '' && !safePersonUrlSchema.safeParse(profileUrl.trim()).success
-  ? 'Enter a full http(s) profile address.' : undefined;
+ const urlProblem = urlFieldError(profileUrl) ?? undefined;
 
  const addTag = () => {
   const value = tagDraft.trim();
@@ -111,7 +111,7 @@ export default function AddPersonPage() {
  const attachExisting = async () => {
   const captured = scope;
   try { await commands.membership(existingId, listId!, true); if (valid(captured)) navigate(`/recommendations/people/${listId}`); }
-  catch (failure) { if (valid(captured)) setError(failure instanceof Error ? failure.message : 'Person could not be added'); }
+  catch (failure) { if (valid(captured)) setError(friendlyErrorMessage(failure, 'Person could not be added')); }
  };
 
  const upload = async (files: File[]) => {
@@ -119,7 +119,7 @@ export default function AddPersonPage() {
   for (const file of files) {
    if (!valid(captured)) return;
    try { const result = await PeopleClient.upload(file, crypto.randomUUID()); if (!valid(captured)) return; setMedia(value => [...value, { id: result.id, url: `/api/explorers/v1/media/${result.id}/content` }]); }
-   catch (failure) { if (valid(captured)) setError(failure instanceof Error ? failure.message : 'Upload failed'); }
+   catch (failure) { if (valid(captured)) setError(friendlyErrorMessage(failure, 'Upload failed')); }
    finally { if (valid(captured)) setPending(value => value - 1); }
   }
  };
@@ -159,7 +159,7 @@ export default function AddPersonPage() {
     assertCurrent(captured, operation); await PeopleClient.createManual(intent.current.value, signal); assertCurrent(captured, operation);
    }
    invalidatePeople(); toast.success('Person saved'); navigate(`/recommendations/people/${listId}`, { state: { justAddedRecommendation: true } });
-  } catch (failure) { if (valid(captured, operation)) setError(failure instanceof Error ? failure.message : 'Person could not be saved'); }
+  } catch (failure) { if (valid(captured, operation)) setError(friendlyErrorMessage(failure, 'Person could not be saved')); }
   finally { if (valid(captured, operation)) setSaving(false); }
  };
 
