@@ -254,7 +254,10 @@ const Favorites = memo(() => {
     const originalLocation = original?.detail.placeLocation;
 
     if (data.Visibility !== undefined) {
-      await commands.publishList(id, Boolean(data.Visibility));
+      // Publishing a list publishes its places too, or the public list would be empty.
+      const placeIds = (placesOwner.data?.recommendationLists?.find((list: any) => list.documentId === id)?.recommended_places ?? [])
+        .map((place: any) => place.documentId);
+      await commands.publishListWithPlaces(id, Boolean(data.Visibility), placeIds);
     }
     if (data.is_pinned !== undefined || data.pin_order !== undefined) {
       // is_pinned is "pin_order is set", so an unpin is an explicit null.
@@ -281,7 +284,7 @@ const Favorites = memo(() => {
     }
     // The call sites only read back what they already sent, so the echo is enough.
     return { data: { updateRecommendationList: { ...data, documentId: id } as Record<string, any> } };
-  }, [commands, placesOwner.content, accountId, sessionGeneration]);
+  }, [commands, placesOwner.content, placesOwner.data, accountId, sessionGeneration]);
 
   const handleVisibilityToggle = () => {
     const origin = navigation.authority;
