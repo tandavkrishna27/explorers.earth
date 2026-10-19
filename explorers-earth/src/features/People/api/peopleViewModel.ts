@@ -89,7 +89,7 @@ export const peopleViewModel={
  complete(observed:CompletePeopleOwnerContent,details:ReadonlyMap<string,RecommendationObservation>,username=''):Readonly<PersonOwnerView>{
   assertCompleteMyCategoryContent(observed);
   if(observed.category!=='people')throw new ExplorersApiError(409,'CONFLICT','People category required');
-  return {lists:observed.collections.map(collection=>collectionViewModel(
+  return {lists:observed.collections.filter(collection=>!collection.archived).map(collection=>collectionViewModel(
    collection,
    observed.memberships
     .filter(member=>member.collectionId===collection.id&&!member.collectionArchived&&!member.recommendationArchived)

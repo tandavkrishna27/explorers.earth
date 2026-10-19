@@ -33,7 +33,7 @@ export async function readBooksOwnerContent(signal?:AbortSignal):Promise<BooksOw
   checkTerminal();if(final.revision!==observation.revision||final.pinRevision!==observation.pinRevision)
     throw new ExplorersApiError(409,'CONFLICT','Books changed while loading. Refresh to try again.');
   assertCompleteMyCategoryContent(final);
-  const lists=final.collections.map(collection=>collectionViewModel(collection,final.memberships
+  const lists=final.collections.filter(collection=>!collection.archived).map(collection=>collectionViewModel(collection,final.memberships
     .filter(member=>member.collectionId===collection.id&&!member.collectionArchived&&!member.recommendationArchived)
     .sort((a,b)=>a.displayOrder-b.displayOrder||a.recommendationId.localeCompare(b.recommendationId))
     .map(member=>{

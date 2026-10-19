@@ -73,3 +73,9 @@ it('refuses to map a complete observation with a detail missing from the hydrati
 it('refuses a complete observation of another category',()=>{
  expect(()=>appsViewModel.complete({category:'games',collections:[],memberships:[],topPicks:[]} as never,new Map() as never)).toThrow();
 });
+
+it('leaves an archived (deleted) list out of the owner view',()=>{
+ const archived={...(collection as object),id:id(7),title:'Deleted',archived:true} as never;
+ const view=appsViewModel.complete({category:'apps',collections:[collection,archived],memberships:[],topPicks:[]} as never,new Map() as never);
+ expect(view.lists.map(list=>list.documentId)).toEqual([id(2)]);
+});

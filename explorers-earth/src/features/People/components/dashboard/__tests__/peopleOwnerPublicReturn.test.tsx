@@ -38,5 +38,6 @@ it('returns full private A content after actual verified A/B/A transitions',asyn
  act(()=>{const current=store.getState();current.verificationFailed(current.beginVerification(),'signed-out');});expect(screen.queryByTestId(id(plan.targetCollectionKey))).toBeNull();
  privateTarget=true;verify('ownerB');await waitFor(()=>expect(screen.getByText(`${bTitle}:true`)).toBeTruthy());expect(screen.queryByTestId(id(plan.targetCollectionKey))).toBeNull();
  verify('ownerA');await waitFor(()=>expect(screen.getByTestId(id(plan.targetCollectionKey)).textContent).toBe(`${target}:false`));expect(screen.queryByText(`${bTitle}:true`)).toBeNull();expect(screen.getByText('ready')).toBeTruthy();
- expect(plan.lists).toHaveLength(57);expect(plan.items).toHaveLength(58);expect(screen.getAllByTestId(/00000000/)).toHaveLength(56);expect(calls.some(row=>row.owner==='ownerB'&&row.path.endsWith('/editable'))).toBe(true);
+ expect(plan.lists).toHaveLength(57);expect(plan.items).toHaveLength(58);// 56 ownerA lists, one archived: a deleted list is not shown to its owner.
+ expect(screen.getAllByTestId(/00000000/)).toHaveLength(55);expect(calls.some(row=>row.owner==='ownerB'&&row.path.endsWith('/editable'))).toBe(true);
 });

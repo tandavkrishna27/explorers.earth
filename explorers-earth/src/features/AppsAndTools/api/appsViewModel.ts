@@ -70,7 +70,7 @@ export const appsViewModel={
  complete(observed:CompleteAppsOwnerContent,details:ReadonlyMap<string,RecommendationObservation>,username=''):Readonly<AppOwnerView>{
   assertCompleteMyCategoryContent(observed);
   if(observed.category!=='apps')throw new ExplorersApiError(409,'CONFLICT','Apps category required');
-  return {lists:observed.collections.map(collection=>collectionViewModel(
+  return {lists:observed.collections.filter(collection=>!collection.archived).map(collection=>collectionViewModel(
    collection,
    observed.memberships
     .filter(member=>member.collectionId===collection.id&&!member.collectionArchived&&!member.recommendationArchived)

@@ -11,14 +11,15 @@ const legacyNavigation = (name: string) => name === 'SettingsAccount' || name ==
 describe('Settings canonical navigation', () => {
   beforeEach(() => { vi.restoreAllMocks(); loginSurface('distinct-auth-user'); vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 404 }))); window.history.replaceState(null, '', '/#public-navigation'); (window as any).__dashboardLoaded = false; });
   afterEach(() => { cleanup(); useAuthStore.getState().logout(); vi.unstubAllGlobals(); window.history.replaceState(null, '', '/'); });
-  it('distinguishes verified native no content from unsupported unavailable without inventing counts', async () => {
-    // No owner content for the three supported categories; the rest stay unsupported.
+  it('reports verified no content for every category without inventing counts', async () => {
+    // No owner content in any category: every category, Places included, is read and
+    // reported as 'No content' rather than 'Unavailable - refresh to verify'.
     // (Stubbing fetch here had no effect: surfaceHarness installs its own stub after.)
     const h=surfaceHarness(<Settings />,{content:{}});await h.ready();
-    await waitFor(()=>expect(h.navigation.content?.counts).toEqual({public_books:0,public_movie:0,public_games:0}));
+    await waitFor(()=>expect(h.navigation.content?.counts).toEqual({public_recommendations:0,public_guides:0,public_books:0,public_movie:0,public_games:0,public_apps:0,public_products:0,public_people:0}));
     fireEvent.click(screen.getByRole('button',{name:/Public Visibility/i}));
     expect(screen.getByRole('checkbox',{name:'Books Tab'}).closest('label')?.parentElement?.parentElement).toHaveTextContent('No content');
-    expect(screen.getByRole('checkbox',{name:'Places Tab'}).closest('label')?.parentElement?.parentElement).toHaveTextContent('Unavailable');
+    expect(screen.getByRole('checkbox',{name:'Places Tab'}).closest('label')?.parentElement?.parentElement).toHaveTextContent('No content');
     expect(h.writes).toEqual([]);
   });
   it.each(ordinaryCategories)('safe stored %s unpin sends the complete canonical preference revision patch',async category=>{
