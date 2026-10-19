@@ -388,6 +388,14 @@ const PublicHome = memo(() => {
     return deduplicateProducts(raw);
   }, [linkedProductLists]);
 
+  // A linked-content tab is only offered while it has content; fall back to Places when the
+  // active one empties (for example when its items are hidden).
+  useEffect(() => {
+    if ((activeTab === "people" && linkedPeople.length === 0) || (activeTab === "products" && linkedProducts.length === 0)) {
+      setActiveTab("places");
+    }
+  }, [activeTab, linkedPeople.length, linkedProducts.length]);
+
   // local state for inline details modals
   const [expandedState, setExpandedState] = useState<{
     scope?: string;
@@ -1609,7 +1617,7 @@ const PublicHome = memo(() => {
                             { key: "places", label: "Places", count: filteredPlaces?.length || 0 },
                             { key: "people", label: "People", count: linkedPeople.length },
                             { key: "products", label: "Products", count: linkedProducts.length },
-                          ] as const).map(({ key, label, count }) => (
+                          ] as const).filter(({ key, count }) => key === "places" || count > 0).map(({ key, label, count }) => (
                             <button
                               key={key}
                               onClick={() => setActiveTab(key)}

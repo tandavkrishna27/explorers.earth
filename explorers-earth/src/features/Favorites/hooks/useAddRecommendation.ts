@@ -1,4 +1,5 @@
 import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
+import { validateImageFiles, maxImageMegabytes, type RejectedImage } from "../../../utils/imageFileValidation";
 import { useRef, useState } from "react";
 import { KeyValuePair } from "../components/RecommendForm";
 import axios from "axios";
@@ -603,6 +604,7 @@ export const useAddRecommendation = ({
     // Max ten photos across every source, duplicates by name and size skipped.
     const remainingSlots = PLACE_PHOTO_LIMIT - otherPhotoCount() - uploadedUserMedia.length;
     if (remainingSlots <= 0 || files.length > remainingSlots) {
+      // Extra files are never dropped silently: the refusal says how many do not fit.
       refusePhotoOverflow(PLACE_PHOTO_LIMIT - remainingSlots + files.length);
       if (remainingSlots <= 0) return [];
     }
@@ -627,34 +629,55 @@ export const useAddRecommendation = ({
     return newFiles;
   };
 
+  const reportRejectedImages = (rejected: RejectedImage[]) => {
+    for (const { file, reason } of rejected) {
+      toast.error(t(
+        reason === "type" ? "toast.error.imageTypeUnsupported" : reason === "size" ? "toast.error.imageTooLarge" : "toast.error.imageEmpty",
+        { name: file.name, max: maxImageMegabytes() },
+      ));
+    }
+  };
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFiles = event.target.files;
     if (!uploadedFiles) return;
+    const reset = () => { if (event.target) event.target.value = ""; };
+
+    // Wrong types and oversized files are refused here, before anything is saved, each
+    // with its own message.
+    const { valid, rejected } = validateImageFiles(Array.from(uploadedFiles));
+    reportRejectedImages(rejected);
+    if (valid.length === 0) {
+      reset();
+      return;
+    }
 
     const remainingSlots = PLACE_PHOTO_LIMIT - otherPhotoCount() - uploadedUserMedia.length;
     if (remainingSlots <= 0) {
-      refusePhotoOverflow(PLACE_PHOTO_LIMIT - remainingSlots + uploadedFiles.length);
-      if (event.target) event.target.value = "";
+      refusePhotoOverflow(PLACE_PHOTO_LIMIT - remainingSlots + valid.length);
+      reset();
       return;
     }
-    const fileArray = Array.from(uploadedFiles).slice(0, remainingSlots);
 
-    const accepted = await stageFiles(fileArray);
+    // stageFiles keeps what fits and says how many files were left out.
+    const accepted = await stageFiles(valid);
+    reset();
     if (accepted.length === 0) {
       toast.error(t("toast.error.allFilesAlreadyUploaded"));
-      if (event.target) event.target.value = "";
       return;
     }
-    if (accepted.length < fileArray.length) {
-      toast.warning(t("toast.error.duplicateFilesSkipped", { count: fileArray.length - accepted.length }));
+    if (accepted.length < Math.min(valid.length, remainingSlots)) {
+      toast.warning(t("toast.error.duplicateFilesSkipped", { count: Math.min(valid.length, remainingSlots) - accepted.length }));
     }
-    if (event.target) event.target.value = "";
     toast.success(t("toast.success.filesAddedSuccessfully", { count: accepted.length }));
   };
 
   const addExternalMedia = async (files: File[]) => {
     if (files.length === 0) return;
-    await stageFiles(files);
+    const { valid, rejected } = validateImageFiles(files);
+    reportRejectedImages(rejected);
+    if (valid.length === 0) return;
+    await stageFiles(valid);
   };
 
   return {

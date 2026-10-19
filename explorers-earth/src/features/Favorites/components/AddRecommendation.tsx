@@ -1,4 +1,5 @@
 import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
+import { ACCEPTED_IMAGE_ACCEPT_ATTRIBUTE } from "../../../utils/imageFileValidation";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import SwitchButton from "../../../components/ui/SwitchButton";
@@ -991,7 +992,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
                       ref={userInputRef}
                       type="file"
                       multiple
-                      accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+                      accept={ACCEPTED_IMAGE_ACCEPT_ATTRIBUTE}
                       onChange={(e) => handleFileChange(e)}
                       className="hidden"
                     />

@@ -403,4 +403,19 @@ describe("useAddRecommendation ten-photo refusal", () => {
     expect(mocks.upload).toHaveBeenCalledTimes(1);
     expect(toast.error).toHaveBeenCalledWith("toast.error.placePhotoLimit");
   });
+
+  it("refuses videos, other types and oversized files with a message each, before anything is saved", async () => {
+    const { toast } = await import("sonner");
+    const { result } = renderMediaHook([]);
+    const video = new File(["v"], "clip.mp4", { type: "video/mp4" });
+    const text = new File(["t"], "notes.txt", { type: "text/plain" });
+    const big = new File(["b"], "big.png", { type: "image/png" });
+    Object.defineProperty(big, "size", { value: 6 * 1024 * 1024 });
+    await act(async () => { await result.current.addExternalMedia([video, text, big, file("ok.jpg")]); });
+    expect(toast.error).toHaveBeenCalledWith("toast.error.imageTypeUnsupported");
+    expect(toast.error).toHaveBeenCalledTimes(3);
+    expect(toast.error).toHaveBeenCalledWith("toast.error.imageTooLarge");
+    await act(async () => { await result.current.handleSubmit(values as never); });
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+  });
 });

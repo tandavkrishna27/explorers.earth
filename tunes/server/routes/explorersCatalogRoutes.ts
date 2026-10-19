@@ -1,12 +1,11 @@
-import {MovieCatalog,MovieProviderFailure} from '../services/movieCatalog';
+import {MovieCatalog} from '../services/movieCatalog';
 import {randomUUID} from 'node:crypto';
 import type {Express} from 'express';
 import type {Pool} from 'pg';
 import type {ExplorersAuth,ExplorersAuthConfig} from '../auth/betterAuth';
-import {CatalogService,MovieGenreFailure,GameCatalogFailure} from '../application/catalog';
+import {CatalogService,MovieGenreFailure,GameCatalogFailure,movieSearchFailure} from '../application/catalog';
 import {RecommendationFailure} from '../repositories/explorersRecommendationRepository';
 import {BookCatalog,BookProviderFailure} from '../services/bookCatalog';
-import {AuthorizationError} from '../application/authorization';
 import {requireActor,sendActorError} from '../middleware/explorersPrincipal';
 import {TaxonomyCatalogService,TaxonomyCatalogFailure} from '../application/taxonomyCatalog';
 export function setupExplorersCatalogRoutes(app:Express,pool:Pool,auth:ExplorersAuth,config:ExplorersAuthConfig,books:BookCatalog,movies?:MovieCatalog){
@@ -28,15 +27,7 @@ export function setupExplorersCatalogRoutes(app:Express,pool:Pool,auth:Explorers
   catch(error){if(error instanceof BookProviderFailure){if(error.retryAfter)res.set('Retry-After',String(error.retryAfter));return res.status(error.status).json({error:{code:error.code,message:error.message,requestId}});}sendActorError(req,res,error);}
  });
  app.all('/api/explorers/v1/catalog/books',(_req,res)=>res.set('Cache-Control','no-store').status(405).json({error:{code:'INVALID_INPUT',message:'Method is not supported',requestId:randomUUID()}}));
- app.get('/api/explorers/v1/catalog/movies',async(req,res)=>{res.set('Cache-Control','no-store');const requestId=randomUUID();try{return res.json(await service.searchMovies(await requireActor(req,auth,pool),req.query));}catch(error){
-  if(error instanceof MovieProviderFailure)return res.status(error.status).json({error:{code:error.code,message:error.message,requestId}});
-  if(error instanceof RecommendationFailure)return res.status(error.status).json({error:{code:'INVALID_INPUT',message:error.message,requestId}});
-  // Actor and authorization failures keep their own responses; anything else is a catalog
-  // failure and must not be reported as an account problem.
-  if(error instanceof AuthorizationError)return sendActorError(req,res,error);
-  console.error('Movie catalog search failed',error);
-  return res.status(503).json({error:{code:'PROVIDER_UNAVAILABLE',message:'Movie details are unavailable',requestId}});
- }});
+ app.get('/api/explorers/v1/catalog/movies',async(req,res)=>{res.set('Cache-Control','no-store');const requestId=randomUUID();try{return res.json(await service.searchMovies(await requireActor(req,auth,pool),req.query));}catch(error){const failure=movieSearchFailure(error,requestId);if(failure)return res.status(failure.status).json(failure.body);sendActorError(req,res,error);}});
  app.all('/api/explorers/v1/catalog/movies',(_req,res)=>res.set('Cache-Control','no-store').status(405).json({error:{code:'INVALID_INPUT',message:'Method is not supported',requestId:randomUUID()}}));
 
 }
