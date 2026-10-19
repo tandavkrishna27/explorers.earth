@@ -2475,5 +2475,9 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "conflict": {
+    "changedElsewhere": "Dies wurde in einem anderen Tab oder auf einem anderen Gerät geändert. Lade neu, um die neueste Version zu sehen.",
+    "reload": "Neu laden"
   }
 }

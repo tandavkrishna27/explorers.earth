@@ -3,6 +3,7 @@ import {ProductsClient,type CompleteProductsOwnerContent} from './productsClient
 import {productsViewModel,type ProductOwnerView} from './productsViewModel';
 import {ExplorersApiError,type RecommendationObservation} from '../../../lib/explorersApiClient';
 import useAuthStore from '../../../store/store';
+import {recordViewedContent} from '../../../lib/viewedRevisions';
 
 // Ticket 4.4. Same orchestration contract as the Apps and Games adapters: two bracketing
 // category reads, a bounded fan-out of detail reads, and no partially hydrated view.
@@ -19,6 +20,7 @@ async function readProductsOwnerContentOnce(signal?:AbortSignal):Promise<Product
  const first=await ProductsClient.readCompleteOwner(controller.signal);checkTerminal();assertCurrent();const details=new Map<string,RecommendationObservation>();let index=0,bytes=0;
  await Promise.all(Array.from({length:Math.min(4,first.recommendations.length)},async()=>{try{while(index<first.recommendations.length){checkTerminal();assertCurrent();const row=first.recommendations[index++],detail=await ProductsClient.observeRecommendation(row.id,controller.signal);checkTerminal();assertCurrent();if(detail.detail.revision!==row.revision||detail.detail.categoryRevision!==first.revision)throw new ExplorersApiError(409,'CONFLICT','Products changed while loading');bytes+=new TextEncoder().encode(JSON.stringify(detail.detail)).byteLength;if(bytes>64*1024*1024)throw new ExplorersApiError(503,'READ_LIMIT','Products editable read limit exceeded');details.set(row.id,detail);}}catch(error){fail(error);}}));
  checkTerminal();const final=await ProductsClient.readCompleteOwner(controller.signal);checkTerminal();assertCurrent();if(first.revision!==final.revision||first.pinRevision!==final.pinRevision)throw new ExplorersApiError(409,'CONFLICT','Products changed while loading');
+ recordViewedContent(final,details.values());
  return {observation:final,details,view:productsViewModel.complete(final,details,initial.user?.username??'')};
  }catch(error){return fail(error);}finally{signal?.removeEventListener('abort',forwardAbort);}
 }

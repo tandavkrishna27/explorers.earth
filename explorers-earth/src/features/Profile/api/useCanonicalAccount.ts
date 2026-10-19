@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import useAuthStore from "../../../store/store";
 import { explorersApiClient } from "../../../lib/explorersApiClient";
 import useSetupStore from "../../../store/useSetupStore";
+import { recordViewedAccount } from "../../../lib/viewedRevisions";
 import { useEffect } from "react";
 
 export function useCanonicalAccount(options: { skip?: boolean } = {}) {
@@ -13,6 +14,8 @@ export function useCanonicalAccount(options: { skip?: boolean } = {}) {
     queryFn: async ({ signal }) => {
       const profile = await explorersApiClient.getMyProfile(signal);
       if (useAuthStore.getState().generation !== generation) throw new Error("Session changed");
+      // The revision this view shows is the one any save from it must be based on.
+      recordViewedAccount(profile.revision);
       return profile;
     },
     enabled: !options.skip,

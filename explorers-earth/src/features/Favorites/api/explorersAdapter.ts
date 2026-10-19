@@ -3,6 +3,7 @@ import {PlacesClient,type CompletePlacesOwnerContent} from './placesClient';
 import {placesViewModel,type PlacesOwnerView} from './placesViewModel';
 import {ExplorersApiError,type RecommendationObservation,type CollectionObservation} from '../../../lib/explorersApiClient';
 import useAuthStore from '../../../store/store';
+import {recordViewedContent} from '../../../lib/viewedRevisions';
 
 // Ticket 5.1. Same orchestration contract as the Apps, Products, People, Movies and Games
 // adapters: two bracketing category reads, a bounded fan-out of detail reads, and no
@@ -33,6 +34,7 @@ async function readPlacesOwnerContentOnce(signal?:AbortSignal):Promise<PlacesOwn
   ...Array.from({length:Math.min(4,first.collections.length)},async()=>{try{while(listIndex<first.collections.length){checkTerminal();assertCurrent();const row=first.collections[listIndex++],detail=await PlacesClient.observeCollection(row.id,controller.signal);checkTerminal();assertCurrent();if(detail.detail.revision!==row.revision||detail.detail.categoryRevision!==first.revision)throw new ExplorersApiError(409,'CONFLICT','Places lists changed while loading');budget(detail.detail);lists.set(row.id,detail);}}catch(error){fail(error);}}),
  ]);
  checkTerminal();const final=await PlacesClient.readCompleteOwner(controller.signal);checkTerminal();assertCurrent();if(first.revision!==final.revision||first.pinRevision!==final.pinRevision)throw new ExplorersApiError(409,'CONFLICT','Places changed while loading');
+ recordViewedContent(final,details.values());
  return {observation:final,details,lists,view:placesViewModel.complete(final,lists,details,initial.user?.username??'')};
  }catch(error){return fail(error);}finally{signal?.removeEventListener('abort',forwardAbort);}
 }

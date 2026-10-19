@@ -1,3 +1,5 @@
+import { isRevisionConflict } from "../../../lib/revisionConflict";
+import { showRevisionConflictToast } from "../../../lib/conflictToast";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useCanonicalAccount } from "../../Profile/api/useCanonicalAccount";
 import { toProfileViewModel } from "../../Profile/api/profileClient";
@@ -178,6 +180,10 @@ const ProfileAccountSettings = ({
       );
       return { status: "saved", committedRevision: saved.revision };
     } catch (saveError) {
+      if (isRevisionConflict(saveError)) {
+        showRevisionConflictToast(translate("conflict.changedElsewhere"), translate("conflict.reload"), () => window.location.reload());
+        return { status: "failed" };
+      }
       const message =
         saveError instanceof Error ? saveError.message : "Unexpected error";
       toast.error(

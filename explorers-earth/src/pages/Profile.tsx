@@ -1,3 +1,4 @@
+import { reportProfileSaveError } from "../features/Profile/profileSaveError";
 import {
   memo,
   useState,
@@ -550,34 +551,7 @@ const Profile = memo(() => {
     return response;
   };
 
-  const showProfileSaveError = (error: unknown) => {
-    if (typeof error === "object" && error !== null) {
-      const saveError = error as {
-        graphQLErrors?: { message?: string }[];
-        networkError?: unknown;
-        message?: string;
-      };
-      if (saveError.graphQLErrors?.length) {
-        toast.error(
-          t("toast.error.updateFailedWithError", {
-            error:
-              saveError.graphQLErrors[0]?.message ||
-              t("toast.error.graphQLErrorOccurred"),
-          }),
-        );
-        return;
-      }
-      if (saveError.networkError) {
-        toast.error(t("dashboard.profile.common.networkError"));
-        return;
-      }
-      if (saveError.message?.includes("was not confirmed")) {
-        toast.error(t("dashboard.profile.common.saveAndPublishFailed"));
-        return;
-      }
-    }
-    toast.error(t("dashboard.profile.common.unexpectedError"));
-  };
+  const showProfileSaveError = (error: unknown) => reportProfileSaveError(error, t);
 
   const performProfileSave = async (
     values: any,
@@ -1680,7 +1654,8 @@ const Profile = memo(() => {
       if (accountQuery.data) {
         const media = await explorersApiClient.createMedia(file, "profile");
         try {
-          const current = await explorersApiClient.getMyProfile();
+          // Based on the account this page is showing, not on a re-read that would hide a newer save.
+          const current = accountQuery.data;
           const updated = await explorersApiClient.updateAccount({ expectedRevision: current.revision, profileImageId: media.id });
           setMediaRevisionAdvance({ accountId: current.id, fromRevision: current.revision, toRevision: updated.revision });
         } catch (error) {
@@ -1719,7 +1694,8 @@ const Profile = memo(() => {
       if (accountQuery.data) {
         const media = await explorersApiClient.createMedia(file, "background");
         try {
-          const current = await explorersApiClient.getMyProfile();
+          // Based on the account this page is showing, not on a re-read that would hide a newer save.
+          const current = accountQuery.data;
           const updated = await explorersApiClient.updateAccount({ expectedRevision: current.revision, backgroundImageId: media.id });
           setMediaRevisionAdvance({ accountId: current.id, fromRevision: current.revision, toRevision: updated.revision });
         } catch (error) {

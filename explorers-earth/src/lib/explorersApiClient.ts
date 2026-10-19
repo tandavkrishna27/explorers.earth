@@ -1,3 +1,5 @@
+import {announceRevisionConflict} from './revisionConflict';
+import {changedSinceViewed,isViewObservation,markCommandSent,settleViewedAccount,settleViewedRevision,viewedAccountRevision,wasCommandSent} from './viewedRevisions';
 import {gameCatalogRequestSchema,gameMembershipCommandSchema,gameMembershipResultSchema} from '../../../tunes/shared/explorersGameOwnerContract';
 import {resolveProviderGameSchema} from '../../../tunes/shared/explorersContract';
 import {movieGenreTermsResultSchema,importMovieMediaRequestSchema,movieMediaImportResultSchema} from '../../../tunes/shared/explorersMovieMediaContract';
@@ -300,6 +302,21 @@ export function assertOwnerDetailObservation(value:OwnerDetailObservation<Editab
  const state=useAuthStore.getState();
  if(!value||!issuedDetails.has(value)||kind&&value.kind!==kind||!state.isAuthenticated||state.accountId!==value.accountId||state.generation!==value.generation||Date.now()-value.observedAt>=600000||value.detail.archived)throw new ExplorersApiError(409,'CONFLICT','Reload the owner detail before saving');
 }
+/**
+ * A command is composed against the version the owner's view showed. The re-read a command
+ * does right before it writes must still be that version; if it is newer, the edit is based
+ * on something that has changed and is refused as a conflict instead of overwriting it.
+ */
+function assertUnchangedSinceViewed(key:string,...observed:OwnerDetailObservation<unknown>[]):void {
+ if(wasCommandSent(key))return;
+ for(const value of observed)if(!isViewObservation(value)&&changedSinceViewed(value.kind,value.resourceId,value.resourceRevision))
+  throw announceRevisionConflict(new ExplorersApiError(409,'CONFLICT','This changed in another tab or device. Reload to see the latest version'));
+}
+function settleObserved(observed:unknown,dto:{id?:string;revision?:number}|undefined):void {
+ const value=observed as Partial<OwnerDetailObservation<unknown>>|undefined;
+ if(!value||typeof value.resourceId!=='string'||(value.kind!=='collection'&&value.kind!=='recommendation'))return;
+ settleViewedRevision(value.kind,value.resourceId,dto&&dto.id===value.resourceId&&typeof dto.revision==='number'?dto.revision:undefined);
+}
 export function copyOwnerDetailForStaging<T>(value:OwnerDetailObservation<T>):T {
  if(!issuedDetails.has(value))throw new ExplorersApiError(409,'CONFLICT','Reload the owner detail before staging');
  return structuredClone(value.detail);
@@ -325,7 +342,7 @@ function commandInput<T>(schema:z.ZodType<T,any,any>,input:unknown):T {
 }
 async function membershipCommand(category:'games'|'apps'|'products'|'people'|'places',parent:CollectionObservation,item:RecommendationObservation,key:string,attached:boolean,signal?:AbortSignal){
  const label=category==='games'?'Games':category==='apps'?'Apps':category==='products'?'Products':category==='people'?'People':'Places';
- assertOwnerDetailObservation(parent,'collection');assertOwnerDetailObservation(item,'recommendation');commandInput(commandKeySchema,key);
+ assertOwnerDetailObservation(parent,'collection');assertOwnerDetailObservation(item,'recommendation');assertUnchangedSinceViewed(key,parent,item);commandInput(commandKeySchema,key);
  if(parent.detail.category!==category||item.detail.category!==category||parent.accountId!==item.accountId||parent.generation!==item.generation)throw new ExplorersApiError(422,'INVALID_INPUT',`${label} membership observations required`);
  const input=commandInput(gameMembershipCommandSchema,{expectedCollectionRevision:parent.resourceRevision,expectedRecommendationRevision:item.resourceRevision});
  const controller=new AbortController(),stop=()=>controller.abort(),initial=useAuthStore.getState(),route=window.location.pathname,deadline=AbortSignal.any([controller.signal,AbortSignal.timeout(15000)]);
@@ -334,6 +351,7 @@ async function membershipCommand(category:'games'|'apps'|'products'|'people'|'pl
  const revoke=()=>{issuedDetails.delete(parent);issuedDetails.delete(item);};
  try{
   if(controller.signal.aborted||!current())throw new ExplorersApiError(409,'ABORTED',`${label} membership cancelled`);
+  markCommandSent(key);
   const fetching=fetch(`/api/explorers/v1/collections/${parent.resourceId}/memberships/${item.resourceId}`,{method:attached?'POST':'DELETE',credentials:'include',cache:'no-store',headers:{'Content-Type':'application/json','Idempotency-Key':key},body:JSON.stringify(input),signal:deadline});
   void fetching.then(reply=>{if(deadline.aborted)void reply.body?.cancel().catch(()=>{});},()=>{});
   const reply=await gameCommandAwait(fetching,deadline),raw=await gameMembershipBody(reply,initial.generation,deadline);
@@ -342,8 +360,9 @@ async function membershipCommand(category:'games'|'apps'|'products'|'people'|'pl
   if(!parsed.success)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT',`Invalid ${label} membership response`);
   const result=parsed.data.membership;
   if(result.attached!==attached||result.collection.id!==parent.resourceId||result.recommendation.id!==item.resourceId||result.collection.accountId!==initial.accountId||result.recommendation.accountId!==initial.accountId||result.collection.category!==category||result.recommendation.category!==category||result.collection.revision!==parent.resourceRevision+1||result.recommendation.revision!==item.resourceRevision+1||result.recommendation.entityId!==item.detail.entityId)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT',`Invalid ${label} membership identity`);
+  settleViewedRevision('collection',parent.resourceId,result.collection.revision);settleViewedRevision('recommendation',item.resourceId,result.recommendation.revision);
   return deepFreeze(result);
- }catch(error){if(error instanceof ExplorersApiError){if([401,403,404,409].includes(error.status))revoke();throw error;}throw new ExplorersApiError(503,'UNAVAILABLE',`Unable to save ${label} membership`);}
+ }catch(error){if(error instanceof ExplorersApiError){if([401,403,404,409].includes(error.status))revoke();throw announceRevisionConflict(error);}throw new ExplorersApiError(503,'UNAVAILABLE',`Unable to save ${label} membership`);}
  finally{unsubscribe();signal?.removeEventListener('abort',stop);}
 }
 async function gameCommandAwait<T>(work:Promise<T>,signal:AbortSignal):Promise<T>{
@@ -371,6 +390,7 @@ async function contentCommand<T extends {id:string}>(path:string,method:string,i
  const unsubscribe=useAuthStore.subscribe(()=>{if(!current())stop();});signal?.addEventListener('abort',stop,{once:true});if(signal?.aborted)stop();
  try {
   if(controller.signal.aborted||!current())throw new ExplorersApiError(409,'ABORTED','Content command cancelled');
+  markCommandSent(key);
   const response=await fetch(`/api/explorers/v1${path}`,{method,credentials:'include',cache:'no-store',headers:{'Content-Type':'application/json','Idempotency-Key':key},body,signal:controller.signal});
   const text=await response.text();
   if(controller.signal.aborted||!current())throw new ExplorersApiError(409,'CONFLICT','Owner changed before command completion');
@@ -381,7 +401,7 @@ async function contentCommand<T extends {id:string}>(path:string,method:string,i
    const failure=apiErrorSchema.safeParse(raw);if(!failure.success)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid command error');
    if([401,403,404,409].includes(response.status))revoke();
    const error=new ExplorersApiError(response.status,failure.data.error.code,failure.data.error.message);
-   validatedServerErrors.add(error);throw error;
+   validatedServerErrors.add(error);throw announceRevisionConflict(error);
   }
   revoke();
   const result=z.object({[name]:schema}).strict().safeParse(raw);if(!result.success)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid command response');
@@ -392,6 +412,7 @@ async function contentCommand<T extends {id:string}>(path:string,method:string,i
   const expectedEntity=payload.entityId??(detail&&'entityId' in detail?detail.entityId:undefined);
   if(expectedId&&dto.id!==expectedId||dto.accountId!==undefined&&dto.accountId!==state.accountId||expectedRevision!==undefined&&dto.revision!==expectedRevision)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid command resource');
   if(dto.category!==undefined&&dto.category!==expectedCategory||dto.entityId!==undefined&&dto.entityId!==expectedEntity)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid command category or catalog identity');
+  settleObserved(observed,dto);
   return deepFreeze(dto);
  } catch(error) {
   if(controller.signal.aborted||!current()){revoke();throw new ExplorersApiError(409,'CONFLICT','Content command cancelled or owner changed');}
@@ -601,7 +622,7 @@ export const explorersApiClient = {
    }
   },
   async updateMyCollection(observed:CollectionObservation,patch:Omit<UpdateCollectionInput,'expectedRevision'>,key:string,signal?:AbortSignal) {
-   assertOwnerDetailObservation(observed,'collection');const editable=commandInput(updateCollectionSchema.innerType().omit({expectedRevision:true}).strict(),patch);
+   assertOwnerDetailObservation(observed,'collection');assertUnchangedSinceViewed(key,observed);const editable=commandInput(updateCollectionSchema.innerType().omit({expectedRevision:true}).strict(),patch);
    if(editable.slug!==undefined&&observed.detail.category!=='places')throw new ExplorersApiError(422,'INVALID_INPUT','Invalid content command');
    const body=commandInput(updateCollectionSchema,{...editable,expectedRevision:observed.resourceRevision});return contentCommand(`/collections/${observed.resourceId}`,'PATCH',body,key,'collection',collectionCoreDtoSchema,signal,observed,observed.resourceId,observed.resourceRevision+1);
   },
@@ -613,9 +634,9 @@ export const explorersApiClient = {
    * caller receives the list it just changed.
    */
   async setMyCollectionLocation(child:CollectionObservation,location:CollectionObservation|null,key:string,signal?:AbortSignal) {
-   assertOwnerDetailObservation(child,'collection');
+   assertOwnerDetailObservation(child,'collection');assertUnchangedSinceViewed(key,child);
    if(location!==null){
-    assertOwnerDetailObservation(location,'collection');
+    assertOwnerDetailObservation(location,'collection');assertUnchangedSinceViewed(key,location);
     if(location.detail.category!=='places')throw new ExplorersApiError(422,'INVALID_INPUT','A location list is required');
     if(location.accountId!==child.accountId||location.generation!==child.generation)throw new ExplorersApiError(409,'CONFLICT','Owner changed between the two lists');
    }
@@ -623,21 +644,22 @@ export const explorersApiClient = {
     ?commandInput(detachLocationLinkSchema,{childCollectionId:child.resourceId,expectedChildRevision:child.resourceRevision})
     :commandInput(attachLocationLinkSchema,{childCollectionId:child.resourceId,expectedChildRevision:child.resourceRevision,
       locationCollectionId:location.resourceId,expectedLocationRevision:location.resourceRevision});
-   return contentCommand(`/collections/${child.resourceId}/location`,location===null?'DELETE':'POST',body,key,'collection',collectionCoreDtoSchema,signal,child,child.resourceId,child.resourceRevision+1);
+   const saved=await contentCommand(`/collections/${child.resourceId}/location`,location===null?'DELETE':'POST',body,key,'collection',collectionCoreDtoSchema,signal,child,child.resourceId,child.resourceRevision+1);
+   if(location!==null)settleObserved(location,undefined);return saved;
   },
   async archiveMyCollection(observed:CollectionObservation,key:string,signal?:AbortSignal) {
-   assertOwnerDetailObservation(observed,'collection');return contentCommand(`/collections/${observed.resourceId}`,'DELETE',{expectedRevision:observed.resourceRevision},key,'collection',archivedResult,signal,observed,observed.resourceId);
+   assertOwnerDetailObservation(observed,'collection');assertUnchangedSinceViewed(key,observed);return contentCommand(`/collections/${observed.resourceId}`,'DELETE',{expectedRevision:observed.resourceRevision},key,'collection',archivedResult,signal,observed,observed.resourceId);
   },
   async createMyRecommendation(parent:CollectionObservation,input:Omit<CreateRecommendationInput,'collectionId'|'expectedCollectionRevision'|'category'>,key:string,signal?:AbortSignal) {
    assertOwnerDetailObservation(parent,'collection');const editable=commandInput(createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true}).strict(),input);
    const body=commandInput(createRecommendationSchema,{...editable,collectionId:parent.resourceId,category:parent.detail.category,expectedCollectionRevision:parent.resourceRevision});return contentCommand('/recommendations','POST',body,key,'recommendation',recommendationCoreDtoSchema,signal,parent,undefined,1);
   },
   async updateMyRecommendation(observed:RecommendationObservation,patch:Omit<UpdateRecommendationInput,'expectedRevision'>,key:string,signal?:AbortSignal) {
-   assertOwnerDetailObservation(observed,'recommendation');const editable=commandInput(updateRecommendationSchema.innerType().omit({expectedRevision:true}).strict(),patch);
+   assertOwnerDetailObservation(observed,'recommendation');assertUnchangedSinceViewed(key,observed);const editable=commandInput(updateRecommendationSchema.innerType().omit({expectedRevision:true}).strict(),patch);
    const body=commandInput(updateRecommendationSchema,{...editable,expectedRevision:observed.resourceRevision});return contentCommand(`/recommendations/${observed.resourceId}`,'PATCH',body,key,'recommendation',recommendationCoreDtoSchema,signal,observed,observed.resourceId,observed.resourceRevision+1);
   },
   async archiveMyRecommendation(observed:RecommendationObservation,key:string,signal?:AbortSignal) {
-   assertOwnerDetailObservation(observed,'recommendation');return contentCommand(`/recommendations/${observed.resourceId}`,'DELETE',{expectedRevision:observed.resourceRevision},key,'recommendation',archivedResult,signal,observed,observed.resourceId);
+   assertOwnerDetailObservation(observed,'recommendation');assertUnchangedSinceViewed(key,observed);return contentCommand(`/recommendations/${observed.resourceId}`,'DELETE',{expectedRevision:observed.resourceRevision},key,'recommendation',archivedResult,signal,observed,observed.resourceId);
   },
   async reorderMyCollection(observed:CompleteMyCategoryContent,collectionId:string,orderedRecommendationIds:string[],key:string,signal?:AbortSignal) {
    assertCompleteMyCategoryContent(observed);const parent=observed.collections.find(x=>x.id===collectionId&&!x.archived);
@@ -692,9 +714,18 @@ export const explorersApiClient = {
   },
   async updateAccount(input: UpdateAccountInput & RevisionInput, signal?: AbortSignal): Promise<AccountDto> {
     const generation = useAuthStore.getState().generation;
+    // The revision must be the one the owner's view showed. A caller that re-read the
+    // account right before saving would otherwise send the newest revision and defeat the lock.
+    const viewedRevision = viewedAccountRevision();
+    if (viewedRevision !== undefined && input.expectedRevision !== viewedRevision)
+      throw announceRevisionConflict(new ExplorersApiError(409, "CONFLICT", "This changed in another tab or device. Reload to see the latest version"));
     const response = await fetch("/api/explorers/v1/account", { method: "PATCH", credentials: "include", signal,
       headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
-    return (await responseBody<{ account: AccountDto }>(response, generation)).account;
+    try {
+      const { account } = await responseBody<{ account: AccountDto }>(response, generation);
+      settleViewedAccount(account.revision);
+      return account;
+    } catch (error) { throw announceRevisionConflict(error); }
   },
   async createMedia(file: File, purpose: "profile" | "background" | "feed" | "recommendation" | "collection" | "guide", signal?: AbortSignal): Promise<MediaDto> {
     const generation = useAuthStore.getState().generation;

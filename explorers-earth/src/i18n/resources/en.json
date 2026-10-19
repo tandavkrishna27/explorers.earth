@@ -2528,5 +2528,9 @@
       "retry": "Try again",
       "retrying": "Retrying…"
     }
+  },
+  "conflict": {
+    "changedElsewhere": "This was changed in another tab or device. Reload to see the latest version.",
+    "reload": "Reload"
   }
 }

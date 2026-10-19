@@ -3,6 +3,7 @@ import {GamesClient,type CompleteGamesOwnerContent} from './gamesClient';
 import {gamesViewModel,type GameOwnerView} from './gamesViewModel';
 import {ExplorersApiError,type RecommendationObservation} from '../../../lib/explorersApiClient';
 import useAuthStore from '../../../store/store';
+import {recordViewedContent} from '../../../lib/viewedRevisions';
 export type GamesOwnerContent={observation:CompleteGamesOwnerContent;view:Readonly<GameOwnerView>;details:ReadonlyMap<string,RecommendationObservation>};
 /** Concurrent readers on one page share one read (see shareOwnerRead). */
 export function readGamesOwnerContent(signal?:AbortSignal):Promise<GamesOwnerContent>{return shareOwnerRead('games',signal,shared=>readGamesOwnerContentOnce(shared));}
@@ -17,6 +18,7 @@ async function readGamesOwnerContentOnce(signal?:AbortSignal):Promise<GamesOwner
  const first=await GamesClient.readCompleteOwner(controller.signal);checkTerminal();assertCurrent();const details=new Map<string,RecommendationObservation>();let index=0,bytes=0;
  await Promise.all(Array.from({length:Math.min(4,first.recommendations.length)},async()=>{try{while(index<first.recommendations.length){checkTerminal();assertCurrent();const row=first.recommendations[index++],detail=await GamesClient.observeRecommendation(row.id,controller.signal);checkTerminal();assertCurrent();if(detail.detail.revision!==row.revision||detail.detail.categoryRevision!==first.revision)throw new ExplorersApiError(409,'CONFLICT','Games changed while loading');bytes+=new TextEncoder().encode(JSON.stringify(detail.detail)).byteLength;if(bytes>64*1024*1024)throw new ExplorersApiError(503,'READ_LIMIT','Games editable read limit exceeded');details.set(row.id,detail);}}catch(error){fail(error);}}));
  checkTerminal();const final=await GamesClient.readCompleteOwner(controller.signal);checkTerminal();assertCurrent();if(first.revision!==final.revision||first.pinRevision!==final.pinRevision)throw new ExplorersApiError(409,'CONFLICT','Games changed while loading');
+ recordViewedContent(final,details.values());
  return {observation:final,details,view:gamesViewModel.complete(final,details,initial.user?.username??'')};
  }catch(error){return fail(error);}finally{signal?.removeEventListener('abort',forwardAbort);}
 }
