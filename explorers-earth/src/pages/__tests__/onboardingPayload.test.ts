@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {isValidPostalCode,updateAccountRequestSchema} from '../../../../tunes/shared/explorersContract';
+import {isValidPostalCode,newInvalidPostalCodes,updateAccountRequestSchema} from '../../../../tunes/shared/explorersContract';
 import {buildOnboardingAccountUpdate} from '../onboardingPayload';
 
 const form={username:' Trail ',accountName:' Trail ',accountType:'Personal',bio:'',mobile_number:'',primaryAddress:'1 Main St',address:'1 Main St',city:'Leeds',country:'UK',state:'England',streetName:'Main St',postalCode:'  LS1 4AP '};
@@ -27,9 +27,11 @@ describe('postal code validation',()=>{
  it.each(['','1','  1 ','12345678901','12<script>','12_34','12.34','--','   '])('rejects %j',code=>{
   expect(isValidPostalCode(code)).toBe(false);
  });
- it('rejects bad codes on the server contract but still lets the field be cleared',()=>{
-  const parse=(postalCode:string)=>updateAccountRequestSchema.safeParse({expectedRevision:1,additionalAddresses:[{postalCode}],primaryAddress:{postalCode}} as never).success;
-  expect(parse('12<script>')).toBe(false);expect(parse('1')).toBe(false);expect(parse('12345678901')).toBe(false);
-  expect(parse('')).toBe(true);expect(parse(' 560001 ')).toBe(true);
+ it('judges only a new value: bad ones are listed, unchanged stored ones and clearing are not',()=>{
+  const stored={additionalAddresses:[{postalCode:'12.34'}]};
+  expect(newInvalidPostalCodes({additionalAddresses:[{postalCode:' 12.34 '}]},stored)).toEqual([]);
+  expect(newInvalidPostalCodes({additionalAddresses:[{postalCode:'<script>'}]},stored)).toEqual(['<script>']);
+  expect(newInvalidPostalCodes({additionalAddresses:[{postalCode:''}]},stored)).toEqual([]);
+  expect(newInvalidPostalCodes({primaryAddress:{postalCode:'560001'}},stored)).toEqual([]);
  });
 });

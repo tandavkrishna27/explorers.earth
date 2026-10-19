@@ -228,7 +228,8 @@ const contactValidationSchema = (t: any) =>
       ),
   });
 
-const addressValidationSchema = (t: any) =>
+// An untouched stored postal code is never re-judged against the format (only a new value is).
+const addressValidationSchema = (t: any, storedPostalCode?: string) =>
   Yup.object({
     address: Yup.string().required(
       t("auth.validations.onboarding.addressRequired")
@@ -247,7 +248,7 @@ const addressValidationSchema = (t: any) =>
     postalCode: Yup.string()
       .trim()
       .required(t("auth.validations.onboarding.postalCodeRequired"))
-      .test("postal-code-format", t("auth.validations.onboarding.postalCodeInvalid"), (value) => isValidPostalCode(value)),
+      .test("postal-code-format", t("auth.validations.onboarding.postalCodeInvalid"), (value) => isValidPostalCode(value) || (!!storedPostalCode && (value ?? "").trim() === storedPostalCode.trim())),
   });
 
 /**
@@ -715,7 +716,7 @@ const OnBoarding = () => {
   const handleFinalizeAddress = async () => {
     if (isSubmitting || hasSubmitted || isFinalizing) return;
     try {
-      await addressValidationSchema(t).validate(formData, { abortEarly: false });
+      await addressValidationSchema(t, canonicalAccount.data?.additionalAddresses?.[0]?.postalCode).validate(formData, { abortEarly: false });
       await saveOnboardingAccount(formData);
     } catch (error) {
       if (error instanceof Yup.ValidationError) {
@@ -745,7 +746,7 @@ const OnBoarding = () => {
         title: t('auth.onboarding.addressDetails.title'),
         fields: getAddressFields(t),
         description: t('auth.onboarding.addressDetails.description'),
-        validationSchema: addressValidationSchema(t),
+        validationSchema: addressValidationSchema(t, canonicalAccount.data?.additionalAddresses?.[0]?.postalCode),
       },
     ];
 

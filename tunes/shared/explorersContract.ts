@@ -163,8 +163,21 @@ export const POSTAL_CODE_PATTERN = /^(?=.*[\p{L}\p{N}])[\p{L}\p{N} -]{2,10}$/u;
 export function isValidPostalCode(value: unknown): boolean {
   return typeof value === "string" && POSTAL_CODE_PATTERN.test(value.trim());
 }
-// Empty clears the field; anything else must be a plausible postal code.
-const postalCodeSchema = z.string().trim().refine((value) => value === "" || POSTAL_CODE_PATTERN.test(value), "Invalid postal code");
+/**
+ * Postal codes a save introduces that fail the format. Like handles, the rule applies to a value
+ * that is being set or changed: a stored legacy value sent back unchanged must not fail an
+ * unrelated save. Empty clears the field and is always fine.
+ */
+export function newInvalidPostalCodes(
+  input: { primaryAddress?: { postalCode?: string } | null; additionalAddresses?: Array<{ postalCode?: string }> },
+  stored: { primaryAddress?: { postalCode?: string } | null; additionalAddresses?: Array<{ postalCode?: string }> },
+): string[] {
+  const existing = new Set([stored.primaryAddress?.postalCode, ...(stored.additionalAddresses ?? []).map((a) => a.postalCode)]
+    .filter((v): v is string => typeof v === "string").map((v) => v.trim()));
+  return [input.primaryAddress?.postalCode, ...(input.additionalAddresses ?? []).map((a) => a.postalCode)]
+    .filter((v): v is string => typeof v === "string").map((v) => v.trim())
+    .filter((v) => v !== "" && !existing.has(v) && !POSTAL_CODE_PATTERN.test(v));
+}
 const addressSchema = z.object({
   address: shortText.optional(), streetNumber: shortText.optional(), streetName: shortText.optional(),
   postalCode: shortText.optional(), state: shortText.optional(), city: shortText.optional(),
@@ -174,8 +187,6 @@ const addressSchema = z.object({
   businessWebsite: z.string().url().startsWith("https://").max(2048).optional(),
   about: z.string().max(5000).optional(), businessDescription: z.string().max(5000).optional(),
 }).strict();
-// Reads stay lenient (older rows may hold anything); only what is written is checked.
-const addressInputSchema = addressSchema.extend({ postalCode: postalCodeSchema.optional() }).strict();
 const publicAddressSchema = addressSchema.extend({
   placeId: shortText.optional(),
   places: z.null().optional(),
@@ -265,8 +276,8 @@ export const updateAccountInputSchema = z.object({
   mobileNumberVisible: z.boolean().optional(),
   bioPlain: nullableText.optional(),
   bioRich: richTextSchema.nullable().optional(),
-  primaryAddress: addressInputSchema.nullable().optional(),
-  additionalAddresses: z.array(addressInputSchema).max(20).optional(),
+  primaryAddress: addressSchema.nullable().optional(),
+  additionalAddresses: z.array(addressSchema).max(20).optional(),
   publicAddress: publicAddressSchema.nullable().optional(),
   profilePlaceDetails: placeDetailsSchema.nullable().optional(),
   categories: z.array(z.object({ category: retiredCategoryKeySchema, isPublic: z.boolean(), displayOrder: z.number().int().nonnegative(), pinnedOrder: z.number().int().nonnegative().nullable() }).strict()).optional(),
