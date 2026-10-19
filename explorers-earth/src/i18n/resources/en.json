@@ -917,6 +917,13 @@
         "whatsappNumber": "WhatsApp Number"
       },
       "publicProfile": {
+    "loadError": {
+      "title": "This page could not be loaded",
+      "rateLimited": "Too many requests right now. We will try again shortly.",
+      "body": "Something went wrong while loading this page. It still exists; please try again.",
+      "retry": "Try again",
+      "retrying": "Retrying..."
+    },
         "accountTypes": {
           "business": "Business",
           "creator": "Creator",

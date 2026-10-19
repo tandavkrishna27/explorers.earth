@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createPublicProfileGatewayClient, resolvePublicProfileGatewayOrigin } from "../publicProfileGatewayClient";
+import { createPublicProfileGatewayClient, resolvePublicProfileGatewayOrigin, parseRetryAfterMs, isPublicProfileNotFound } from "../publicProfileGatewayClient";
 
 describe("public profile gateway client", () => {
   it("uses a dedicated public-profile gateway origin before the Music origin", () => {
@@ -138,4 +138,69 @@ it("bounds a hung shell read at 12s instead of waiting for a fetch that never se
   expect(await promptly(outcome)).toBe("PUBLIC_PROFILE_ABORTED");
   expect(fetchImpl.mock.calls[0][1].signal.aborted).toBe(true);
   timers.mockRestore();
+});
+
+describe("public profile gateway client: rate limits and duplicate reads", () => {
+  it("shares one request between concurrent identical reads (nav + page + StrictMode)", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const fetchImpl = vi.fn().mockImplementation(async () => { await gate; return new Response(JSON.stringify({ appLists: [] }), { status: 200 }); });
+    const client = createPublicProfileGatewayClient("https://localtunes.example", fetchImpl);
+    const a = client.category("tk2727", "apps", new AbortController().signal);
+    const b = client.category("tk2727", "apps", new AbortController().signal);
+    const c = client.category("tk2727", "apps");
+    release();
+    await expect(Promise.all([a, b, c])).resolves.toEqual([{ appLists: [] }, { appLists: [] }, { appLists: [] }]);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("one caller aborting does not cancel the others, the last abort cancels the fetch", async () => {
+    let fetchSignal: AbortSignal | undefined;
+    const fetchImpl = vi.fn().mockImplementation((_url: string, init: RequestInit) => {
+      fetchSignal = init.signal as AbortSignal;
+      return new Promise<Response>((resolve) => setTimeout(() => resolve(new Response("{}", { status: 200 })), 20));
+    });
+    const client = createPublicProfileGatewayClient("https://localtunes.example", fetchImpl);
+    const first = new AbortController();
+    const second = new AbortController();
+    const p1 = client.category("tk2727", "books", first.signal);
+    const p2 = client.category("tk2727", "books", second.signal);
+    first.abort();
+    await expect(p1).rejects.toThrow("PUBLIC_PROFILE_ABORTED");
+    expect(fetchSignal?.aborted).toBe(false);
+    await expect(p2).resolves.toEqual({});
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("a revalidation (bypassCache) never joins an in-flight or earlier read", async () => {
+    const fetchImpl = vi.fn().mockImplementation(async () => new Response("{}", { status: 200 }));
+    const client = createPublicProfileGatewayClient("https://localtunes.example", fetchImpl);
+    await Promise.all([client.category("tk2727", "books"), client.category("tk2727", "books", undefined, true)]);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("carries the status and Retry-After on a 429", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response("{}", { status: 429, headers: { "Retry-After": "12" } }));
+    const client = createPublicProfileGatewayClient("https://localtunes.example", fetchImpl);
+    const error = await client.shell("tk2727").catch((e) => e);
+    expect(error.message).toBe("PUBLIC_PROFILE_429");
+    expect(error.status).toBe(429);
+    expect(error.retryAfterMs).toBe(12_000);
+  });
+
+  it("parses Retry-After seconds and dates and ignores garbage", () => {
+    expect(parseRetryAfterMs("5")).toBe(5000);
+    expect(parseRetryAfterMs(new Date(11_000).toUTCString(), 1_000)).toBe(10_000);
+    expect(parseRetryAfterMs("soon")).toBeUndefined();
+    expect(parseRetryAfterMs(null)).toBeUndefined();
+    expect(parseRetryAfterMs("999999")).toBe(300_000);
+  });
+
+  it("only PUBLIC_PROFILE_404 is not-found", () => {
+    expect(isPublicProfileNotFound(new Error("PUBLIC_PROFILE_404"))).toBe(true);
+    for (const m of ["PUBLIC_PROFILE_429", "PUBLIC_PROFILE_503", "Failed to fetch", "PUBLIC_PROFILE_INVALID_RESPONSE"]) {
+      expect(isPublicProfileNotFound(new Error(m))).toBe(false);
+    }
+    expect(isPublicProfileNotFound(undefined)).toBe(false);
+  });
 });

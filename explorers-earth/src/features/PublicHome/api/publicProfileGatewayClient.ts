@@ -3,6 +3,27 @@ import { runtimeOrigin } from "../../../lib/publicRuntimeConfig";
 export type PublicCategory = "places" | "movies" | "books" | "games" | "guides" | "apps" | "products" | "people";
 export type PublicProfilePage = { limit?: number; cursor?: string };
 
+
+export type PublicProfileHttpError = Error & { status: number; retryAfterMs?: number };
+/** Retry-After is delta-seconds or an HTTP date; anything else (or absurd) is ignored. Capped at 5 minutes. */
+export function parseRetryAfterMs(value: string | null | undefined, now = Date.now()): number | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  const ms = /^\d{1,6}$/.test(trimmed) ? Number(trimmed) * 1000 : Date.parse(trimmed) - now;
+  return Number.isFinite(ms) && ms >= 0 ? Math.min(ms, 300_000) : undefined;
+}
+function publicProfileHttpError(status: number, retryAfter: string | null): PublicProfileHttpError {
+  const retryAfterMs = parseRetryAfterMs(retryAfter);
+  return Object.assign(new Error(`PUBLIC_PROFILE_${status}`), { status, ...(retryAfterMs !== undefined ? { retryAfterMs } : {}) });
+}
+/** Only a real 404 means "this profile does not exist". 429, 5xx, network and parse failures are retryable. */
+export function isPublicProfileNotFound(error: unknown): boolean {
+  return error instanceof Error && error.message === "PUBLIC_PROFILE_404";
+}
+export function publicProfileRetryAfterMs(error: unknown): number | undefined {
+  return error instanceof Error ? (error as Partial<PublicProfileHttpError>).retryAfterMs : undefined;
+}
+
 type FetchLike = typeof fetch;
 async function gameBounded<T>(work:Promise<T>,signal:AbortSignal):Promise<T>{
  void work.catch(()=>{});
@@ -65,7 +86,7 @@ export function createPublicProfileGatewayClient(baseUrl: string, fetchImpl: Fet
   const cache = new Map<string, { etag?: string; value: unknown }>();
   const categoryPath = (username: string, category: PublicCategory) =>
     `/api/explorers/v1/profiles/${encodeURIComponent(username)}/recommendations/${category}`;
-  const request = async (path: string, signal?: AbortSignal, bypassCache = false, gamesUsername?:string, bounded = false): Promise<unknown> => {
+  const requestOnce = async (path: string, signal?: AbortSignal, bypassCache = false, gamesUsername?:string, bounded = false): Promise<unknown> => {
     const url = `${origin}${path}`;
     const people = /\/recommendations\/people(?:\/|\?|$)/.test(path);
     // Deliberately independent of the cache predicate below. Both used to be the SAME
@@ -110,7 +131,7 @@ export function createPublicProfileGatewayClient(baseUrl: string, fetchImpl: Fet
         if(people)void response.body?.cancel().catch(()=>{});
         throw new Error("PUBLIC_PROFILE_304");
       }
-      if (!response.ok) {if(gamesUsername!==undefined)cache.delete(url);if(people)void response.body?.cancel().catch(()=>{});throw new Error(`PUBLIC_PROFILE_${response.status}`);}
+      if (!response.ok) {if(gamesUsername!==undefined)cache.delete(url);if(people)void response.body?.cancel().catch(()=>{});throw publicProfileHttpError(response.status,response.headers.get('retry-after'));}
       if (response.headers.get("content-type")?.toLowerCase().includes("text/html")) {
         if(people)void response.body?.cancel().catch(()=>{});
         throw new Error("PUBLIC_PROFILE_INVALID_RESPONSE");
@@ -125,6 +146,46 @@ export function createPublicProfileGatewayClient(baseUrl: string, fetchImpl: Fet
       // every throw -- including PUBLIC_PROFILE_404, the most common outcome.
       if (expiry !== undefined) clearTimeout(expiry);
     }
+  };
+
+  // One public profile page mounts the nav (a request per category) and the page body (the same
+  // category again, plus per-list previews), and StrictMode mounts twice. Identical GETs share one
+  // in-flight request, so a page load costs each distinct URL once against the per-IP rate limit.
+  // Settled answers are not reused here (the ETag cache above handles that with a conditional
+  // request), so owner changes are never hidden. Explicit revalidation (bypassCache) never joins. Each caller keeps its own AbortSignal: the shared fetch aborts only when every
+  // caller has aborted.
+  type Shared = { promise: Promise<unknown>; controller: AbortController; subscribers: number };
+  const shared = new Map<string, Shared>();
+  const request = (path: string, signal?: AbortSignal, bypassCache = false, gamesUsername?: string, bounded = false): Promise<unknown> => {
+    const key = `${origin}${path}`;
+    if (bypassCache) { shared.delete(key); return requestOnce(path, signal, bypassCache, gamesUsername, bounded); }
+    let entry = shared.get(key);
+    if (entry?.controller.signal.aborted) { shared.delete(key); entry = undefined; }
+    if (!entry) {
+      const controller = new AbortController();
+      const created: Shared = { controller, subscribers: 0, promise: undefined as unknown as Promise<unknown> };
+      created.promise = requestOnce(path, controller.signal, false, gamesUsername, bounded).then(
+        (value) => { if (shared.get(key) === created) shared.delete(key); return value; },
+        (error) => { if (shared.get(key) === created) shared.delete(key); throw error; },
+      );
+      created.promise.catch(() => undefined);
+      shared.set(key, created);
+      entry = created;
+    }
+    const mine = entry;
+    mine.subscribers += 1;
+    if (!signal) return mine.promise;
+    // Deliberately not detached once settled (see requestOnce): a late abort still reaches the fetch signal.
+    return new Promise<unknown>((resolve, reject) => {
+      const onAbort = () => {
+        mine.subscribers -= 1;
+        if (mine.subscribers <= 0) mine.controller.abort();
+        reject(new Error("PUBLIC_PROFILE_ABORTED"));
+      };
+      if (signal.aborted) { onAbort(); return; }
+      signal.addEventListener("abort", onAbort, { once: true });
+      mine.promise.then(resolve, reject);
+    });
   };
   const pageQuery = (page: PublicProfilePage = {}): string => {
     const params = new URLSearchParams();

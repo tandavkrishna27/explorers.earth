@@ -8,6 +8,7 @@ import rateLimit from "express-rate-limit";
 import { parsePublicPeopleSectorRequest, parsePublicMovieGenreRequest, parsePublicProfileDetailRequest, parsePublicProfileRequest, parsePublicProfileUsername } from "../publicProfile/publicProfileContract";
 import type { PublicCategory } from "../publicProfile/publicProfilePolicy";
 
+export const PUBLIC_PROFILE_RATE_LIMIT = Object.freeze({ windowMs: 60_000, limit: 600, burstWindowMs: 5_000, burstLimit: 150 });
 const notFound = { version: "explorers-public-error/v1", error: { code: "NOT_FOUND" } };
 const badRequest = { version: "explorers-public-error/v1", error: { code: "BAD_REQUEST" } };
 const unavailable = { version: "explorers-public-error/v1", error: { code: "UNAVAILABLE", retryable: true } };
@@ -40,14 +41,31 @@ async function sendGames(request:Request,response:Response,value:unknown){
 export function setupExplorersPublicProfileRoutes(
   app: Express,
   dependencies: { peopleSector?(username:string,sectorSlug:string,limit:number,options?:{cursor?:string}):Promise<unknown|undefined>; movieGenre?(username:string,genreSlug:string,limit:number,options?:{bypassCache?:boolean;cursor?:string}):Promise<unknown|undefined>; shell?(username: string, options?: { bypassCache?: boolean }): Promise<unknown | undefined>; category(username: string, category: PublicCategory, limit: number, options?: { bypassCache?: boolean; cursor?: string;signal?:AbortSignal }): Promise<unknown | undefined>; detail?(username: string, category: PublicCategory, slug: string, limit: number, options?: { bypassCache?: boolean; cursor?: string;signal?:AbortSignal }): Promise<unknown | undefined> },
-  options: { rateLimit?: { windowMs?: number; limit?: number } } = {},
+  options: { rateLimit?: { windowMs?: number; limit?: number; burstWindowMs?: number; burstLimit?: number } } = {},
 ): void {
+  // Per-IP, two windows. A public page costs ~10-25 reads at once, and many real visitors share
+  // one IP (mobile carrier CGNAT, offices, schools), so the old flat 120/min turned a handful of
+  // simultaneous visitors into 429s on pages that exist (UAT PUB-X01). Sustained: 600/min (10
+  // rps average, ~25 page loads a minute per IP). Burst: 150 per 5 s stops a tight loop long
+  // before the sustained budget would. Abuse stays bounded at 600 cheap, cached, ETag'd reads/min.
+  const limits = {
+    windowMs: options.rateLimit?.windowMs ?? PUBLIC_PROFILE_RATE_LIMIT.windowMs,
+    limit: options.rateLimit?.limit ?? PUBLIC_PROFILE_RATE_LIMIT.limit,
+    burstWindowMs: options.rateLimit?.burstWindowMs ?? PUBLIC_PROFILE_RATE_LIMIT.burstWindowMs,
+    burstLimit: options.rateLimit?.burstLimit ?? PUBLIC_PROFILE_RATE_LIMIT.burstLimit,
+  };
+  const limited = (windowMs: number) => (_request: Request, response: Response) => {
+    // The SPA honours this to schedule its retry; the rate limiter's own header is the same value.
+    if (!response.getHeader("Retry-After")) response.setHeader("Retry-After", String(Math.max(1, Math.ceil(windowMs / 1000))));
+    response.status(429).json(rateLimited);
+  };
   app.use("/api/explorers/v1/profiles", rateLimit({
-    windowMs: options.rateLimit?.windowMs ?? 60_000,
-    limit: options.rateLimit?.limit ?? 120,
-    standardHeaders: "draft-7",
-    legacyHeaders: false,
-    handler: (_request, response) => response.status(429).json(rateLimited),
+    windowMs: limits.burstWindowMs, limit: limits.burstLimit, standardHeaders: "draft-7", legacyHeaders: false,
+    handler: limited(limits.burstWindowMs),
+  }));
+  app.use("/api/explorers/v1/profiles", rateLimit({
+    windowMs: limits.windowMs, limit: limits.limit, standardHeaders: "draft-7", legacyHeaders: false,
+    handler: limited(limits.windowMs),
   }));
   app.use("/api/explorers/v1/profiles", (_request, response, next) => {
     response.setHeader("Cache-Control", "no-store");
