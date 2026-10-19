@@ -79,6 +79,8 @@ import * as maintenance from '../../application/accountLifecycleMaintenance';
 it('settles an early barrier failure and releases the exact acquired client', async () => {
     const f = make(), seedRelease = vi.fn(), runtimeRelease = vi.fn();
     f.input.migrator.connect = vi.fn(async () => ({ query: vi.fn(async () => ({ rows: [] })), release: seedRelease })) as any;
+    // The race ages the pending deletion past its grace period before maintenance may claim it.
+    f.input.migrator.query = vi.fn(async () => ({ rows: [] })) as any;
     f.input.runtime.connect = vi.fn(async () => ({ query: vi.fn(async (sql: string) => {
             if (sql === 'SELECT pg_backend_pid() AS pid')
                 throw Error('synthetic pid refusal');
@@ -120,7 +122,10 @@ it('abort releases a held barrier and drains both owned operations before reject
         }) });
     f.input.migrator.connect = vi.fn(async () => client('migrator', 202)) as any;
     f.input.runtime.connect = vi.fn(async () => client('runtime', 201)) as any;
-    f.input.migrator.query = vi.fn(async () => {
+    f.input.migrator.query = vi.fn(async (sql: string) => {
+        // Ageing the pending deletion past its grace period is setup, not the barrier under test.
+        if (/UPDATE creator_accounts SET deletion_requested_at/.test(String(sql)))
+            return { rows: [] };
         queueMicrotask(() => stop.abort());
         return { rows: [{ blocked: false }] };
     }) as any;

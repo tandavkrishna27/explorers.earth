@@ -22,7 +22,7 @@ export const deletionGraceElapsedSql = (account = "a"): string =>
 export const scheduledDeletionAtSql = (account = "a"): string =>
   `${account}.deletion_requested_at+interval '${ACCOUNT_DELETION_GRACE_DAYS} days'`;
 
-/** Feedback text is retained for the same number of days it is held after a deletion request. */
+/** How long free-text deletion feedback is kept before its reason and user are purged. */
 export const DELETION_FEEDBACK_RETENTION_DAYS = 30;
 
 /**
