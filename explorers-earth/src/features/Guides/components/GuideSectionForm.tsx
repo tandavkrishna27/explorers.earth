@@ -40,6 +40,9 @@ import { TravelModeSelector } from "./TravelModeSelector";
 import { isAccommodation } from "../utils/accommodationDetector";
 import { isActivity } from "../utils/activityDetector";
 import ActivityCard from "./ActivityCard";
+import PlaceMoveButtons from "./PlaceMoveButtons";
+import ActivityPhotoOrder from "./ActivityPhotoOrder";
+import { useMoveAnnouncer } from "../../../components/reorder/useMoveAnnouncer";
 import { fetchGooglePlacePhotos } from "../utils/googlePhotosService";
 import { fetchPlacePriceLevel } from "../utils/googlePlaceService";
 import { uploadActivityPhotos } from "../services/activityPhotoService";
@@ -119,6 +122,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
 
   // Activity places state
   const [activityPlaces, setActivityPlaces] = useState<DayPlace[]>([]);
+  const { announce, region: moveRegion } = useMoveAnnouncer();
 
   // Tracks in-flight activity photo uploads so submit can await them before
   // serializing Recommendation_Activity. Without this, saving a day/stop before
@@ -1409,6 +1413,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
               {/* Timeline Container with Continuous Bar - Only show when places exist */}
               {(morningPlaces.length > 0 || afternoonPlaces.length > 0 || eveningPlaces.length > 0) && (
                 <div className="relative pl-6 space-y-6">
+                  {moveRegion}
                   {/* Continuous vertical timeline bar */}
                   <div className="absolute left-2 top-0 bottom-0 w-0.5 border-l-2 border-dashed border-red-500"></div>
 
@@ -1461,6 +1466,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
                                       <circle cx="11" cy="12" r="1.5" />
                                     </svg>
                                   </div>
+                                  <PlaceMoveButtons name={place.name} index={index} places={morningPlaces} setPlaces={setMorningPlaces} announce={announce} />
                                   {getPlaceIcon(place.types, "5", "white")}
                                   <div className="flex-1 min-w-0">
                                     <h5 className="text-dashboard font-poppins font-semibold text-sm truncate">
@@ -1811,6 +1817,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
                                       <circle cx="11" cy="12" r="1.5" />
                                     </svg>
                                   </div>
+                                  <PlaceMoveButtons name={place.name} index={index} places={afternoonPlaces} setPlaces={setAfternoonPlaces} announce={announce} />
                                   {getPlaceIcon(place.types, "5", "white")}
                                   <div className="flex-1 min-w-0">
                                     <h5 className="text-dashboard font-poppins font-semibold text-sm truncate">
@@ -2161,6 +2168,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
                                       <circle cx="11" cy="12" r="1.5" />
                                     </svg>
                                   </div>
+                                  <PlaceMoveButtons name={place.name} index={index} places={eveningPlaces} setPlaces={setEveningPlaces} announce={announce} />
                                   {getPlaceIcon(place.types, "5", "white")}
                                   <div className="flex-1 min-w-0">
                                     <h5 className="text-dashboard font-poppins font-semibold text-sm truncate">
@@ -2681,17 +2689,23 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
                   </p>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {activityPlaces.map((activity) => (
-                      <ActivityCard
-                        key={activity.id}
-                        activity={activity}
-                        onClick={() => {
-                          // Only open viewer if photos are available
-                          if (activity.photos && activity.photos.length > 0) {
-                            setSelectedActivityId(activity.id);
-                            openViewer(0);
-                          }
-                        }}
-                      />
+                      <div key={activity.id}>
+                        <ActivityCard
+                          activity={activity}
+                          onClick={() => {
+                            // Only open viewer if photos are available
+                            if (activity.photos && activity.photos.length > 0) {
+                              setSelectedActivityId(activity.id);
+                              openViewer(0);
+                            }
+                          }}
+                        />
+                        <ActivityPhotoOrder
+                          name={activity.name}
+                          photos={activity.photos ?? []}
+                          onChange={(next) => setActivityPlaces((prev) => prev.map((act) => (act.id === activity.id ? { ...act, photos: next } : act)))}
+                        />
+                      </div>
                     ))}
                   </div>
 
