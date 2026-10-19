@@ -140,17 +140,13 @@ describe("FeedFields tab persistence", () => {
     expect(screen.getByRole("region", { name: "Import sources" })).toBeVisible();
 
     const google = screen.getByRole("button", { name: "Google Photos" });
-    const instagram = screen.getByRole("button", { name: "Instagram" });
+    // Instagram import called a backend that no longer exists, so it is not offered.
+    expect(screen.queryByRole("button", { name: "Instagram" })).not.toBeInTheDocument();
     expect(google).toHaveAttribute("aria-pressed", "false");
-    expect(instagram).toHaveAttribute("aria-pressed", "false");
     fireEvent.click(google);
     expect(google).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Select fixture place" })).toBeVisible();
-
-    fireEvent.click(instagram);
-    expect(instagram).toHaveAttribute("aria-pressed", "true");
-    expect(google).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByPlaceholderText("username or https://instagram.com/username")).toBeVisible();
+    expect(screen.queryByPlaceholderText("username or https://instagram.com/username")).not.toBeInTheDocument();
   });
 
   it("keeps delayed importer progress and selection across real Profile editor tab switches", async () => {

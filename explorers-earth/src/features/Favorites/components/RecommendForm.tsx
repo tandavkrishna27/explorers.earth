@@ -320,12 +320,6 @@ interface RecommendationFormProps {
   places?: Places | null;
   recommendationType?: "place" | "person";
   placeId?: string;
-  onInstagramProfileScrape?: (input: string) => Promise<{
-    fullName: string;
-    profileUrl: string;
-    profilePicture: string;
-  } | null>;
-  isScrapingProfile?: boolean;
 }
 
 // Define the interface for the ref handle methods
@@ -366,8 +360,6 @@ const RecommendationForm = memo(
         formFields: initialFormFields,
         recommendationType = "place",
         placeId,
-        onInstagramProfileScrape,
-        isScrapingProfile = false,
       },
       ref
     ) => {
@@ -1115,86 +1107,24 @@ const RecommendationForm = memo(
                                 </label>
                               )}
                               <div className="flex gap-2 items-center w-full">
-                                {/* Helper: detect if the input looks like a LinkedIn URL */}
-                                {(() => {
-                                  const isLinkedInInput = /linkedin\.com/i.test(recommendation.trim());
-                                  const showFetchButton = recommendationType === "person" && onInstagramProfileScrape && !isLinkedInInput;
-                                  return (
-                                    <>
-                                      <Field
-                                        name="recommendation"
-                                        type="text"
-                                        placeholder={
-                                          recommendationType === "person"
-                                            ? "instagram.com/username, @username, or linkedin.com/in/username"
-                                            : t(
-                                              "dashboard.recommendations.addRecommendationForm.mainInput.placeholder"
-                                            )
-                                        }
-                                        className="flex-1 min-w-0 placeholder:text-dashboard-muted outline-none p-3 border border-dashboard bg-dashboard-muted text-dashboard font-poppins rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-dashboard-accent hover:border-dashboard-accent"
-                                        value={recommendation}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                          handleRecommendationChangeWithAddress(e.target.value);
-                                        }}
-                                        onKeyDown={async (e: React.KeyboardEvent<HTMLInputElement>) => {
-                                          if (e.key === 'Enter' && showFetchButton && recommendation.trim()) {
-                                            e.preventDefault();
-                                            const result = await onInstagramProfileScrape(recommendation);
-                                            if (result) {
-                                              setFieldValue('title', result.fullName);
-                                              setFieldValue('contactName', result.fullName);
-                                              setFieldValue('socialLink', result.profileUrl);
-                                              setFieldValue('recommendationLink', result.profileUrl);
-                                              // Auto-activate the tag fields so they become visible
-                                              handleTagClick('contactName');
-                                              handleTagClick('socialLink');
-                                            }
-                                          }
-                                        }}
-                                      />
-                                      {showFetchButton && (
-                                        <Button
-                                          variant="primary"
-                                          size="medium"
-                                          btnText={isScrapingProfile ? "Fetching..." : "Fetch"}
-                                          disabled={isScrapingProfile || !recommendation.trim()}
-                                          onClickHandler={async () => {
-                                            if (recommendation.trim()) {
-                                              const result = await onInstagramProfileScrape(recommendation);
-                                              if (result) {
-                                                setFieldValue('title', result.fullName);
-                                                setFieldValue('contactName', result.fullName);
-                                                setFieldValue('socialLink', result.profileUrl);
-                                                setFieldValue('recommendationLink', result.profileUrl);
-                                                // Auto-activate the tag fields so they become visible
-                                                handleTagClick('contactName');
-                                                handleTagClick('socialLink');
-                                              }
-                                            }
-                                          }}
-                                        />
-                                      )}
-                                    </>
-                                  );
-                                })()}
+                                <Field
+                                  name="recommendation"
+                                  type="text"
+                                  placeholder={
+                                    recommendationType === "person"
+                                      ? "instagram.com/username, @username, or linkedin.com/in/username"
+                                      : t(
+                                        "dashboard.recommendations.addRecommendationForm.mainInput.placeholder"
+                                      )
+                                  }
+                                  className="flex-1 min-w-0 placeholder:text-dashboard-muted outline-none p-3 border border-dashboard bg-dashboard-muted text-dashboard font-poppins rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-dashboard-accent hover:border-dashboard-accent"
+                                  value={recommendation}
+                                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                    handleRecommendationChangeWithAddress(e.target.value);
+                                  }}
+                                />
                               </div>
 
-                              {/* Inline Loader for Instagram Scraping */}
-                              {isScrapingProfile && recommendationType === "person" && (
-                                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-dashboard-muted mt-2 overflow-hidden">
-                                  <div style={{ height: "160px", width: "100%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                    <EarthLoader context="general" size="small" showText={false} />
-                                  </div>
-                                  <div className="flex flex-col items-center gap-1 pb-5">
-                                    <span className="text-sm font-poppins font-medium text-white animate-pulse">
-                                      Connecting to Instagram...
-                                    </span>
-                                    <p className="text-xs text-dashboard-light text-center max-w-[80%]">
-                                      This usually takes about 30 seconds.
-                                    </p>
-                                  </div>
-                                </div>
-                              )}
                               <ErrorMessage
                                 name="recommendation"
                                 component="span"

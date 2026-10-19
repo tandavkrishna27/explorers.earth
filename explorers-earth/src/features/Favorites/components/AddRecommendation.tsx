@@ -28,7 +28,6 @@ import { useTranslation } from "react-i18next";
 import { PlacesClient } from "../api/placesClient";
 import type { CompleteTaxonomyCatalog, RecommendationObservation } from "../../../lib/explorersApiClient";
 import { useLocation } from "react-router-dom";
-import { resizeImageToAspectRatio } from "../../../utils/resizeMediaToAspectRatio";
 
 // Add new type for Custom Search API response
 type CustomSearchImage = {
@@ -144,19 +143,8 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
     useState<boolean>(false);
   // local state for recommendation type (place or person)
   const [recommendationType, setRecommendationType] = useState<"place" | "person">("place");
-  // local state for Instagram link and caption (passed directly to useRecommendationFields)
-  const [instagramLink, setInstagramLink] = useState<string | null>(null);
-  const [instagramCaption, setInstagramCaption] = useState<string | null>(null);
-  const [personName, setPersonName] = useState<string | null>(null);
-  // Pending Instagram thumbnail to merge with Google photos
-  const [pendingIgThumbnail, setPendingIgThumbnail] = useState<GoogleMedia | null>(null);
-  const igThumbnailMergedRef = useRef(false);
   // local state for dropdown open/close
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
-  // Separate state for Instagram scraped media (person & place)
-  const [instagramMedia, setInstagramMedia] = useState<GoogleMedia[]>([]);
-  // Separate flag for Instagram profile scraping (doesn't trigger full-screen loader)
-  const [isScrapingProfile, setIsScrapingProfile] = useState<boolean>(false);
 
 
   // Effect to clear places when recommendation type changes to person
@@ -174,7 +162,6 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
       setPreviewUrl([]);
       setFetchedGoogleMedia([]);
       setShowGoogleMedia(false);
-      setInstagramMedia([]);
     }
   }, [recommendationType, type]);
   // ref for dropdown to handle outside clicks
@@ -185,7 +172,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
   // Get URL search parameters for pre-filled data from TopPlaces
   const [searchParams] = useSearchParams();
 
-  // Read recommendationType from URL params (set by AddPlaceOverlay for Instagram import)
+  // Read recommendationType from URL params
   useEffect(() => {
     const typeParam = searchParams.get('recommendationType');
     if (typeParam === 'person' || typeParam === 'place') {
@@ -242,7 +229,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
     fetchedPlace?.recommendedPlace?.Place_Details?.Place_Id ?? undefined;
   // custom hooke for handling the recommendation form fields
   const { formFields, validationSchema, initialValues, editInitialValues } =
-    useRecommendationFields({ places, isCustom: true, fetchedPlace, recommendationType, instagramLink, instagramCaption, personName });
+    useRecommendationFields({ places, isCustom: true, fetchedPlace, recommendationType });
 
   const transformImages = (
     imageDetails: { url: string; id: string; documentId?: string }[] | undefined,
@@ -299,7 +286,6 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
     listId,
     fetchedListId,
     fetchedGoogleMedia,
-    instagramMedia,
     recommendationType,
     setPreviewUrl,
     setIsLoading,
@@ -433,16 +419,6 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchedPlace?.recommendedPlace?.Media, places, type, recommendationType]);
 
-  // Effect to merge Instagram thumbnail with Google photos when both are ready
-  useEffect(() => {
-    if (pendingIgThumbnail && fetchedGoogleMedia.length > 0 && !igThumbnailMergedRef.current) {
-      igThumbnailMergedRef.current = true;
-      // Ensure all Google photos have isThumbnail: false, then prepend the Instagram thumbnail
-      const googlePhotosNoThumb = fetchedGoogleMedia.map(p => ({ ...p, isThumbnail: false }));
-      setFetchedGoogleMedia([pendingIgThumbnail, ...googlePhotosNoThumb]);
-    }
-  }, [pendingIgThumbnail, fetchedGoogleMedia]);
-
   // Effect to handle pre-filled data from TopPlaces URL parameters
   useEffect(() => {
     if (type !== "edit" && searchParams.has("placeId")) {
@@ -539,213 +515,6 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
       fetchPlaceDetails();
     }
   }, [searchParams, type]);
-  // Effect to handle Instagram post data import
-  useEffect(() => {
-    const fromInstagram = searchParams.get('fromInstagram');
-
-
-    if (fromInstagram === 'true' && type !== 'edit') {
-      const loadInstagramData = async () => {
-        try {
-          // Get the stored Instagram data
-          const storedData = sessionStorage.getItem('instagram_post_data');
-          if (!storedData) {
-            toast.error("No Instagram post data found");
-            return;
-          }
-
-          const instagramData = JSON.parse(storedData);
-
-          // Clear the stored data immediately to prevent duplicate processing
-          sessionStorage.removeItem('instagram_post_data');
-
-          // Set the Instagram embed URL via React state (triggers useMemo recalculation)
-          if (instagramData.embedUrl) {
-            setInstagramLink(instagramData.embedUrl);
-          } else if (instagramData.postUrl) {
-            setInstagramLink(instagramData.postUrl);
-          }
-
-          // Set the Instagram caption via React state
-          if (instagramData.caption) {
-            setInstagramCaption(instagramData.caption);
-          }
-
-          setIsImagesLoading(true);
-
-          if (instagramData._type === 'person') {
-            setPersonName(instagramData.fullName || instagramData.username || '');
-            setInstagramLink(instagramData.profileUrl || '');
-            setInstagramCaption(instagramData.bio || '');
-
-            if (instagramData.profilePicture) {
-              try {
-                const token = localStorage.getItem('qrtoken');
-                const INSTAGRAM_API_URL = import.meta.env.VITE_INSTAGRAM_API_URL || 'http://localhost:5000';
-                const proxyUrl = `${INSTAGRAM_API_URL}/api/instagram/media-proxy?url=${encodeURIComponent(instagramData.profilePicture)}&token=${token}`;
-
-                const pfpResponse = await fetch(proxyUrl);
-                if (pfpResponse.ok) {
-                  const photoBlob = await pfpResponse.blob();
-                  const file = new File([photoBlob], 'profile-picture.jpg', { type: photoBlob.type || 'image/jpeg' });
-
-                  const igThumbnail: GoogleMedia = {
-                    isThumbnail: true,
-                    photoBlob: file,
-                    fileName: file.name,
-                    url: URL.createObjectURL(file),
-                  };
-                  setPendingIgThumbnail(igThumbnail);
-                  setInstagramMedia([igThumbnail]);
-                }
-              } catch (err) {
-                console.warn('Failed to load Instagram profile picture via proxy:', err);
-              }
-            }
-
-            toast.success(`Loaded profile data for ${instagramData.fullName || instagramData.username}`);
-            setIsImagesLoading(false);
-            return;
-          }
-
-          // Search for the location using Google Places API (for placebo/post mode)
-          const searchResponse = await axios.post(
-            'https://places.googleapis.com/v1/places:searchText',
-            {
-              textQuery: instagramData.location,
-              languageCode: 'en'
-            },
-            {
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Goog-Api-Key': mapsBrowserKey(),
-                'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.types,places.primaryType,places.primaryTypeDisplayName,places.addressComponents,places.location,places.photos,places.rating'
-              }
-            }
-          );
-
-          if (searchResponse.data.places && searchResponse.data.places.length > 0) {
-            const place = searchResponse.data.places[0];
-
-            // Transform to Places format
-            const transformedPlace: Places = {
-              place_id: place.id,
-              name: place.displayName?.text || instagramData.location,
-              formatted_address: place.formattedAddress || instagramData.location,
-              types: place.types || [],
-              rating: place.rating,
-              primaryType: place.primaryType,
-              primaryTypeDisplayName: place.primaryTypeDisplayName?.text,
-              address_components: place.addressComponents?.map((component: any) => ({
-                long_name: component.longText,
-                short_name: component.shortText,
-                types: component.types,
-              })) || [],
-              geometry: {
-                location: {
-                  lat: () => place.location?.latitude || 0,
-                  lng: () => place.location?.longitude || 0,
-                },
-              },
-            };
-
-            setPlaces(transformedPlace);
-
-            // Convert Instagram images to File objects via backend proxy
-            // Instagram CDN blocks direct browser fetches (CORS), so we proxy through our server
-            const token = localStorage.getItem('qrtoken');
-            const INSTAGRAM_API_URL = import.meta.env.VITE_INSTAGRAM_API_URL || 'http://localhost:5000';
-
-            const instagramFiles = await Promise.all(
-              instagramData.media.map(async (media: { type: string; url: string }, index: number) => {
-                try {
-                  // Use backend proxy to bypass CORS restrictions on Instagram CDN
-                  const proxyUrl = `${INSTAGRAM_API_URL}/api/instagram/media-proxy?url=${encodeURIComponent(media.url)}`;
-                  const imageResponse = await fetch(proxyUrl, {
-                    headers: {
-                      'Authorization': `Bearer ${token}`,
-                    }
-                  });
-
-                  if (!imageResponse.ok) {
-                    console.warn(`Failed to proxy Instagram media ${index}: ${imageResponse.status}`);
-                    return null;
-                  }
-
-                  const photoBlob = await imageResponse.blob();
-                  const isVideo = media.type === 'video' || photoBlob.type.startsWith('video');
-
-                  // Create a File object from the blob
-                  let file = new File([photoBlob], `instagram-import-${index}.${isVideo ? 'mp4' : 'jpg'}`, {
-                    type: photoBlob.type || (isVideo ? 'video/mp4' : 'image/jpeg'),
-                  });
-
-                  // Resize image to required dimensions (16:9) if it's not a video
-                  if (!isVideo) {
-                    try {
-                      const resizedFile = await resizeImageToAspectRatio(file);
-                      // Use the resized file but keep the deterministic name
-                      file = new File([resizedFile], file.name, { type: resizedFile.type });
-                    } catch (resizeError) {
-                      console.warn("Failed to resize image, using original:", resizeError);
-                    }
-                  }
-
-                  return file;
-                } catch (error) {
-                  console.error("Error fetching Instagram image via proxy:", error);
-                  return null;
-                }
-              })
-            );
-
-            const validInstagramFiles = instagramFiles.filter(Boolean) as File[];
-
-            // Add Instagram images to dedicated Instagram media section (Media powered by Instagram)
-            if (validInstagramFiles.length > 0) {
-              const igMediaItems: GoogleMedia[] = validInstagramFiles.map((file) => ({
-                photoBlob: file,
-                fileName: file.name,
-                url: URL.createObjectURL(file),
-              }));
-              setInstagramMedia(igMediaItems);
-
-              // Save the first Instagram image as pending thumbnail
-              // It will be merged with Google photos once they load
-              const firstImageFile = validInstagramFiles.find(f => f.type.startsWith('image'));
-              if (firstImageFile) {
-                const igThumbnail: GoogleMedia = {
-                  isThumbnail: true,
-                  photoBlob: firstImageFile,
-                  fileName: firstImageFile.name,
-                  url: URL.createObjectURL(firstImageFile),
-                };
-                setPendingIgThumbnail(igThumbnail);
-              }
-            }
-
-            // Google photos are fetched by the separate fetchGoogleMedia effect
-
-
-
-
-
-            toast.success(`Found location: ${transformedPlace.name} (${validInstagramFiles.length} Instagram photos)`);
-          } else {
-            toast.error("Could not find location on Google Maps");
-          }
-        } catch (error) {
-          console.error("Error loading Instagram data:", error);
-          toast.error("Failed to load Instagram post data");
-        } finally {
-          setIsImagesLoading(false);
-        }
-      };
-
-      loadInstagramData();
-    }
-  }, [searchParams, type]);
-
   // Handle outside click to close dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -796,131 +565,6 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
         submitButton.click();
         return;
       }
-    }
-  };
-
-  // Handle Instagram profile scraping for person recommendations
-  const handleInstagramProfileScrape = async (input: string): Promise<{
-    fullName: string;
-    profileUrl: string;
-    profilePicture: string;
-  } | null> => {
-    // Extract username from input (could be @username, username, or full URL)
-    let username = input.trim();
-
-    // Handle full URL: instagram.com/username
-    const urlMatch = username.match(/instagram\.com\/([^/?]+)/);
-    if (urlMatch) {
-      username = urlMatch[1];
-    }
-
-    // Remove @ prefix
-    username = username.replace(/^@/, '');
-
-    // Skip non-Instagram inputs (LinkedIn URLs, etc.)
-    if (!username || username.includes('linkedin.com') || username.includes(' ')) {
-      return null;
-    }
-
-    try {
-      setIsScrapingProfile(true);
-      toast.info(`Scraping Instagram profile: @${username}...`);
-
-      const token = localStorage.getItem('qrtoken');
-      const INSTAGRAM_API_URL = import.meta.env.VITE_INSTAGRAM_API_URL || 'http://localhost:5000';
-
-      const response = await axios.post(
-        `${INSTAGRAM_API_URL}/api/instagram/account-posts`,
-        { username, maxScrolls: 5 },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.data?.success || !response.data?.data) {
-        toast.error('Could not scrape Instagram profile');
-        return null;
-      }
-
-      const profileData = response.data.data;
-      const { fullName, profilePicture, posts, username: scrapedUsername } = profileData;
-
-      // 1. Fetch profile picture via proxy and set as thumbnail
-      if (profilePicture) {
-        try {
-          const proxyUrl = `${INSTAGRAM_API_URL}/api/instagram/media-proxy?url=${encodeURIComponent(profilePicture)}&token=${token}`;
-          const pfpResponse = await fetch(proxyUrl);
-          if (pfpResponse.ok) {
-            const pfpBlob = await pfpResponse.blob();
-            const pfpFile = new File([pfpBlob], `${scrapedUsername}-profile.jpg`, { type: pfpBlob.type || 'image/jpeg' });
-            const pfpThumbnail: GoogleMedia = {
-              isThumbnail: true,
-              photoBlob: pfpFile,
-              fileName: pfpFile.name,
-              url: URL.createObjectURL(pfpFile),
-            };
-            setFetchedGoogleMedia([pfpThumbnail]);
-            setShowGoogleMedia(true);
-          }
-        } catch (err) {
-          console.error('Error fetching profile picture:', err);
-        }
-      }
-
-      // 2. Collect media from all posts (up to 10 items total)
-      const collectedIgMedia: GoogleMedia[] = [];
-      const MAX_MEDIA = 10;
-
-      for (const post of posts) {
-        if (collectedIgMedia.length >= MAX_MEDIA) break;
-        for (const media of post.media) {
-          if (collectedIgMedia.length >= MAX_MEDIA) break;
-          try {
-            const proxyUrl = `${INSTAGRAM_API_URL}/api/instagram/media-proxy?url=${encodeURIComponent(media.url)}&token=${token}`;
-            const mediaResponse = await fetch(proxyUrl);
-            if (mediaResponse.ok) {
-              const mediaBlob = await mediaResponse.blob();
-              const ext = media.type === 'video' ? 'mp4' : 'jpg';
-              const fileName = `${scrapedUsername}-${post.shortcode}-${collectedIgMedia.length}.${ext}`;
-              const mediaFile = new File(
-                [mediaBlob],
-                fileName,
-                { type: mediaBlob.type || (media.type === 'video' ? 'video/mp4' : 'image/jpeg') }
-              );
-              collectedIgMedia.push({
-                photoBlob: mediaFile,
-                fileName,
-                url: URL.createObjectURL(mediaFile),
-              });
-            }
-          } catch (err) {
-            console.error('Error fetching post media:', err);
-          }
-        }
-      }
-
-      // 3. Store scraped media in dedicated Instagram media state
-      if (collectedIgMedia.length > 0) {
-        setInstagramMedia(collectedIgMedia);
-      }
-
-      const profileUrl = `https://www.instagram.com/${scrapedUsername}/`;
-
-      toast.success(`Scraped @${scrapedUsername}: ${fullName} (${posts.length} posts, ${collectedIgMedia.length} media files)`);
-
-      return {
-        fullName: fullName || scrapedUsername,
-        profileUrl,
-        profilePicture: profilePicture || '',
-      };
-    } catch (error) {
-      console.error('Error scraping Instagram profile:', error);
-      toast.error('Failed to scrape Instagram profile. The account may be private.');
-      return null;
-    } finally {
-      setIsScrapingProfile(false);
     }
   };
 
@@ -1100,8 +744,6 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
             onSubmit={type === "edit" ? handleUpdatePlaceDetails : handleSubmit}
             formFields={formFields}
             placeId={placeId}
-            onInstagramProfileScrape={handleInstagramProfileScrape}
-            isScrapingProfile={isScrapingProfile}
           />
           {/* Media powered by Google — shows skeleton while loading, images once ready */}
           {(isImagesLoading && type !== "edit" && recommendationType === "place" && places?.place_id) && (
@@ -1274,61 +916,6 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
                         )}
                       </div>
                     )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Instagram Scraped Media Section */}
-          {instagramMedia.length > 0 && (
-            <div className="w-full max-w-3xl mb-10 bg-dashboard-sidebar md:p-10 p-7 rounded-md shadow-dashboard-elevated">
-              <div>
-                <div className="flex text-white flex-row gap-2 w-full items-center">
-                  <h2 className="dt-label">Media</h2>
-                  <span className="text-white-danger text-[0.6rem] font-poppins">
-                    <em>powered by Instagram</em>
-                  </span>
-                </div>
-
-                <div className="md:p-4">
-                  <div className="relative mt-4 grid grid-cols-2 md:flex md:flex-row md:flex-wrap md:gap-6 gap-4">
-                    {instagramMedia.map((media, index) => {
-                      const isVideo = media.fileName?.endsWith('.mp4');
-                      return (
-                        <div
-                          key={index}
-                          className="relative rounded-2xl"
-                        >
-                          {isVideo ? (
-                            <video
-                              src={media.url}
-                              className="object-cover cursor-pointer h-32 w-32 rounded-xl"
-                              controls
-                              muted
-                            />
-                          ) : (
-                            <img
-                              src={media.url}
-                              alt={`Instagram media ${index + 1}`}
-                              className="object-cover cursor-pointer h-32 w-32 rounded-xl"
-                            />
-                          )}
-                          <div className="absolute top-1.5 right-1.5">
-                            <button
-                              className="flex items-center justify-center w-7 h-7 rounded-lg bg-black/70 border border-white/10 shadow-lg backdrop-blur-sm hover:bg-red-600/80 transition-all duration-200 focus:outline-none"
-                              onClick={() =>
-                                setInstagramMedia((prev) =>
-                                  prev.filter((_, i) => i !== index)
-                                )
-                              }
-                            >
-                              <CrossIcon size="4" />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
                 </div>
               </div>
             </div>

@@ -18,6 +18,4 @@ export interface FeedAsyncState {
 export type FeedAsyncOperation =
   | "manual-upload"
   | "google-fetch"
-  | "google-import"
-  | "instagram-fetch"
-  | "instagram-import";
+  | "google-import";

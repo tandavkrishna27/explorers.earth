@@ -12,10 +12,8 @@ import { toast } from "sonner";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import axios from "axios";
 import { withGoogleMapsProvider } from "../../../components/GoogleMapsProvider";
-import { instagramService } from "../../../services/instagramService";
 
 // ── Types ──────────────────────────────────────────────────────────
-type InstagramMode = "place" | "person";
 
 interface AddPlaceOverlayProps {
     isOpen: boolean;
@@ -29,31 +27,6 @@ interface AddPlaceOverlayProps {
     onPlaceAdded?: () => void;
     topPlacesKey?: number;
 }
-
-// ── Instagram icon SVG ─────────────────────────────────────────────
-const IgIcon = () => (
-    <svg
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 24 24"
-        fill="none"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="add-place-ig-icon"
-        stroke="url(#ig-grad-overlay)"
-    >
-        <defs>
-            <linearGradient id="ig-grad-overlay" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#833ab4" />
-                <stop offset="50%" stopColor="#fd1d1d" />
-                <stop offset="100%" stopColor="#fcb045" />
-            </linearGradient>
-        </defs>
-        <rect x="3" y="3" width="18" height="18" rx="4" ry="4" />
-        <circle cx="12" cy="12" r="4" />
-        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
-    </svg>
-);
 
 // ── Component ──────────────────────────────────────────────────────
 const AddPlaceOverlay = memo(
@@ -70,9 +43,6 @@ const AddPlaceOverlay = memo(
         const placesLibrary = useMapsLibrary("places");
 
         const [searchValue, setSearchValue] = useState("");
-        const [instagramValue, setInstagramValue] = useState("");
-        const [instagramMode, setInstagramMode] = useState<InstagramMode>("place");
-        const [isSubmitting, setIsSubmitting] = useState(false);
 
         const searchInputRef = useRef<HTMLInputElement>(null);
         const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
@@ -94,9 +64,6 @@ const AddPlaceOverlay = memo(
         useEffect(() => {
             if (!isOpen) {
                 setSearchValue("");
-                setInstagramValue("");
-                setInstagramMode("place");
-                setIsSubmitting(false);
             }
         }, [isOpen]);
 
@@ -197,88 +164,6 @@ const AddPlaceOverlay = memo(
             // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [placesLibrary, isOpen]);
 
-        // ── Instagram Place (post / reel) ─────────────────────────────
-        const handleInstagramPlace = useCallback(async () => {
-            const url = instagramValue.trim();
-            if (!url) return;
-            if (!selectedCity?.documentId) {
-                toast.error("Please select a location first.");
-                return;
-            }
-
-            // Basic URL validation
-            const isPost = /instagram\.com\/(p|reel)\//.test(url);
-            if (!isPost) {
-                toast.error(
-                    "Please enter a valid Instagram post or reel URL (e.g. instagram.com/p/... or instagram.com/reel/...)"
-                );
-                return;
-            }
-
-            try {
-                setIsSubmitting(true);
-                toast.info("Extracting Instagram post…");
-
-                // Uses /api/instagram/extract with { postUrl }
-                const data = await instagramService.extractPost(url);
-
-                sessionStorage.setItem("instagram_post_data", JSON.stringify(data));
-
-                navigate(
-                    `/${selectedCity.documentId}/new?fromInstagram=true&recommendationType=place`
-                );
-                if (onPlaceAdded) onPlaceAdded();
-                onClose();
-            } catch (err) {
-                console.error("Instagram extract error:", err);
-                toast.error("Failed to extract Instagram post. Check the URL and try again.");
-                setIsSubmitting(false);
-            }
-        }, [instagramValue, selectedCity, navigate, onPlaceAdded, onClose]);
-
-        // ── Instagram Person — uses /api/instagram/account-posts ──────────
-        const handleInstagramPerson = useCallback(async () => {
-            const input = instagramValue.trim();
-            if (!input) return;
-            if (!selectedCity?.documentId) {
-                toast.error("Please select a location first.");
-                return;
-            }
-
-            try {
-                setIsSubmitting(true);
-                const label = input.startsWith("http") ? input : `@${input.replace(/^@/, "")}`;
-                toast.info(`Fetching profile for ${label}…`);
-
-                // Uses /api/instagram/account-posts — returns fullName, profilePicture, posts, etc.
-                const data = await instagramService.extractAccountPosts(input);
-
-                sessionStorage.setItem(
-                    "instagram_post_data",
-                    JSON.stringify({ ...data, _type: "person" })
-                );
-
-                navigate(
-                    `/${selectedCity.documentId}/new?fromInstagram=true&recommendationType=person`
-                );
-                if (onPlaceAdded) onPlaceAdded();
-                onClose();
-            } catch (err) {
-                console.error("Instagram account-posts error:", err);
-                toast.error("Failed to fetch Instagram profile. Check the username and try again.");
-                setIsSubmitting(false);
-            }
-        }, [instagramValue, selectedCity, navigate, onPlaceAdded, onClose]);
-
-        // Unified Go handler
-        const handleInstagramGo = useCallback(() => {
-            if (instagramMode === "place") {
-                handleInstagramPlace();
-            } else {
-                handleInstagramPerson();
-            }
-        }, [instagramMode, handleInstagramPlace, handleInstagramPerson]);
-
         // ── Nearby suggestion card click ──────────────────────────────
         const handlePlaceSelect = useCallback(
             (place: GooglePlace) => {
@@ -357,76 +242,6 @@ const AddPlaceOverlay = memo(
                                         <p className="add-place-search-hint">
                                             Start typing — select a place from the dropdown to auto-fill the form.
                                         </p>
-                                    </div>
-
-                                    {/* OR */}
-                                    <div className="add-place-or-divider">
-                                        <span className="add-place-or-line" />
-                                        <span className="add-place-or-text">OR</span>
-                                        <span className="add-place-or-line" />
-                                    </div>
-
-                                    {/* ── Instagram Link with mode toggle ── */}
-                                    <div className="add-place-input-group">
-                                        {/* Label row: icon + text + mode toggle */}
-                                        <div className="add-place-ig-header">
-                                            <label className="add-place-input-label">
-                                                <span className="add-place-ig-label-inner">
-                                                    <IgIcon />
-                                                    Instagram Link
-                                                </span>
-                                            </label>
-
-                                            {/* Segmented control: Place | Person */}
-                                            <div className="add-place-ig-toggle" role="group" aria-label="Instagram mode">
-                                                <button
-                                                    type="button"
-                                                    className={`add-place-ig-tab ${instagramMode === "place" ? "active" : ""}`}
-                                                    onClick={() => setInstagramMode("place")}
-                                                >
-                                                    📍 Place
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className={`add-place-ig-tab ${instagramMode === "person" ? "active" : ""}`}
-                                                    onClick={() => setInstagramMode("person")}
-                                                >
-                                                    👤 Person
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Mode-specific hint */}
-                                        <p className="add-place-search-hint" style={{ marginTop: 0, marginBottom: 6 }}>
-                                            {instagramMode === "place"
-                                                ? "Paste a post or reel URL — we'll scrape the location and pre-fill the form."
-                                                : "Enter a username (e.g. @janedoe) or profile URL — we'll pre-fill the person form."}
-                                        </p>
-
-                                        {/* Input + Go */}
-                                        <div className="add-place-input-row">
-                                            <input
-                                                id="add-place-instagram-input"
-                                                type={instagramMode === "place" ? "url" : "text"}
-                                                placeholder={
-                                                    instagramMode === "place"
-                                                        ? "https://www.instagram.com/p/..."
-                                                        : "@username or instagram.com/username"
-                                                }
-                                                className="add-place-input"
-                                                value={instagramValue}
-                                                onChange={(e) => setInstagramValue(e.target.value)}
-                                                onKeyDown={(e) => e.key === "Enter" && handleInstagramGo()}
-                                                disabled={isSubmitting}
-                                            />
-                                            <button
-                                                className="add-place-go-btn"
-                                                onClick={handleInstagramGo}
-                                                disabled={!instagramValue.trim() || isSubmitting}
-                                            >
-                                                {isSubmitting ? "…" : "Go"}
-                                            </button>
-                                        </div>
                                     </div>
 
                                 </div>

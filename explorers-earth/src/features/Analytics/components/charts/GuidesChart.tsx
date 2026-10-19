@@ -36,7 +36,7 @@ const GuidesChart: React.FC<GuidesChartProps> = ({ events }) => {
   const guideRanking = useMemo(() => {
     const map = new Map<string, { title: string; guideType?: string; count: number }>();
     guideClicks.forEach(e => {
-      const id       = e.metadata?.id ?? e.element ?? 'unknown';
+      const id       = e.metadata?.listId ?? e.metadata?.id ?? e.element ?? 'unknown';
       const title    = e.metadata?.title ?? id;
       const guideType = e.metadata?.guideType;
       const existing = map.get(id);
