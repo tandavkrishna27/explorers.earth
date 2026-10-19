@@ -3,6 +3,7 @@ import type { Pool, PoolClient } from "pg";
 import type { Actor } from "./actor";
 import type { RequestContext, RevisionInput } from "../../shared/explorersContract";
 import { authorizeOperation } from "./authorization";
+import { scheduledDeletionAtSql } from "./accountDeletionGrace";
 import { CONTENT_CATEGORIES, lockContentCategories } from "../db/explorers-content-lock";
 
 export type AccountLifecycleDto = {
@@ -10,6 +11,8 @@ export type AccountLifecycleDto = {
   status: "active" | "suspended" | "pending_deletion" | "deleted";
   operationId: string | null;
   revision: number;
+  /** Set on the response to a deletion request: when the deletion becomes final unless cancelled. */
+  scheduledDeletionAt?: string;
 };
 
 export class AccountLifecycleFailure extends Error {
@@ -122,10 +125,11 @@ export class AccountLifecycleService {
         if (!feedback.rows[0]) throw new AccountLifecycleFailure(404, "NOT_FOUND", "Feedback is unavailable");
       }
       const nextStatus = operation === "delete" ? "pending_deletion" : "suspended";
-      const changed = await client.query<{ revision: string }>(`UPDATE creator_accounts SET status=$2,
+      const changed = await client.query<{ revision: string; scheduled_deletion_at: Date | null }>(`UPDATE creator_accounts SET status=$2,
         suspended_at=CASE WHEN $2='suspended' THEN now() ELSE NULL END,
         deletion_requested_at=CASE WHEN $2='pending_deletion' THEN now() ELSE NULL END,
-        revision=revision+1,updated_at=now() WHERE id=$1 RETURNING revision::text`, [actor.accountId, nextStatus]);
+        revision=revision+1,updated_at=now() WHERE id=$1
+        RETURNING revision::text,${scheduledDeletionAtSql("creator_accounts")} AS scheduled_deletion_at`, [actor.accountId, nextStatus]);
       const record = await client.query<{ id: string }>(`INSERT INTO account_lifecycle_operations
         (account_id,requested_by_user_id,kind,state,expected_revision,feedback_id,receipt_id,completed_at)
         VALUES($1,$2,$3,$7,$4,$5,$6,CASE WHEN $3='delete' THEN NULL ELSE now() END) RETURNING id`,
@@ -134,7 +138,9 @@ export class AccountLifecycleService {
       await client.query("UPDATE user_security_state SET blocked_at=now(),session_version=session_version+1,updated_at=now() WHERE user_id=$1", [actor.userId]);
       await client.query("DELETE FROM auth_session WHERE user_id=$1", [actor.userId]);
       const response: AccountLifecycleDto = { accountId: actor.accountId, status: nextStatus,
-        operationId: record.rows[0].id, revision: Number(changed.rows[0].revision) };
+        operationId: record.rows[0].id, revision: Number(changed.rows[0].revision),
+        ...(operation === "delete" && changed.rows[0].scheduled_deletion_at
+          ? { scheduledDeletionAt: changed.rows[0].scheduled_deletion_at.toISOString() } : {}) };
       await saveReceipt(client, saved.id, response);
       await client.query("COMMIT");
       return response;

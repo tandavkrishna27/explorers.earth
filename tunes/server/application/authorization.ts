@@ -2,7 +2,9 @@ import type { Pool } from "pg";
 import type { Actor } from "./actor";
 
 export class AuthorizationError extends Error {
-  constructor(readonly status: 401 | 403 | 404 | 422 | 503, readonly code: "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "INVALID_INPUT", message: string) {
+  constructor(readonly status: 401 | 403 | 404 | 422 | 503, readonly code: "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "INVALID_INPUT", message: string,
+    /** Lifecycle detail for the signed-in owner of a pending-deletion account, so recovery can say when deletion is scheduled. */
+    readonly lifecycle?: { status: "pending_deletion"; scheduledDeletionAt: string }) {
     super(message);
   }
 }

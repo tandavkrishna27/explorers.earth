@@ -1,5 +1,6 @@
 import type { Pool } from "pg";
 import type { ObjectStorage } from "../services/objectStorage";
+import { DELETION_FEEDBACK_RETENTION_DAYS, deletionGraceElapsedSql } from "./accountDeletionGrace";
 import { CONTENT_CATEGORIES, lockContentCategories } from "../db/explorers-content-lock";
 
 export async function runAccountLifecycleMaintenance(pool: Pool, storage: ObjectStorage, batchSize = 25): Promise<number> {
@@ -9,7 +10,7 @@ export async function runAccountLifecycleMaintenance(pool: Pool, storage: Object
     WHERE status IN ('completed','pending') AND replay_until<=clock_timestamp() ORDER BY replay_until,id LIMIT $1)
     UPDATE application_command_receipts r SET status='retired',response=NULL FROM due WHERE r.id=due.id`, [batchSize]);
   await pool.query(`WITH due AS (SELECT id FROM deletion_feedback WHERE reason IS NOT NULL
-    AND created_at<=clock_timestamp()-interval '30 days' ORDER BY created_at,id LIMIT $1)
+    AND created_at<=clock_timestamp()-interval '${DELETION_FEEDBACK_RETENTION_DAYS} days' ORDER BY created_at,id LIMIT $1)
     UPDATE deletion_feedback f SET reason=NULL,user_id=NULL,purged_at=clock_timestamp()
     FROM due WHERE f.id=due.id`, [batchSize]);
 
@@ -33,7 +34,7 @@ export async function runAccountLifecycleMaintenance(pool: Pool, storage: Object
      JOIN account_music_identity mi ON mi.account_id=o.account_id
      JOIN users u ON u.id=mi.music_user_id
      WHERE o.kind='delete' AND o.state='pending' AND a.status='pending_deletion'
-       AND a.deletion_requested_at<=clock_timestamp()
+       AND ${deletionGraceElapsedSql("a")}
        AND u.strapi_user_document_id IS NULL AND u.strapi_account_document_id IS NULL
      ORDER BY o.created_at,o.id LIMIT $1`, [batchSize]);
   for (const venue of releasable.rows) {
@@ -47,6 +48,7 @@ export async function runAccountLifecycleMaintenance(pool: Pool, storage: Object
   await pool.query(`WITH blocked AS (SELECT o.id FROM account_lifecycle_operations o
     JOIN creator_accounts a ON a.id=o.account_id
     WHERE o.kind='delete' AND o.state='pending' AND a.status='pending_deletion'
+      AND ${deletionGraceElapsedSql("a")}
       AND o.failure_code IS DISTINCT FROM $2
       AND EXISTS (SELECT 1 FROM account_music_identity mi WHERE mi.account_id=o.account_id)
     ORDER BY o.created_at,o.id LIMIT $1)
@@ -56,7 +58,7 @@ export async function runAccountLifecycleMaintenance(pool: Pool, storage: Object
   const claimed = await pool.query<{ id: string; account_id: string }>(`WITH due AS (
     SELECT o.id FROM account_lifecycle_operations o JOIN creator_accounts a ON a.id=o.account_id
     WHERE o.kind='delete' AND a.status='pending_deletion'
-      AND a.deletion_requested_at<=clock_timestamp()
+      AND ${deletionGraceElapsedSql("a")}
       AND NOT EXISTS (SELECT 1 FROM account_music_identity mi WHERE mi.account_id=o.account_id)
       AND (o.state='pending' OR (o.state='running' AND o.updated_at<clock_timestamp()-interval '10 minutes'))
     ORDER BY o.created_at,o.id LIMIT $1 FOR UPDATE OF o,a SKIP LOCKED)

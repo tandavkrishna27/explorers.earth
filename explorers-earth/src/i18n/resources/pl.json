@@ -1885,11 +1885,15 @@
       "deleteAccount": {
         "button": "Usuń konto",
         "description": "Trwale usuń swoje konto i wszystkie dane",
+        "pending": {
+          "scheduled": "Twoje konto zostanie trwale usunięte dnia {{date}}. Zaloguj się przez Google przed tą datą, aby anulować usunięcie."
+        },
         "step1": {
           "continueButton": "Kontynuuj usuwanie",
           "deactivateInsteadButton": "Zamiast tego dezaktywuj konto",
           "modalDescription": "Czy na pewno chcesz usunąć swoje konto? Ta akcja nie może zostać cofnięta.",
           "modalDescription2": "Jeśli chcesz zachować swoje dane, możesz zamiast tego dezaktywować swoje konto.",
+          "modalDescriptionGrace": "Twoje konto zostanie od razu ukryte, a po 30 dniach trwale usunięte. Możesz je przywrócić wcześniej, logując się przez Google.",
           "modalTitle": "Usunąć swoje konto?"
         },
         "step2": {
@@ -1905,7 +1909,8 @@
         "step3": {
           "continueButton": "Kontynuuj",
           "modalTitle": "Dlaczego odchodzisz?",
-          "reasonPlaceholder": "Powiedz nam, dlaczego odchodzisz..."
+          "reasonPlaceholder": "Powiedz nam, dlaczego odchodzisz...",
+          "reasonTooLong": "Powód jest zbyt długi. Użyj maksymalnie 2000 znaków."
         },
         "step4": {
           "confirmationRequired": "Wpisz 'CONFIRM DELETE', aby potwierdzić.",
@@ -1919,6 +1924,7 @@
         },
         "text": "Usunąć swoje konto?"
       },
+      "handleMismatch": "Wpisany identyfikator nie pasuje do identyfikatora Twojego konta.",
       "heading": "Konto",
       "security": {
         "title": "Konto i Bezpieczeństwo"
@@ -2475,5 +2481,14 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "recovery": {
+    "pendingDeletion": {
+      "cancelButton": "Anuluj usunięcie",
+      "scheduled": "Usunięcie Twojego konta zaplanowano na {{date}}. Anuluj usunięcie, aby odzyskać dostęp.",
+      "scheduledUnknown": "Usunięcie Twojego konta jest zaplanowane. Anuluj usunięcie, aby odzyskać dostęp.",
+      "title": "Anuluj usunięcie konta"
+    },
+    "scheduledForDeletion": "Usunięcie Twojego konta zaplanowano na {{date}}. Kontynuuj przez Google, aby anulować usunięcie."
   }
 }

@@ -1885,11 +1885,15 @@
       "deleteAccount": {
         "button": "Account verwijderen",
         "description": "Verwijder uw account en alle gegevens permanent",
+        "pending": {
+          "scheduled": "Je account wordt op {{date}} definitief verwijderd. Log vóór die datum in met Google om de verwijdering te annuleren."
+        },
         "step1": {
           "continueButton": "Doorgaan met verwijderen",
           "deactivateInsteadButton": "Account in plaats daarvan deactiveren",
           "modalDescription": "Weet u zeker dat u uw account wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
           "modalDescription2": "Als u uw gegevens wilt behouden, kunt u uw account in plaats daarvan deactiveren.",
+          "modalDescriptionGrace": "Je account wordt direct verborgen en na 30 dagen definitief verwijderd. Je kunt het tot die tijd herstellen door in te loggen met Google.",
           "modalTitle": "Uw account verwijderen?"
         },
         "step2": {
@@ -1905,7 +1909,8 @@
         "step3": {
           "continueButton": "Doorgaan",
           "modalTitle": "Waarom vertrekt u?",
-          "reasonPlaceholder": "Laat ons weten waarom u vertrekt..."
+          "reasonPlaceholder": "Laat ons weten waarom u vertrekt...",
+          "reasonTooLong": "Je reden is te lang. Gebruik maximaal 2.000 tekens."
         },
         "step4": {
           "confirmationRequired": "Typ 'CONFIRM DELETE' om te bevestigen.",
@@ -1919,6 +1924,7 @@
         },
         "text": "Uw account verwijderen?"
       },
+      "handleMismatch": "De ingevoerde gebruikersnaam komt niet overeen met die van je account.",
       "heading": "Account",
       "security": {
         "title": "Account en Beveiliging"
@@ -2475,5 +2481,14 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "recovery": {
+    "pendingDeletion": {
+      "cancelButton": "Verwijdering annuleren",
+      "scheduled": "Je account staat gepland voor verwijdering op {{date}}. Annuleer de verwijdering om weer toegang te krijgen.",
+      "scheduledUnknown": "Je account staat gepland voor verwijdering. Annuleer de verwijdering om weer toegang te krijgen.",
+      "title": "Accountverwijdering annuleren"
+    },
+    "scheduledForDeletion": "Je account staat gepland voor verwijdering op {{date}}. Ga verder met Google om de verwijdering te annuleren."
   }
 }

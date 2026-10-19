@@ -74,7 +74,10 @@ export const lifecycleObservationSchema = z.discriminatedUnion("outcome", [
     operationId: z.string().uuid().nullable() }).strict(),
   /** A transition is in flight and may still be completed or cancelled by the owner. */
   z.object({ outcome: z.literal("pending"), ...base, status: z.enum(["suspended", "pending_deletion"]),
-    operationId: z.string().uuid().nullable(), kind: z.enum(lifecycleOperationKinds).nullable() }).strict(),
+    operationId: z.string().uuid().nullable(), kind: z.enum(lifecycleOperationKinds).nullable(),
+    /** When a pending deletion becomes eligible to be finalised; null for any other transition.
+     *  Served only behind the recovery proof, never on a public route. */
+    scheduledDeletionAt: z.string().datetime({ offset: true }).nullable().optional() }).strict(),
   /** Deleted. No transition is possible, now or later; do not offer recovery. */
   z.object({ outcome: z.literal("terminal"), ...base, status: z.literal("deleted"),
     operationId: z.string().uuid().nullable() }).strict(),
@@ -92,6 +95,8 @@ export type LifecycleObservationInput = {
   accountId: string;
   status: string | null | undefined;
   revision: number | null | undefined;
+  /** ISO timestamp the pending deletion is scheduled for, when the account is pending_deletion. */
+  scheduledDeletionAt?: string | null;
   operation: {
     id: string;
     kind: string;
@@ -148,7 +153,9 @@ export function classifyLifecycleObservation(input: LifecycleObservationInput): 
 
   const kind = (lifecycleOperationKinds as readonly string[]).includes(operation.kind)
     ? (operation.kind as (typeof lifecycleOperationKinds)[number]) : null;
-  return { outcome: "pending", ...account, status: status as "suspended" | "pending_deletion", operationId, kind };
+  const scheduledDeletionAt = status === "pending_deletion" ? input.scheduledDeletionAt ?? null : null;
+  return { outcome: "pending", ...account, status: status as "suspended" | "pending_deletion", operationId, kind,
+    scheduledDeletionAt };
 }
 
 /** Whether an owner holding a recovery proof may still complete a transition. */

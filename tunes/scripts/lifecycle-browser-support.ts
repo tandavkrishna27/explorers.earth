@@ -98,6 +98,8 @@ export async function startLifecycleControl(pool: Pool, composed: ReturnType<typ
                 const status = await pool.query('SELECT status FROM creator_accounts WHERE id=$1', [selected.accountId]);
                 if (status.rows[0]?.status !== 'pending_deletion')
                     throw new Error('Terminal requires actual pending deletion');
+                // The control plane stands in for the passage of the 30-day grace period; production has no such lever.
+                await pool.query("UPDATE creator_accounts SET deletion_requested_at=clock_timestamp()-interval '31 days' WHERE id=$1 AND status='pending_deletion'", [selected.accountId]);
                 await runAccountLifecycleMaintenance(pool, new LocalObjectStorage());
             }
             const account = await pool.query('SELECT id,status,revision::int,onboarding_status FROM creator_accounts WHERE id=$1', [selected.accountId]);

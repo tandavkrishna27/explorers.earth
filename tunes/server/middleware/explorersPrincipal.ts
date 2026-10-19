@@ -37,7 +37,8 @@ export function sendActorError(request: Request, response: Response, error: unkn
   const failure = error instanceof AuthorizationError ? error : new AuthorizationError(503, "FORBIDDEN", "Account service is unavailable");
   const requestId = requestIdFor(request);
   response.setHeader("X-Request-Id", requestId);
-  response.status(failure.status).json({ error: { code: failure.code, message: failure.message, requestId } });
+  response.status(failure.status).json({ error: { code: failure.code, message: failure.message, requestId },
+    ...(failure.lifecycle ? { lifecycle: failure.lifecycle } : {}) });
 }
 
 export function explorersPrincipal(auth: ExplorersAuth, db: Pick<Pool, "query">) {

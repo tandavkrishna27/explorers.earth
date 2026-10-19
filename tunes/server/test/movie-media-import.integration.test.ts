@@ -274,6 +274,7 @@ it('purges source-bound aliases child-first after actual storage cleanup while r
  const revision=Number((await pool.query('SELECT revision FROM creator_accounts WHERE id=$1',[f.a.accountId])).rows[0].revision);
  const feedback=await command(f.a,'post','/account/deletion-feedback',{reason:'Movie cleanup qualification'});expect(feedback.status).toBe(201);
  const pending=await command(f.a,'post','/account/deletion',{expectedRevision:revision,feedbackId:feedback.body.feedback.id});expect(pending.status).toBe(200);
+ await pool.query("UPDATE creator_accounts SET deletion_requested_at=clock_timestamp()-interval '31 days' WHERE id=$1",[f.a.accountId]);
  const storage:ObjectStorage={environment:'local',put:async()=>undefined,get:async()=>bytes,delete:async()=>{deletes++;expect((await pool.query('SELECT status FROM creator_accounts WHERE id=$1',[f.a.accountId])).rows[0].status).toBe('pending_deletion');}};
  await runAccountLifecycleMaintenance(pool,storage);
  expect(deletes).toBe(1);expect((await pool.query('SELECT status FROM creator_accounts WHERE id=$1',[f.a.accountId])).rows[0].status).toBe('deleted');

@@ -40,7 +40,15 @@ async function identity() {
   return { userId, cookie, accountId: profile.body.account.id, revision: profile.body.account.revision as number };
 }
 
-async function pendingDeletion(owner: Awaited<ReturnType<typeof identity>>) {
+/** Move a pending deletion's request time `days` into the past, as the passage of time would. */
+async function ageDeletion(accountId: string, days = 31) {
+  await pool.query(`UPDATE creator_accounts SET deletion_requested_at=clock_timestamp()-make_interval(days=>$2)
+    WHERE id=$1 AND status='pending_deletion'`, [accountId, days]);
+}
+
+/** Request deletion. Aged past the grace period by default so maintenance may finalise it; pass
+ *  `{ aged: false }` to keep it as freshly requested. */
+async function pendingDeletion(owner: Awaited<ReturnType<typeof identity>>, options: { aged?: boolean } = {}) {
   const feedback = await request(app.app).post("/api/explorers/v1/account/deletion-feedback")
     .set("origin", config.baseURL).set("cookie", owner.cookie).set("idempotency-key", randomUUID())
     .send({ reason: "Leaving" });
@@ -48,6 +56,7 @@ async function pendingDeletion(owner: Awaited<ReturnType<typeof identity>>) {
     .set("origin", config.baseURL).set("cookie", owner.cookie).set("idempotency-key", randomUUID())
     .send({ expectedRevision: owner.revision, feedbackId: feedback.body.feedback.id });
   expect(deletion.status).toBe(200);
+  if (options.aged !== false) await ageDeletion(owner.accountId);
   return deletion.body.lifecycle.operationId as string;
 }
 
@@ -399,6 +408,146 @@ describe("canonical account lifecycle", () => {
     expect((await pool.query("SELECT deletion_requested_at FROM creator_accounts WHERE id=$1", [owner.accountId])).rows[0].deletion_requested_at).toBeNull();
   });
 
+  describe("30-day deletion grace period", () => {
+    async function recoveryCookie(owner: Awaited<ReturnType<typeof identity>>) {
+      const context = await app.auth.$context;
+      const temporary = await context.internalAdapter.createSession(owner.userId, false);
+      const proof = await issueRecoveryProof(pool, { userId: owner.userId,
+        subject: `google-${owner.userId}`, sessionId: temporary.id });
+      return `explorers_recovery_proof=${proof.token}`;
+    }
+    const state = async (accountId: string) => (await pool.query(
+      "SELECT status,deleted_at FROM creator_accounts WHERE id=$1", [accountId])).rows[0];
+
+    it("does not finalise a pending deletion inside the grace period and does once it has elapsed", async () => {
+      const owner = await identity();
+      const operation = await pendingDeletion(owner, { aged: false });
+      // Within one maintenance tick of the request: nothing is finalised.
+      expect(await runAccountLifecycleMaintenance(pool, new LocalObjectStorage())).toBe(0);
+      expect(await state(owner.accountId)).toMatchObject({ status: "pending_deletion", deleted_at: null });
+      // Day 29 is still inside the window.
+      await ageDeletion(owner.accountId, 29);
+      expect(await runAccountLifecycleMaintenance(pool, new LocalObjectStorage())).toBe(0);
+      expect((await state(owner.accountId)).status).toBe("pending_deletion");
+      expect((await pool.query("SELECT state FROM account_lifecycle_operations WHERE id=$1", [operation])).rows[0].state)
+        .toBe("pending");
+      // One second short of 30 days: still pending. One second past: finalised.
+      await pool.query(`UPDATE creator_accounts SET deletion_requested_at=clock_timestamp()-interval '30 days'+interval '1 minute'
+        WHERE id=$1`, [owner.accountId]);
+      expect(await runAccountLifecycleMaintenance(pool, new LocalObjectStorage())).toBe(0);
+      await pool.query(`UPDATE creator_accounts SET deletion_requested_at=clock_timestamp()-interval '30 days'-interval '1 minute'
+        WHERE id=$1`, [owner.accountId]);
+      expect(await runAccountLifecycleMaintenance(pool, new LocalObjectStorage())).toBe(1);
+      expect((await state(owner.accountId)).status).toBe("deleted");
+    });
+
+    it("applies the same rule to the Music venue release path", async () => {
+      const owner = await identity();
+      const canonical = randomUUID();
+      const client = await pool.connect();
+      let musicUserId: number;
+      try {
+        await client.query("BEGIN");
+        musicUserId = (await client.query<{ id: number }>(
+          `INSERT INTO users(username,password,email,guest_url,venue_name,
+             strapi_user_document_id,strapi_account_document_id,guest_capability_hash)
+           VALUES($1,NULL,NULL,$2,'Explorers Music',NULL,NULL,$3) RETURNING id`,
+          [`explorers-music-${canonical}`, `canonical-${canonical}`.slice(0, 60),
+            createHash("sha256").update(canonical).digest("hex")])).rows[0].id;
+        await client.query("INSERT INTO account_music_identity(account_id,music_user_id) VALUES($1,$2)",
+          [owner.accountId, musicUserId]);
+        await client.query("COMMIT");
+      } catch (error) { await client.query("ROLLBACK"); throw error; } finally { client.release(); }
+      const operation = await pendingDeletion(owner, { aged: false });
+      await ageDeletion(owner.accountId, 29);
+      expect(await runAccountLifecycleMaintenance(pool, new LocalObjectStorage())).toBe(0);
+      // Neither released nor marked as blocked: the venue and its mapping are untouched.
+      expect((await pool.query("SELECT 1 FROM users WHERE id=$1", [musicUserId])).rowCount).toBe(1);
+      expect((await pool.query("SELECT 1 FROM account_music_identity WHERE account_id=$1", [owner.accountId])).rowCount).toBe(1);
+      expect((await pool.query("SELECT state,failure_code FROM account_lifecycle_operations WHERE id=$1", [operation])).rows[0])
+        .toMatchObject({ state: "pending", failure_code: null });
+      await ageDeletion(owner.accountId, 31);
+      expect(await runAccountLifecycleMaintenance(pool, new LocalObjectStorage())).toBe(1);
+      expect((await state(owner.accountId)).status).toBe("deleted");
+      expect((await pool.query("SELECT 1 FROM users WHERE id=$1", [musicUserId])).rowCount).toBe(0);
+    });
+
+    it("keeps the account hidden and refuses sign-in during the window, sending the owner to recovery", async () => {
+      const owner = await identity();
+      const handle = `grace${randomUUID().replace(/-/g, "").slice(0, 10)}`;
+      await pool.query(`UPDATE creator_accounts SET handle=$2,display_name='Grace',account_type='Personal',
+        onboarding_status='complete',public_profile=true WHERE id=$1`, [owner.accountId, handle]);
+      expect((await request(app.app).get(`/api/explorers/v1/profiles/${handle}`)).status).toBe(200);
+      await pendingDeletion(owner, { aged: false });
+      await ageDeletion(owner.accountId, 29);
+      await runAccountLifecycleMaintenance(pool, new LocalObjectStorage());
+      expect((await request(app.app).get(`/api/explorers/v1/profiles/${handle}`)).status).toBe(404);
+      expect((await request(app.app).get("/api/explorers/v1/me").set("cookie", owner.cookie)).status).toBe(401);
+      const context = await app.auth.$context;
+      const session = await context.internalAdapter.createSession(owner.userId, false);
+      const cookie = `${context.authCookies.sessionToken.name}=${session.token}.${createHmac("sha256", config.secret).update(session.token).digest("base64")}`;
+      expect((await request(app.app).get("/api/explorers/v1/me").set("cookie", cookie)).status).toBe(403);
+    });
+
+    it("lets the owner cancel the deletion with Google late in the window, and maintenance then leaves the account alone", async () => {
+      const owner = await identity();
+      const pendingOperation = await pendingDeletion(owner, { aged: false });
+      await ageDeletion(owner.accountId, 29);
+      const cookie = await recoveryCookie(owner);
+      const status = await request(app.app).get("/api/explorers/v1/recovery/status").set("cookie", cookie);
+      expect(status.body.recovery).toMatchObject({ outcome: "pending", status: "pending_deletion", operationId: pendingOperation });
+      const recovered = await request(app.app).post("/api/explorers/v1/recovery/complete")
+        .set("origin", config.baseURL).set("cookie", cookie).send({ expectedRevision: status.body.recovery.revision });
+      expect(recovered.status).toBe(200);
+      expect(recovered.body.lifecycle.status).toBe("active");
+      expect((await pool.query("SELECT state FROM account_lifecycle_operations WHERE id=$1", [pendingOperation])).rows[0].state)
+        .toBe("cancelled");
+      expect((await pool.query("SELECT kind FROM account_lifecycle_operations WHERE id=$1",
+        [recovered.body.lifecycle.operationId])).rows[0].kind).toBe("cancel_deletion");
+      await runAccountLifecycleMaintenance(pool, new LocalObjectStorage());
+      expect((await state(owner.accountId)).status).toBe("active");
+    });
+
+    it("tells the recovering owner the scheduled deletion date, and tells nobody else", async () => {
+      const owner = await identity();
+      const response = await request(app.app).post("/api/explorers/v1/account/deletion-feedback")
+        .set("origin", config.baseURL).set("cookie", owner.cookie).set("idempotency-key", randomUUID()).send({ reason: "Leaving" });
+      const deletion = await request(app.app).post("/api/explorers/v1/account/deletion")
+        .set("origin", config.baseURL).set("cookie", owner.cookie).set("idempotency-key", randomUUID())
+        .send({ expectedRevision: owner.revision, feedbackId: response.body.feedback.id });
+      const requestedAt = (await pool.query<{ at: Date }>(
+        "SELECT deletion_requested_at AS at FROM creator_accounts WHERE id=$1", [owner.accountId])).rows[0].at;
+      const expected = new Date(requestedAt.getTime() + 30 * 24 * 3600 * 1000).toISOString();
+      expect(deletion.body.lifecycle.scheduledDeletionAt).toBe(expected);
+      const cookie = await recoveryCookie(owner);
+      const observed = await request(app.app).get("/api/explorers/v1/recovery/status").set("cookie", cookie);
+      expect(observed.body.recovery).toMatchObject({ outcome: "pending", status: "pending_deletion", scheduledDeletionAt: expected });
+      // The signed-in pending owner (who signs in normally and is sent to recovery) is told too.
+      const context = await app.auth.$context;
+      const session = await context.internalAdapter.createSession(owner.userId, false);
+      const signedIn = `${context.authCookies.sessionToken.name}=${session.token}.${createHmac("sha256", config.secret).update(session.token).digest("base64")}`;
+      const me = await request(app.app).get("/api/explorers/v1/me").set("cookie", signedIn);
+      expect(me.status).toBe(403);
+      expect(me.body.lifecycle).toEqual({ status: "pending_deletion", scheduledDeletionAt: expected });
+      // No proof, no session: no date.
+      expect((await request(app.app).get("/api/explorers/v1/me")).status).toBe(401);
+      const anonymous = await request(app.app).get("/api/explorers/v1/recovery/status");
+      expect(anonymous.status).toBe(403);
+      expect(JSON.stringify(anonymous.body)).not.toContain(expected);
+      // A suspended account is not scheduled for anything.
+      const other = await identity();
+      await request(app.app).post("/api/explorers/v1/account/deactivation").set("origin", config.baseURL)
+        .set("cookie", other.cookie).set("idempotency-key", randomUUID()).send({ expectedRevision: other.revision });
+      const suspended = await request(app.app).get("/api/explorers/v1/recovery/status").set("cookie", await recoveryCookie(other));
+      expect(suspended.body.recovery).toMatchObject({ outcome: "pending", status: "suspended", scheduledDeletionAt: null });
+      const otherSession = await context.internalAdapter.createSession(other.userId, false);
+      const otherMe = await request(app.app).get("/api/explorers/v1/me")
+        .set("cookie", `${context.authCookies.sessionToken.name}=${otherSession.token}.${createHmac("sha256", config.secret).update(otherSession.token).digest("base64")}`);
+      expect(otherMe.status).toBe(403);
+      expect(otherMe.body).not.toHaveProperty("lifecycle");
+    });
+  });
+
   it("allows exactly one concurrent recovery and rejects expired and revoked proofs", async () => {
     const owner = await identity();
     const deactivated = await request(app.app).post("/api/explorers/v1/account/deactivation")
@@ -495,6 +644,7 @@ describe("canonical account lifecycle", () => {
       .set("origin", config.baseURL).set("cookie", owner.cookie).set("idempotency-key", randomUUID())
       .send({ expectedRevision: owner.revision, feedbackId: feedback.body.feedback.id });
     expect(pending.status).toBe(200);
+    await ageDeletion(owner.accountId);
     expect(await runAccountLifecycleMaintenance(pool, new LocalObjectStorage())).toBe(0);
     expect((await pool.query("SELECT state,completed_at,failure_code FROM account_lifecycle_operations WHERE id=$1",
       [pending.body.lifecycle.operationId])).rows[0]).toMatchObject({
@@ -549,6 +699,7 @@ describe("canonical account lifecycle", () => {
       .set("origin", config.baseURL).set("cookie", owner.cookie).set("idempotency-key", randomUUID())
       .send({ expectedRevision: owner.revision, feedbackId: feedback.body.feedback.id });
     expect(pending.status).toBe(200);
+    await ageDeletion(owner.accountId);
 
     expect(await runAccountLifecycleMaintenance(pool, new LocalObjectStorage())).toBe(1);
     expect((await pool.query("SELECT status FROM creator_accounts WHERE id=$1", [owner.accountId])).rows[0].status)
@@ -903,6 +1054,7 @@ describe("canonical account lifecycle", () => {
     expect(pending.status).toBe(200);
     expect((await pool.query("SELECT state,completed_at FROM account_lifecycle_operations WHERE id=$1",
       [pending.body.lifecycle.operationId])).rows[0]).toMatchObject({ state: "pending", completed_at: null });
+    await ageDeletion(owner.accountId);
     expect(await runAccountLifecycleMaintenance(pool, {
       environment: "local", put: (objectKey, bytes) => storage.put(objectKey, bytes),
       get: (objectKey) => storage.get(objectKey), delete: async () => { throw new Error("temporary storage outage"); },

@@ -1,15 +1,20 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import SEO from "../components/SEO";
 import { authClient } from "../lib/authClient";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
 import useAuthStore from "../store/store";
+import { formatLifecycleDate } from "../utils/formatLifecycleDate";
 
 export default function ReactivateAccount() {
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
   const [error, setError] = useState("");
   const [starting, setStarting] = useState(false);
   const authStatus = useAuthStore((state) => state.status);
+  const scheduledDeletionAt = useAuthStore((state) => state.scheduledDeletionAt);
+  const deletionDate = formatLifecycleDate(scheduledDeletionAt, i18n?.language);
   const start = () => {
     if (starting) return;
     setStarting(true);
@@ -25,7 +30,9 @@ export default function ReactivateAccount() {
       <div className="relative w-full max-w-md mx-auto">
         <div className="backdrop-blur-sm bg-dashboard-sidebar border border-dashboard p-6 sm:p-8 rounded-2xl shadow-dashboard-elevated text-center">
           <h1 className="text-xl sm:text-2xl font-bold text-white mb-3">Recover your account</h1>
-          <p className="text-sm text-gray-400 mb-6">Continue with the Google identity connected to this account to reactivate it or cancel a pending deletion.</p>
+          {deletionDate
+            ? <p className="text-sm text-gray-400 mb-6">{t("recovery.scheduledForDeletion", { date: deletionDate })}</p>
+            : <p className="text-sm text-gray-400 mb-6">Continue with the Google identity connected to this account to reactivate it or cancel a pending deletion.</p>}
           {(error || authStatus === "error") && <p role="alert" className="text-red-400 text-sm mb-4">
             {error || "Recovery could not start. Check your connection and try again."}
           </p>}

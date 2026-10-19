@@ -124,6 +124,7 @@ it('actual lifecycle purge removes Games ownership/media and retains shared cata
  const revision=Number((await admin.query('SELECT revision FROM creator_accounts WHERE id=$1',[a.accountId])).rows[0].revision);
  const feedback=await command(a,'post','/account/deletion-feedback',{reason:'Leaving'});expect(feedback.status).toBe(201);
  const deleted=await command(a,'post','/account/deletion',{expectedRevision:revision,feedbackId:feedback.body.feedback.id});expect(deleted.status).toBe(200);
+ await admin.query("UPDATE creator_accounts SET deletion_requested_at=clock_timestamp()-interval '31 days' WHERE id=$1",[a.accountId]);
  await runAccountLifecycleMaintenance(runtime,storage);
  expect((await admin.query('SELECT status FROM creator_accounts WHERE id=$1',[a.accountId])).rows[0].status).toBe('deleted');
  for(const table of ['collections','recommendations','collection_items','recommendation_media','media_assets'])expect((await admin.query(`SELECT count(*) FROM ${table} WHERE account_id=$1`,[a.accountId])).rows[0].count).toBe('0');

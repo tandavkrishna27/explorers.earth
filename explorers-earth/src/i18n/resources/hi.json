@@ -1887,11 +1887,15 @@
       "deleteAccount": {
         "button": "खाता हटाएं",
         "description": "अपने खाते और सभी डेटा को स्थायी रूप से हटाएं",
+        "pending": {
+          "scheduled": "आपका खाता {{date}} को स्थायी रूप से हटा दिया जाएगा। हटाना रद्द करने के लिए उससे पहले Google से साइन इन करें।"
+        },
         "step1": {
           "continueButton": "हटाना जारी रखें",
           "deactivateInsteadButton": "इसके बजाय खाता निष्क्रिय करें",
           "modalDescription": "क्या आप वाकई अपना खाता हटाना चाहते हैं? यह कार्रवाई पूर्ववत नहीं की जा सकती।",
           "modalDescription2": "यदि आप अपना डेटा रखना चाहते हैं, तो आप इसके बजाय अपना खाता निष्क्रिय कर सकते हैं।",
+          "modalDescriptionGrace": "आपका खाता तुरंत छिपा दिया जाएगा और 30 दिनों के बाद स्थायी रूप से हटा दिया जाएगा। उससे पहले आप Google से साइन इन करके इसे वापस पा सकते हैं।",
           "modalTitle": "अपना खाता हटाएं?"
         },
         "step2": {
@@ -1907,7 +1911,8 @@
         "step3": {
           "continueButton": "जारी रखें",
           "modalTitle": "आप क्यों जा रहे हैं?",
-          "reasonPlaceholder": "कृपया हमें अपने जाने का कारण बताएं..."
+          "reasonPlaceholder": "कृपया हमें अपने जाने का कारण बताएं...",
+          "reasonTooLong": "आपका कारण बहुत लंबा है। कृपया अधिकतम 2,000 वर्ण लिखें।"
         },
         "step4": {
           "confirmationRequired": "कृपया पुष्टि के लिए 'CONFIRM DELETE' टाइप करें।",
@@ -1921,6 +1926,7 @@
         },
         "text": "अपना खाता हटाएं?"
       },
+      "handleMismatch": "आपने जो हैंडल लिखा है वह आपके खाते के हैंडल से मेल नहीं खाता।",
       "heading": "खाता",
       "security": {
         "title": "खाता और सुरक्षा"
@@ -2477,5 +2483,14 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "recovery": {
+    "pendingDeletion": {
+      "cancelButton": "हटाना रद्द करें",
+      "scheduled": "आपका खाता {{date}} को हटाए जाने के लिए निर्धारित है। पहुँच वापस पाने के लिए हटाना रद्द करें।",
+      "scheduledUnknown": "आपका खाता हटाए जाने के लिए निर्धारित है। पहुँच वापस पाने के लिए हटाना रद्द करें।",
+      "title": "खाता हटाना रद्द करें"
+    },
+    "scheduledForDeletion": "आपका खाता {{date}} को हटाए जाने के लिए निर्धारित है। हटाना रद्द करने के लिए Google के साथ जारी रखें।"
   }
 }

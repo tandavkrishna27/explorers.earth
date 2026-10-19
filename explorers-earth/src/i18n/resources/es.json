@@ -1885,11 +1885,15 @@
       "deleteAccount": {
         "button": "Eliminar cuenta",
         "description": "Elimine permanentemente su cuenta y todos los datos",
+        "pending": {
+          "scheduled": "Tu cuenta se eliminará de forma permanente el {{date}}. Inicia sesión con Google antes de esa fecha para cancelar la eliminación."
+        },
         "step1": {
           "continueButton": "Continuar con la eliminación",
           "deactivateInsteadButton": "Desactivar cuenta en su lugar",
           "modalDescription": "¿Está seguro de que desea eliminar su cuenta? Esta acción no se puede deshacer.",
           "modalDescription2": "Si desea conservar sus datos, puede desactivar su cuenta en su lugar.",
+          "modalDescriptionGrace": "Tu cuenta se ocultará de inmediato y se eliminará de forma permanente después de 30 días. Puedes recuperarla antes iniciando sesión con Google.",
           "modalTitle": "¿Eliminar su cuenta?"
         },
         "step2": {
@@ -1905,7 +1909,8 @@
         "step3": {
           "continueButton": "Continuar",
           "modalTitle": "¿Por qué se va?",
-          "reasonPlaceholder": "Por favor, díganos el motivo de su partida..."
+          "reasonPlaceholder": "Por favor, díganos el motivo de su partida...",
+          "reasonTooLong": "Tu motivo es demasiado largo. Usa como máximo 2000 caracteres."
         },
         "step4": {
           "confirmationRequired": "Por favor, escriba 'CONFIRM DELETE' para confirmar.",
@@ -1919,6 +1924,7 @@
         },
         "text": "¿Eliminar su cuenta?"
       },
+      "handleMismatch": "El identificador que escribiste no coincide con el de tu cuenta.",
       "heading": "Cuenta",
       "security": {
         "title": "Cuenta y Seguridad"
@@ -2475,5 +2481,14 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "recovery": {
+    "pendingDeletion": {
+      "cancelButton": "Cancelar eliminación",
+      "scheduled": "Tu cuenta está programada para eliminarse el {{date}}. Cancela la eliminación para recuperar el acceso.",
+      "scheduledUnknown": "Tu cuenta está programada para eliminarse. Cancela la eliminación para recuperar el acceso.",
+      "title": "Cancelar la eliminación de la cuenta"
+    },
+    "scheduledForDeletion": "Tu cuenta está programada para eliminarse el {{date}}. Continúa con Google para cancelar la eliminación."
   }
 }
