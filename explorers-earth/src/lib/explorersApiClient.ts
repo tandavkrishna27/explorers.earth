@@ -1,5 +1,4 @@
 import {gameCatalogRequestSchema,gameMembershipCommandSchema,gameMembershipResultSchema} from '../../../tunes/shared/explorersGameOwnerContract';
-import {placePinsRequestSchema,placePinsResults,PLACE_PINS_PARSER_BYTES,type PlacePinsRequest} from '../../../tunes/shared/explorersPlacePinsContract';
 import {resolveProviderGameSchema} from '../../../tunes/shared/explorersContract';
 import {movieGenreTermsResultSchema,importMovieMediaRequestSchema,movieMediaImportResultSchema} from '../../../tunes/shared/explorersMovieMediaContract';
 import {movieSearchRequestSchema,movieCandidatesSchema,movieEntityDtoSchema,resolveProviderMovieSchema,resolveManualMovieSchema} from '../../../tunes/shared/explorersMovieContract';
@@ -86,71 +85,9 @@ export class ExplorersApiError extends Error {
   // production code, not only by tests: 499 ('client closed request') means the command
   // reached the server and the server REPLIED, and only then did this client lose owner or
   // route authority - so the outcome is UNKNOWN-but-probably-applied and the command must
-  // stay retryable/undiscardable (see createMyPlacePinsTransport's
-  // assertCurrentAfterResponse below, and placesClient.savePins). A future handler must not
+  // stay retryable/undiscardable (see appEnrichmentClient's current()). A future handler must not
   // bucket 499 with transport failures or with authoritative 4xx rejections.
   constructor(readonly status: number, readonly code: string, message: string) { super(message); }
-}
-
-/** Captured canonical authority survives ambiguous acknowledgement retries only in its original owner and route. */
-export function createMyPlacePinsTransport(observed:CompleteMyCategoryContent,collectionId:string){
- // Finding 5. Every id compared here is case-normalized the same way, because
- // placePinsIdSchema lowercases the ids that arrive on a REQUEST while the server's rows
- // carry whatever case it emitted. Comparing a lowercased request id against a raw member
- // id refused a legitimately pinned place with 422, and resolving the parent by raw id in
- // one place and lowercased id in another let the two fence sources pick different
- // parents. Both directions failed closed, so neither was an acceptance hole - but a
- // server emitting uppercase UUIDs would have made pinning impossible.
- assertCompleteMyCategoryContent(observed);const id=contentIdSchema.parse(collectionId).toLowerCase();
- const same=(value:string)=>value.toLowerCase()===id;
- const parent=observed.collections.find(row=>same(row.id)&&!row.archived);
- if(observed.category!=='places'||observed.status!=='active'||!parent)throw new ExplorersApiError(409,'CONFLICT','Reload the complete Places list before pinning');
- const members=new Set(observed.memberships.filter(row=>same(row.collectionId)&&!row.collectionArchived&&!row.recommendationArchived&&row.collectionRevision===parent.revision).map(row=>row.recommendationId.toLowerCase()));
- const initial=useAuthStore.getState(),route=()=>typeof window==='undefined'?'':JSON.stringify([window.location.pathname,window.location.search,window.location.hash,window.history.state?.key]),capturedRoute=route();
- let retired=false,started=false;const controllers=new Set<AbortController>();
- const current=()=>{const state=useAuthStore.getState();return !retired&&state.isAuthenticated&&state.accountId===initial.accountId&&state.generation===initial.generation&&route()===capturedRoute;};
- // Before a request is issued, a lost authority means the command provably never left the
- // client, so 409 - which placePinsIntent buckets as an authoritative rejection - is right.
- const assertCurrent=()=>{if(!current())throw new ExplorersApiError(409,'ABORTED','Places pin owner or route changed');};
- // Finding 4. AFTER the response has been received and parsed, the server may well have
- // applied the command. Reporting that as 409 made placePinsIntent bucket it as "server
- // authoritatively rejected": uncertain went false, verifyResult never ran, the
- // invalidatePlaces fences were never published, and discard was permitted - recording an
- // applied commit as certainly-not-applied. 499 (client closed request) is outside that
- // bucket, so the uncertain/verify path survives and the draft is retained for retry.
- // Genuine server 409s are untouched: they still arrive from the response itself.
- const assertCurrentAfterResponse=()=>{if(!current())throw new ExplorersApiError(499,'ABORTED','Places pin owner or route changed after the server replied');};
- const routeChanged=()=>{if(route()!==capturedRoute){retired=true;controllers.forEach(controller=>controller.abort());}};
- if(typeof window!=='undefined'){window.addEventListener('popstate',routeChanged);window.addEventListener('hashchange',routeChanged);}
- const dispose=()=>{retired=true;controllers.forEach(controller=>controller.abort());if(typeof window!=='undefined'){window.removeEventListener('popstate',routeChanged);window.removeEventListener('hashchange',routeChanged);}};
- return {assertCurrent,dispose,async execute(input:PlacePinsRequest,key?:string,signal?:AbortSignal):Promise<unknown>{
-  assertCurrent();const request=placePinsRequestSchema.parse(input),read=request.operation==='placePinsAvailability';
-  if(request.collectionId!==id)throw new ExplorersApiError(422,'INVALID_INPUT','Places pin collection changed');
-  if(!read)commandInput(commandKeySchema,key);
-  if(request.operation==='replacePlacePins'||request.operation==='beginPlacePinsDraft'){
-   if(request.body.expectedCollectionRevision!==parent.revision||request.body.expectedCategoryContentRevision!==observed.revision)throw new ExplorersApiError(409,'CONFLICT','Places pin observation changed');
-   if(!started&&Date.now()>=observed.expiresAt)throw new ExplorersApiError(409,'CONFLICT','Reload the expired Places owner snapshot');
-  }
-  const ids=request.operation==='replacePlacePins'?request.body.orderedRecommendationIds:request.operation==='appendPlacePinsChunk'?request.body.recommendationIds:[];
-  if(ids.some(item=>!members.has(item)))throw new ExplorersApiError(422,'INVALID_INPUT','Places pins require current list members');
-  const emptyBody=!read?request.operation==='replacePlacePins'?{...request.body,orderedRecommendationIds:[]}:request.operation==='appendPlacePinsChunk'?{...request.body,recommendationIds:[]}:request.body:undefined;
-  const bytes=read?0:new TextEncoder().encode(JSON.stringify(emptyBody)).byteLength+(ids.length?ids.length*39-1:0);
-  if(!Number.isSafeInteger(bytes)||bytes>PLACE_PINS_PARSER_BYTES)throw new ExplorersApiError(413,'CLIENT_RESOURCE_FAILURE','Places pin request exceeds the bounded parser');
-  const base=`/api/explorers/v1/collections/${id}/place-pins`;
-  const address=request.operation==='placePinsAvailability'?`${base}/availability`:request.operation==='replacePlacePins'?base:request.operation==='beginPlacePinsDraft'?`${base}/drafts`:`${base}/drafts/${request.draftId}`+(request.operation==='appendPlacePinsChunk'?`/chunks/${request.chunkIndex}`:request.operation==='commitPlacePinsDraft'?'/commit':'');
-  const method=read?'GET':request.operation==='replacePlacePins'||request.operation==='appendPlacePinsChunk'?'PUT':request.operation==='abortPlacePinsDraft'?'DELETE':'POST';
-  const envelope=read?'placePinsAvailability':request.operation==='beginPlacePinsDraft'?'placePinsDraft':request.operation==='appendPlacePinsChunk'?'placePinsChunk':request.operation==='abortPlacePinsDraft'?'placePinsDraftAbort':'placePins';
-  const controller=new AbortController(),stop=()=>controller.abort(),deadline=AbortSignal.any([controller.signal,AbortSignal.timeout(15000)]);
-  const unsubscribe=useAuthStore.subscribe(()=>{if(!current()){retired=true;stop();}});controllers.add(controller);signal?.addEventListener('abort',stop,{once:true});if(signal?.aborted)stop();
-  try{
-   assertCurrent();if(deadline.aborted)throw new ExplorersApiError(409,'ABORTED','Places pin request cancelled');if(!read)started=true;
-   const pending=fetch(address,{method,credentials:'include',cache:'no-store',signal:deadline,...(!read?{headers:{'Content-Type':'application/json','Idempotency-Key':key!},body:JSON.stringify(request.body)}:{})});
-   void pending.then(reply=>{if(deadline.aborted)void reply.body?.cancel().catch(()=>{});},()=>{});
-   const reply=await gameCommandAwait(pending,deadline),raw=await gameMembershipBody(reply,initial.generation,deadline);assertCurrentAfterResponse();
-   if(!raw||typeof raw!=='object'||Object.keys(raw).length!==1||!(envelope in raw))throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid Places pin response');
-   const parsed=placePinsResults[request.operation].safeParse((raw as Record<string,unknown>)[envelope]);if(!parsed.success)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid Places pin response');return parsed.data;
-  }catch(error){if(error instanceof ExplorersApiError&&error.message.includes('Games'))throw new ExplorersApiError(error.status,error.code,error.message.replace(/Games/g,'Places pins'));throw error;}finally{unsubscribe();controllers.delete(controller);signal?.removeEventListener('abort',stop);}
- }};
 }
 
 export type CompleteTaxonomyCatalog=Readonly<Omit<TaxonomyCatalogPage,'items'|'nextCursor'>&{complete:true;items:readonly TaxonomyCatalogPage['items'][number][];nextCursor:null;accountId:string;generation:number}>;

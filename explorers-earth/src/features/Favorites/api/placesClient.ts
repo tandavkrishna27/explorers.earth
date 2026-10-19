@@ -1,6 +1,4 @@
-import {explorersApiClient,createMyPlacePinsTransport,assertCompleteMyCategoryContent,assertOwnerDetailObservation,ExplorersApiError,type CompleteMyCategoryContent,type CollectionObservation,type RecommendationObservation} from '../../../lib/explorersApiClient';
-import {createPlacePinsIntent,type PlacePinsIntent} from './placePinsIntent';
-import {placePinsAvailabilitySchema} from '../../../../../tunes/shared/explorersPlacePinsContract';
+import {explorersApiClient,assertCompleteMyCategoryContent,assertOwnerDetailObservation,ExplorersApiError,type CompleteMyCategoryContent,type CollectionObservation,type RecommendationObservation} from '../../../lib/explorersApiClient';
 import {createRecommendationObjectSchema,type UpdateCollectionInput,type UpdateRecommendationInput} from '../../../../../tunes/shared/explorersContract';
 import {resolveManualPlaceSchema,placeRecommendationContextSchema,placeCollectionDetailsSchema,emptyPlaceContext,emptyPlaceDetails,
  type PlaceEntityDetails,type PlaceRecommendationContext,type PlaceCollectionDetails} from '../../../../../tunes/shared/explorersPlaceContract';
@@ -30,7 +28,6 @@ export type PlaceMembershipIntent=Readonly<{parent:CollectionObservation;item:Re
 
 const intents=new WeakMap<object,{accountId:string|null;generation:number;route:string}>();
 const membershipIntents=new WeakMap<object,{accountId:string|null;generation:number;route:string}>();
-const pinIntents=new WeakMap<PlacePinsIntent,ReturnType<typeof createMyPlacePinsTransport>>();
 // A person recommendation inside a Places list resolves a person entity rather than a
 // place; the intent records which, so the resolve cannot be chosen at save time.
 const personIntents=new WeakSet<object>();
@@ -44,43 +41,6 @@ function recommendation(value:RecommendationObservation){assertOwnerDetailObserv
 function complete(value:CompleteMyCategoryContent):asserts value is CompletePlacesOwnerContent{assertCompleteMyCategoryContent(value);if(value.category!=='places')fail();}
 
 export const PlacesClient={
- async pinsAvailability(observed:CompletePlacesOwnerContent,id:string,signal?:AbortSignal){complete(observed);const transport=createMyPlacePinsTransport(observed,id);try{return placePinsAvailabilitySchema.parse(await transport.execute({operation:'placePinsAvailability',collectionId:id},undefined,signal));}finally{transport.dispose();}},
- preparePinsIntent(observed:CompletePlacesOwnerContent,id:string,ids:readonly string[]):PlacePinsIntent{
-  // Finding 5. Normalized identically to createMyPlacePinsTransport, so this fence source
-  // and the transport's can never resolve different parents for the same list.
-  complete(observed);const wanted=id.toLowerCase(),parent=observed.collections.find(row=>row.id.toLowerCase()===wanted&&!row.archived);if(!parent)fail();
-  // Finding 3. These used to be one comma expression. createMyPlacePinsTransport has
-  // already registered popstate/hashchange listeners by the time createPlacePinsIntent
-  // runs, and createPlacePinsIntent can throw (placePinsIdSchema.parse, the duplicate-id
-  // guard) - which leaked those listeners for the lifetime of the page. The transport is
-  // now disposed on any failure to build the intent.
-  const transport=createMyPlacePinsTransport(observed,id);
-  try{
-   const intent=createPlacePinsIntent(id,ids,{expectedCollectionRevision:parent.revision,expectedCategoryContentRevision:observed.revision},transport);
-   pinIntents.set(intent,transport);return intent;
-  }catch(error){transport.dispose();throw error;}
- },
- /**
-  * Finding 4, second site. The post-response `transport.assertCurrent()` below routes
-  * through fail() - a 409 - and so used to swallow a SERVER-CONFIRMED commit: intent.save
-  * had already resolved and cached its verified result, but the throw meant placesCommands
-  * never reached invalidatePlaces, so the read fence floor was never raised and the public
-  * profile was never invalidated. A lagging replica could then serve pre-save content as
-  * current, and recovery depended on the user navigating back and pressing Save again.
-  *
-  * Same reclassification as finding 4 itself: losing authority AFTER the server replied is
-  * not authority over what the server did. The guard is unchanged and still throws - but
-  * `committed` is invoked with the verified result FIRST, so a confirmed commit always
-  * raises the floor no matter where the client's attention went by then.
-  */
- async savePins(intent:PlacePinsIntent,signal?:AbortSignal,committed?:(result:Awaited<ReturnType<PlacePinsIntent['save']>>)=>void){
-  const transport=pinIntents.get(intent);if(!transport)fail();transport.assertCurrent();
-  const result=await intent.save(signal);
-  try{committed?.(result);}finally{transport.assertCurrent();}
-  return result;
- },
- async abortPins(intent:PlacePinsIntent,signal?:AbortSignal){const transport=pinIntents.get(intent);if(!transport)fail();transport.assertCurrent();try{await intent.abort(signal);}catch(error){transport.assertCurrent();if(!(error instanceof ExplorersApiError&&error.status===404))throw error;}transport.dispose();},
- retirePinsIntent(intent:PlacePinsIntent){pinIntents.get(intent)?.dispose();pinIntents.delete(intent);},
  readTaxonomyCatalog(signal?:AbortSignal){return explorersApiClient.getCompleteTaxonomyCatalog({category:'places'},signal);},
  prepareMembershipIntent(parent:CollectionObservation,item:RecommendationObservation,attached:boolean):PlaceMembershipIntent{
   collection(parent);recommendation(item);if(parent.accountId!==item.accountId||parent.generation!==item.generation||typeof attached!=='boolean')fail();

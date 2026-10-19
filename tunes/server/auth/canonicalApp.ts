@@ -49,9 +49,7 @@ function errorResponse(res: Response, status: number, code: ApiError["error"]["c
 
 function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   options: { mediaStorage?: ObjectStorage; bookCatalog?:BookCatalog; bookCoverFetcher?:BookCoverFetcher;movieCatalog?:MovieCatalog;movieImageFetcher?:MovieImageFetcher;appEnrichmentChoices?:readonly AppSourceChoice[] } = {}, custodyMode=false,appsInput?:Omit<AppsCanonicalAdmissionOptions,'pool'>,
-  /** Fixture-only place-pins injection. Production composition never passes this, so
-   * the policy stays unconfigured and the pin feature stays correctly unavailable. */
-  placePinsFixtureSetup?:{policy:unknown;storage:true}) {
+  ) {
   const admission=appsInput?createAppsCanonicalAdmission({pool,...appsInput}):undefined;
   const actualApp = express(), instrument=custodyMode?createCanonicalHandlerCustody(actualApp,admission):undefined;
   const app = instrument?.registration ?? actualApp;
@@ -103,7 +101,7 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   setupCanonicalAnalyticsRoutes(app,pool,auth);
   const books=options.bookCatalog??new BookCatalog({apiKey:process.env.GOOGLE_BOOKS_API_KEY,secret:config.secret});
   const movies=options.movieCatalog??new MovieCatalog({accessToken:process.env.TMDB_ACCESS_TOKEN,apiKey:process.env.TMDB_API_KEY,authorize:a=>authorizeOperation(pool,a,'entities:resolve',a.accountId)});
-  setupExplorersRecommendationRoutes(app, pool, auth, config,books,new BookCoverImportService(pool,new MediaService(pool,options.mediaStorage),options.bookCoverFetcher),movies,new MovieMediaImportService(pool,new MediaService(pool,options.mediaStorage),options.movieImageFetcher),instrument?.routerFactory,placePinsFixtureSetup);
+  setupExplorersRecommendationRoutes(app, pool, auth, config,books,new BookCoverImportService(pool,new MediaService(pool,options.mediaStorage),options.bookCoverFetcher),movies,new MovieMediaImportService(pool,new MediaService(pool,options.mediaStorage),options.movieImageFetcher),instrument?.routerFactory);
   const appSourceChoices=appSourceChoiceSchema.array().parse(options.appEnrichmentChoices??[]);
   setupExplorersAppEnrichmentRoutes(app, pool, auth, config, appSourceChoices.map(choice=>choice.identity), instrument?.routerFactory,appSourceChoices);
   setupExplorersCatalogRoutes(app,pool,auth,config,books,movies);
@@ -171,14 +169,11 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
 
 export function createCanonicalApp(pool:Pool,config:ExplorersAuthConfig,options:Parameters<typeof constructCanonicalApp>[2]={}) {return constructCanonicalApp(pool,config,options).composed;} 
 export function createCanonicalAppWithCustody(pool:Pool,config:ExplorersAuthConfig,options:Parameters<typeof constructCanonicalApp>[2]={}) {const result=constructCanonicalApp(pool,config,options,true);return {composed:result.composed,custody:result.custody!};}
-export type CanonicalPlacesFixtureInput={mediaStorage:ObjectStorage;syntheticFixturePlacePinsPolicy:unknown};
-/** Fixed private Places construction. The injected place-pins policy is SYNTHETIC
- * FIXTURE DATA owned by the private Places browser fixture and is never a production
- * value or default: production composition passes no policy, which keeps the pin
- * feature unavailable. No caller middleware, route or custody hooks are accepted. */
+export type CanonicalPlacesFixtureInput={mediaStorage:ObjectStorage};
+/** Fixed private Places construction. No caller middleware, route or custody hooks are accepted. */
 export function createCanonicalPlacesFixtureApp(pool:Pool,config:ExplorersAuthConfig,input:CanonicalPlacesFixtureInput){
- if(!input||Object.keys(input).sort().join(',')!=='mediaStorage,syntheticFixturePlacePinsPolicy'||!input.mediaStorage||!input.syntheticFixturePlacePinsPolicy||typeof input.syntheticFixturePlacePinsPolicy!=='object')throw Error('Canonical Places fixture configuration denied');
- return constructCanonicalApp(pool,config,{mediaStorage:input.mediaStorage},false,undefined,{policy:input.syntheticFixturePlacePinsPolicy,storage:true}).composed;
+ if(!input||Object.keys(input).sort().join(',')!=='mediaStorage'||!input.mediaStorage)throw Error('Canonical Places fixture configuration denied');
+ return constructCanonicalApp(pool,config,{mediaStorage:input.mediaStorage}).composed;
 }
 export type CanonicalAppsFixtureInput={mediaStorage:ObjectStorage;runAuthority:AppsCanonicalAdmissionOptions['runAuthority'];personasWithActualAccountIds:AppsCanonicalAdmissionOptions['personas']};
 /** Fixed Apps construction; no caller middleware, route or policy hooks. */

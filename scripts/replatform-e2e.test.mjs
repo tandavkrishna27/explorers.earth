@@ -266,7 +266,7 @@ test('Games diagnostics retain fixed stages and causes without private data',()=
  const other=manifest().lanes[0],otherReport=rawReport(other,true);otherReport.suites[0].specs[1].tests[0].results[0]={status:'failed',retry:0,error:{message:'[games-stage:patch-request] [games-cause:request-aborted]'}};const cross=decodeProtectedFailureDiagnostics(otherReport,other,process.cwd())[0];assert.equal(Object.hasOwn(cross,'stage'),false);assert.equal(Object.hasOwn(cross,'cause'),false);
 });
 
-test('Places lanes preserve the original ordered94 and append exact proposed16 with zero retry custody',()=>{
+test('Places lanes preserve the original ordered94 with zero retry custody',()=>{
  const m=manifest();
  assert.equal(createHash('sha256').update(JSON.stringify(m.lanes.slice(0,6))).digest('hex'),'860f99b6d27ba9880d818a0a8f37a1f62311672ee86077f3531300ea8d1446db');
  assert.deepEqual(originalTenProjection(m).scopeContents,['auth','profile','books','lifecycle','movies','games','places','place-links','apps','guides']);
@@ -275,63 +275,33 @@ test('Places lanes preserve the original ordered94 and append exact proposed16 w
    const lane=m.lanes.find(lane=>lane.name===name);
    assert.equal(lane.runner,'tunes/scripts/profile-browser-fixture.ts');
    assert.equal(originalManifest().lanes.find(lane=>lane.name===name).identities.length,8);
-   assert.equal(lane.identities.length,name==='places'?16:8);
+   assert.equal(lane.identities.length,8);
    assert.deepEqual(lane.projects,[`${name}-desktop`,`${name}-mobile`]);
    const changed=structuredClone(m);changed.lanes.find(lane=>lane.name===name).identities[0].titlePath=['unreviewed'];assert.throws(()=>validateManifest(changed));
  }
  for(const key of ['PLACES_E2E_FIXTURE_PATH','PLACE_LINKS_E2E_FIXTURE_PATH','PROFILE_E2E_SUITE'])assert.throws(()=>assertEnvironment({[key]:'unowned'}));
 });
 
-test('Places additive: the original eight stay at positions 0-7 and every later identity is separately declared',()=>{
- const m=manifest(),lane=m.lanes.find(lane=>lane.name==='places'),[entry]=m.additiveRegistrations;
- // The original record is recovered positionally, not merely by size or set membership.
- assert.equal(createHash('sha256').update(JSON.stringify(lane.identities.slice(0,8))).digest('hex'),
+test('Places additive: the lane is exactly the original eight and the additive ledger is empty',()=>{
+ const m=manifest(),lane=m.lanes.find(lane=>lane.name==='places');
+ // P5-8a removed the four additive pin identities with the pin write
+ // surface. The original record is still recovered positionally by its pinned digest.
+ assert.equal(createHash('sha256').update(JSON.stringify(lane.identities)).digest('hex'),
   '02f972f77de8e2d236989077c1cbca4e723cfb7f977871f4116bef39a890eda7');
- // The HEAD side must be stripped too. Before the additive registration was committed,
- // HEAD's places lane WAS the original 8 and a bare comparison held. Now that HEAD
- // carries all 16, comparing a prefix of 8 against 16 can never pass - the check had
- // become self-defeating rather than a freeze. Stripping both sides restores the
- // intended assertion: the original record at HEAD is positionally identical to the
- // original record here. The pinned digest above remains the primary freeze.
- assert.deepEqual(lane.identities.slice(0,8),
-  withoutAdditiveIdentities(JSON.parse(execFileSync('git',['show','HEAD:explorers-earth/e2e/replatform/suite-manifest.json'],{encoding:'utf8',windowsHide:true})))
-   .lanes.find(lane=>lane.name==='places').identities);
- assert.equal(lane.identities.length,16);
- assert.deepEqual(lane.identities.slice(8),entry.identities);
- assert.equal(entry.identities.length,8);
- assert.equal(additiveIdentityCount(),8);
- assert.equal(originalTenProjection(m).lanes.flatMap(lane=>lane.identities).length,142);assert.equal(totalIdentityCount(),190);
+ assert.deepEqual(m.additiveRegistrations,[]);
+ assert.equal(lane.identities.length,8);
+ assert.equal(additiveIdentityCount(),0);
  assert.equal(registeredIdentityCount(),134);
- // Authored, never executed: the ledger may not advertise these as qualified.
- assert.equal(entry.qualified,false);
- assert.equal(entry.status,'authored-not-executed');
- assert.ok(entry.fixturePrerequisites.length>0);
- assert.deepEqual(new Set(entry.identities.map(identity=>identity.project)),new Set(['places-desktop','places-mobile']));
- assert.ok(entry.identities.every(identity=>identity.repeat===0&&identity.file===lane.spec&&identity.titlePath.length===1));
  assert.equal(validateManifest(m),true);
- // A freeze that cannot be shown failing is not a freeze: rename, removal, reorder and
- // an undeclared addition must each be refused, inside the prefix and in the tail.
  for(const [name,mutate] of [
   ['prefix rename',x=>x.lanes.find(l=>l.name==='places').identities[0].titlePath=['renamed original']],
   ['paired prefix rename',x=>{const rows=x.lanes.find(l=>l.name==='places').identities;rows[0].titlePath=['renamed original'];rows[4].titlePath=['renamed original'];}],
   ['prefix removal',x=>x.lanes.find(l=>l.name==='places').identities.splice(2,1)],
   ['prefix reorder',x=>{const rows=x.lanes.find(l=>l.name==='places').identities;[rows[0],rows[1]]=[rows[1],rows[0]];}],
-  ['additive reorder',x=>{const rows=x.lanes.find(l=>l.name==='places').identities;[rows[8],rows[9]]=[rows[9],rows[8]];}],
-  ['additive rename',x=>x.lanes.find(l=>l.name==='places').identities[8].titlePath=['unreviewed additive']],
-  ['additive removal',x=>x.lanes.find(l=>l.name==='places').identities.pop()],
   ['undeclared additive',x=>x.lanes.find(l=>l.name==='places').identities.push({file:x.lanes.find(l=>l.name==='places').spec,titlePath:['undeclared extra'],project:'places-desktop',repeat:0})],
-  ['undeclared ledger entry',x=>x.additiveRegistrations[0].identities.push({file:x.lanes.find(l=>l.name==='places').spec,titlePath:['undeclared extra'],project:'places-desktop',repeat:0})],
-  ['moved boundary',x=>x.additiveRegistrations[0].originalIdentityCount=7],
   ['missing ledger',x=>delete x.additiveRegistrations],
-  ['claimed qualification',x=>x.additiveRegistrations[0].qualified=true],
-  ['claimed execution',x=>x.additiveRegistrations[0].status='qualified'],
-  ['dropped prerequisites',x=>x.additiveRegistrations[0].fixturePrerequisites=[]],
-  ['stale prefix digest',x=>x.additiveRegistrations[0].originalIdentityDigest='0'.repeat(64)],
+  ['non-empty ledger',x=>x.additiveRegistrations.push({scope:'places-pins-p2-reader-p3-complete70'})],
  ]){const changed=structuredClone(m);mutate(changed);assert.throws(()=>validateManifest(changed),`additive freeze must reject ${name}`);}
- // A prefix rename also breaks the accepted predecessor bytes, independently of the ledger.
- const renamed=originalTenProjection(m);renamed.lanes.find(lane=>lane.name==='places').identities[0].titlePath=['renamed original'];
- assert.notEqual(createHash('sha256').update(predecessorManifestBytes(renamed)).digest('hex'),
-  'c420e4c8de5d425658a3c1f8380bf522770ab17f9df81449a900ba9193f1325e');
 });
 
 function lockedInstallFixture(prefix,check){
@@ -816,8 +786,9 @@ function withoutAdditiveIdentities(m){
   const lane=m.lanes.find(value=>value.name===entry.lane);
   assert.deepEqual(lane.identities.slice(entry.originalIdentityCount),entry.identities);
   lane.identities=lane.identities.slice(0,entry.originalIdentityCount);
-  delete m.additiveRegistrations;
  }
+ // The ledger postdates every predecessor record. Since P5-8a it is present but empty.
+ delete m.additiveRegistrations;
  return m;
 }
 const originalManifest=()=>withoutAdditiveIdentities(manifest());

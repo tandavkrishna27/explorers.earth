@@ -1,10 +1,9 @@
 import {describe,it,expect} from 'vitest';
 import {createHash} from 'node:crypto';
 
-// Prefix freeze, not a relaxed count. The original four Places case identities are
-// pinned positionally and by ordered digest; everything after that boundary must be a
-// declared additive identity. A rename, a reorder or a paired substitution inside the
-// prefix changes the digest and fails.
+// Exact freeze, not a relaxed count. The four Places case identities are pinned
+// positionally and by ordered digest. P5-8a removed the four additive pin identities
+// together with the pin write surface, so nothing may follow them.
 const PLACES_ORIGINAL_CASES=[
   'Places: retained location create edit and reload preserve zero and absent coordinates',
   'Places: complete owner and anonymous pages contain every seeded list and recommendation',
@@ -12,12 +11,6 @@ const PLACES_ORIGINAL_CASES=[
   'Places: foreign owner edits and private contact reads cannot disclose owner data',
 ] as const;
 const PLACES_ORIGINAL_CASE_DIGEST='84df5eeb5645621fcd741566c986decca0f6eeeae3316f9ca50cf498943a0a43';
-const PLACES_DECLARED_ADDITIVE_CASES=[
-  'Places: additive pinned-first owner traversal and signed seek survive reload and list navigation',
-  'Places: additive public pinned pages omit private members and restart without mixed rows',
-  'Places: additive complete70 staged pin order commits in advertised chunks and replays a lost acknowledgement once',
-  'Places: additive complete70 resource refusal and session replacement keep the returned fence authoritative',
-] as const;
 const ordered=(titles:readonly string[])=>createHash('sha256').update(JSON.stringify(titles)).digest('hex');
 
 describe('private Places fixture boundary',()=>{
@@ -72,9 +65,8 @@ describe('private Places fixture boundary',()=>{
     expect(ordered(prefix)).toBe(PLACES_ORIGINAL_CASE_DIGEST);
     expect(ordered(PLACES_ORIGINAL_CASES)).toBe(PLACES_ORIGINAL_CASE_DIGEST);
     for(const [index,title] of PLACES_ORIGINAL_CASES.entries())expect(support.PLACES_CASES[index]).toBe(title);
-    expect(support.PLACES_CASES.slice(PLACES_ORIGINAL_CASES.length)).toEqual([...PLACES_DECLARED_ADDITIVE_CASES]);
-    expect(support.PLACES_PIN_CASES).toEqual([...PLACES_DECLARED_ADDITIVE_CASES]);
-    expect(support.PLACES_CASES).toHaveLength(PLACES_ORIGINAL_CASES.length+PLACES_DECLARED_ADDITIVE_CASES.length);
+    expect(support.PLACES_CASES).toHaveLength(PLACES_ORIGINAL_CASES.length);
+    expect('PLACES_PIN_CASES' in support).toBe(false);
     expect(new Set(support.PLACES_CASES).size).toBe(support.PLACES_CASES.length);
     expect(support.PLACE_LINK_CASES).toHaveLength(4);
     expect(plan.locations).toHaveLength(53);
@@ -95,7 +87,7 @@ describe('private Places fixture boundary',()=>{
     expect(()=>validatePlacesControl({...input,body:{...input.body,action:'observe'}})).toThrow();
     expect(()=>validatePlacesControl({...input,body:{...input.body,action:'observe'},active:{caseId:PLACES_CASES[0],project:'places-desktop'}})).not.toThrow();
   });
-  it('preserves the original four seed plans and seeds the complete70 acceptance membership for the additive pin cases',async()=>{
+  it('preserves the original four seed plans',async()=>{
     const support=await import('../../../scripts/places-browser-support');
     // The original four plans keep their exact shapes, including the previously
     // inlined public page sizes, which are now observed from the seeded locations.
@@ -106,53 +98,25 @@ describe('private Places fixture boundary',()=>{
       expect(plan.recommendations).toHaveLength(expected.recommendations);
       expect(plan.publicPageSizes).toEqual([...expected.pageSizes]);
       expect(plan.traversal).toBe(index===1);
-      expect(plan.pinned).toBe(false);
+      expect('pinned' in plan).toBe(false);
     }
-    for(const [index,plan] of PLACES_DECLARED_ADDITIVE_CASES.map(title=>support.buildPlacesSeedPlan(title)).entries()) {
-      expect(plan.pinned).toBe(true);
-      expect(plan.traversal).toBe(false);
-      expect(plan.locations).toHaveLength(2); // a second owned list for cross-list navigation
-      expect(plan.recommendations).toHaveLength(support.PLACES_COMPLETE70_MEMBERS);
-      expect(support.PLACES_COMPLETE70_MEMBERS).toBe(70);
-      expect(plan.recommendations.map(row=>row.displayOrder)).toEqual(Array.from({length:70},(_,i)=>i));
-      expect(new Set(plan.recommendations.map(row=>row.title)).size).toBe(70);
-      expect(plan.publicPageSizes).toEqual([2]);
-      expect(index).toBeLessThan(4);
-    }
-    // The guard still refuses an undeclared identity after the additive admission.
-    for(const unknown of ['invented','Places: additive','Places: retained location create edit and reload preserve zero and absent coordinate',''])
+    // The guard refuses undeclared identities, including the removed additive pin titles.
+    for(const unknown of ['invented','Places: additive','Places: additive pinned-first owner traversal and signed seek survive reload and list navigation','Places: retained location create edit and reload preserve zero and absent coordinate',''])
       expect(()=>support.buildPlacesSeedPlan(unknown)).toThrow('Undeclared Places case');
   });
-  it('admits only the declared additive pin titles through the control guard',async()=>{
+  it('admits only the four declared Places titles through the control guard',async()=>{
     const {validatePlacesControl,PLACES_CASES}=await import('../../../scripts/places-browser-support');
     const base={remote:'127.0.0.1',host:'127.0.0.1:51000',expectedHost:'127.0.0.1:51000',capability:'a'.repeat(64),expectedCapability:'a'.repeat(64),
       runId:'b'.repeat(32),expectedRunId:'b'.repeat(32),commit:'c'.repeat(40),expectedCommit:'c'.repeat(40),lane:'places'};
     const body=(caseId:string)=>({action:'reset',caseId,project:'places-desktop',repeat:0,runId:'b'.repeat(32),commit:'c'.repeat(40)});
-    for(const title of [...PLACES_ORIGINAL_CASES,...PLACES_DECLARED_ADDITIVE_CASES])
+    for(const title of PLACES_ORIGINAL_CASES)
       expect(()=>validatePlacesControl({...base,body:body(title)})).not.toThrow();
     // Undeclared titles, the other lane's titles and near-miss spellings stay denied.
-    for(const title of ['Places: additive pinned-first owner traversal','Places: additive complete70 staged pin order commits in advertised chunks and replays a lost acknowledgement twice',
+    for(const title of ['Places: additive pinned-first owner traversal and signed seek survive reload and list navigation','Places: additive complete70 staged pin order commits in advertised chunks and replays a lost acknowledgement once',
       'Place links: existing Products and People lists attach detach and survive reload','invented',''])
       expect(()=>validatePlacesControl({...base,body:body(title)})).toThrow('Owned Places control denied');
-    for(const title of PLACES_DECLARED_ADDITIVE_CASES)
+    for(const title of PLACES_ORIGINAL_CASES)
       expect(()=>validatePlacesControl({...base,lane:'place-links',body:body(title)})).toThrow('Owned Places control denied');
     expect(PLACES_CASES.includes('invented' as never)).toBe(false);
-  });
-  it('serves a labelled synthetic staging policy that admits the complete70 membership and frames it into several chunks',async()=>{
-    const {SYNTHETIC_FIXTURE_PLACE_PINS_POLICY:policy,PLACES_COMPLETE70_MEMBERS:members}=await import('../../../scripts/places-browser-support');
-    const {placePinsPolicySchema,clientPlacePinsTransport}=await import('../../application/placePinsPolicy');
-    const {placePinsAvailabilitySchema}=await import('../../../shared/explorersPlacePinsContract');
-    // Unmistakably labelled as synthetic fixture data, and never a production default.
-    expect(policy.policyId).toBe('synthetic-fixture-places-pins-e2e');
-    expect(policy.policyId.startsWith('synthetic-fixture-')).toBe(true);
-    const parsed=placePinsPolicySchema.parse(policy);
-    const transport=clientPlacePinsTransport(parsed);
-    // Served through the real advertisement path, so the specs read every bound from it.
-    expect(placePinsAvailabilitySchema.parse({available:true,state:'configured',clientTransport:transport}))
-      .toEqual({available:true,state:'configured',clientTransport:transport});
-    expect(transport.policyId).toBe(policy.policyId);
-    expect(members<=transport.replacementIds).toBe(true);
-    expect(members>transport.transportChunkIds).toBe(true);
-    expect(Math.ceil(members/transport.transportChunkIds)).toBe(4);
   });
 });

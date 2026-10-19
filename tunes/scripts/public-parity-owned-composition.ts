@@ -3,8 +3,6 @@ import type { Pool, PoolClient } from 'pg';
 import { createHash, createHmac, randomUUID } from 'node:crypto';
 import { isProxy } from 'node:util/types';
 import { readFile } from 'node:fs/promises';
-import type { PlacePinsBoundary } from '../server/application/placePinsBoundary';
-import { placePinsResultSchema } from '../shared/explorersPlacePinsContract';
 import type {RequestContext} from '../shared/explorersContract';
 import type { Actor } from '../server/application/actor';
 import type { ExplorersAuthConfig, createExplorersAuth } from '../server/auth/betterAuth';
@@ -44,7 +42,6 @@ export type PublicParityCompositionAdmission = Readonly<{
     pool: Pool;
     signal: AbortSignal;
     personas: Readonly<Record<Owner, Persona>>;
-    placePins: Pick<PlacePinsBoundary, 'execute'>;
     auth: ReturnType<typeof createExplorersAuth>;
     authConfig: ExplorersAuthConfig;
     storage: ObjectStorage;
@@ -105,8 +102,8 @@ const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR
 const videoUrl = new URL('../../fixtures/replatform/public-parity/one-frame.mp4', import.meta.url), videoHash = '0449e50acf8d3f1b6315934b36bcd0526731f981bf90e054bb5ebff46c50976a';
 const taxonomyManifestHash = '0087cf143b6f8ae68f60087539083bd0f7992c50c846b4c98a02dc1e9155ccff';
 function capture(input: PublicParityOwnedCompositionOptions) { if (!input || typeof input !== 'object' || isProxy(input) || Object.getPrototypeOf(input) !== Object.prototype)
-    throw refuse(); const d = Object.getOwnPropertyDescriptors(input), keys = ['admission', 'pool', 'signal', 'personas', 'placePins', 'auth', 'authConfig', 'storage', 'verifyAdmission']; if (Reflect.ownKeys(d).length !== keys.length || keys.some(key => !d[key]?.enumerable || !Object.hasOwn(d[key], 'value')))
-    throw refuse(); const result = Object.fromEntries(keys.map(key => [key, d[key].value])) as PublicParityOwnedCompositionOptions; if (!result.placePins || typeof result.placePins !== 'object' || !(result.signal instanceof AbortSignal) || typeof result.verifyAdmission !== 'function')
+    throw refuse(); const d = Object.getOwnPropertyDescriptors(input), keys = ['admission', 'pool', 'signal', 'personas', 'auth', 'authConfig', 'storage', 'verifyAdmission']; if (Reflect.ownKeys(d).length !== keys.length || keys.some(key => !d[key]?.enumerable || !Object.hasOwn(d[key], 'value')))
+    throw refuse(); const result = Object.fromEntries(keys.map(key => [key, d[key].value])) as PublicParityOwnedCompositionOptions; if (!(result.signal instanceof AbortSignal) || typeof result.verifyAdmission !== 'function')
     throw refuse(); return Object.freeze(result); }
 /** Internal native witness callbacks; construction is inert and mint failure stays terminal. */
 export function createPublicParitySessionRotation(readAbsent:()=>Promise<boolean>,verifyMembership:()=>Promise<void>,mint:()=>Promise<Readonly<{cookie:string}>>){let attempt:Promise<Readonly<{cookie:string}>|undefined>|undefined,delivered=false;return async()=>{if(delivered)return undefined;if(!attempt)attempt=(async()=>{if(!await readAbsent())return undefined;await verifyMembership();return mint();})();const current=attempt,result=await current;if(!result){if(attempt===current)attempt=undefined;return undefined;}if(delivered)return undefined;delivered=true;return result;};}
@@ -116,7 +113,7 @@ const materializationFailures=new WeakMap<object,Map<string,PublicParityMaterial
 function createMaterializationCheckpoint(expected:PublicParityExpectedManifest){const key=publicParityMaterializationBinding(expected);let pending:PublicParityMaterializationPoint|undefined,first:PublicParityMaterializationPoint|undefined,complete=false;return Object.freeze({mark(point:PublicParityMaterializationPoint){if(first||complete)return;try{pending=validatePublicParityMaterializationPoint(point);}catch{pending=undefined;}},clear(){if(!first)pending=undefined;},capture(error:unknown){if(first||complete||!pending||error===null||!['object','function'].includes(typeof error))return;first=pending;let records=materializationFailures.get(error as object);if(!records){records=new Map();materializationFailures.set(error as object,records);}if(!records.has(key))records.set(key,first);},complete(){complete=true;pending=undefined;}});}
 export function extractPublicParityMaterializationFailure(error:unknown,expected:PublicParityExpectedManifest):PublicParityMaterializationPoint|undefined{if(error===null||!['object','function'].includes(typeof error))return;try{return materializationFailures.get(error as object)?.get(publicParityMaterializationBinding(expected));}catch{return undefined;}}
 export function createPublicParityOwnedComposition(input: PublicParityOwnedCompositionOptions) {
-    const options = capture(input), binding: PublicParityCompositionAdmission = Object.freeze({ admission: options.admission, pool: options.pool, signal: options.signal, personas: options.personas, placePins: options.placePins, auth: options.auth, authConfig: options.authConfig, storage: options.storage, operation: 'public-people-fixture' });
+    const options = capture(input), binding: PublicParityCompositionAdmission = Object.freeze({ admission: options.admission, pool: options.pool, signal: options.signal, personas: options.personas, auth: options.auth, authConfig: options.authConfig, storage: options.storage, operation: 'public-people-fixture' });
     const pending = new Set<Promise<unknown>>(), clients = new Set<PoolClient>(), lists = new Map<string, AllocatedList>(), entities = new Map<string, AllocatedEntity>(), items = new Map<string, AllocatedItem>(), mediaIds = new Set<string>(), sessionTokens = new Set<string>();
     const ownerSessionTokens=new Map<Owner,string>(); let rotateOwnerA:(()=>Promise<Readonly<{cookie:string}>|undefined>)|undefined;
     const deletions=new Map<string,'fulfilled'|'rejected'>();
@@ -350,8 +347,19 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
     async function configurePlacesPins() { if (expected?.family !== 'public-parity')
         return; const graph = buildPublicParitySeedPlan(expected.caseId).categories.find(value => value.category === 'places')!, parent = lists.get(graph.targetCollectionKey); if (!parent || parent.seed.owner !== 'ownerA')
         throw refuse(); const selected = [...items.values()].filter(value => value.category === 'places' && value.collectionId === parent.id && value.seed.owner === 'ownerA' && value.seed.control === null).slice(0, 2); if (selected.length !== 2)
-        throw refuse(); const command = { operation: 'replacePlacePins' as const, collectionId: parent.id, body: { expectedCollectionRevision: await listRevision(parent.id, 'ownerA'), expectedCategoryContentRevision: await categoryRevision('ownerA', 'places'), orderedRecommendationIds: selected.map(value => value.id) } }; guard(); const result = await retain(options.placePins.execute(actor('ownerA'), command, context(), Buffer.byteLength(JSON.stringify(command.body), 'utf8'))); guard(); const parsed = placePinsResultSchema.parse(result); if (parsed.collectionId !== parent.id || parsed.pinCount !== 2)
-        throw refuse(); }
+        throw refuse(); guard();
+        // P5-8a removed the pin write API. The fixture seeds the two public pins directly; the
+        // 0054 triggers still enforce active owned members, dense ranks and the revision bump.
+        const db = await retain(pool.connect()); try {
+            await db.query('BEGIN');
+            await db.query('DELETE FROM collection_place_pins WHERE collection_id=$1', [parent.id]);
+            await db.query("INSERT INTO collection_place_pins(collection_id,recommendation_id,account_id,category,position) SELECT $1,recommendation_id,$2,'places',ordinality-1 FROM unnest($3::uuid[]) WITH ORDINALITY AS x(recommendation_id,ordinality)", [parent.id, actor('ownerA').accountId, selected.map(value => value.id)]);
+            await db.query('COMMIT');
+        }
+        catch (error) { await db.query('ROLLBACK').catch(() => undefined); throw error; }
+        finally { db.release(); }
+        guard(); const pinned = await row('SELECT count(*)::int AS count FROM collection_place_pins WHERE collection_id=$1', [parent.id]); if (pinned.count !== 2)
+            throw refuse(); }
     async function upload(purpose: 'recommendation' | 'collection' | 'guide' | 'feed', bytes: Buffer, mimeType: 'image/png' | 'video/mp4') {
         guard();
         const operation = new MediaService(pool, storage).createMediaOwned(actor('ownerA'), { purpose, bytes, mimeType, length: bytes.length, filename: mimeType === 'image/png' ? 'parity.png' : 'parity.mp4' }, context(), async (_db, media) => { mediaIds.add(media.id); });
