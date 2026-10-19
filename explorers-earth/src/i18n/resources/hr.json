@@ -1935,7 +1935,8 @@
       "selectLanguage": "Odaberite svoj jezik"
     },
     "subtitle": "Upravljajte postavkama i preferencijama svog računa",
-    "title": "Postavke"
+    "title": "Postavke",
+    "dangerZone": "Opasna zona"
   },
   "sidebar": {
     "analytics": "Analitika",

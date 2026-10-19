@@ -16,6 +16,7 @@ import type { RecommendedProduct, ProductList } from "../../types";
 import Switch from "../../../../components/ui/Switch";
 import ProductDetailModal from "../public/ProductDetailModal";
 import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
+import QrCardTagline from "../../../../components/QrCardTagline";
 
 const VITE_BASE_URL = import.meta.env.VITE_BASE_URL || "https://explorers.earth";
 
@@ -262,10 +263,10 @@ const ProductListView = () => {
     try {
       await deleteProductList({ variables: { documentId: listData.documentId } });
       if (!current()) return;
-      toast.success("List deleted.");
+      toast.success("List archived.");
       navigate("/recommendations/products");
     } catch {
-      if (current()) toast.error("Failed to delete list.");
+      if (current()) toast.error("Failed to archive list.");
     }
   };
 
@@ -393,7 +394,7 @@ const ProductListView = () => {
                   className="flex flex-row text-center gap-2 items-center rounded-md font-poppins w-full text-sm border border-white px-4 py-3 hover:border-gray-500 text-white hover:text-gray-500 justify-center font-medium transition-all duration-300"
                 >
                   <Trash2 size={16} />
-                  <span>Delete</span>
+                  <span>Archive</span>
                 </button>
 
                 {isEditingList ? (
@@ -464,9 +465,7 @@ const ProductListView = () => {
                       <div className="p-2 bg-white rounded-lg shadow-md mb-3">
                         <QRCodeSVG value={publicUrl} size={90} />
                       </div>
-                      <p className="bg-gray-200 text-black px-4 py-1.5 font-poppins rounded-full text-[11px] font-semibold whitespace-nowrap">
-                        Travel like a local
-                      </p>
+                      <QrCardTagline className="bg-gray-200 text-black px-4 py-1.5 font-poppins rounded-full text-[11px] font-semibold whitespace-nowrap" />
                     </div>
                   </div>
                 </div>
@@ -526,9 +525,9 @@ const ProductListView = () => {
       {showDeleteListModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
           <div className="bg-dashboard-card rounded-2xl border border-dashboard-border p-6 w-full max-w-sm">
-            <h3 className="text-lg font-semibold text-dashboard mb-2">Delete List?</h3>
+            <h3 className="text-lg font-semibold text-dashboard mb-2">Archive list?</h3>
             <p className="text-sm text-dashboard-muted mb-5">
-              This will permanently delete "{listData?.List_Name}" and all its products. This cannot be undone.
+              This archives "{listData?.List_Name}": it leaves your lists and your public profile. It is archived, not erased.
             </p>
             <div className="flex gap-3">
               <button onClick={() => setShowDeleteListModal(false)} className="flex-1 py-2.5 rounded-lg border border-dashboard-border text-sm text-dashboard-muted hover:text-dashboard transition-colors">
@@ -540,7 +539,7 @@ const ProductListView = () => {
                 className="flex-1 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-sm text-white font-medium flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 {deletingList ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                Delete
+                Archive
               </button>
             </div>
           </div>

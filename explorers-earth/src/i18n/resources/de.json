@@ -1935,7 +1935,8 @@
       "selectLanguage": "Wählen Sie Ihre Sprache"
     },
     "subtitle": "Verwalten Sie Ihre Kontoeinstellungen und Präferenzen",
-    "title": "Einstellungen"
+    "title": "Einstellungen",
+    "dangerZone": "Gefahrenbereich"
   },
   "sidebar": {
     "analytics": "Analysen",

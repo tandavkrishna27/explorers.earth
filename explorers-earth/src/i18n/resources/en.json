@@ -2065,7 +2065,8 @@
       "selectLanguage": "Select your language"
     },
     "subtitle": "Manage your account settings and preferences",
-    "title": "Settings"
+    "title": "Settings",
+    "dangerZone": "Danger zone"
   },
   "sidebar": {
     "analytics": "Analytics",

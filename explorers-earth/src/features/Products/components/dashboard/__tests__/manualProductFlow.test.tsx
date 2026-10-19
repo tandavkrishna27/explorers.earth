@@ -165,6 +165,16 @@ describe('native manual Products', () => {
   expect(screen.getByLabelText('Title')).toHaveValue('');
  });
 
+ it('describes deleting a list as archiving it, which is what the command does', () => {
+  fixture.content.view.lists = [{documentId: 'list-1', List_Name: 'Gear', slug: 'gear', Visibility: true, recommended_products: [], account: {documentId: 'a1', username: 'owner'}}];
+  render(<MockedProvider><MemoryRouter initialEntries={['/recommendations/products/list-1']}><Routes><Route path="/recommendations/products/:listId" element={<ProductListView />} /></Routes></MemoryRouter></MockedProvider>);
+  fireEvent.click(screen.getByRole('button', {name: 'manage'}));
+  fireEvent.click(screen.getByRole('button', {name: 'Archive'}));
+  expect(screen.getByRole('heading', {name: 'Archive list?'})).toBeInTheDocument();
+  expect(screen.getByText(/archives "Gear"/)).toBeInTheDocument();
+  expect(screen.queryByText(/permanently delete/i)).toBeNull();
+ });
+
  it('offers explicit recommendation publication without inheriting the list publication', async () => {
   const product = {documentId: 'product-a', title: 'Manual product', product_url: 'https://example.com/a', brand: null, price: null, currency: null,
    buy_url: null, logo_url: null, description: null, specifications: null, user_recommendation_note: '', user_rating: null, is_pinned: false,

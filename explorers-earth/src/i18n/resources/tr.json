@@ -1935,7 +1935,8 @@
       "selectLanguage": "Dilinizi seçin"
     },
     "subtitle": "Hesap ayarlarınızı ve tercihlerinizi yönetin",
-    "title": "Ayarlar"
+    "title": "Ayarlar",
+    "dangerZone": "Tehlikeli bölge"
   },
   "sidebar": {
     "analytics": "Analitik",

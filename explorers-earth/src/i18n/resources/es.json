@@ -1935,7 +1935,8 @@
       "selectLanguage": "Seleccione su idioma"
     },
     "subtitle": "Administre la configuración y preferencias de su cuenta",
-    "title": "Configuración"
+    "title": "Configuración",
+    "dangerZone": "Zona de peligro"
   },
   "sidebar": {
     "analytics": "Analíticas",

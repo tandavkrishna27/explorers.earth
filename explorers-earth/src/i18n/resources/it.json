@@ -1935,7 +1935,8 @@
       "selectLanguage": "Seleziona la tua lingua"
     },
     "subtitle": "Gestisci le impostazioni e le preferenze del tuo account",
-    "title": "Impostazioni"
+    "title": "Impostazioni",
+    "dangerZone": "Zona pericolosa"
   },
   "sidebar": {
     "analytics": "Analisi",

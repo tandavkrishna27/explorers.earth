@@ -1935,7 +1935,8 @@
       "selectLanguage": "Välj ditt språk"
     },
     "subtitle": "Hantera dina kontoinställningar och preferenser",
-    "title": "Inställningar"
+    "title": "Inställningar",
+    "dangerZone": "Farozon"
   },
   "sidebar": {
     "analytics": "Analys",

@@ -666,7 +666,7 @@ const AnalyticsDashboard: React.FC = () => {
             <div className="mb-4">
               <h2 className="dt-heading">Content Page Performance</h2>
               <p className="dt-subtext">
-                Views &amp; click-throughs across Music, Movies, Books, Games and Guides pages.
+                Views &amp; click-throughs across Movies, Books, Games and Guides pages.
               </p>
             </div>
             <ContentEngagementChart events={filteredEvents} />
@@ -812,7 +812,7 @@ const AnalyticsDashboard: React.FC = () => {
             <div className="mb-4">
               <h2 className="dt-heading">Daily Views Trend by Section</h2>
               <p className="dt-subtext">
-                How each content section (Places, Music, Movies, Books, Games, Guides) is trending over time.
+                How each content section (Places, Profile, Movies, Books, Games, Guides) is trending over time.
               </p>
             </div>
             <PageViewsTrendChart events={filteredEvents} />

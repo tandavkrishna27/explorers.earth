@@ -1935,7 +1935,8 @@
       "selectLanguage": "Pilih bahasa Anda"
     },
     "subtitle": "Kelola pengaturan dan preferensi akun Anda",
-    "title": "Pengaturan"
+    "title": "Pengaturan",
+    "dangerZone": "Zona berbahaya"
   },
   "sidebar": {
     "analytics": "Analitik",

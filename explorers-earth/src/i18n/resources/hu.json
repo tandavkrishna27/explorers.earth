@@ -1935,7 +1935,8 @@
       "selectLanguage": "Válassza ki nyelvét"
     },
     "subtitle": "Kezelje fiókja beállításait és preferenciáit",
-    "title": "Beállítások"
+    "title": "Beállítások",
+    "dangerZone": "Veszélyzóna"
   },
   "sidebar": {
     "analytics": "Elemzés",

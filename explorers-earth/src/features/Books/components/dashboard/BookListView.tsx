@@ -22,6 +22,7 @@ import BookDetailModal from "../public/BookDetailModal";
 import TopReadsManager from "./TopReadsManager";
 import Switch from "../../../../components/ui/Switch";
 import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
+import QrCardTagline from "../../../../components/QrCardTagline";
 
 const VITE_BASE_URL = runtimeOrigin(import.meta.env.VITE_BASE_URL || window.location.origin);
 
@@ -299,9 +300,7 @@ const ManageTab = ({ list, onRefetch }: ManageTabProps) => {
                   <div className="p-2 bg-white rounded-xl shadow-md mb-3">
                     <QRCodeSVG id="book-qr" value={shareUrl} size={90} />
                   </div>
-                  <p className="bg-amber-100 text-amber-900 px-4 py-1.5 font-poppins rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">
-                    Travel like a local
-                  </p>
+                  <QrCardTagline className="bg-amber-100 text-amber-900 px-4 py-1.5 font-poppins rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap" />
                 </div>
               </div>
             </div>

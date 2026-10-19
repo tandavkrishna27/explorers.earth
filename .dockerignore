@@ -430,6 +430,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/ProfileSetupAccordion.tsx
 !explorers-earth/src/components/ProtectedRoute.tsx
 !explorers-earth/src/components/PublicNav.tsx
+!explorers-earth/src/components/QrCardTagline.tsx
 !explorers-earth/src/components/RouteLoader.tsx
 !explorers-earth/src/components/SEO.tsx
 !explorers-earth/src/components/ScrollToTop.tsx

@@ -1935,7 +1935,8 @@
       "selectLanguage": "选择您的语言"
     },
     "subtitle": "管理您的账户设置和偏好",
-    "title": "设置"
+    "title": "设置",
+    "dangerZone": "危险区域"
   },
   "sidebar": {
     "analytics": "分析",

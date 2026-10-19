@@ -89,7 +89,7 @@ const Sidebar = () => {
         <SidebarItem
           isOpen={isOpen}
           Icon={DirectionBoard}
-          title={"Recommendations"}
+          title={t("sidebar.recommendations")}
           to="/recommendations"
         />
         <SidebarItem
@@ -178,7 +178,7 @@ const Sidebar = () => {
                     <div className="w-5 h-5 flex items-center justify-center">
                       <LogoutIcon size="18" />
                     </div>
-                    <span>Logout</span>
+                    <span>{t("sidebar.logout")}</span>
                   </button>
                 </div>
               </motion.div>

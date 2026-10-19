@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import Home from "../assets/icons/Home";
 import Profile from "../assets/icons/Profile";
 import SettingsIcon from "../assets/icons/SettingsIcon";
@@ -9,11 +10,11 @@ import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 import Heart from "../assets/icons/Heart";
 
 const navItems = [
-  { id: "home", icon: Home, text: "Home", path: "/home" },
+  { id: "home", icon: Home, text: "Home", labelKey: "sidebar.home", path: "/home" },
   {
     id: "profile",
     icon: Profile,
-    text: "Profile",
+    text: "Profile", labelKey: "sidebar.profile",
     path: "/profile",
   },
   {
@@ -21,24 +22,25 @@ const navItems = [
     icon: Heart,
     // Recommendations hub spans ALL categories, not just Places — labeled
     // "Recommendations", routed straight to /recommendations (the hub).
-    text: "Recommendations",
+    text: "Recommendations", labelKey: "sidebar.recommendations",
     path: "/recommendations",
   },
   {
     id: "analytics",
     icon: Analytics,
-    text: "Analytics",
+    text: "Analytics", labelKey: "sidebar.analytics",
     path: "/analytics",
   },
   {
     id: "settings",
     icon: SettingsIcon,
-    text: "Settings",
+    text: "Settings", labelKey: "sidebar.settings",
     path: "/settings",
   },
 ];
 
 const Navbar = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -123,7 +125,7 @@ const Navbar = () => {
             <NavButton
               key={item.id}
               icon={iconElement!}
-              text={item.text}
+              text={t(item.labelKey, item.text)}
               isActive={isActive}
               onClickHandler={handleClick}
               type="public"
