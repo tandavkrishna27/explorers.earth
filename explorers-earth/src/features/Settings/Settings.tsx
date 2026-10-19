@@ -22,6 +22,13 @@ import { computePinnedNavTabIds } from "../../utils/navPinning";
 import { useCanonicalAccount } from "../Profile/api/useCanonicalAccount";
 import { useLogout } from "../../hooks/useLogout";
 
+/** Mirrors the server's 1-2,000 character limit on a deletion reason. */
+const DELETION_REASON_MAX_LENGTH = 2000;
+
+/** Handles are case-insensitive; a leading "@" is how people write them. */
+const handleMatches = (typed: string, handle: string | undefined) =>
+  !!handle && typed.trim().replace(/^@/, "").toLowerCase() === handle.toLowerCase();
+
 const Settings = memo(() => {
   const identity = useAccountLifecycleIdentity();
   // Identity changes discard modal credentials and all old action authority in
@@ -66,8 +73,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
   const [deletePasswordConfirm, setDeletePasswordConfirm] =
     useState<string>("");
   const [deleteReason, setDeleteReason] = useState<string>("");
-  const [deletionFeedbackId, setDeletionFeedbackId] = useState<string | null>(null);
-  const feedbackAttempt = useRef<{ reason: string; key: string } | null>(null);
+  const feedbackAttempt = useRef<{ reason: string; key: string; id?: string } | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState<string>("");
   const [deleteAccountLoading, setDeleteAccountLoading] =
     useState<boolean>(false);
@@ -294,8 +300,8 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
   // The current Better Auth session is the only authority for these commands.
   const handleConfirmDeactivateAccount = async () => {
     if (!lifecycleIdentity.isCurrent() || lifecycleActionRunning.current) return;
-    if (!username.trim() || username.trim() !== user?.username) {
-      toast.error(t("settings.account.deactivateAccount.enterUsername")); return;
+    if (!handleMatches(username, user?.username)) {
+      toast.error(t("settings.account.handleMismatch")); return;
     }
     const revision = canonicalAccount.data?.revision;
     if (!revision) { toast.error("Account details are unavailable. Retry after refreshing."); return; }
@@ -313,29 +319,27 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
 
   const handleDeleteAccountStep2 = () => {
     if (!lifecycleIdentity.isCurrent()) return;
-    if (!canonicalAccount.data?.id || !deleteUsername.trim() || deleteUsername.trim() !== user?.username) {
-      toast.error(t("auth.validations.general.fillRequiredFields"));
+    if (!canonicalAccount.data?.id || !handleMatches(deleteUsername, user?.username)) {
+      toast.error(t("settings.account.handleMismatch"));
       return;
     }
     setDeleteStep(3);
   };
 
-  const handleDeleteAccountStep3 = async () => {
+  // Nothing is sent from here. Feedback is recorded only as part of the final, confirmed
+  // deletion, so a user who abandons the wizard leaves no feedback row behind.
+  const handleDeleteAccountStep3 = () => {
     if (!lifecycleIdentity.isCurrent()) return;
     const reason = deleteReason.trim();
-    if (!reason || reason.length > 2000) {
+    if (!reason) {
       toast.error(t("settings.account.deleteAccount.step4.reasonRequired"));
       return;
     }
-    if (feedbackAttempt.current?.reason !== reason) feedbackAttempt.current = { reason, key: crypto.randomUUID() };
-    try {
-      const feedback = await accountLifecycle.recordDeletionFeedback(reason, feedbackAttempt.current.key);
-      lifecycleIdentity.assertCurrent();
-      setDeletionFeedbackId(feedback.id);
-      setDeleteStep(4);
-    } catch (error) {
-      if (lifecycleIdentity.isCurrent()) toast.error(error instanceof Error ? error.message : t("settings.account.changePassword.saveReasonFailed"));
+    if (reason.length > DELETION_REASON_MAX_LENGTH) {
+      toast.error(t("settings.account.deleteAccount.step3.reasonTooLong"));
+      return;
     }
+    setDeleteStep(4);
   };
 
   const deletionAttemptKey = useRef<string | null>(null);
@@ -346,11 +350,26 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
       return;
     }
     const revision = canonicalAccount.data?.revision;
-    if (!revision || !deletionFeedbackId) { toast.error("Feedback or account details are unavailable."); return; }
+    const reason = deleteReason.trim();
+    if (!reason || reason.length > DELETION_REASON_MAX_LENGTH) {
+      toast.error(t("settings.account.deleteAccount.step4.reasonRequired"));
+      return;
+    }
+    if (!revision) { toast.error("Account details are unavailable. Retry after refreshing."); return; }
     if (!beginLifecycleAction()) return;
     deletionAttemptKey.current ??= crypto.randomUUID();
+    if (feedbackAttempt.current?.reason !== reason) feedbackAttempt.current = { reason, key: crypto.randomUUID() };
     try {
-      const result = await accountLifecycle.deleteAccount(revision, deletionFeedbackId, deletionAttemptKey.current);
+      // The server contract needs a feedback ID, so the feedback is recorded immediately before
+      // the deletion request. The key is stable per reason, and a recorded ID is kept, so a retry
+      // of a lost deletion response neither posts again nor leaves a second row.
+      const attempt = feedbackAttempt.current;
+      if (!attempt.id) {
+        const feedback = await accountLifecycle.recordDeletionFeedback(reason, attempt.key);
+        lifecycleIdentity.assertCurrent();
+        attempt.id = feedback.id;
+      }
+      const result = await accountLifecycle.deleteAccount(revision, attempt.id, deletionAttemptKey.current);
       lifecycleIdentity.assertCurrent();
       setDeletionLifecycle(result);
       toast.success(t("settings.account.deleteAccount.step4.successMessage"));
@@ -781,7 +800,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                   {matchesSearch("deactivate account block remove danger") && (
                     <button
                       type="button"
-                      onClick={() => { setUsername(user?.username || ''); setShowModal(true); }}
+                      onClick={() => { setUsername(''); setShowModal(true); }}
                       className="w-full flex items-center gap-3 px-4 py-3 border-b hover:bg-red-500/5 transition-colors duration-150 group text-left"
                       style={{ borderColor: 'rgba(248,113,113,0.1)' }}
                     >
@@ -799,7 +818,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                   {!deletionActionsBlocked && matchesSearch("delete account permanently remove danger") && (
                     <button
                       type="button"
-                      onClick={() => { setDeleteUsername(user?.username || ''); setShowDeleteAccountModal(true); setDeleteStep(1); }}
+                      onClick={() => { setDeleteUsername(''); setDeleteReason(''); setDeleteConfirmation(''); setShowDeleteAccountModal(true); setDeleteStep(1); }}
                       className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/5 transition-colors duration-150 group text-left"
                     >
                       <div className="flex-1 min-w-0">
@@ -981,7 +1000,9 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                         "settings.account.deactivateAccount.usernamePlaceholder"
                       )}
                       className="dt-input w-full"
-                      readOnly
+                      autoComplete="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
                     />
                   </div>
                 </div>
@@ -1041,7 +1062,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
             <div className="dashboard-theme w-full mx-auto min-w-[300px] sm:min-w-[500px] md:min-w-[600px] max-w-2xl py-4 sm:py-6 md:py-8 px-6 sm:px-8 md:px-12">
               <h1 className="dt-heading">{t("settings.account.deleteAccount.step1.modalTitle")}</h1>
               <p className="dt-label w-3/4 text-white-muted mt-6">
-                {t("settings.account.deleteAccount.step1.modalDescription")}
+                {t("settings.account.deleteAccount.step1.modalDescriptionGrace")}
               </p>
               <p className="dt-label w-3/4 text-white-muted mt-2">
                 {t("settings.account.deleteAccount.step1.modalDescription2")}
@@ -1054,7 +1075,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                   variant="green"
                   onClickHandler={() => {
                     setShowDeleteAccountModal(false);
-                    setUsername(user?.username || "");
+                    setUsername("");
                     setShowModal(true);
                   }}
                 />
@@ -1093,7 +1114,9 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                         "settings.account.deleteAccount.step2.usernamePlaceholder"
                       )}
                       className="dt-input w-full"
-                      readOnly
+                      autoComplete="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
                     />
                   </div>
                 </div>
@@ -1182,8 +1205,13 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                   placeholder={t(
                     "settings.account.deleteAccount.step3.reasonPlaceholder"
                   )}
+                  maxLength={DELETION_REASON_MAX_LENGTH}
+                  aria-describedby="deletion-reason-counter"
                   className="dt-input w-full min-h-[100px]"
                 />
+                <div id="deletion-reason-counter" className="dt-subtext text-right text-white-muted" aria-live="polite">
+                  {deleteReason.length} / {DELETION_REASON_MAX_LENGTH}
+                </div>
               </div>
               <div className="flex justify-end mt-8">
                 <Button
