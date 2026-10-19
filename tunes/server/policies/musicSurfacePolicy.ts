@@ -224,23 +224,6 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
         ["DELETE", "/api/explorers/v1/collections/:id/guide/sections/:sectionId"],
         ["PUT", "/api/explorers/v1/collections/:id/guide/cover"],
       ].some(([method,path])=>route.method===method && route.path===path)) return "explorers-owner";
-  // The Places pin aggregate. Each owner operation resolves an Actor and then passes
-  // through authorizeOperation on collections:read (availability) or collections:write
-  // plus recommendations:write (the mutating four), so every one is owner-authenticated.
-  // Listed one method and path at a time for the same reason as the guide block above:
-  // this allowlist is fail-closed, so a new category surface must be declared rather
-  // than inheriting owner authority from the /collections/:id prefix it sits under. The
-  // sibling routes.all method guards are deliberately NOT listed: they are 405 guards,
-  // not owner operations, and stay tombstoned exactly as the guide guards do.
-  if (route.source === "tunes/server/routes/explorersPlacePinsRoutes.ts"
-      && [
-        ["GET", "/api/explorers/v1/collections/:id/place-pins/availability"],
-        ["PUT", "/api/explorers/v1/collections/:id/place-pins"],
-        ["POST", "/api/explorers/v1/collections/:id/place-pins/drafts"],
-        ["PUT", "/api/explorers/v1/collections/:id/place-pins/drafts/:draftId/chunks/:chunkIndex"],
-        ["POST", "/api/explorers/v1/collections/:id/place-pins/drafts/:draftId/commit"],
-        ["DELETE", "/api/explorers/v1/collections/:id/place-pins/drafts/:draftId"],
-      ].some(([method,path])=>route.method===method && route.path===path)) return "explorers-owner";
   if (route.source === "tunes/server/routes/explorersAccountRoutes.ts"
       && route.method === "PATCH" && route.path === "/api/explorers/v1/account") return "explorers-owner";
   if (route.source === "tunes/server/routes/explorersLifecycleRoutes.ts") {

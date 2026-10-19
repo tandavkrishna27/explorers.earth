@@ -26,8 +26,9 @@ export const PEOPLE_TITLES=Object.freeze([
  'People: configured-empty sector input preserves ordinary recommendations and refuses unknown public sectors',
 ]);
 export const APPS_ENRICHMENT_TITLES=Object.freeze(['Apps enrichment: explicit approved source choices and selected-field acceptance survive reload','Apps enrichment: disable same-source re-enable and different-source rebind preserve manual values']);
-// Ten original lanes: the eleven-lane inventory (db513b66...) with the retired Music lane removed.
-const baseline='cb448e4150cc81419cea920a08927aa3403ff643ddefa73d062e980643409ef1';
+// Ten original lanes: the eleven-lane inventory (db513b66...) with the retired Music lane removed,
+// then (P5-8a) the four authored-only additive Places pin identities removed (cb448e41... -> 4a844a6e...).
+const baseline='4a844a6e9c86e25743d7dd5d8e472bbdbc104d91bf3991cddd9a5a9f35656ac4';
 function freeze(value){if(value&&typeof value==='object'){for(const child of Object.values(value))freeze(child);Object.freeze(value);}return value;}
 /** Authored registration only; execution receipts must independently prove every identity. */
 export function buildWave2BrowserRegistration(original){
@@ -40,5 +41,5 @@ export function buildWave2BrowserRegistration(original){
   const spec=`explorers-earth/e2e/replatform/${name}.spec.ts`,projects=name==='apps-enrichment'?['apps-desktop','apps-mobile']:[`${name}-desktop`,`${name}-mobile`];
   preserved.push({name,runner:'tunes/scripts/profile-browser-fixture.ts',config:`explorers-earth/e2e/replatform/${name}.playwright.config.ts`,spec,projects,identities:projects.flatMap(project=>titles.map(title=>({file:spec,titlePath:[title],project,repeat:0})))});
  }
- return freeze({version:1,status:'authored',qualified:false,originalIdentityCount:142,originalIdentityDigest:baseline,addedIdentityCount:48,totalIdentityCount:190,lanes:preserved});
+ return freeze({version:1,status:'authored',qualified:false,originalIdentityCount:134,originalIdentityDigest:baseline,addedIdentityCount:48,totalIdentityCount:182,lanes:preserved});
 }

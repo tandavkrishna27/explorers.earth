@@ -572,9 +572,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Books/types/index.ts
 !explorers-earth/src/features/Books/utils/bookHelpers.ts
 !explorers-earth/src/features/Favorites/api/explorersAdapter.ts
-!explorers-earth/src/features/Favorites/api/placePinsBrowserHash.ts
-!explorers-earth/src/features/Favorites/api/placePinsIntent.ts
-!explorers-earth/src/features/Favorites/api/placePinsPlanner.ts
 !explorers-earth/src/features/Favorites/api/placesClient.ts
 !explorers-earth/src/features/Favorites/api/placesCommands.ts
 !explorers-earth/src/features/Favorites/api/placesViewModel.ts
@@ -585,7 +582,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Favorites/components/LinksAndQR.tsx
 !explorers-earth/src/features/Favorites/components/ListForm.tsx
 !explorers-earth/src/features/Favorites/components/MediaItem.tsx
-!explorers-earth/src/features/Favorites/components/PlacePinsEditor.tsx
 !explorers-earth/src/features/Favorites/components/QRSticker.tsx
 !explorers-earth/src/features/Favorites/components/RecommendForm.tsx
 !explorers-earth/src/features/Favorites/components/Recommendations.tsx
@@ -1075,8 +1071,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !tunes/shared/explorersPersonContract.ts
 !tunes/shared/explorersPlaceContract.ts
 !tunes/shared/explorersPlaceLinkContract.ts
-!tunes/shared/explorersPlacePinsContract.ts
-!tunes/shared/explorersPlacePinsFraming.ts
 !tunes/shared/explorersProductContract.ts
 !tunes/shared/explorersPublicContentContract.ts
 !tunes/shared/explorersPublicPeopleSectorContract.ts

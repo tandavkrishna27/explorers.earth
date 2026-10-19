@@ -16,48 +16,11 @@ export function assertPlacesStorageDirectory(path:string){
   if(!isAbsolute(path)||resolved!==path||basename(resolved)!=='owned-media'||!/^explorers-profile-e2e-[A-Za-z0-9]+$/.test(basename(parent))||dirname(parent)!==resolve(tmpdir()))throw new Error('Owned Places storage path mismatch');
   for(const candidate of [parent,resolved])if(existsSync(candidate)&&(lstatSync(candidate).isSymbolicLink()||realpathSync(candidate)!==candidate||!lstatSync(candidate).isDirectory()))throw new Error('Owned Places storage custody changed');
 }
-/** Additive Places pin identities. Declared separately and appended to the frozen
- * original four below, which keep their existing positions and bytes. */
-export const PLACES_PIN_CASES = [
-  'Places: additive pinned-first owner traversal and signed seek survive reload and list navigation',
-  'Places: additive public pinned pages omit private members and restart without mixed rows',
-  'Places: additive complete70 staged pin order commits in advertised chunks and replays a lost acknowledgement once',
-  'Places: additive complete70 resource refusal and session replacement keep the returned fence authoritative',
-] as const;
-/** The complete70 acceptance fixture size: the complete active membership seeded into
- * one owned list for the additive pin cases. An acceptance size for the uncapped
- * per-list obligation only; it is never a product pin cap or a staging bound. */
-export const PLACES_COMPLETE70_MEMBERS = 70;
-/**
- * SYNTHETIC FIXTURE DATA - NOT PRODUCTION CONFIGURATION AND NOT A DEFAULT.
- *
- * Labelled synthetic place-pins staging policy owned by this private Places browser
- * fixture. It exists only so the additive pin identities can observe an advertised
- * clientTransport; it is injected exclusively through the fixture-only canonical
- * composition path and is never read by production composition, which passes no
- * policy at all and therefore leaves the pin feature correctly unavailable.
- *
- * Real pin staging bounds (chunk and count limits, byte limits, owner draft quotas
- * and expiry) remain a MISSING EXTERNAL INPUT. Nothing here may be promoted to an
- * operational value, a default or an approved product limit.
- */
-export const SYNTHETIC_FIXTURE_PLACE_PINS_POLICY = Object.freeze({
-  policyId:'synthetic-fixture-places-pins-e2e',policyVersion:1,
-  // The item bound admits the complete70 membership whole (never a product pin cap), while
-  // the replacement BYTE bound is one fixed-width identifier array short of a 70-id single
-  // replacement envelope. The client planner chooses a single replacement only when BOTH
-  // bounds admit the sequence, so a byte bound - not an item cap - is what makes the
-  // complete membership arrive as the several advertised chunks this policy frames it into.
-  transportChunkBytes:1024,transportChunkIds:20,replacementBytes:2730,replacementIds:70,
-  ownerDraftQuota:4,ownerStagingBytes:20000,draftExpiryMs:600000,stagingRetentionMs:900000,receiptRetentionMs:1800000,
-  commitProcessingBytes:40000,commitProcessingMs:20000,commitWorkUnits:100000,cleanupBatchSize:16,cleanupWorkUnits:256,
-});
 export const PLACES_CASES = [
   'Places: retained location create edit and reload preserve zero and absent coordinates',
   'Places: complete owner and anonymous pages contain every seeded list and recommendation',
   'Places: owned image bytes disappear after the final public attachment is hidden',
   'Places: foreign owner edits and private contact reads cannot disclose owner data',
-  ...PLACES_PIN_CASES,
 ] as const;
 export const PLACE_LINK_CASES = [
   'Place links: existing Products and People lists attach detach and survive reload',
@@ -72,12 +35,8 @@ type LocationSeed = {title:string; slug:string; displayOrder:number; snapshot:Pl
 export function buildPlacesSeedPlan(caseId:string) {
   if (![...PLACES_CASES,...PLACE_LINK_CASES].includes(caseId as never)) throw new Error('Undeclared Places case');
   const traversal = caseId === PLACES_CASES[1];
-  // Additive pin cases seed the complete70 acceptance membership into the first owned
-  // list and keep the original two-location shape, so a second list stays available
-  // for the cross-list navigation obligation.
-  const pinned = (PLACES_PIN_CASES as readonly string[]).includes(caseId);
   const locationCount = traversal?53:2;
-  const recommendationCount = pinned?PLACES_COMPLETE70_MEMBERS:traversal?53:1;
+  const recommendationCount = traversal?53:1;
   return {
     locations:Array.from({length:locationCount},(_,index):LocationSeed=>({
       title:index===0?'Owned Zero City':index===1?'Owned Absent City':`Owned City C${String(index+1).padStart(2,'0')}`,
@@ -86,7 +45,6 @@ export function buildPlacesSeedPlan(caseId:string) {
     })),
     recommendations:Array.from({length:recommendationCount},(_,index)=>({title:`Owned Place R${String(index+1).padStart(2,'0')}`,displayOrder:index})),
     traversal,
-    pinned,
     // Observed public list page sizes for the seeded locations; identical to the
     // previously inlined [24,24,5] / [2] for the original four cases.
     publicPageSizes:Array.from({length:Math.ceil(locationCount/24)},(_,index)=>Math.min(24,locationCount-index*24)),
@@ -179,14 +137,9 @@ export async function startPlacesControl(options:{pool:Pool;composed:ReturnType<
         if(kind==='product')await insertProductDetails(db,entityId,{productUrl:'https://example.invalid/owned-product',brand:null,logoUrl:null,description:null,specifications:{},imageUrls:[]});
         if(kind==='place')await insertPlaceDetails(db,entityId,{...emptyPlaceDetails(),latitude:0,longitude:0,formattedAddress:'Owned Test Country'});
         await db.query("INSERT INTO recommendations(id,account_id,category,entity_id,publication_state) VALUES($1,$2,$3,$4,'published')",[id,list.accountId,list.category,entityId]);
-        // The owner pin editor and the public card both label a place by its contact name
-        // when one exists, falling back to the place title. The original four cases seed one
-        // shared private contact on purpose, because they assert that contact never leaks.
-        // The additive pin cases address members BY TITLE, so a single shared contact name
-        // would make all 70 members indistinguishable in the UI; they seed no contact at
-        // all. No case loses a contact it asserts on, and no assertion is relaxed.
-        if(kind==='place')await writePlaceContext(db,id,list.accountId,plan.pinned?emptyPlaceContext()
-          :{...emptyPlaceContext(),contactName:'Owned private contact',contactNumber:'+15550001111'});
+        // The four Places cases seed one shared private contact on purpose, because they
+        // assert that contact never leaks.
+        if(kind==='place')await writePlaceContext(db,id,list.accountId,{...emptyPlaceContext(),contactName:'Owned private contact',contactNumber:'+15550001111'});
         await db.query('INSERT INTO collection_items(collection_id,recommendation_id,account_id,category,display_order) VALUES($1,$2,$3,$4,$5)',[list.id,id,list.accountId,list.category,order]);
         result.recommendations.push({id,accountId:list.accountId,collectionId:list.id,entityId,title,displayOrder:order,revision:1});
       }

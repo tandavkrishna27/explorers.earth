@@ -157,32 +157,6 @@ describe('installed suite hook bootstrap boundary',()=>{
  });
 });
 
-it('keeps the actual integration bootstrap callback compatible with installed suite fixtures',()=>{
- const source=ts.createSourceFile('explorers-place-pins.integration.test.ts',readFileSync(new URL('../explorers-place-pins.integration.test.ts',import.meta.url),'utf8'),ts.ScriptTarget.Latest,true);
- let hook:ts.CallExpression|undefined;
- function find(node:ts.Node){if(!hook&&ts.isCallExpression(node)&&ts.isIdentifier(node.expression)&&node.expression.text==='beforeAll')hook=node;ts.forEachChild(node,find);}
- find(source);expect(hook).toBeDefined();
- const callback=hook!.arguments[0];expect(ts.isArrowFunction(callback)).toBe(true);
- if(!ts.isArrowFunction(callback))throw Error('Fixture bootstrap callback');
- expect(callback.parameters).toHaveLength(2);
- const context=callback.parameters[0].name;expect(ts.isObjectBindingPattern(context)).toBe(true);
- if(!ts.isObjectBindingPattern(context))throw Error('Fixture bootstrap context');
- expect(context.elements).toHaveLength(0);
- const suite=callback.parameters[1].name;expect(ts.isIdentifier(suite)).toBe(true);
- if(!ts.isIdentifier(suite))throw Error('Fixture bootstrap suite');
- const calls:ts.CallExpression[]=[];
- function collect(node:ts.Node){if(ts.isCallExpression(node)&&ts.isIdentifier(node.expression)&&node.expression.text==='collectedWriterCaseIds')calls.push(node);ts.forEachChild(node,collect);}
- collect(callback.body);expect(calls).toHaveLength(1);expect(calls[0].arguments).toHaveLength(1);
- const collectedSuite=calls[0].arguments[0];expect(ts.isIdentifier(collectedSuite)&&collectedSuite.text===suite.text).toBe(true);
-});
-
-it('latches the original case error without closing admission and preserves original rollback before failure delivery',async()=>{
- const h=harness();h.controller.admit('one');const client=await h.controller.wrapPool(h.pool(),'runtime').connect();await client.query('BEGIN');
- h.controller.captureCaseError({name:'AssertionError',stack:'at file (C:/repo/tunes/server/test/explorers-place-pins.integration.test.ts:1265:42)'});
- h.controller.captureCaseError({code:'57014'});expect(h.controller.status().admissionClosed).toBe(false);expect(h.events).toHaveLength(0);
- await h.controller.abortCase();expect(h.calls.some(c=>c.config==='ROLLBACK')).toBe(true);expect(h.events).toHaveLength(1);
- expect(h.events[0]).toMatchObject({reason:'settlement',phase:'settle',caseCategory:'assertion',sourceLine:1265,sourceColumn:42});expect(h.events[0]).not.toHaveProperty('caseSqlState');
-});
 it('resets finite case diagnostics only at subsequent valid admission',async()=>{
  const h=harness();h.controller.admit('one');h.controller.captureCaseError({name:'AssertionError'});await h.controller.settleCase();h.controller.admit('two');h.controller.captureCaseError({code:'57014'});await h.controller.abortCase();expect(h.events[0]).toMatchObject({caseId:'two',caseCategory:'database',caseSqlState:'57014'});
 });

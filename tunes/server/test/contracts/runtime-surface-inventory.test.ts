@@ -27,7 +27,9 @@ describe("runtime route/event/job inventory", () => {
     // 202 = 204 - the two Music analytics routes P3-5 removed
     // (POST /api/explorers/analytics/music-account/:id/events and
     // POST /api/explorers/analytics/music/:publicSlug/events).
-    expect(inventory.routes).toHaveLength(202);
+    // 190 = 202 - the 12 Places pin-storage surfaces P5-8a removed with
+    // explorersPlacePinsRoutes.ts (6 operations plus their 6 ALL method guards).
+    expect(inventory.routes).toHaveLength(190);
     expect(inventory.events).toHaveLength(15);
     expect(inventory.jobs).toHaveLength(37);
     expect(inventory.jobs).toContainEqual(expect.objectContaining({kind:'setTimeout',source:'tunes/server/application/appEnrichmentLocalScheduler.ts',lifecycle:'scheduled-callback'}));

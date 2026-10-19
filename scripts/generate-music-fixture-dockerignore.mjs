@@ -30,8 +30,6 @@ const sharedContractEntryPoints = [
   "tunes/shared/explorersMovieMediaContract.ts",
   "tunes/shared/explorersAppContract.ts",
   "tunes/shared/explorersAppEnrichmentContract.ts",
-  "tunes/shared/explorersPlacePinsContract.ts",
-  "tunes/shared/explorersPlacePinsFraming.ts",
   "tunes/shared/explorersProductContract.ts",
   "tunes/shared/explorersPersonContract.ts",
   "tunes/shared/explorersPublicPeopleSectorContract.ts",

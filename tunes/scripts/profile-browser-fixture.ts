@@ -17,7 +17,7 @@ import { prepareFixtureMusicTokenSecret, cleanupFixtureMusicTokenSecret } from '
 import { readSecureMusicSecretFile } from '../server/config/secure-music-secret-file';
 import { provisionMusicRuntimeLogin } from '../server/db/music-runtime-role';
 import { LocalObjectStorage } from '../server/services/objectStorage';
-import { startPlacesControl, assertPlacesStorageDirectory, SYNTHETIC_FIXTURE_PLACE_PINS_POLICY } from './places-browser-support';
+import { startPlacesControl, assertPlacesStorageDirectory } from './places-browser-support';
 import { startLifecycleControl } from './lifecycle-browser-support';
 import { parseBrowserSuite, assertBrowserEnvironment, assertLifecycleResults, assertOwnedCleanup } from './lifecycle-browser-guards';
 import { extractProtectedReceiptArguments, createProtectedReceipt } from './protected-browser-receipt';
@@ -141,11 +141,8 @@ async function main(): Promise<number> {
     const runtimeUrl = new URL(dbUrl); runtimeUrl.username = 'lifecycle_runtime'; runtimeUrl.password = runtimePassword;
     runtime = new pg.Pool({ connectionString: runtimeUrl.toString(), max: 5 });
   }
-  // Only the Places lane composes with the labelled synthetic place-pins policy; every
-  // other lane, and all production composition, passes no policy and therefore keeps
-  // the pin feature correctly unavailable.
   const composed = suite === 'places'
-    ? createCanonicalPlacesFixtureApp(runtime ?? db, config, {mediaStorage:storage!, syntheticFixturePlacePinsPolicy:SYNTHETIC_FIXTURE_PLACE_PINS_POLICY})
+    ? createCanonicalPlacesFixtureApp(runtime ?? db, config, {mediaStorage:storage!})
     : createCanonicalApp(runtime ?? db, config, storage ? {mediaStorage:storage} : {});
   if (suite === 'lifecycle') lifecycleControl = await startLifecycleControl(db, composed, config, await freePort(51000, 51999));
   apiServer = await new Promise((done) => {

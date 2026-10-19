@@ -21,8 +21,6 @@ import DeleteIcon from "../../../assets/icons/DeleteIcon";
 import Modal from "../../../components/ui/Modal";
 import { usePlacesOwner } from "../hooks/usePlacesOwner";
 import { usePlacesCommands } from "../api/placesCommands";
-import {PlacePinsEditor} from './PlacePinsEditor';
-import type {PlacesOwnerContent} from '../api/explorersAdapter';
 import { PlacesClient } from "../api/placesClient";
 import type { CompleteTaxonomyCatalog } from "../../../lib/explorersApiClient";
 import useAuthStore from "../../../store/store";
@@ -202,9 +200,6 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   // Ticket 5.1. Places, and the list publication flag, come from the native owner API.
   const commands = usePlacesCommands(selectedCity?.documentId);
-  const [pinsRequest,setPinsRequest]=useState<{scope:string;id:string;nonce:number}>();
-  // Finding 6. Retention is state, not a ref written during render.
-  const [pinsOwner,setPinsOwner]=useState<{key:string;owner:PlacesOwnerContent}>();
   // local state for handle catgeories
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   // local state for handling the deleting of place
@@ -247,18 +242,6 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
   // paginated for the grid and one unpaginated for the suggestion comparison - become one
   // read, and the ten-at-a-time reveal is a window over it rather than another round trip.
   const owner = usePlacesOwner(selectedCity?.documentId, Boolean(selectedCity?.documentId));
-  // Finding 6. The retained snapshot is keyed on the fetch scope AND the selected list,
-  // because the fetch scope no longer carries the list id (finding 2), and it is written
-  // from an effect rather than during render - a render-phase ref write is discarded under
-  // a concurrent re-render.
-  const editorKey=`${owner.scope}|${selectedCity?.documentId??''}`;
-  useEffect(()=>{if(owner.content)setPinsOwner({key:editorKey,owner:owner.content});},[owner.content,editorKey]);
-  const retainedOwner=pinsOwner?.key===editorKey?pinsOwner.owner:undefined;
-  // Live content always wins over the retained snapshot. The snapshot only bridges the
-  // window where a save's invalidatePlaces has cleared content and the re-read is in
-  // flight; the editor is DISABLED for that window, so a stale draft.observation can no
-  // longer be committed into a guaranteed 409 that loses the user's edit.
-  const editorOwner=owner.content??retainedOwner;
   const loading = owner.loading;
   const ownerList = useMemo(
     () => owner.data?.recommendationLists?.find((list) => list.documentId === selectedCity?.documentId),
@@ -995,7 +978,6 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
       {/* ── Places Tab ── */}
       {activeTab === "places" && (
       <>
-      {editorOwner&&selectedCity?.documentId&&<PlacePinsEditor key={editorKey} owner={editorOwner} listId={selectedCity.documentId} reload={owner.refetch} disabled={owner.loading} request={pinsRequest?.scope===editorKey?pinsRequest:undefined}/>}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-2 mb-20 md:mb-0">
         {loading && !placesData?.recommendedPlaces?.length ? (
           // Skeleton cards while loading — sit directly in the grid
@@ -1047,18 +1029,6 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
                     >
                       <KebabDropdown
                         menuItems={[
-                          ...(editorOwner&&selectedCity?.documentId?[{
-                            icon:<span aria-hidden="true">⌖</span>,
-                            // Finding 10. The label used to be derived from live
-                            // data.is_pinned while the action toggles against the editor
-                            // DRAFT, so with an open draft that had already unpinned a
-                            // row, "Unpin in this list" re-pinned it. Label and action now
-                            // agree on one source - the draft - by naming the toggle
-                            // instead of asserting a direction the draft may already have
-                            // reversed.
-                            label:'Pin or unpin in this list',
-                            action:()=>setPinsRequest(previous=>({scope:editorKey,id:data.documentId,nonce:(previous?.nonce??0)+1})),
-                          }]:[]),
                           {
                             icon: <DeleteIcon stroke="var(--dash-danger)" />,
                             label: "Delete",
