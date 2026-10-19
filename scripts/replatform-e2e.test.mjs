@@ -284,7 +284,7 @@ test('Places lanes preserve the original ordered94 with zero retry custody',()=>
 
 test('Places additive: the lane is exactly the original eight and the additive ledger is empty',()=>{
  const m=manifest(),lane=m.lanes.find(lane=>lane.name==='places');
- // P5-8a removed the four authored-only additive pin identities with the pin write
+ // P5-8a removed the four additive pin identities with the pin write
  // surface. The original record is still recovered positionally by its pinned digest.
  assert.equal(createHash('sha256').update(JSON.stringify(lane.identities)).digest('hex'),
   '02f972f77de8e2d236989077c1cbca4e723cfb7f977871f4116bef39a890eda7');

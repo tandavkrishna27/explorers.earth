@@ -39,7 +39,8 @@ const appsTitles=[
 ];
 const placesTitles=["Places: retained location create edit and reload preserve zero and absent coordinates","Places: complete owner and anonymous pages contain every seeded list and recommendation","Places: owned image bytes disappear after the final public attachment is hidden","Places: foreign owner edits and private contact reads cannot disclose owner data"];
 // The Places lane is exactly its original eight identities. P5-8a removed the four
-// authored-only additive pin identities together with the pin write surface, so the
+// additive pin identities together with the pin write surface (they passed natively, but
+// only against a fixture-injected policy production never configured), so the
 // additiveRegistrations ledger is now required to be empty.
 const PLACES_ORIGINAL_IDENTITIES=8;
 const PLACES_ORIGINAL_DIGEST='02f972f77de8e2d236989077c1cbca4e723cfb7f977871f4116bef39a890eda7';

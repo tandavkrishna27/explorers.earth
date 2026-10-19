@@ -27,7 +27,7 @@ export const PEOPLE_TITLES=Object.freeze([
 ]);
 export const APPS_ENRICHMENT_TITLES=Object.freeze(['Apps enrichment: explicit approved source choices and selected-field acceptance survive reload','Apps enrichment: disable same-source re-enable and different-source rebind preserve manual values']);
 // Ten original lanes: the eleven-lane inventory (db513b66...) with the retired Music lane removed,
-// then (P5-8a) the four authored-only additive Places pin identities removed (cb448e41... -> 4a844a6e...).
+// then (P5-8a) the four additive Places pin identities removed (cb448e41... -> 4a844a6e...).
 const baseline='4a844a6e9c86e25743d7dd5d8e472bbdbc104d91bf3991cddd9a5a9f35656ac4';
 function freeze(value){if(value&&typeof value==='object'){for(const child of Object.values(value))freeze(child);Object.freeze(value);}return value;}
 /** Authored registration only; execution receipts must independently prove every identity. */
