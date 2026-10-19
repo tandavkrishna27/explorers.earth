@@ -51,7 +51,7 @@ export async function readMoviesOwnerContent(signal?:AbortSignal,observer?:Movie
     localCause='revision-conflict';throw new ExplorersApiError(409,'CONFLICT','Movies changed while loading. Refresh to try again.');}
   assertCompleteMyCategoryContent(final);
   boundary('mapping');
-  const lists=final.collections.map(collection=>collectionViewModel(collection,final.memberships
+  const lists=final.collections.filter(collection=>!collection.archived).map(collection=>collectionViewModel(collection,final.memberships
     .filter(member=>member.collectionId===collection.id&&!member.collectionArchived&&!member.recommendationArchived)
     .sort((a,b)=>a.displayOrder-b.displayOrder||a.recommendationId.localeCompare(b.recommendationId))
     .map(member=>{

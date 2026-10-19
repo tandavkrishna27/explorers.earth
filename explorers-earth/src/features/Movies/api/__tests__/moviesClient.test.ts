@@ -100,4 +100,9 @@ describe('Movies finite read observer',()=>{
   const encoding=cause==='read-limit'?vi.spyOn(TextEncoder.prototype,'encode').mockReturnValue({length:64*1024*1024+1} as Uint8Array):undefined;
   try{await expect(readMoviesOwnerContent(undefined,event=>events.push(event))).rejects.toMatchObject({code:cause==='read-limit'?'READ_LIMIT':'CONFLICT'});expect(events.filter(e=>e.cause!=='none')).toEqual([{phase:cause==='missing-detail'?'mapping':'detail-fanout',cause}]);}finally{encoding?.mockRestore();}
  });
+ it('never lists an archived (deleted) list in the owner dashboard',async()=>{
+  const observed={revision:'1',pinRevision:1,collections:[{id:'list',accountId:'owner',title:'Kept',slug:'kept',displayOrder:0,visibility:'private',publicationState:'draft',archived:false},{id:'gone',accountId:'owner',title:'Deleted',slug:'deleted',displayOrder:1,visibility:'public',publicationState:'published',archived:true}],memberships:[],recommendations:[],topPicks:[]};
+  vi.mocked(explorersApiClient.getCompleteMyCategoryTopPicks).mockResolvedValue(observed as never);
+  const content=await readMoviesOwnerContent();expect(content.lists.map(list=>list.List_Name??list.documentId)).toHaveLength(1);expect(content.lists[0].documentId).toBe('list');
+ });
 });
