@@ -3,10 +3,12 @@ import { TFunction } from "i18next";
 import { validateUsername } from "../../utils/usernameValidation";
 
 // Custom Yup method for username validation
-export const createUsernameValidation = (t: TFunction) => Yup.string()
+export const createUsernameValidation = (t: TFunction, currentUsername?: string | null) => Yup.string()
   .required(t('auth.validations.username.required'))
   .test('username-validation', t('auth.validations.username.invalidChars'), function(value) {
     if (!value) return false;
+    // Only a handle being chosen is held to the rules; the one already held stays savable.
+    if (currentUsername && value.trim().toLowerCase() === currentUsername.trim().toLowerCase()) return true;
     
     const validation = validateUsername(value, t);
     
@@ -38,8 +40,8 @@ export const createUsernameValidation = (t: TFunction) => Yup.string()
   });
 
 // validation schema for Profile form
-export const createProfileValidationSchema = (t: TFunction): Yup.AnySchema => Yup.object().shape({
-  username: createUsernameValidation(t),
+export const createProfileValidationSchema = (t: TFunction, currentUsername?: string | null): Yup.AnySchema => Yup.object().shape({
+  username: createUsernameValidation(t, currentUsername),
   accountName: Yup.string()
     .required(t('auth.validations.accountName.required'))
     .min(2, t('auth.validations.accountName.minLength'))

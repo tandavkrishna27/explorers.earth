@@ -98,3 +98,14 @@ export function handleRuleViolations(raw: string): HandleRuleCode[] {
   if (containsProfanity(h)) out.push("profanity");
   return out;
 }
+
+/**
+ * The rules apply to a handle being CHOSEN, not to one already held: the list grows over time
+ * (new routes, new words) and an existing holder must still be able to save other fields and
+ * re-send their unchanged handle. Comparison is case-insensitive after trimming.
+ */
+export function handleViolationsOnSave(current: string | null | undefined, next: string): HandleRuleCode[] {
+  const normalized = next.trim().toLowerCase();
+  if (current && current.trim().toLowerCase() === normalized) return [];
+  return handleRuleViolations(normalized);
+}

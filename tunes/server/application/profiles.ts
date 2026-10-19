@@ -1,7 +1,7 @@
 import type { Pool } from "pg";
 import { accountDtoSchema, updateAccountRequestSchema, type AccountDto, type RequestContext,
   type RevisionInput, type UpdateAccountInput } from "../../shared/explorersContract";
-import { handleRuleViolations } from "../../shared/explorersReservedHandles";
+import { handleViolationsOnSave } from "../../shared/explorersReservedHandles";
 import type { Actor } from "./actor";
 import { authorizeOperation } from "./authorization";
 import { AccountConflict, AccountInvalidAttachment, ExplorersAccountRepository } from "../repositories/explorersAccountRepository";
@@ -24,7 +24,9 @@ export class ProfileService {
     const normalized = { ...parsed.data };
     if (typeof normalized.handle === "string") {
       normalized.handle = normalized.handle.toLowerCase();
-      if (handleRuleViolations(normalized.handle).length > 0) throw new ProfileInputError("Handle is unavailable");
+      // Only a changed handle is held to the rules; an existing holder keeps saving (see handleViolationsOnSave).
+      const current = (await this.repository.get(actor.accountId)).handle;
+      if (handleViolationsOnSave(current, normalized.handle).length > 0) throw new ProfileInputError("Handle is unavailable");
     }
     const { expectedRevision, ...editable } = normalized;
     try { return accountDtoSchema.parse(await this.repository.update(actor.accountId, editable, expectedRevision)); }

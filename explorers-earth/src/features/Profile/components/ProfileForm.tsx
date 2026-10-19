@@ -438,7 +438,7 @@ const ProfileFormSession: FC<ProfileFormProps> = memo(
           isWorkspaceMode && activeWorkspace ? [activeWorkspace] : [],
         ),
     );
-    const validationSchema = createProfileValidationSchema(t);
+    const validationSchema = createProfileValidationSchema(t, initialValues?.username as string | undefined);
     const [address, setAddress] = useState<string>("");
     const [sameAsAddress, setSameAsAddress] = useState(false);
     const [bio, setBio] = useState<string>("");
