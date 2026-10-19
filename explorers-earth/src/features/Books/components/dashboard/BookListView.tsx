@@ -564,7 +564,7 @@ const BookListView = () => {
             <div className="flex flex-col items-center py-16 text-center">
               <BookMarked size={40} className="text-white/15 mb-3" />
               <p className="text-white/40 text-sm">No books in this list yet.</p>
-              <p className="text-xs text-white/25 mt-1">Search Google Books to add your first recommendation.</p>
+              <p className="text-xs text-white/25 mt-1">Search Google Books or add a book manually.</p>
             </div>
           ) : (
             <div className="space-y-0">
