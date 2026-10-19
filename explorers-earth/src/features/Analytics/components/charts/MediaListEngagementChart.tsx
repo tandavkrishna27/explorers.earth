@@ -16,6 +16,7 @@ import {
   Tooltip, Legend, ResponsiveContainer, BarChart, Bar, Cell
 } from 'recharts';
 import { AnalyticsEvent } from '../../api/queries';
+import { useTranslation } from 'react-i18next';
 import EmptyState from '../EmptyState';
 
 interface MediaListEngagementChartProps {
@@ -37,6 +38,8 @@ const formatDate = (iso: string) => iso.split('T')[0];
 const MediaListEngagementChart: React.FC<MediaListEngagementChartProps> = ({
   events, pageName, pageLabel, elementPrefix, color, icon,
 }) => {
+  const { t } = useTranslation();
+  const untitledList = t('analytics.dashboard.untitledList');
   const [selectedList, setSelectedList] = useState<string>('all');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -78,13 +81,13 @@ const MediaListEngagementChart: React.FC<MediaListEngagementChartProps> = ({
   const listOptions = useMemo(() => {
     const map = new Map<string, { name: string; clickCount: number }>();
     clickEvents.forEach(e => {
-      const listName = e.metadata?.listName ?? 'Unknown List';
+      const listName = e.metadata?.listName ?? untitledList;
       const existing = map.get(listName) ?? { name: listName, clickCount: 0 };
       existing.clickCount++;
       map.set(listName, existing);
     });
     return Array.from(map.values()).sort((a, b) => b.clickCount - a.clickCount);
-  }, [clickEvents]);
+  }, [clickEvents, untitledList]);
 
   /**
    * Time-series: views per day (page-level views, not list-specific —
@@ -105,7 +108,7 @@ const MediaListEngagementChart: React.FC<MediaListEngagementChartProps> = ({
     // Count clicks per day (filtered by selected list if needed)
     const relevantClicks = selectedList === 'all'
       ? clickEvents
-      : clickEvents.filter(e => (e.metadata?.listName ?? 'Unknown List') === selectedList);
+      : clickEvents.filter(e => (e.metadata?.listName ?? untitledList) === selectedList);
 
     relevantClicks.forEach(e => {
       const date = formatDate(e.timestamp);
@@ -117,7 +120,7 @@ const MediaListEngagementChart: React.FC<MediaListEngagementChartProps> = ({
     return Array.from(dateMap.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, data]) => ({ date, ...data }));
-  }, [viewEvents, clickEvents, selectedList]);
+  }, [viewEvents, clickEvents, selectedList, untitledList]);
 
   /** Bar chart: clicks per list (for overview mode) */
   const listClicksData = useMemo(
