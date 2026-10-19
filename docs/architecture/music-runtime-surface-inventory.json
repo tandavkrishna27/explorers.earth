@@ -854,7 +854,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",
-      "line": 19
+      "line": 22
     },
     {
       "method": "DELETE",
@@ -864,7 +864,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "delete",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",
-      "line": 39
+      "line": 42
     },
     {
       "method": "GET",
@@ -874,7 +874,7 @@
       "policy": "ready-media+owner-or-live-public-profile-or-book-recommendation-attachment",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",
-      "line": 101
+      "line": 104
     },
     {
       "method": "HEAD",
@@ -884,7 +884,7 @@
       "policy": "ready-media+owner-or-live-public-profile-or-book-recommendation-attachment",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",
-      "line": 102
+      "line": 105
     },
     {
       "method": "POST",
@@ -1039,12 +1039,12 @@
     {
       "method": "USE",
       "path": "/api/explorers/v1/profiles",
-      "classification": "tombstone",
-      "ownerSource": "none-fail-closed",
-      "policy": "fail-closed-tombstone",
+      "classification": "local-music-owner",
+      "ownerSource": "req.musicPrincipal.musicUserId",
+      "policy": "c5-principal+local-lifecycle+owner-sql",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
-      "line": 45
+      "line": 63
     },
     {
       "method": "USE",
@@ -1054,7 +1054,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
-      "line": 52
+      "line": 67
     },
     {
       "method": "GET",
@@ -1064,7 +1064,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
-      "line": 56
+      "line": 71
     },
     {
       "method": "GET",
@@ -1074,7 +1074,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
-      "line": 70
+      "line": 85
     },
     {
       "method": "GET",
@@ -1084,7 +1084,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
-      "line": 92
+      "line": 107
     },
     {
       "method": "GET",
@@ -1094,7 +1094,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
-      "line": 97
+      "line": 112
     },
     {
       "method": "GET",
@@ -1104,7 +1104,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
-      "line": 102
+      "line": 117
     },
     {
       "method": "GET",

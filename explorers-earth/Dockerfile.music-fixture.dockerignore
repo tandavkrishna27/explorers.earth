@@ -834,6 +834,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/PublicHome/api/usePublicProfileDetail.ts
 !explorers-earth/src/features/PublicHome/api/usePublicProfileShell.ts
 !explorers-earth/src/features/PublicHome/api/usePublicRecommendationCategory.ts
+!explorers-earth/src/features/PublicHome/api/usePublicRevalidation.ts
 !explorers-earth/src/features/PublicHome/components/Community.tsx
 !explorers-earth/src/features/PublicHome/components/MapView.tsx
 !explorers-earth/src/features/PublicHome/components/PlaceDetails/Details/Address.tsx
@@ -868,6 +869,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/PublicHome/components/PublicProfile.tsx
 !explorers-earth/src/features/PublicHome/components/PublicProfileChromePrimitives.tsx
 !explorers-earth/src/features/PublicHome/components/PublicProfileFooter.tsx
+!explorers-earth/src/features/PublicHome/components/PublicProfileLoadError.tsx
 !explorers-earth/src/features/PublicHome/components/PublicProfileThemeProvider.tsx
 !explorers-earth/src/features/PublicHome/components/PublicRouteContentState.tsx
 !explorers-earth/src/features/PublicHome/components/PublicScrollContinuation.tsx

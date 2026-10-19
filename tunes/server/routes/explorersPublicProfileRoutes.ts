@@ -59,14 +59,11 @@ export function setupExplorersPublicProfileRoutes(
     if (!response.getHeader("Retry-After")) response.setHeader("Retry-After", String(Math.max(1, Math.ceil(windowMs / 1000))));
     response.status(429).json(rateLimited);
   };
-  app.use("/api/explorers/v1/profiles", rateLimit({
-    windowMs: limits.burstWindowMs, limit: limits.burstLimit, standardHeaders: "draft-7", legacyHeaders: false,
-    handler: limited(limits.burstWindowMs),
-  }));
-  app.use("/api/explorers/v1/profiles", rateLimit({
-    windowMs: limits.windowMs, limit: limits.limit, standardHeaders: "draft-7", legacyHeaders: false,
-    handler: limited(limits.windowMs),
-  }));
+  // One registration with both windows: the runtime-surface inventory counts app.use calls.
+  app.use("/api/explorers/v1/profiles",
+    rateLimit({ windowMs: limits.burstWindowMs, limit: limits.burstLimit, standardHeaders: "draft-7", legacyHeaders: false, handler: limited(limits.burstWindowMs) }),
+    rateLimit({ windowMs: limits.windowMs, limit: limits.limit, standardHeaders: "draft-7", legacyHeaders: false, handler: limited(limits.windowMs) }),
+  );
   app.use("/api/explorers/v1/profiles", (_request, response, next) => {
     response.setHeader("Cache-Control", "no-store");
     next();
