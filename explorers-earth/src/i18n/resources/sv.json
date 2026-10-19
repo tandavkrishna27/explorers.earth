@@ -263,7 +263,8 @@
         "today": "Idag"
       },
       "timePeriod": "Tidsperiod:",
-      "title": "Analytics-instrumentpanel"
+      "title": "Analytics-instrumentpanel",
+      "countsNote": "Summorna räknar besök, inte unika besökare. Offentliga sidor mäts anonymt, utan cookies."
     }
   },
   "auth": {
@@ -1934,7 +1935,8 @@
       "selectLanguage": "Välj ditt språk"
     },
     "subtitle": "Hantera dina kontoinställningar och preferenser",
-    "title": "Inställningar"
+    "title": "Inställningar",
+    "dangerZone": "Farozon"
   },
   "sidebar": {
     "analytics": "Analys",

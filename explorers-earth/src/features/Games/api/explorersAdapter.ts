@@ -1,9 +1,12 @@
+import {shareOwnerRead} from '../../../lib/sharedOwnerRead';
 import {GamesClient,type CompleteGamesOwnerContent} from './gamesClient';
 import {gamesViewModel,type GameOwnerView} from './gamesViewModel';
 import {ExplorersApiError,type RecommendationObservation} from '../../../lib/explorersApiClient';
 import useAuthStore from '../../../store/store';
 export type GamesOwnerContent={observation:CompleteGamesOwnerContent;view:Readonly<GameOwnerView>;details:ReadonlyMap<string,RecommendationObservation>};
-export async function readGamesOwnerContent(signal?:AbortSignal):Promise<GamesOwnerContent>{
+/** Concurrent readers on one page share one read (see shareOwnerRead). */
+export function readGamesOwnerContent(signal?:AbortSignal):Promise<GamesOwnerContent>{return shareOwnerRead('games',signal,shared=>readGamesOwnerContentOnce(shared));}
+async function readGamesOwnerContentOnce(signal?:AbortSignal):Promise<GamesOwnerContent>{
  const controller=new AbortController();let terminal=false,firstError:unknown;
  const forwardAbort=()=>controller.abort(signal?.reason);signal?.addEventListener('abort',forwardAbort,{once:true});if(signal?.aborted)forwardAbort();
  const fail=(error:unknown):never=>{if(!terminal){terminal=true;firstError=error;controller.abort(error);}throw firstError;};

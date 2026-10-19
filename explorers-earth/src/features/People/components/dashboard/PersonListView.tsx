@@ -261,10 +261,10 @@ const PersonListView = () => {
       await deletePersonList({
         variables: { documentId: listData.documentId },
       });
-      toast.success("List deleted.");
+      toast.success("List archived.");
       navigate("/recommendations/people");
     } catch {
-      toast.error("Failed to delete list.");
+      toast.error("Failed to archive list.");
     }
   };
 
@@ -389,7 +389,7 @@ const PersonListView = () => {
                   className="flex flex-row text-center gap-2 items-center rounded-md font-poppins w-full text-sm border border-white px-4 py-3 hover:border-gray-500 text-white hover:text-gray-500 justify-center font-medium transition-all duration-300"
                 >
                   <Trash2 size={16} />
-                  <span>Delete</span>
+                  <span>Archive</span>
                 </button>
                 {isEditingList ? (
                   <div className="bg-dashboard-sidebar border border-white/10 rounded-lg p-5 space-y-4 mt-2 mb-2 text-left">
@@ -548,8 +548,8 @@ const PersonListView = () => {
               animate={{ scale: 1, opacity: 1 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-lg font-semibold text-dashboard mb-2">Delete List?</h3>
-              <p className="text-sm text-dashboard-muted mb-5">This will permanently delete "{listData?.List_Name}" and all its people. This cannot be undone.</p>
+              <h3 className="text-lg font-semibold text-dashboard mb-2">Archive list?</h3>
+              <p className="text-sm text-dashboard-muted mb-5">This archives "{listData?.List_Name}": it leaves your lists and your public profile. It is archived, not erased.</p>
               <div className="flex gap-3">
                 <button onClick={() => setShowDeleteListModal(false)} className="flex-1 py-2.5 rounded-lg border border-dashboard-border text-sm text-dashboard-muted hover:text-dashboard transition-colors">Cancel</button>
                 <button
@@ -558,7 +558,7 @@ const PersonListView = () => {
                   className="flex-1 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-sm text-white font-medium transition-colors flex items-center justify-center gap-2"
                 >
                   {deletingList ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                  Delete
+                  Archive
                 </button>
               </div>
             </motion.div>

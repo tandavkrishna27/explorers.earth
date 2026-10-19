@@ -27,6 +27,7 @@ import TopPicksManager from "./TopPicksManager";
 import MovieDetailModal from "../public/MovieDetailModal";
 import Switch from "../../../../components/ui/Switch";
 import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
+import QrCardTagline from "../../../../components/QrCardTagline";
 
 const VITE_BASE_URL = import.meta.env.VITE_BASE_URL || "https://explorers.earth";
 
@@ -495,9 +496,7 @@ const MovieListView = () => {
                       <div className="p-2 bg-white rounded-lg shadow-md mb-3">
                         <QRCodeSVG value={shareUrl} size={90} />
                       </div>
-                      <p className="bg-gray-200 text-black px-4 py-1.5 font-poppins rounded-full text-[11px] font-semibold whitespace-nowrap">
-                        Travel like a local
-                      </p>
+                      <QrCardTagline className="bg-gray-200 text-black px-4 py-1.5 font-poppins rounded-full text-[11px] font-semibold whitespace-nowrap" />
                     </div>
                   </div>
                 </div>

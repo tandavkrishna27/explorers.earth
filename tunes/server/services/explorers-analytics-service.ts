@@ -99,7 +99,11 @@ const canonicalPublicPathSchema = z
   }, "canonicalPath must be a safe public route path");
 
 export const explorersAnalyticsInputSchema = z.object({
-  consent: z.boolean(),
+  // Either the legacy consented write (consent: true/false) or an anonymous public-page
+  // event (basis 'anonymous-v1'): no cookie, stored visitor ID or stored address is involved,
+  // so it needs no consent banner. Exactly one of the two must be present.
+  consent: z.boolean().optional(),
+  basis: z.literal("anonymous-v1").optional(),
   eventId: z.string().trim().min(8).max(128),
   accountId: z.string().trim().min(1).max(128),
   locationId: z.string().trim().min(1).max(128).nullable().optional(),
@@ -117,6 +121,13 @@ export const explorersAnalyticsInputSchema = z.object({
     })
     .strict(),
 }).strict().superRefine((input, context) => {
+  if ((input.consent === undefined) === (input.basis === undefined)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["basis"],
+      message: "an analytics event is either consented or anonymous",
+    });
+  }
   const metadata = input.event.metadata;
   const metadataLocationId = metadata?.listId ?? metadata?.cityId;
   const metadataRecommendationId =

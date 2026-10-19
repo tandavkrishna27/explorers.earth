@@ -1,3 +1,4 @@
+import {shareOwnerRead} from '../../../lib/sharedOwnerRead';
 import type { MoviesOwnerObserver, MoviesProducerSnapshot } from './moviesOwnerDiagnostic';
 import { explorersApiClient, assertCompleteMyCategoryContent, ExplorersApiError, type CompleteMyCategoryContent, type RecommendationObservation } from '../../../lib/explorersApiClient';
 import { movieViewModel, collectionViewModel } from './moviesViewModel';
@@ -6,7 +7,9 @@ import useAuthStore from '../../../store/store';
 
 export type MoviesOwnerContent={observation:CompleteMyCategoryContent;lists:MovieList[];details:ReadonlyMap<string,RecommendationObservation>};
 export const moviesCommandKey=()=>crypto.randomUUID();
-export async function readMoviesOwnerContent(signal?:AbortSignal,observer?:MoviesOwnerObserver):Promise<MoviesOwnerContent> {
+/** Concurrent readers on one page share one read (see shareOwnerRead); an observed read is never shared. */
+export function readMoviesOwnerContent(signal?:AbortSignal,observer?:MoviesOwnerObserver):Promise<MoviesOwnerContent>{return observer?readMoviesOwnerContentOnce(signal,observer):shareOwnerRead('movies',signal,shared=>readMoviesOwnerContentOnce(shared));}
+async function readMoviesOwnerContentOnce(signal?:AbortSignal,observer?:MoviesOwnerObserver):Promise<MoviesOwnerContent> {
  const controller=new AbortController();let terminal=false,firstError:unknown;
  let phase:MoviesProducerSnapshot['phase']='unavailable',localCause:MoviesProducerSnapshot['cause']|undefined;
  const emit=(cause:MoviesProducerSnapshot['cause']='none')=>{try{observer?.({phase,cause});}catch{/* observational */}};

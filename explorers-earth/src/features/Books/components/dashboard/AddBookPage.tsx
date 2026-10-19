@@ -136,6 +136,9 @@ const AddBookPage = () => {
   const [uploadingCover, setUploadingCover] = useState(false);
 
   const [entityId,setEntityId]=useState<string>();
+  // A manual book has no Google Books cover to copy, so the cover import is skipped.
+  const [manualOpen,setManualOpen]=useState(false);
+  const [isManualBook,setIsManualBook]=useState(false);
   const editedObservation=useRef<RecommendationObservation>();
   const initialized=useRef<string>();
   const operationAbort=useRef(new AbortController());
@@ -145,7 +148,7 @@ const AddBookPage = () => {
   const selectionSequence=useRef(0);
   const [snapshotPreviews,setSnapshotPreviews]=useState<string[]>([]);
   useEffect(()=>{const urls=newSnapshots.map(file=>URL.createObjectURL(file));setSnapshotPreviews(urls);return()=>urls.forEach(url=>URL.revokeObjectURL(url));},[newSnapshots]);
-  useEffect(()=>{operationAbort.current=new AbortController();setSelectedBook(null);setEntityId(undefined);setNote("");setUserRating(null);setIsPinned(false);setBuyLinks([]);setNewSnapshots([]);setExistingSnapshots([]);setSaving(false);initialized.current=undefined;editedObservation.current=undefined;createdRecommendation.current=undefined;pendingCreate.current=undefined;uploadedFiles.current.clear();return()=>{operationAbort.current.abort();selectionSequence.current++;};},[generation,listId,bookId]);
+  useEffect(()=>{operationAbort.current=new AbortController();setSelectedBook(null);setEntityId(undefined);setManualOpen(false);setIsManualBook(false);setNote("");setUserRating(null);setIsPinned(false);setBuyLinks([]);setNewSnapshots([]);setExistingSnapshots([]);setSaving(false);initialized.current=undefined;editedObservation.current=undefined;createdRecommendation.current=undefined;pendingCreate.current=undefined;uploadedFiles.current.clear();return()=>{operationAbort.current.abort();selectionSequence.current++;};},[generation,listId,bookId]);
 
   // Load existing book list (for display_order)
   const { data:listData,content,error:loadError } = useBooksOwnerContent(listId);
@@ -193,6 +196,20 @@ const AddBookPage = () => {
       setBuyLinks(item.buyLinkSuggestion?[{name:"Google Books",url:item.buyLinkSuggestion,logo:"google-books"}]:[]);
     }catch(e){toast.error(e instanceof Error?e.message:"Could not select Book");}
   },[generation]);
+  const handleManualBook = useCallback(async(draft:ManualBookDraft) => {
+    const selection=++selectionSequence.current;
+    const title=draft.title.trim(),authors=draft.authors.split(",").map(a=>a.trim()).filter(Boolean);
+    const pages=Number.parseInt(draft.pages,10);
+    const details={title,...(authors.length?{authors}:{}),...(draft.year.trim()?{yearText:draft.year.trim()}:{}),
+      ...(draft.publisher.trim()?{publisher:draft.publisher.trim()}:{}),...(Number.isSafeInteger(pages)&&pages>0?{pageCount:pages}:{}),
+      ...(draft.description.trim()?{description:draft.description.trim()}:{})};
+    try {
+      const entity=await explorersApiClient.resolveBookEntity({kind:"manual",category:"books",details},booksCommandKey(),operationAbort.current.signal);
+      if(selection!==selectionSequence.current||useAuthStore.getState().generation!==generation)return;
+      setEntityId(entity.id);setIsManualBook(true);setManualOpen(false);setBuyLinks([]);
+      setSelectedBook({volume_id:"",title,subtitle:null,authors,year:details.yearText??"",cover_url:"",cover_url_large:"",subjects:[],publisher:details.publisher??null,page_count:details.pageCount??null,google_rating:null,description:details.description??null,isbn_13:"",preview_link:null,google_books_buy_link:null});
+    }catch(e){toast.error(e instanceof Error?e.message:"Could not add this Book");}
+  },[generation]);
   const handleAddBuyLink = () => {
     if (!newLinkUrl.trim()) return;
     setBuyLinks((prev) => [
@@ -213,7 +230,7 @@ const AddBookPage = () => {
       const retryCreated=!isEdit&&Boolean(createdRecommendation.current||pendingCreate.current);
       let recommendationId=bookId??createdRecommendation.current;
       if(isEdit&&bookId){if(!editedObservation.current)throw new Error("Refresh before editing this Book");await explorersApiClient.updateMyRecommendation(editedObservation.current,patch,booksCommandKey(),signal);editedObservation.current=await explorersApiClient.getMyEditableRecommendation(bookId,signal);}
-      else if(!recommendationId){if(!pendingCreate.current){const parent=await explorersApiClient.getMyEditableCollection(listId,signal);const input={...patch,entityId,publicationState:"published" as const};if(!createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true}).strict().safeParse(input).success)throw new Error("Invalid content command");pendingCreate.current={parent,input,key:booksCommandKey()};}const command=pendingCreate.current;const saved=await explorersApiClient.createMyRecommendation(command.parent,command.input,command.key,signal);recommendationId=saved.id;createdRecommendation.current=saved.id;pendingCreate.current=undefined;setUploadingCover(true);try{const observed=await explorersApiClient.getMyEditableRecommendation(saved.id,signal);const imported=await explorersApiClient.importBookCovers(observed,booksCommandKey(),signal);if(Object.values(imported.slots).some(slot=>slot.status==="fallback"))toast.info("Some covers use the original Book image.");}catch(e){toast.info("Cover copying was unavailable; the original Book image is retained.");}finally{setUploadingCover(false);}}
+      else if(!recommendationId){if(!pendingCreate.current){const parent=await explorersApiClient.getMyEditableCollection(listId,signal);const input={...patch,entityId,publicationState:"published" as const};if(!createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true}).strict().safeParse(input).success)throw new Error("Invalid content command");pendingCreate.current={parent,input,key:booksCommandKey()};}const command=pendingCreate.current;const saved=await explorersApiClient.createMyRecommendation(command.parent,command.input,command.key,signal);recommendationId=saved.id;createdRecommendation.current=saved.id;pendingCreate.current=undefined;if(!isManualBook){setUploadingCover(true);try{const observed=await explorersApiClient.getMyEditableRecommendation(saved.id,signal);const imported=await explorersApiClient.importBookCovers(observed,booksCommandKey(),signal);if(Object.values(imported.slots).some(slot=>slot.status==="fallback"))toast.info("Some covers use the original Book image.");}catch(e){toast.info("Cover copying was unavailable; the original Book image is retained.");}finally{setUploadingCover(false);}}}
       if(!recommendationId||useAuthStore.getState().generation!==generation)return;
       if(retryCreated){const observed=editedObservation.current??await explorersApiClient.getMyEditableRecommendation(recommendationId,signal);await explorersApiClient.updateMyRecommendation(observed,patch,booksCommandKey(),signal);editedObservation.current=await explorersApiClient.getMyEditableRecommendation(recommendationId,signal);}
       else if(!isEdit)editedObservation.current=await explorersApiClient.getMyEditableRecommendation(recommendationId,signal);
@@ -281,14 +298,22 @@ const AddBookPage = () => {
                 </div>
               </div>
               <button
-                onClick={() => { setSelectedBook(null); setBuyLinks([]); }}
+                onClick={() => { selectionSequence.current++; setSelectedBook(null); setBuyLinks([]); setEntityId(undefined); setIsManualBook(false); }}
                 className="text-white/30 hover:text-white transition-colors flex-shrink-0"
               >
                 <X size={16} />
               </button>
             </div>
           ) : (
-            <InlineSearch key={generation} onSelect={handleSelectBook} />
+            <>
+              <InlineSearch key={generation} onSelect={handleSelectBook} />
+              {manualOpen
+                ? <ManualBookForm onCancel={() => setManualOpen(false)} onSubmit={handleManualBook} />
+                : <button type="button" onClick={() => setManualOpen(true)}
+                    className="mt-3 text-xs font-medium text-amber-400 hover:text-amber-300 transition-colors">
+                    Add manually
+                  </button>}
+            </>
           )}
         </div>
       )}
@@ -515,5 +540,45 @@ const AddBookPage = () => {
     </div>
   );
 };
+
+type ManualBookDraft = { title: string; authors: string; year: string; publisher: string; pages: string; description: string };
+
+/** The manual path, for a book Google Books cannot find (or when its key is not set). */
+function ManualBookForm({ onSubmit, onCancel }: { onSubmit: (draft: ManualBookDraft) => Promise<void>; onCancel: () => void }) {
+  const [draft, setDraft] = useState<ManualBookDraft>({ title: "", authors: "", year: "", publisher: "", pages: "", description: "" });
+  const [submitting, setSubmitting] = useState(false);
+  const field = "w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-amber-400/50 transition-colors";
+  const set = (key: keyof ManualBookDraft) => (event: { target: { value: string } }) => setDraft(prev => ({ ...prev, [key]: event.target.value }));
+  const row = (key: keyof ManualBookDraft, label: string, extra: Record<string, unknown> = {}) => (
+    <div>
+      <label htmlFor={`manual-book-${key}`} className="text-xs font-medium text-dashboard-muted mb-1 block">{label}</label>
+      <input id={`manual-book-${key}`} value={draft[key]} onChange={set(key)} className={field} {...extra} />
+    </div>
+  );
+  return (
+    <div className="mt-3 space-y-3 border-t border-dashboard-border pt-3">
+      <p className="text-xs text-dashboard-muted">Add the book's details yourself.</p>
+      {row("title", "Title *", { required: true, maxLength: 500 })}
+      {row("authors", "Author(s), separated by commas")}
+      <div className="grid grid-cols-2 gap-3">
+        {row("year", "Year", { inputMode: "numeric", maxLength: 100 })}
+        {row("pages", "Pages", { inputMode: "numeric", maxLength: 7 })}
+      </div>
+      {row("publisher", "Publisher")}
+      <div>
+        <label htmlFor="manual-book-description" className="text-xs font-medium text-dashboard-muted mb-1 block">Description</label>
+        <textarea id="manual-book-description" rows={3} value={draft.description} onChange={set("description")} className={field} />
+      </div>
+      <div className="flex gap-2">
+        <button type="button" disabled={!draft.title.trim() || submitting}
+          onClick={async () => { setSubmitting(true); try { await onSubmit(draft); } finally { setSubmitting(false); } }}
+          className="px-4 py-2 rounded-xl bg-amber-500 text-black text-sm font-semibold disabled:opacity-40">
+          Use these details
+        </button>
+        <button type="button" onClick={onCancel} className="px-4 py-2 rounded-xl text-sm text-white/60 hover:text-white">Cancel</button>
+      </div>
+    </div>
+  );
+}
 
 export default AddBookPage;

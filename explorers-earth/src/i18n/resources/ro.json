@@ -263,7 +263,8 @@
         "today": "Astăzi"
       },
       "timePeriod": "Perioadă de timp:",
-      "title": "Panou de Control Analiză"
+      "title": "Panou de Control Analiză",
+      "countsNote": "Totalurile numără vizitele, nu vizitatorii unici. Paginile publice sunt măsurate anonim, fără cookie-uri."
     }
   },
   "auth": {
@@ -1934,7 +1935,8 @@
       "selectLanguage": "Selectați limba"
     },
     "subtitle": "Gestionați setările și preferințele contului dvs.",
-    "title": "Setări"
+    "title": "Setări",
+    "dangerZone": "Zonă periculoasă"
   },
   "sidebar": {
     "analytics": "Analiză",

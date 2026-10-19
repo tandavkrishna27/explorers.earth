@@ -263,7 +263,8 @@
         "today": "Vandaag"
       },
       "timePeriod": "Tijdsperiode:",
-      "title": "Analytisch Dashboard"
+      "title": "Analytisch Dashboard",
+      "countsNote": "Totalen tellen bezoeken, geen unieke bezoekers. Openbare pagina's worden anoniem gemeten, zonder cookies."
     }
   },
   "auth": {
@@ -1934,7 +1935,8 @@
       "selectLanguage": "Selecteer uw taal"
     },
     "subtitle": "Beheer uw accountinstellingen en voorkeuren",
-    "title": "Instellingen"
+    "title": "Instellingen",
+    "dangerZone": "Gevarenzone"
   },
   "sidebar": {
     "analytics": "Analytics",

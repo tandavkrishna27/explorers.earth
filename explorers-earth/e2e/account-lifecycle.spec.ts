@@ -223,7 +223,9 @@ for (const statusMode of ["delayed", "error"] as const) {
     await mockSettings(context, "active", commands, { statusMode });
     await openSettings(page);
 
-    await expect(page.getByRole("tab", { name: "Account", exact: true })).toBeVisible();
+    // Settings has no tab strip any more (#150): the account panel itself is the
+    // rendered surface that must stay free of destructive controls.
+    await expect(page.locator("#settings-panel-account")).toBeVisible();
     await expect(deleteEntryPoint(page)).toHaveCount(0);
     expect(commands).toEqual([]);
   });

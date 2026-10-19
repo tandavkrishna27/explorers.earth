@@ -138,6 +138,12 @@ describe('AnalyticsDashboard data boundary', () => {
   // first - the scenario cannot occur. Keeping it would have left a duplicate of the case
   // above under a name that no longer described anything.
 
+  it('labels the totals as visits, not unique visitors', async () => {
+    render(<AnalyticsDashboard />);
+    await waitFor(() => expect(readEvents).toHaveBeenCalledTimes(1));
+    expect(await screen.findByTestId('analytics-counts-note')).toHaveTextContent('analytics.dashboard.countsNote');
+  });
+
   it('uses the coarse country supplied by the server without client IP resolution', async () => {
     render(<AnalyticsDashboard />);
 

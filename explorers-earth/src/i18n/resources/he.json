@@ -263,7 +263,8 @@
         "today": "היום"
       },
       "timePeriod": "תקופת זמן:",
-      "title": "לוח בקרה אנליטי"
+      "title": "לוח בקרה אנליטי",
+      "countsNote": "הסיכומים סופרים ביקורים, לא מבקרים ייחודיים. דפים ציבוריים נמדדים באופן אנונימי, ללא עוגיות."
     }
   },
   "auth": {
@@ -1934,7 +1935,8 @@
       "selectLanguage": "בחר את השפה שלך"
     },
     "subtitle": "Manage your account settings and preferences",
-    "title": "הגדרות"
+    "title": "הגדרות",
+    "dangerZone": "אזור מסוכן"
   },
   "sidebar": {
     "analytics": "אנליטיקה",

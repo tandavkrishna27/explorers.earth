@@ -19,8 +19,18 @@ describe('actual guide wizard canonical details',()=>{
   for(const key of ['estimatedBudget','budgetCurrency','budgetType','tags','tipsNotes','locationEntityId'] as const)expect(result[key]).toEqual(existing[key]);
   expect(result.numberOfDays).toBe(5);expect(result.categories).toEqual(['new','category','यात्रा','café']);expect(existing.numberOfDays).toBe(3);
  });
- it('keeps Theme and uncollected budget values null without inventing currency or tier mapping',()=>{
+ it('stores Theme as the canonical collection type and keeps uncollected budget values null',()=>{
   const result=guideCollectionDetailsSchema.parse(guideWizardDetails({...form,guideType:'Theme',numberOfDays:null},{}));
-  expect(result.guideType).toBeNull();expect(result.estimatedBudget).toBeNull();expect(result.budgetCurrency).toBeNull();expect(result.budgetType).toBeNull();
+  expect(result.guideType).toBe('collection');expect(result.estimatedBudget).toBeNull();expect(result.budgetCurrency).toBeNull();expect(result.budgetType).toBeNull();
+  expect(result.budgetTier).toBeNull();
+ });
+ it.each([['Backpacker','backpacker'],['Budget','budget'],['Mid_Range','mid-range'],['Luxury','luxury'],['Ultra_Luxury','ultra-luxury']])('persists the optional %s budget tier',(choice,tier)=>{
+  expect(guideCollectionDetailsSchema.parse(guideWizardDetails({...form,budgetTier:choice},place)).budgetTier).toBe(tier);
+ });
+ it('leaves an unchosen or unknown budget tier null, and a cleared tier clears the stored one',()=>{
+  expect(guideWizardDetails({...form,budgetTier:null},place).budgetTier).toBeNull();
+  expect(guideWizardDetails({...form,budgetTier:'Cheap'},place).budgetTier).toBeNull();
+  const existing=guideCollectionDetailsSchema.parse({...guideWizardDetails(form,place),budgetTier:'luxury'});
+  expect(guideWizardDetails({...form,budgetTier:null},place,existing).budgetTier).toBeNull();
  });
 });

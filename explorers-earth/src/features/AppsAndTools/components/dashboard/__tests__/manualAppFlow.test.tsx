@@ -68,6 +68,12 @@ describe('native manual Apps', () => {
   mount(); fill('App title', 'No link');
   expect(screen.getByRole('button', { name: 'Save app' })).toBeDisabled();
   expect(AppsClient.observeCollection).not.toHaveBeenCalled();
+  // The field says it is required, and why Save is off, instead of leaving the owner guessing.
+  const url = screen.getByLabelText('App URL');
+  expect(url).toBeRequired();
+  expect(url).toHaveAccessibleDescription(/required.*save/i);
+  fill('App URL', 'https://example.com/link');
+  expect(screen.getByRole('button', { name: 'Save app' })).toBeEnabled();
  });
 
  it('waits for uploaded screenshot readiness before saving and sends them as ordered ids', async () => {

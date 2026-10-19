@@ -285,7 +285,8 @@
         "today": "Today"
       },
       "timePeriod": "Time Period:",
-      "title": "Analytics Dashboard"
+      "title": "Analytics Dashboard",
+      "countsNote": "Totals count visits, not unique visitors. Public pages are measured anonymously, without cookies."
     }
   },
   "auth": {
@@ -2064,7 +2065,8 @@
       "selectLanguage": "Select your language"
     },
     "subtitle": "Manage your account settings and preferences",
-    "title": "Settings"
+    "title": "Settings",
+    "dangerZone": "Danger zone"
   },
   "sidebar": {
     "analytics": "Analytics",

@@ -152,6 +152,27 @@ function readPage(body: any) {
 }
 
 describe("ticket 7.1 - public visibility against real PostgreSQL", () => {
+  it("reports each public category's public list count so an empty pinned tab can be hidden", async () => {
+    const seeded = await seedCollection(1);
+    await pool.query(`INSERT INTO account_category_settings(account_id,category,is_public,display_order,pinned_order)
+      VALUES($1,'guides',true,1,0),($1,'games',false,2,NULL)`, [seeded.account]);
+    await pool.query(`UPDATE account_category_settings SET pinned_order=1 WHERE account_id=$1 AND category='books'`, [seeded.account]);
+    const shell = async () => (await request(app).get(`/api/explorers/v1/profiles/${seeded.handle}`)).body;
+    const first = await shell();
+    // Guides is pinned and public but empty; Books has one public list; a private category reports nothing.
+    expect(first.public_navigation_counts).toEqual({ public_books: 1, public_guides: 0 });
+    expect(first.pinned_nav_tabs).toEqual(["public_guides", "public_books"]);
+    await pool.query(`INSERT INTO collections(account_id,category,title,slug,display_order,visibility,publication_state)
+      VALUES($1,'guides','Draft','draft-guide',0,'public','draft'),($1,'guides','Private','private-guide',1,'private','published')`, [seeded.account]);
+    expect((await shell()).public_navigation_counts.public_guides).toBe(0);
+    await pool.query(`UPDATE collections SET publication_state='published' WHERE account_id=$1 AND slug='draft-guide'`, [seeded.account]);
+    expect((await shell()).public_navigation_counts.public_guides).toBe(1);
+    await pool.query(`UPDATE collections SET archived_at=now() WHERE id=$1`, [seeded.collection]);
+    const archived = await shell();
+    expect(archived.public_navigation_counts.public_books).toBe(0);
+    expect(archived.pinned_nav_tabs).toEqual(["public_guides", "public_books"]);
+  });
+
   it("traverses 53 duplicate-ordered items as 53 unique IDs in deterministic order", async () => {
     const seeded = await seedCollection(53);
 

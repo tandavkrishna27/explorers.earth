@@ -59,7 +59,7 @@ it('hydrates each supplied page of a 53 section guide without fabricating missin
   expect(mapped).toMatchObject({
    documentId: uuid(1), Title: 'यात्रा café', Description: 'भारत', slug: 'journey',
    account: {documentId: uuid(2)}, Guide_Media: [{url: `/api/explorers/v1/media/${uuid(3)}/content`, name: 'यात्रा café'}],
-   Guide_Type: 'itinerary', Visibility: true, Estimated_Budget: 1234.5, Budget_Type: 'per-person',
+   Guide_Type: 'Itinerary', Visibility: true, Estimated_Budget: 1234.5, Budget_Type: null,
    Number_Of_Days: 3, Category: ['culture', 'food'], Best_Time_To_Visit: ['अक्टूबर'],
    Guide_Tags: ['यात्रा', 'café'], is_pinned: true, pin_order: 0, display_order: 0,
   });

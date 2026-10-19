@@ -80,7 +80,7 @@ async function readyMedia(accountId: string, salt: string, purpose = "guide") {
 
 const details = (over: Partial<GuideCollectionDetails> = {}): GuideCollectionDetails => ({
   guideType: "itinerary", multiCity: true, numberOfDays: 5, estimatedBudget: "42000.50", budgetCurrency: "INR",
-  budgetType: "per-person", bestTimeToVisit: ["October"], categories: ["Backwaters"], tags: ["slow"],
+  budgetType: "per-person", budgetTier: null, bestTimeToVisit: ["October"], categories: ["Backwaters"], tags: ["slow"],
   tipsNotes: {blocks: [{text: "Carry cash — ഒരു കാര്യം"}]},
   place: {name: "Kochi", address: "Kerala, India", placeId: "ChIJ1", rating: 4.6, ratingsCount: 12044, lat: 9.9312, lng: 76.2673},
   locationEntityId: null, ...over,
@@ -121,6 +121,18 @@ describePg("C6 guide aggregate", () => {
     const written = details();
     await tx(async (client) => writeGuideDetails(client, collection.id, accountId, await categoryRevision(accountId), written));
     expect(await readGuideDetails(pool, collection.id, accountId)).toEqual(written);
+  });
+
+  it("stores the optional budget tier, keeps an unset tier null, and refuses an unknown one", async () => {
+    const accountId = await account();
+    const collection = await guide(accountId);
+    const tiered = details({guideType: "collection", budgetTier: "mid-range"});
+    await tx(async (client) => writeGuideDetails(client, collection.id, accountId, await categoryRevision(accountId), tiered));
+    expect(await readGuideDetails(pool, collection.id, accountId)).toEqual(tiered);
+    await tx(async (client) => writeGuideDetails(client, collection.id, accountId, await categoryRevision(accountId), details()));
+    expect((await readGuideDetails(pool, collection.id, accountId))?.budgetTier).toBeNull();
+    await expect(pool.query("UPDATE guide_collection_details SET budget_tier='cheap' WHERE collection_id=$1", [collection.id]))
+      .rejects.toMatchObject({code: "23514"});
   });
 
   it("keeps a guides recommendation impossible, which is what stops a guide flattening into item rows", async () => {
@@ -443,12 +455,25 @@ describePg("C6 guide aggregate", () => {
       const served = result!.guides[0];
       expect(served).toMatchObject({Title: "Kerala in five days", Visibility: true, is_Multicity: true, Number_Of_Days: 5});
       expect(served.Estimated_Budget).toBe(42000.5);
+      // No tier was chosen, so none is shown; the type is shown by its wizard label.
+      expect(served.Budget_Type).toBeNull();
+      expect(served.Guide_Type).toBe("Itinerary");
       expect(served.guide_sections).toHaveLength(1);
       // 0-based in storage, 1-based to the public views.
       expect(served.guide_sections[0]).toMatchObject({Title: "Day one", Sequence: 1});
       expect(served.guide_sections[0].Timeline.morning[0].geometry).toEqual({location: {lat: 9.9658, lng: 76.2421}});
       expect(served.Guide_Section_Details)
         .toEqual([{documentId: served.guide_sections[0].documentId, Title: "Day one", Sequence: 1}]);
+    });
+
+    it("serves a Theme guide's type and budget tier by their wizard labels", async () => {
+      const accountId = await account();
+      const owner = handle();
+      const {collection} = await publishedGuide(accountId, owner);
+      await tx(async (client) => writeGuideDetails(client, collection.id, accountId, await categoryRevision(accountId),
+        details({guideType: "collection", budgetTier: "ultra-luxury"})));
+      const served = (await publicGuidesProjection(pool, owner, 12, undefined, collection.slug))!.guides[0];
+      expect(served).toMatchObject({Guide_Type: "Theme", Budget_Type: "Ultra_Luxury"});
     });
 
     it("omits a draft guide entirely rather than serving it unpublished", async () => {
