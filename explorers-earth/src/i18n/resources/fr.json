@@ -893,7 +893,9 @@
         "video": "Vidéo",
         "viewPublicProfile": "Navigate to Public Profile",
         "visible": "Visible",
-        "whatsappNumber": "Numéro WhatsApp"
+        "whatsappNumber": "Numéro WhatsApp",
+        "removeProfileImage": "Supprimer la photo de profil",
+        "removeCoverImage": "Supprimer l'image de couverture"
       },
       "publicProfile": {
         "accountTypes": {
@@ -2172,7 +2174,9 @@
       "usernameTooShort": "Le nom d'utilisateur est trop court. Veuillez choisir un nom d'utilisateur plus long.",
       "usernameUpdateFailed": "Échec de la mise à jour du nom d'utilisateur. Veuillez réessayer.",
       "validationError": "Erreur de validation. Veuillez vérifier votre saisie.",
-      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!"
+      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!",
+      "profileImageRemoveFailed": "Impossible de supprimer la photo de profil. Veuillez réessayer.",
+      "backgroundImageRemoveFailed": "Impossible de supprimer l'image de couverture. Veuillez réessayer."
     },
     "info": {
       "aborting": "Abandon...",
@@ -2304,7 +2308,9 @@
       "uploadingImagesToFeed": "Uploading selected images to your feed...",
       "usernameChanged": "Nom d'utilisateur modifié avec succès!",
       "usernameUpdated": "Nom d'utilisateur mis à jour avec succès!",
-      "welcomeMessage": "Bienvenue sur explorers!"
+      "welcomeMessage": "Bienvenue sur explorers!",
+      "profileImageRemoved": "Photo de profil supprimée.",
+      "backgroundImageRemoved": "Image de couverture supprimée."
     },
     "warning": {
       "accountExpiring": "Le compte expire. Veuillez mettre à jour votre compte",

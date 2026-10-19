@@ -893,7 +893,9 @@
         "video": "Video",
         "viewPublicProfile": "Navigate to Public Profile",
         "visible": "Sichtbar",
-        "whatsappNumber": "WhatsApp-Nummer"
+        "whatsappNumber": "WhatsApp-Nummer",
+        "removeProfileImage": "Profilfoto entfernen",
+        "removeCoverImage": "Titelbild entfernen"
       },
       "publicProfile": {
         "accountTypes": {
@@ -2172,7 +2174,9 @@
       "usernameTooShort": "Benutzername ist zu kurz. Bitte wählen Sie einen längeren Benutzernamen.",
       "usernameUpdateFailed": "Benutzername-Update fehlgeschlagen. Bitte versuchen Sie es erneut.",
       "validationError": "Validierungsfehler. Bitte überprüfen Sie Ihre Eingabe.",
-      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!"
+      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!",
+      "profileImageRemoveFailed": "Das Profilfoto konnte nicht entfernt werden. Bitte versuche es erneut.",
+      "backgroundImageRemoveFailed": "Das Titelbild konnte nicht entfernt werden. Bitte versuche es erneut."
     },
     "info": {
       "aborting": "Wird abgebrochen...",
@@ -2304,7 +2308,9 @@
       "uploadingImagesToFeed": "Uploading selected images to your feed...",
       "usernameChanged": "Benutzername erfolgreich geändert!",
       "usernameUpdated": "Benutzername erfolgreich aktualisiert!",
-      "welcomeMessage": "Willkommen bei explorers!"
+      "welcomeMessage": "Willkommen bei explorers!",
+      "profileImageRemoved": "Profilfoto entfernt.",
+      "backgroundImageRemoved": "Titelbild entfernt."
     },
     "warning": {
       "accountExpiring": "Konto läuft ab. Bitte aktualisieren Sie Ihr Konto",

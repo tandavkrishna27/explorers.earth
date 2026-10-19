@@ -1,3 +1,5 @@
+import RemoveMediaButton from "../features/Profile/components/RemoveMediaButton";
+import { isRevisionConflict } from "../lib/revisionConflict";
 import { reportProfileSaveError } from "../features/Profile/profileSaveError";
 import {
   memo,
@@ -13,7 +15,7 @@ import ProfileForm, {
   type FormSection,
 } from "../features/Profile/components/ProfileForm";
 import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
-import { buildBusinessPublicAddress, toProfileViewModel } from "../features/Profile/api/profileClient";
+import { buildBusinessPublicAddress, removeProfileMedia, toProfileViewModel } from "../features/Profile/api/profileClient";
 import useAuthStore from "../store/store";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -239,6 +241,8 @@ const Profile = memo(() => {
   const [uploadedImage, setUploadedImage] = useState<string>("");
   // local state for handling background image uploading
   const [uploadedBackground, setUploadedBackground] = useState<string>("");
+  // Set once the owner removes the image; it must not be re-adopted from the not-yet-refreshed account.
+  const [removedMedia, setRemovedMedia] = useState({ profile: false, background: false });
   const [mediaRevisionAdvance, setMediaRevisionAdvance] = useState<{
     accountId: string; fromRevision: number; toRevision: number;
   } | null>(null);
@@ -338,14 +342,17 @@ const Profile = memo(() => {
   const stableAccountScope =
     resolvedAccountScope ?? activeAccountScopeRef.current;
 
+  const profileImageUrl = removedMedia.profile ? "" : uploadedImage || account?.profile_picture?.url || "";
+  const coverImageUrl = removedMedia.background ? "" : uploadedBackground || account?.bg_picture?.url || "";
+
   // Prepare profile data for walkthrough — memoized to prevent new object on every render
   const profileData = useMemo(() => ({
-    profilePicture: uploadedImage || account?.profile_picture?.url || "",
-    coverImage: uploadedBackground || account?.bg_picture?.url || "",
+    profilePicture: profileImageUrl,
+    coverImage: coverImageUrl,
     accountName: account?.Account_Name || "",
     bio: account?.Bio || "",
     socialMedia: account?.social_media || {},
-  }), [uploadedImage, uploadedBackground, account?.profile_picture?.url, account?.bg_picture?.url, account?.Account_Name, account?.Bio, account?.social_media]);
+  }), [profileImageUrl, coverImageUrl, account?.Account_Name, account?.Bio, account?.social_media]);
 
   // Initialize walkthrough hook
   const {
@@ -382,14 +389,14 @@ const Profile = memo(() => {
       const serverProfileUrl = account.profile_picture?.url;
 
       // Only set if we don't already have a local uploaded version
-      if (serverBackgroundUrl && !uploadedBackground) {
+      if (serverBackgroundUrl && !uploadedBackground && !removedMedia.background) {
         setUploadedBackground(serverBackgroundUrl);
       }
-      if (serverProfileUrl && !uploadedImage) {
+      if (serverProfileUrl && !uploadedImage && !removedMedia.profile) {
         setUploadedImage(serverProfileUrl);
       }
     }
-  }, [account, uploadedBackground, uploadedImage]);
+  }, [account, uploadedBackground, uploadedImage, removedMedia]);
 
   const { isProfileComplete, isRecommendationsComplete, setSetupStatus, bindAccount } = useSetupStore();
 
@@ -1663,6 +1670,7 @@ const Profile = memo(() => {
           throw error;
         }
         setUploadedImage(media.url);
+        setRemovedMedia((value) => ({ ...value, profile: false }));
         await refetch();
         toast.success(t('toast.success.profileImageUpdated'));
         markProcessingComplete();
@@ -1679,6 +1687,27 @@ const Profile = memo(() => {
       toast.error(errorMessage);
       // Mark processing as complete even on error
       markProcessingComplete();
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemoveMedia = async (slot: "profile" | "background") => {
+    const current = accountQuery.data;
+    if (!current) return;
+    setIsUploading(true);
+    try {
+      // Based on the account this page is showing, like every other save from it.
+      const updated = await removeProfileMedia(slot, current);
+      setMediaRevisionAdvance({ accountId: current.id, fromRevision: current.revision, toRevision: updated.revision });
+      setRemovedMedia((value) => ({ ...value, [slot]: true }));
+      if (slot === "profile") setUploadedImage("");
+      else setUploadedBackground("");
+      await refetch();
+      toast.success(t(slot === "profile" ? "toast.success.profileImageRemoved" : "toast.success.backgroundImageRemoved"));
+    } catch (error) {
+      if (isRevisionConflict(error)) reportProfileSaveError(error, t);
+      else toast.error(t(slot === "profile" ? "toast.error.profileImageRemoveFailed" : "toast.error.backgroundImageRemoveFailed"));
     } finally {
       setIsUploading(false);
     }
@@ -1703,6 +1732,7 @@ const Profile = memo(() => {
           throw error;
         }
         setUploadedBackground(media.url);
+        setRemovedMedia((value) => ({ ...value, background: false }));
         await refetch();
         toast.success(t('toast.success.backgroundImageUpdated'));
         markProcessingComplete();
@@ -1757,11 +1787,7 @@ const Profile = memo(() => {
               <div 
                 className="absolute inset-0 h-full w-full overflow-hidden z-0"
                 style={{
-                  backgroundImage: uploadedBackground
-                    ? `url('${uploadedBackground}')`
-                    : account?.bg_picture?.url
-                      ? `url('${account.bg_picture.url}')`
-                      : `url('${IMAGE_CONFIG.defaultImages.background}')`,
+                  backgroundImage: `url('${coverImageUrl || IMAGE_CONFIG.defaultImages.background}')`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                 }}
@@ -1787,32 +1813,44 @@ const Profile = memo(() => {
                 <div className="relative w-28 h-28 md:w-36 md:h-36 mx-auto mb-4 group">
                   <div className="w-full h-full ring-4 ring-[hsl(var(--evergreen))] rounded-full overflow-hidden bg-black shadow-2xl">
                     <img
-                      src={
-                        uploadedImage ||
-                        account?.profile_picture?.url ||
-                        IMAGE_CONFIG.defaultImages.profile
-                      }
+                      src={profileImageUrl || IMAGE_CONFIG.defaultImages.profile}
                       alt={t('dashboard.profile.common.profile')}
                       className="w-full h-full object-cover"
                     />
                   </div>
                   
                   {/* Profile Picture Edit Button - Bottom Right */}
-                  <div className="absolute bottom-1 right-1 z-20" data-walkthrough="profile-picture">
+                  <div className="absolute bottom-1 right-1 z-20 flex flex-col items-center gap-2" data-walkthrough="profile-picture">
                     <ImageCropper
                       onFileUpload={handleImageUpload}
                       cropType="profileCrop"
                     />
+                    {profileImageUrl && (
+                      <RemoveMediaButton
+                        testId="remove-profile-image"
+                        label={t('dashboard.profile.common.removeProfileImage')}
+                        disabled={isUploading}
+                        onRemove={() => void handleRemoveMedia("profile")}
+                      />
+                    )}
                   </div>
                 </div>
 
                 {/* Background Edit Button - Bottom Right of the entire banner */}
-                <div className="absolute bottom-4 right-4 z-20" data-walkthrough="cover-image">
+                <div className="absolute bottom-4 right-4 z-20 flex flex-col items-center gap-2" data-walkthrough="cover-image">
                   <ImageCropper
                     onFileUpload={handleBackgroundUpload}
                     cropType="backgroundCrop"
                     buttonTitle={t('dashboard.profile.common.editImage')}
                   />
+                  {coverImageUrl && (
+                    <RemoveMediaButton
+                      testId="remove-cover-image"
+                      label={t('dashboard.profile.common.removeCoverImage')}
+                      disabled={isUploading}
+                      onRemove={() => void handleRemoveMedia("background")}
+                    />
+                  )}
                 </div>
 
                 {/* View Public Profile Navigation Button - Top Right */}
@@ -2003,8 +2041,8 @@ const Profile = memo(() => {
             <PreviewModal
               isOpen={showPreview}
               onClose={() => setShowPreview(false)}
-              uploadedBackground={uploadedBackground}
-              uploadedImage={uploadedImage}
+              uploadedBackground={coverImageUrl}
+              uploadedImage={profileImageUrl}
               userData={{
                 bgPicture: account?.bg_picture?.url,
                 profilePicture: account?.profile_picture?.url,

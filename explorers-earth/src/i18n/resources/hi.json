@@ -895,7 +895,9 @@
         "video": "वीडियो",
         "viewPublicProfile": "Navigate to Public Profile",
         "visible": "दृश्यमान",
-        "whatsappNumber": "WhatsApp नंबर"
+        "whatsappNumber": "WhatsApp नंबर",
+        "removeProfileImage": "प्रोफ़ाइल फ़ोटो हटाएँ",
+        "removeCoverImage": "कवर इमेज हटाएँ"
       },
       "publicProfile": {
         "accountTypes": {
@@ -2174,7 +2176,9 @@
       "usernameTooShort": "उपयोगकर्ता नाम बहुत छोटा है। कृपया एक लंबा उपयोगकर्ता नाम चुनें।",
       "usernameUpdateFailed": "उपयोगकर्ता नाम अपडेट असफल। कृपया पुनः प्रयास करें।",
       "validationError": "सत्यापन त्रुटि। कृपया अपना इनपुट जांचें।",
-      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!"
+      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!",
+      "profileImageRemoveFailed": "प्रोफ़ाइल फ़ोटो नहीं हटाई जा सकी। कृपया फिर कोशिश करें।",
+      "backgroundImageRemoveFailed": "कवर इमेज नहीं हटाई जा सकी। कृपया फिर कोशिश करें।"
     },
     "info": {
       "aborting": "रोक रहा है...",
@@ -2306,7 +2310,9 @@
       "uploadingImagesToFeed": "चयनित छवियां आपकी फीड में अपलोड की जा रही हैं...",
       "usernameChanged": "उपयोगकर्ता नाम सफलतापूर्वक बदला!",
       "usernameUpdated": "उपयोगकर्ता नाम सफलतापूर्वक अपडेट!",
-      "welcomeMessage": "explorers में आपका स्वागत है!"
+      "welcomeMessage": "explorers में आपका स्वागत है!",
+      "profileImageRemoved": "प्रोफ़ाइल फ़ोटो हटा दी गई।",
+      "backgroundImageRemoved": "कवर इमेज हटा दी गई।"
     },
     "warning": {
       "accountExpiring": "खाता समाप्त हो रहा है। कृपया अपना खाता अपडेट करें",

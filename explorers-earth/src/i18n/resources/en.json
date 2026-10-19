@@ -915,7 +915,9 @@
         "video": "Video",
         "viewPublicProfile": "Navigate to Public Profile",
         "visible": "Visible",
-        "whatsappNumber": "WhatsApp Number"
+        "whatsappNumber": "WhatsApp Number",
+        "removeProfileImage": "Remove profile photo",
+        "removeCoverImage": "Remove cover image"
       },
       "publicProfile": {
         "accountTypes": {
@@ -2303,7 +2305,9 @@
       "usernameUpdateFailed": "Username update failed. Please try again.",
       "validationError": "Validation error. Please check your input.",
       "placePhotoLimit": "A place can hold up to {{limit}} photos. Remove {{count}} to continue.",
-      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!"
+      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!",
+      "profileImageRemoveFailed": "Couldn't remove the profile photo. Please try again.",
+      "backgroundImageRemoveFailed": "Couldn't remove the cover image. Please try again."
     },
     "info": {
       "aborting": "Aborting...",
@@ -2435,7 +2439,9 @@
       "uploadingImagesToFeed": "Uploading selected images to your feed...",
       "usernameChanged": "Username changed successfully!",
       "usernameUpdated": "Username updated successfully!",
-      "welcomeMessage": "Welcome to explorers!"
+      "welcomeMessage": "Welcome to explorers!",
+      "profileImageRemoved": "Profile photo removed.",
+      "backgroundImageRemoved": "Cover image removed."
     },
     "warning": {
       "accountExpiring": "Account is expiring. Please update your account",

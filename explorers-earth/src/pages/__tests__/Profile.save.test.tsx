@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { accountScope, harness, mutationSubmit, toastError, toastSuccess } = vi.hoisted(() => ({
+const { accountScope, harness, mutationSubmit, removeMedia, toastError, toastSuccess } = vi.hoisted(() => ({
   accountScope: {
     current: {
       documentId: "account-1",
@@ -31,6 +31,7 @@ const { accountScope, harness, mutationSubmit, toastError, toastSuccess } = vi.h
     walkthroughEnabled: false,
   },
   mutationSubmit: vi.fn(),
+  removeMedia: vi.fn(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
 }));
@@ -45,6 +46,7 @@ vi.mock("../../features/Profile/api/useCanonicalAccount", () => ({
 vi.mock("../../features/Profile/api/profileClient", async (importOriginal) => ({
   ...await importOriginal<typeof import("../../features/Profile/api/profileClient")>(),
   toProfileViewModel: () => accountScope.current,
+  removeProfileMedia: removeMedia,
 }));
 
 vi.mock("react-i18next", () => ({
@@ -716,5 +718,64 @@ describe("Profile save orchestration", () => {
 
     expect(harness.profileFormProps.initialValues.gmailLink).toBe("not-an-email");
     expect(screen.queryByTestId("gmail-preview-icon")).toBeNull();
+  });
+  it("shows the changed-elsewhere message with Reload, not the generic error, when another tab saved first", async () => {
+    mutationSubmit.mockRejectedValue(Object.assign(new Error("Account changed"), { status: 409, code: "CONFLICT" }));
+    render(<Profile />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Submit profile" }));
+    await expect(harness.lastSubmit).resolves.toEqual({ status: "failed" });
+
+    expect(toastError).toHaveBeenCalledTimes(1);
+    expect(toastError).toHaveBeenCalledWith(
+      "conflict.changedElsewhere",
+      expect.objectContaining({ action: expect.objectContaining({ label: "conflict.reload" }) }),
+    );
+    expect(toastError).not.toHaveBeenCalledWith("dashboard.profile.common.unexpectedError");
+  });
+
+  describe("removing the profile photo and cover image", () => {
+    beforeEach(() => {
+      removeMedia.mockReset();
+      removeMedia.mockImplementation(async (_slot: string, account: { revision: number }) => ({ revision: account.revision + 1 }));
+    });
+
+    it("offers Remove only when there is an image to remove", () => {
+      render(<Profile />);
+      expect(screen.queryByTestId("remove-profile-image")).toBeNull();
+      expect(screen.queryByTestId("remove-cover-image")).toBeNull();
+    });
+
+    it("detaches the photo and the cover from the account being shown", async () => {
+      accountScope.current = {
+        ...accountScope.current,
+        profile_picture: { url: "/api/explorers/v1/media/p/content" },
+        bg_picture: { url: "/api/explorers/v1/media/b/content" },
+      };
+      render(<Profile />);
+
+      fireEvent.click(screen.getByTestId("remove-profile-image"));
+      await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("toast.success.profileImageRemoved"));
+      fireEvent.click(screen.getByTestId("remove-cover-image"));
+      await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("toast.success.backgroundImageRemoved"));
+
+      expect(removeMedia.mock.calls.map(([slot, shown]) => [slot, shown.revision])).toEqual([["profile", 1], ["background", 1]]);
+      // Even before the account refresh lands, the page shows the default and offers nothing to remove.
+      expect(screen.queryByTestId("remove-profile-image")).toBeNull();
+      expect(screen.queryByTestId("remove-cover-image")).toBeNull();
+    });
+
+    it("says so when removal loses to another tab, and otherwise reports the failure", async () => {
+      accountScope.current = { ...accountScope.current, profile_picture: { url: "/api/explorers/v1/media/p/content" } };
+      render(<Profile />);
+
+      removeMedia.mockRejectedValueOnce(Object.assign(new Error("Account changed"), { status: 409, code: "CONFLICT" }));
+      fireEvent.click(screen.getByTestId("remove-profile-image"));
+      await waitFor(() => expect(toastError).toHaveBeenCalledWith("conflict.changedElsewhere", expect.anything()));
+
+      removeMedia.mockRejectedValueOnce(new Error("offline"));
+      fireEvent.click(screen.getByTestId("remove-profile-image"));
+      await waitFor(() => expect(toastError).toHaveBeenCalledWith("toast.error.profileImageRemoveFailed"));
+    });
   });
 });

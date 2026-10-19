@@ -84,3 +84,24 @@ export async function getProfile(): Promise<{ account: AccountDto; view: KeyValu
   const account = await explorersApiClient.getMyProfile();
   return { account, view: toProfileViewModel(account) };
 }
+
+/**
+ * Removes the profile photo or the cover image. The account is detached from the asset in
+ * one revision-checked save (null is the server's "clear", which also checks the account
+ * owns the slot), so the public profile falls back to the default at once. The detached
+ * asset is then deleted best-effort: a failure there only leaves an unreferenced file for
+ * the media cleanup, never a profile that still shows the removed picture.
+ */
+export async function removeProfileMedia(
+  slot: "profile" | "background",
+  account: Pick<AccountDto, "revision" | "profileImage" | "backgroundImage">,
+  api: Pick<typeof explorersApiClient, "updateAccount" | "deleteMedia"> = explorersApiClient,
+): Promise<AccountDto> {
+  const detached = slot === "profile" ? account.profileImage : account.backgroundImage;
+  const updated = await api.updateAccount({
+    expectedRevision: account.revision,
+    ...(slot === "profile" ? { profileImageId: null } : { backgroundImageId: null }),
+  });
+  if (detached) await api.deleteMedia(detached.id).catch(() => undefined);
+  return updated;
+}
