@@ -1,3 +1,4 @@
+import {shareOwnerRead} from '../../../lib/sharedOwnerRead';
 import {PlacesClient,type CompletePlacesOwnerContent} from './placesClient';
 import {placesViewModel,type PlacesOwnerView} from './placesViewModel';
 import {ExplorersApiError,type RecommendationObservation,type CollectionObservation} from '../../../lib/explorersApiClient';
@@ -15,7 +16,9 @@ export type PlacesOwnerContent={
  observation:CompletePlacesOwnerContent;view:Readonly<PlacesOwnerView>;
  lists:ReadonlyMap<string,CollectionObservation>;details:ReadonlyMap<string,RecommendationObservation>;
 };
-export async function readPlacesOwnerContent(signal?:AbortSignal):Promise<PlacesOwnerContent>{
+/** Concurrent readers on one page share one read (see shareOwnerRead). */
+export function readPlacesOwnerContent(signal?:AbortSignal):Promise<PlacesOwnerContent>{return shareOwnerRead('places',signal,shared=>readPlacesOwnerContentOnce(shared));}
+async function readPlacesOwnerContentOnce(signal?:AbortSignal):Promise<PlacesOwnerContent>{
  const controller=new AbortController();let terminal=false,firstError:unknown;
  const forwardAbort=()=>controller.abort(signal?.reason);signal?.addEventListener('abort',forwardAbort,{once:true});if(signal?.aborted)forwardAbort();
  const fail=(error:unknown):never=>{if(!terminal){terminal=true;firstError=error;controller.abort(error);}throw firstError;};

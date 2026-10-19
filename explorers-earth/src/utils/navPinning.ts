@@ -40,6 +40,17 @@ function isTabVisible(account: AccountLike | null | undefined, tabId: string): b
 }
 
 // The set of tab ids currently visible on the public nav (includes public_profile).
+// The public shell reports how many public lists (guides, for Guides) each category has.
+// A category with none is empty for a visitor: its tab is hidden, but the owner's pin is
+// kept, so the tab comes back as soon as something is published. Unknown counts (the
+// owner's own account, or an older shell) hide nothing.
+function hasPublicContent(account: AccountLike | null | undefined, tabId: string): boolean {
+  if (tabId === PROFILE_TAB) return true;
+  const counts = account?.public_navigation_counts;
+  if (!counts || typeof counts !== "object" || Array.isArray(counts)) return true;
+  return (counts as Record<string, unknown>)[tabId] !== 0;
+}
+
 export function getVisibleNavTabIds(account: AccountLike | null | undefined): Set<string> {
   const visible = new Set<string>([PROFILE_TAB]);
   for (const tabId of NAV_TAB_ORDER) {
@@ -70,7 +81,7 @@ export function computePinnedNavTabIds(
   account: AccountLike | null | undefined,
   countMap: Record<string, number>,
 ): string[] {
-  const visible = getVisibleNavTabIds(account);
+  const visible = new Set([...getVisibleNavTabIds(account)].filter((id) => hasPublicContent(account, id)));
 
   if (resolveAutoPinning(account)) {
     // Auto mode: profile first, then visible categories ranked by list count

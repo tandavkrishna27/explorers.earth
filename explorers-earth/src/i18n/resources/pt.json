@@ -263,7 +263,8 @@
         "today": "Hoje"
       },
       "timePeriod": "Período de Tempo:",
-      "title": "Dashboard de Analytics"
+      "title": "Dashboard de Analytics",
+      "countsNote": "Os totais contam visitas, não visitantes únicos. As páginas públicas são medidas de forma anônima, sem cookies."
     }
   },
   "auth": {
@@ -1934,7 +1935,8 @@
       "selectLanguage": "Selecione seu idioma"
     },
     "subtitle": "Gerencie as configurações e preferências da sua conta",
-    "title": "Configurações"
+    "title": "Configurações",
+    "dangerZone": "Zona de perigo"
   },
   "sidebar": {
     "analytics": "Análises",

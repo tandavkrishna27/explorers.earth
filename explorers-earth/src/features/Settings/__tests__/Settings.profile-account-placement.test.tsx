@@ -288,8 +288,6 @@ describe("Settings moved profile data placement", async () => {
     await waitFor(() => expect(navigation.mutate).toHaveBeenCalledTimes(1));
     navigation.accountId = SECOND_ACCOUNT;
     loginSurface("u1", SECOND_ACCOUNT);
-    fireEvent.click(screen.getByRole("tab", { name: "Billing" }));
-    fireEvent.click(screen.getByRole("tab", { name: "Account" }));
     await view.rerender(<Settings />);
     expect(screen.getByRole("checkbox", { name: "Pin Books Tab" })).not.toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Pin Books Tab" })).toBeEnabled();
@@ -338,24 +336,13 @@ describe("Settings moved profile data placement", async () => {
     expect(screen.getByRole("checkbox", { name: "Pin Places Tab" })).toBeEnabled();
     expect(navigation.mutate).toHaveBeenCalledTimes(1);
   });
-  it("places private identity in Account and billing address in Billing", async () => {
+  it("shows the account settings and no leftover Billing tab", async () => {
     await render(<Settings />);
 
-    expect(screen.getByRole("tab", { name: "Account" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
     expect(screen.getByTestId("moved-account")).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Billing" })).toBeNull();
+    expect(screen.queryByRole("tablist")).toBeNull();
     expect(screen.queryByTestId("moved-billing")).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("tab", { name: "Billing" }));
-
-    expect(screen.getByRole("tab", { name: "Billing" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-    expect(screen.getByTestId("moved-billing")).toBeInTheDocument();
-    expect(screen.queryByTestId("moved-account")).not.toBeInTheDocument();
   });
 });
 

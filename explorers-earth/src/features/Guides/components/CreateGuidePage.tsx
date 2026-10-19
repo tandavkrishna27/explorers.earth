@@ -499,7 +499,7 @@ const CreateGuidePage = ({
             })()
           : {};
 
-      const details = guideWizardDetails(formData, placeSnapshot);
+      const details = guideWizardDetails({...formData, budgetTier: formData.budgetType}, placeSnapshot);
 
       let resultDocumentId: string;
 
@@ -516,7 +516,7 @@ const CreateGuidePage = ({
         }, crypto.randomUUID());
         let current = await GuidesClient.observeWholeGuide(guideId);
         current = await GuidesClient.writeDetails(GuidesClient.prepareIntent(current),
-          guideWizardDetails(formData, placeSnapshot, current.aggregate.details));
+          guideWizardDetails({...formData, budgetTier: formData.budgetType}, placeSnapshot, current.aggregate.details));
 
         // The cover is uploaded and only then attached, so a failed upload leaves the
         // existing cover in place. The Strapi path deleted the old file first, which is

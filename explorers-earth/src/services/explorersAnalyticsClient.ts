@@ -21,8 +21,14 @@ export interface ExplorersAnalyticsEventPayload {
   referrerOrigin?: string;
 }
 
+/**
+ * First-party public-page events are anonymous (`basis: 'anonymous-v1'`): the browser keeps
+ * no cookie, storage entry or visitor ID for them, the request carries no credentials, and
+ * the server keeps only the country it derives from the address, never the address itself.
+ * Cookie-based analytics (GA/Clarity) stay behind the consent banner; see hasAnalyticsConsent.
+ */
 export interface ExplorersAnalyticsWritePayload {
-  consent: true;
+  basis: 'anonymous-v1';
   eventId: string;
   accountId: string;
   locationId?: string | null;
@@ -107,11 +113,12 @@ export async function postExplorersAnalyticsEvent(
   let pendingPolls = 0;
 
   while (true) {
-    if (!hasAnalyticsConsent()) throw new Error('Analytics consent withdrawn');
     try {
       const response = await analyticsFetch(endpoint(baseUrl), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        // No cookies ride along: an anonymous event must not be joinable to a session.
+        credentials: 'omit',
         referrerPolicy: 'no-referrer',
         body,
         signal: AbortSignal.timeout(10_000),

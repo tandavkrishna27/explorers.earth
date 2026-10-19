@@ -20,11 +20,12 @@ it('actual original creation body refuses status, oversized bytes and incomplete
  for(const value of [response(Buffer.from('{}'),200),response(Buffer.alloc(65537)),response(Buffer.from('{}'),201,'failed')])await expect(read(value,201)).rejects.toThrow();
  expect(createCollectionResultSchema.safeParse({id:'not-a-uuid'}).success).toBe(false);
 });
-it('wizard selectors match actual native controls including required budget and creator categories',()=>{
+it('wizard selectors match actual native controls including the optional budget and creator categories',()=>{
  const root=resolve(import.meta.dirname,'../../../..','explorers-earth/src/features/Guides/components');
  const one=readFileSync(resolve(root,'CreateGuideStep1.tsx'),'utf8'),two=readFileSync(resolve(root,'CreateGuideStep2.tsx'),'utf8'),three=readFileSync(resolve(root,'CreateGuideStep3.tsx'),'utf8');
  for(const label of ['Search for a location','Use entered location','Itinerary'])expect(one).toContain(label);
- for(const label of ['Search and select categories...','Add more categories...','Add &ldquo;','Search and select months...','Select budget type...','October','Please select a budget type'])expect(two).toContain(label);
+ for(const label of ['Search and select categories...','Add more categories...','Add &ldquo;','Search and select months...','Select budget type...','October','(optional)'])expect(two).toContain(label);
+ expect(two).not.toContain('Please select a budget type');
  expect(three).toContain('Enter guide title');expect(three).toContain('TiptapEditor');
 });
 function actualScope(){const ast=source(),fn=ast.statements.find(n=>ts.isFunctionDeclaration(n)&&n.name?.text==='assertCreationPersistedScope');expect(fn).toBeDefined();const js=ts.transpileModule(fn!.getText(ast),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;return new Function('expect',js+';return assertCreationPersistedScope;')(expect);}

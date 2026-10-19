@@ -20,6 +20,7 @@ import TopGamesManager from "./TopGamesManager";
 import Switch from "../../../../components/ui/Switch";
 import GameDetailModal from "../public/GameDetailModal";
 import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
+import QrCardTagline from "../../../../components/QrCardTagline";
 
 const VITE_BASE_URL = import.meta.env.VITE_BASE_URL || window.location.origin;
 
@@ -286,9 +287,7 @@ const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () => void 
                   <div className="p-2 bg-white rounded-lg shadow-md mb-3">
                     <QRCodeSVG id="game-qr" value={shareUrl} size={90} />
                   </div>
-                  <p className="bg-amber-100 text-amber-900 px-4 py-1.5 font-poppins rounded-full text-[11px] font-semibold whitespace-nowrap">
-                    Travel like a local
-                  </p>
+                  <QrCardTagline className="bg-amber-100 text-amber-900 px-4 py-1.5 font-poppins rounded-full text-[11px] font-semibold whitespace-nowrap" />
                 </div>
               </div>
             </div>

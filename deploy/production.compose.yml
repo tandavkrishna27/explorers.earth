@@ -20,7 +20,7 @@ name: explorers-canonical
 # migration chain this image bundles (EXPECTED_MUSIC_MIGRATION_ID in
 # tunes/shared/music-migration-contract.ts): the gate refuses any other value, and
 # production-compose.test.ts fails until the two agree.
-x-migration-marker: &migration-marker 0059_explorers_person_suppression_audit
+x-migration-marker: &migration-marker 0060_explorers_guide_budget_tier
 
 x-logging: &logging
   driver: json-file

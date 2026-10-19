@@ -158,7 +158,7 @@ export function setupExplorersAnalyticsRoutes(
     }
 
     try {
-      if (!parsed.data.consent) {
+      if (parsed.data.basis !== "anonymous-v1" && parsed.data.consent !== true) {
         await dependencies.service.ingest(parsed.data, {
           getIp: () => null,
         });

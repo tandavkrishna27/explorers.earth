@@ -430,6 +430,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/ProfileSetupAccordion.tsx
 !explorers-earth/src/components/ProtectedRoute.tsx
 !explorers-earth/src/components/PublicNav.tsx
+!explorers-earth/src/components/QrCardTagline.tsx
 !explorers-earth/src/components/RouteLoader.tsx
 !explorers-earth/src/components/SEO.tsx
 !explorers-earth/src/components/ScrollToTop.tsx
@@ -972,6 +973,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/lib/publicRuntimeContract.ts
 !explorers-earth/src/lib/queryClient.ts
 !explorers-earth/src/lib/sessionBootstrap.ts
+!explorers-earth/src/lib/sharedOwnerRead.ts
 !explorers-earth/src/lib/utils.ts
 !explorers-earth/src/main.tsx
 !explorers-earth/src/pages/About.tsx

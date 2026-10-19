@@ -1,4 +1,4 @@
-import {GUIDE_SECTION_BLOCK_VERSION} from '../../../../../tunes/shared/explorersGuideContract';
+import {GUIDE_BUDGET_TIER_LABELS, GUIDE_SECTION_BLOCK_VERSION, GUIDE_TYPE_LABELS} from '../../../../../tunes/shared/explorersGuideContract';
 import type {
  GuideAggregateDto, GuideBudgetPlace, GuideDayPlace, GuideSectionBlocks, GuideSectionDto, GuideTransportSegment,
 } from '../../../../../tunes/shared/explorersGuideContract';
@@ -199,10 +199,11 @@ export function toGuide(collection: OwnerCollectionDto, aggregate: GuideAggregat
   documentId: collection.id,
   Title: collection.title,
   ...(collection.description === null ? {} : {Description: collection.description}),
-  ...(details.guideType === null ? {} : {Guide_Type: details.guideType}),
+  ...(details.guideType === null ? {} : {Guide_Type: GUIDE_TYPE_LABELS[details.guideType]}),
   Visibility: collection.visibility === 'public',
   ...(details.estimatedBudget === null ? {} : {Estimated_Budget: toNumber(details.estimatedBudget)}),
-  Budget_Type: details.budgetType,
+  // The guide surfaces show and filter on the tier under its legacy name.
+  Budget_Type: details.budgetTier === null ? null : GUIDE_BUDGET_TIER_LABELS[details.budgetTier],
   is_Multicity: details.multiCity,
   slug: collection.slug,
   ...(aggregate.coverMediaId === null ? {} : {Guide_Media: [{url: mediaContentUrl(aggregate.coverMediaId), name: collection.title}]}),

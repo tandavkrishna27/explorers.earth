@@ -81,7 +81,7 @@ const trustedPathEntries = process.platform === "win32"
   : [resolveTrustedSystemDirectory("system tools", "/usr/bin"), resolveTrustedSystemDirectory("base system tools", "/bin")];
 const source = "https://github.com/explorers-earth/explorers.earth";
 const containment = "d226f7e4dc5a54195a59804ec729f72b5e8f10d7";
-const marker = "0059_explorers_person_suppression_audit";
+const marker = "0060_explorers_guide_budget_tier";
 const resourceScope = "music-c10-release";
 let project = "";
 let registryContainer = "";

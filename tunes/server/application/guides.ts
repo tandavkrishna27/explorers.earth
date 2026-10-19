@@ -102,7 +102,7 @@ export class GuideService {
     // A guide with no details row yet reads as an empty guide rather than a 404, because
     // the collection exists the moment it is created and the wizard fills it afterwards.
     details:details??{
-     guideType:null,multiCity:false,numberOfDays:null,estimatedBudget:null,budgetCurrency:null,budgetType:null,
+     guideType:null,multiCity:false,numberOfDays:null,estimatedBudget:null,budgetCurrency:null,budgetType:null,budgetTier:null,
      bestTimeToVisit:[],categories:[],tags:[],tipsNotes:null,
      place:{name:null,address:null,placeId:null,rating:null,ratingsCount:null,lat:null,lng:null},
      locationEntityId:null,

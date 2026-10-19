@@ -265,7 +265,7 @@ export const placeCollectionDetails=pgTable('place_collection_details',{
 export const guideCollectionDetails=pgTable('guide_collection_details',{
  collectionId:uuid('collection_id').primaryKey(),accountId:uuid('account_id').notNull(),category:text('category').notNull().default('guides'),
  guideType:text('guide_type'),multiCity:boolean('multi_city').notNull().default(false),numberOfDays:integer('number_of_days'),
- estimatedBudget:numeric('estimated_budget',{precision:14,scale:2}),budgetCurrency:text('budget_currency'),budgetType:text('budget_type'),
+ estimatedBudget:numeric('estimated_budget',{precision:14,scale:2}),budgetCurrency:text('budget_currency'),budgetType:text('budget_type'),budgetTier:text('budget_tier'),
  bestTimeToVisit:jsonb('best_time_to_visit').notNull().default(sql`'[]'::jsonb`),categories:jsonb('categories').notNull().default(sql`'[]'::jsonb`),
  tags:jsonb('tags').notNull().default(sql`'[]'::jsonb`),tipsNotes:jsonb('tips_notes'),
  placeSnapshot:jsonb('place_snapshot').notNull().default(sql`'{}'::jsonb`),

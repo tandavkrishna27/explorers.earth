@@ -127,6 +127,9 @@ describe('native manual Products', () => {
   mount(); fill('Title', 'No link');
   expect(screen.getByRole('button', {name: 'Save product'})).toBeDisabled();
   expect(ProductsClient.observeCollection).not.toHaveBeenCalled();
+  const url = screen.getByLabelText('Product URL');
+  expect(url).toBeRequired();
+  expect(url).toHaveAccessibleDescription(/required.*save/i);
  });
 
  it('waits for uploaded snapshot readiness before saving', async () => {
@@ -163,6 +166,16 @@ describe('native manual Products', () => {
   expect(ProductsClient.prepareManualIntent).not.toHaveBeenCalled();
   expect(ProductsClient.createManual).not.toHaveBeenCalled();
   expect(screen.getByLabelText('Title')).toHaveValue('');
+ });
+
+ it('describes deleting a list as archiving it, which is what the command does', () => {
+  fixture.content.view.lists = [{documentId: 'list-1', List_Name: 'Gear', slug: 'gear', Visibility: true, recommended_products: [], account: {documentId: 'a1', username: 'owner'}}];
+  render(<MockedProvider><MemoryRouter initialEntries={['/recommendations/products/list-1']}><Routes><Route path="/recommendations/products/:listId" element={<ProductListView />} /></Routes></MemoryRouter></MockedProvider>);
+  fireEvent.click(screen.getByRole('button', {name: 'manage'}));
+  fireEvent.click(screen.getByRole('button', {name: 'Archive'}));
+  expect(screen.getByRole('heading', {name: 'Archive list?'})).toBeInTheDocument();
+  expect(screen.getByText(/archives "Gear"/)).toBeInTheDocument();
+  expect(screen.queryByText(/permanently delete/i)).toBeNull();
  });
 
  it('offers explicit recommendation publication without inheriting the list publication', async () => {

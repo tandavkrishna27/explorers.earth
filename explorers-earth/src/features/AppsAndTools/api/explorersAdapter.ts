@@ -1,3 +1,4 @@
+import {shareOwnerRead} from '../../../lib/sharedOwnerRead';
 import {AppsClient,type CompleteAppsOwnerContent} from './appsClient';
 import {appsViewModel,type AppOwnerView} from './appsViewModel';
 import {ExplorersApiError,type RecommendationObservation} from '../../../lib/explorersApiClient';
@@ -8,7 +9,9 @@ import useAuthStore from '../../../store/store';
 // The category observation is re-read after the details so a concurrent edit cannot be
 // mapped into a view that claims to be a consistent snapshot.
 export type AppsOwnerContent={observation:CompleteAppsOwnerContent;view:Readonly<AppOwnerView>;details:ReadonlyMap<string,RecommendationObservation>};
-export async function readAppsOwnerContent(signal?:AbortSignal):Promise<AppsOwnerContent>{
+/** Concurrent readers on one page share one read (see shareOwnerRead). */
+export function readAppsOwnerContent(signal?:AbortSignal):Promise<AppsOwnerContent>{return shareOwnerRead('apps',signal,shared=>readAppsOwnerContentOnce(shared));}
+async function readAppsOwnerContentOnce(signal?:AbortSignal):Promise<AppsOwnerContent>{
  const controller=new AbortController();let terminal=false,firstError:unknown;
  const forwardAbort=()=>controller.abort(signal?.reason);signal?.addEventListener('abort',forwardAbort,{once:true});if(signal?.aborted)forwardAbort();
  const fail=(error:unknown):never=>{if(!terminal){terminal=true;firstError=error;controller.abort(error);}throw firstError;};

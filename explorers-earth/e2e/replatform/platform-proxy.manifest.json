@@ -145,7 +145,7 @@
     {
       "file": "analytics.spec.ts",
       "project": "analytics-desktop",
-      "title": "consent absent and normalized owner produce zero persisted events"
+      "title": "no consent still records one anonymous event and the owner records none"
     },
     {
       "file": "analytics.spec.ts",
@@ -160,7 +160,7 @@
     {
       "file": "analytics.spec.ts",
       "project": "analytics-desktop",
-      "title": "consent withdrawal after committed lost acknowledgement stops retry"
+      "title": "withdrawn cookie consent does not stop the anonymous retry or duplicate it"
     },
     {
       "file": "analytics.spec.ts",
@@ -170,7 +170,7 @@
     {
       "file": "analytics.spec.ts",
       "project": "analytics-mobile",
-      "title": "consent absent and normalized owner produce zero persisted events"
+      "title": "no consent still records one anonymous event and the owner records none"
     },
     {
       "file": "analytics.spec.ts",
@@ -185,7 +185,7 @@
     {
       "file": "analytics.spec.ts",
       "project": "analytics-mobile",
-      "title": "consent withdrawal after committed lost acknowledgement stops retry"
+      "title": "withdrawn cookie consent does not stop the anonymous retry or duplicate it"
     },
     {
       "file": "analytics.spec.ts",

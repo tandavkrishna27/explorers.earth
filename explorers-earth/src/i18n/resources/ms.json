@@ -263,7 +263,8 @@
         "today": "Hari Ini"
       },
       "timePeriod": "Tempoh Masa:",
-      "title": "Papan Pemuka Analitik"
+      "title": "Papan Pemuka Analitik",
+      "countsNote": "Jumlah mengira lawatan, bukan pelawat unik. Halaman awam diukur secara tanpa nama, tanpa kuki."
     }
   },
   "auth": {
@@ -1934,7 +1935,8 @@
       "selectLanguage": "Pilih bahasa anda"
     },
     "subtitle": "Urus tetapan dan keutamaan akaun anda",
-    "title": "Tetapan"
+    "title": "Tetapan",
+    "dangerZone": "Zon bahaya"
   },
   "sidebar": {
     "analytics": "Analitik",
