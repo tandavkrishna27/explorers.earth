@@ -1,7 +1,7 @@
 import type { Pool } from "pg";
 import { accountDtoSchema, updateAccountRequestSchema, type AccountDto, type RequestContext,
   type RevisionInput, type UpdateAccountInput } from "../../shared/explorersContract";
-import { isReservedHandle } from "../../shared/explorersReservedHandles";
+import { handleRuleViolations } from "../../shared/explorersReservedHandles";
 import type { Actor } from "./actor";
 import { authorizeOperation } from "./authorization";
 import { AccountConflict, AccountInvalidAttachment, ExplorersAccountRepository } from "../repositories/explorersAccountRepository";
@@ -24,8 +24,7 @@ export class ProfileService {
     const normalized = { ...parsed.data };
     if (typeof normalized.handle === "string") {
       normalized.handle = normalized.handle.toLowerCase();
-      if (!/^[a-z][a-z0-9-]{2,29}$/.test(normalized.handle) || normalized.handle.includes("--")
-        || normalized.handle.endsWith("-") || isReservedHandle(normalized.handle)) throw new ProfileInputError("Handle is unavailable");
+      if (handleRuleViolations(normalized.handle).length > 0) throw new ProfileInputError("Handle is unavailable");
     }
     const { expectedRevision, ...editable } = normalized;
     try { return accountDtoSchema.parse(await this.repository.update(actor.accountId, editable, expectedRevision)); }

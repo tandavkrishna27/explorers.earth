@@ -1,4 +1,9 @@
-import { isReservedHandle } from '../../../tunes/shared/explorersReservedHandles';
+import {
+  handleRuleViolations,
+  RESERVED_WORDS,
+  PROFANITY_WORDS,
+  type HandleRuleCode,
+} from '../../../tunes/shared/explorersReservedHandles';
 
 /**
  * USERNAME VALIDATION UTILITY
@@ -11,7 +16,7 @@ import { isReservedHandle } from '../../../tunes/shared/explorersReservedHandles
  * 2. Length: 3-30 characters
  * 3. Structure: must start with letter, cannot start/end with hyphen, no consecutive hyphens
  * 4. Cannot be all numbers
- * 5. Reserved words are blocked (case-insensitive)
+ * 5. Reserved routes/words are blocked (case-insensitive; exact, or word + digits)
  * 6. Basic profanity filtering
  * 7. Case handling: converts to lowercase with warning
  * 
@@ -21,54 +26,10 @@ import { isReservedHandle } from '../../../tunes/shared/explorersReservedHandles
  * - Always check isUsernameAvailable() for uniqueness if API is available
  * 
  * UPDATE INSTRUCTIONS:
- * - To add reserved words: update RESERVED_WORDS array
- * - To add profanity: update PROFANITY_WORDS array
- * - To modify rules: update validation logic and update documentation above
+ * - The rules live in tunes/shared/explorersReservedHandles.ts and are shared with the server.
+ *   Add reserved routes/words/profanity there, never here.
+ * - Reserved words match exactly (or word + digits), not as hyphen-delimited fragments.
  */
-
-// Reserved words that cannot be used as usernames (case-insensitive)
-const RESERVED_WORDS = [
-  // Admin/System
-  'admin', 'administrator', 'root', 'system', 'superuser', 'sudo', 'moderator',
-  'user', 'guest', 'default', 'staff', 'owner', 'master',
-
-  // Technical
-  'api', 'graphql', 'server', 'config', 'settings', 'database', 'db', 'cache',
-  'www', 'ftp', 'http', 'https', 'mail', 'email', 'smtp', 'pop', 'imap',
-  'ssl', 'tls', 'cdn', 'dns', 'ip', 'tcp', 'udp', 'ssh', 'telnet',
-
-  // Application specific
-  'support', 'help', 'info', 'about', 'terms', 'privacy', 'security', 'policy',
-  'auth', 'login', 'logout', 'register', 'signup', 'signin', 'password', 'reset',
-  'account', 'profile', 'dashboard', 'home', 'settings', 'preferences',
-
-  // Social/Commercial
-  'follow', 'like', 'post', 'comment', 'share', 'buy', 'sell', 'shop', 'store',
-  'cart', 'checkout', 'payment', 'billing', 'invoice', 'order', 'product',
-
-  // Status/State
-  'active', 'inactive', 'enabled', 'disabled', 'banned', 'suspended', 'deleted',
-  'pending', 'approved', 'rejected', 'draft', 'published',
-
-  // File/Data
-  'file', 'folder', 'page', 'data', 'backup', 'archive', 'temp', 'tmp',
-  'upload', 'download', 'import', 'export',
-
-  // Development/Testing
-  'test', 'demo', 'dev', 'development', 'prod', 'production', 'staging', 'beta',
-  'alpha', 'release', 'version', 'build',
-
-  // Explorers specific
-  'explorers', 'explorer', 'explorers', 'qr', 'code', 'scan', 'scanner', 'places', 'location', 'map',
-  'business', 'review', 'rating', 'recommendation', 'favorite', 'bookmark'
-];
-
-// Basic profanity filtering (expandable)
-const PROFANITY_WORDS = [
-  'damn', 'hell', 'crap', 'shit', 'fuck', 'bitch', 'ass', 'bastard',
-  'piss', 'cock', 'dick', 'pussy', 'whore', 'slut', 'fag', 'nigger',
-  'retard', 'gay', 'lesbian', 'homo', 'tranny', 'nazi', 'hitler'
-];
 
 export interface UsernameValidationResult {
   isValid: boolean;
@@ -114,69 +75,23 @@ export const validateUsername = (username: string, t?: (key: string) => string):
   const normalizedUsername = trimmedUsername.toLowerCase();
   result.normalizedUsername = normalizedUsername;
 
-  // Rule 1: Character validation
-  if (!/^[a-z0-9-]+$/.test(normalizedUsername)) {
+  const messages: Record<HandleRuleCode, [string, string]> = {
+    invalidChars: ['auth.validations.username.invalidChars', 'Username can only contain lowercase letters (a-z), numbers (0-9), and hyphens (-)'],
+    minLength: ['auth.validations.username.minLength', 'Username must be at least 3 characters long'],
+    maxLength: ['auth.validations.username.maxLength', 'Username must not exceed 30 characters'],
+    mustStartWithLetter: ['auth.validations.username.mustStartWithLetter', 'Username must start with a letter (a-z)'],
+    hyphenEdge: ['auth.validations.username.cannotStartEndHyphen', 'Username cannot start or end with a hyphen'],
+    consecutiveHyphens: ['auth.validations.username.noConsecutiveHyphens', 'Username cannot contain consecutive hyphens'],
+    allNumbers: ['auth.validations.username.cannotBeAllNumbers', 'Username cannot be all numbers'],
+    reserved: ['auth.validations.username.reservedWords', 'This username contains reserved words and cannot be used'],
+    profanity: ['auth.validations.username.inappropriateContent', 'Username contains inappropriate content'],
+  };
+
+  // One rule set shared with the server (tunes/shared/explorersReservedHandles.ts).
+  for (const code of handleRuleViolations(normalizedUsername)) {
     result.isValid = false;
-    result.errors.push(t ? t('auth.validations.username.invalidChars') : 'Username can only contain lowercase letters (a-z), numbers (0-9), and hyphens (-)');
-  }
-
-  // Rule 2: Length validation
-  if (normalizedUsername.length < 3) {
-    result.isValid = false;
-    result.errors.push(t ? t('auth.validations.username.minLength') : 'Username must be at least 3 characters long');
-  }
-
-  if (normalizedUsername.length > 30) {
-    result.isValid = false;
-    result.errors.push(t ? t('auth.validations.username.maxLength') : 'Username must not exceed 30 characters');
-  }
-
-  // Rule 3: Structure validation
-  if (!/^[a-z]/.test(normalizedUsername)) {
-    result.isValid = false;
-    result.errors.push(t ? t('auth.validations.username.mustStartWithLetter') : 'Username must start with a letter (a-z)');
-  }
-
-  if (/^-|-$/.test(normalizedUsername)) {
-    result.isValid = false;
-    result.errors.push(t ? t('auth.validations.username.cannotStartEndHyphen') : 'Username cannot start or end with a hyphen');
-  }
-
-  if (/--/.test(normalizedUsername)) {
-    result.isValid = false;
-    result.errors.push(t ? t('auth.validations.username.noConsecutiveHyphens') : 'Username cannot contain consecutive hyphens');
-  }
-
-  // Rule 4: Cannot be all numbers
-  if (/^[0-9]+$/.test(normalizedUsername)) {
-    result.isValid = false;
-    result.errors.push(t ? t('auth.validations.username.cannotBeAllNumbers') : 'Username cannot be all numbers');
-  }
-
-  // Rule 5: Reserved words validation
-  const isReserved = RESERVED_WORDS.some(word => {
-    // Exact match or surrounded by hyphens/numbers
-    const pattern = new RegExp(`^${word}$|^${word}-|^${word}[0-9]|-${word}-|-${word}$|-${word}[0-9]|[0-9]${word}$|[0-9]${word}-|[0-9]${word}[0-9]`, 'i');
-    return pattern.test(normalizedUsername);
-  });
-
-  if (isReserved || isReservedHandle(normalizedUsername)) {
-    result.isValid = false;
-    result.errors.push(t ? t('auth.validations.username.reservedWords') : 'This username contains reserved words and cannot be used');
-  }
-
-  // Rule 6: Profanity validation (using word boundaries to avoid false positives)
-  const containsProfanity = PROFANITY_WORDS.some(word => {
-    const lowerWord = word.toLowerCase();
-    // Match profanity only as a whole word (not as substring)
-    // Pattern: word at start/end or surrounded by non-letters (hyphens, numbers, or boundaries)
-    const pattern = new RegExp(`(^|[^a-z])${lowerWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`, 'i');
-    return pattern.test(normalizedUsername);
-  });
-
-  if (containsProfanity) {
-    result.isValid = false;
-    result.errors.push(t ? t('auth.validations.username.inappropriateContent') : 'Username contains inappropriate content');
+    const [key, fallback] = messages[code];
+    result.errors.push(t ? t(key) : fallback);
   }
 
   // Generate suggestions if username is invalid
