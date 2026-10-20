@@ -130,6 +130,10 @@ describe("useAddRecommendation selected-media persistence", () => {
       placePhotos: { photoMediaIds: ["media-1"] },
     });
     expect(mocks.navigate).toHaveBeenCalledTimes(1);
+    // The publish prompt lives on the Places page, so that is where the flow must return.
+    expect(mocks.navigate).toHaveBeenCalledWith("/recommendations/places", {
+      state: expect.objectContaining({ justAddedRecommendationToListId: expect.anything() }),
+    });
   });
 
   // Creator uploads used to go to mediaIds, which no public Places projection reads, so
@@ -316,6 +320,14 @@ describe("the facts and the context a recommendation carries", () => {
     expect(edited.contactVisibility).toBe("public");
   });
 
+  it("takes contact visibility from the form control and defaults to private", () => {
+    const base = { contactName: "Priya", contactNumber: "+91 90000 00000" };
+    const options = { recommendationType: "place" as const, source: "self" as const };
+    expect(recommendationContext({ ...base, contactVisibility: "public" }, options).contactVisibility).toBe("public");
+    expect(recommendationContext({ ...base, contactVisibility: "private" }, { ...options, existing: { ...recommendationContext(base, options), contactVisibility: "public" } }).contactVisibility).toBe("private");
+    expect(recommendationContext({ ...base, contactVisibility: "bogus" }, options).contactVisibility).toBe("private");
+  });
+
   it("keeps person fields off a place and place links off a person", () => {
     const place = recommendationContext({ socialLink: "https://example.com/cafe", recommendation: "https://example.com/ravi", address: "Somewhere" }, { recommendationType: "place", source: "self" });
     expect(place).toMatchObject({ placeSocialUrl: "https://example.com/cafe", placeWebsiteUrl: null, personProfileUrl: null, personAddress: null });
@@ -390,6 +402,21 @@ describe("useAddRecommendation ten-photo refusal", () => {
     }), expect.anything());
     expect(mocks.upload).toHaveBeenCalledTimes(1);
     expect(toast.error).toHaveBeenCalledWith("toast.error.placePhotoLimit");
+  });
+
+  it("refuses videos, other types and oversized files with a message each, before anything is saved", async () => {
+    const { toast } = await import("sonner");
+    const { result } = renderMediaHook([]);
+    const video = new File(["v"], "clip.mp4", { type: "video/mp4" });
+    const text = new File(["t"], "notes.txt", { type: "text/plain" });
+    const big = new File(["b"], "big.png", { type: "image/png" });
+    Object.defineProperty(big, "size", { value: 6 * 1024 * 1024 });
+    await act(async () => { await result.current.addExternalMedia([video, text, big, file("ok.jpg")]); });
+    expect(toast.error).toHaveBeenCalledWith("toast.error.imageTypeUnsupported");
+    expect(toast.error).toHaveBeenCalledTimes(3);
+    expect(toast.error).toHaveBeenCalledWith("toast.error.imageTooLarge");
+    await act(async () => { await result.current.handleSubmit(values as never); });
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
   });
 
   // Place photos could only be appended: the saved gallery order could not be changed, and

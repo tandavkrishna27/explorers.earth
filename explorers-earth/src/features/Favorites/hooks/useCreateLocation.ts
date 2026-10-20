@@ -1,4 +1,5 @@
 import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
+import { ExplorersApiError } from "../../../lib/explorersApiClient";
 import useAuthStore from "../../../store/store";
 import { KeyValuePair } from "../components/RecommendForm";
 import { toast } from "sonner";
@@ -176,7 +177,12 @@ export const useCreateLocation = ({
       return true;
     } catch (error) {
       console.error("Failed to create location:", error);
-      toast.error(t("dashboard.recommendations.toastMessages.listCreateFailed"));
+      // The server reports a unique-URL clash as a plain 409 conflict on create.
+      const urlTaken = error instanceof ExplorersApiError && error.status === 409
+        && error.message === "Content conflicts with an existing resource";
+      toast.error(t(urlTaken
+        ? "dashboard.recommendations.toastMessages.listUrlTaken"
+        : "dashboard.recommendations.toastMessages.listCreateFailed"));
       return false;
     } finally {
       setIsLoading(false);

@@ -90,6 +90,26 @@ export function usePlacesCommands(listId?:string) {
   updatePlace:(id:string,patch:Parameters<typeof PlacesClient.updateRecommendation>[1],original?:RecommendationObservation)=>run(async(assert,signal)=>{const signature=`update-place:${id}:${original ? observationKey(original) : "command"}:${JSON.stringify(patch)}`;begin(`recommendation:${id}`,signature);const observed=original??await observeRecommendation(signature,id,assert,signal);if(observed.resourceId!==id)throw new Error("Places edit observation identity changed");assert();const result=await PlacesClient.updateRecommendation(observed,patch,key(signature),signal);assert();forget(signature);return result;}),
   archivePlace:(id:string)=>run(async(assert,signal)=>{const signature=`archive-place:${id}`;begin(`recommendation:${id}`,signature);const observed=await observeRecommendation(signature,id,assert,signal);assert();const result=await PlacesClient.archiveRecommendation(observed,key(signature),signal);assert();forget(signature);return result;}),
   publishPlace:(id:string,published:boolean)=>run(async(assert,signal)=>{const signature=`recommendation-publication:${id}:${published}`;begin(`recommendation:${id}`,signature);const observed=await observeRecommendation(signature,id,assert,signal);assert();const result=await PlacesClient.updateRecommendation(observed,{publicationState:published?'published':'draft'},key(signature),signal);assert();forget(signature);return result;}),
+  // Publishing a list publishes the places in it. All steps share one run: the run token
+  // is per command, so firing one run per place from Promise.all let the last run
+  // supersede the others, which then failed with a cancelled read. Places already
+  // published are left alone, and the list is published first so a place failure leaves
+  // a consistent, retryable state.
+  publishListWithPlaces:(id:string,visible:boolean,placeIds:readonly string[])=>run(async(assert,signal)=>{
+   const signature=`list-visibility:${id}:${visible}`;begin(`collection:${id}`,signature);
+   const observed=await observeCollection(signature,id,assert,signal);assert();
+   const result=await PlacesClient.updateCollection(observed,{visibility:visible?'public':'private',publicationState:visible?'published':'draft'},key(signature),signal);assert();forget(signature);
+   if(visible)for(const placeId of placeIds){
+    const placeSignature=`recommendation-publication:${placeId}:true`;begin(`recommendation:${placeId}`,placeSignature);
+    const place=await observeRecommendation(placeSignature,placeId,assert,signal);assert();
+    if(place.detail.publicationState!=='published'){await PlacesClient.updateRecommendation(place,{publicationState:'published'},key(placeSignature),signal);assert();}
+    forget(placeSignature);
+   }
+   return result;
+  }),
+  archivePlaces:(ids:readonly string[])=>run(async(assert,signal)=>{
+   for(const id of ids){const signature=`archive-place:${id}`;begin(`recommendation:${id}`,signature);const observed=await observeRecommendation(signature,id,assert,signal);assert();await PlacesClient.archiveRecommendation(observed,key(signature),signal);assert();forget(signature);}
+  }),
   reorderList:(id:string,orderedRecommendationIds:string[])=>run(async(assert,signal)=>{const signature=`reorder:${id}:${JSON.stringify(orderedRecommendationIds)}`;begin(`collection:${id}`,signature);const observed=await observeComplete(signature,assert,signal);assert();const result=await PlacesClient.reorderCollection(observed,id,orderedRecommendationIds,key(signature),signal);assert();forget(signature);return result;}),
   membership:(id:string,collectionId:string,attached:boolean)=>run(async(assert,signal)=>{
    const signature=JSON.stringify([scope,id,collectionId,attached]);begin(`membership:${id}:${collectionId}`,signature);let intent=memberships.current.get(signature);

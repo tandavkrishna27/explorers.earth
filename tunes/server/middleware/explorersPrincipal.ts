@@ -34,11 +34,18 @@ export async function requireActor(request: Request, auth: ExplorersAuth, db: Pi
 }
 
 export function sendActorError(request: Request, response: Response, error: unknown): void {
-  const failure = error instanceof AuthorizationError ? error : new AuthorizationError(503, "FORBIDDEN", "Account service is unavailable");
   const requestId = requestIdFor(request);
   response.setHeader("X-Request-Id", requestId);
-  response.status(failure.status).json({ error: { code: failure.code, message: failure.message, requestId },
-    ...(failure.lifecycle ? { lifecycle: failure.lifecycle } : {}) });
+  if (error instanceof AuthorizationError) {
+    response.status(error.status).json({ error: { code: error.code, message: error.message, requestId },
+      ...(error.lifecycle ? { lifecycle: error.lifecycle } : {}) });
+    return;
+  }
+  // Not an actor failure (for example a session lookup or database error). Callers map
+  // their own domain errors first, so this is the last resort and says so honestly rather
+  // than blaming the account.
+  console.error("Unexpected error while resolving the request actor", error);
+  response.status(503).json({ error: { code: "UNAVAILABLE", message: "The service is temporarily unavailable", requestId } });
 }
 
 export function explorersPrincipal(auth: ExplorersAuth, db: Pick<Pool, "query">) {

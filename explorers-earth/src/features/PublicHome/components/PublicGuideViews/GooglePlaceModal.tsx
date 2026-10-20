@@ -4,7 +4,6 @@ import { usePublicCategoryThemeStyles } from "../PublicCategoryThemeContext";
 import CrossIcon from "../../../../assets/icons/CrossIcon";
 import Button from "../../../../components/ui/Button";
 import StarIcon from "../../../../assets/icons/StarIcon";
-import ClockIcon from "../../../../assets/icons/ClockIcon";
 import Tab from "../../../../components/ui/Tab";
 import Overview from "../PlaceDetails/Details/Overview";
 import MediaGallery from "../PlaceDetails/Details/MediaGallery";
@@ -289,11 +288,6 @@ const GooglePlaceModal: FC<GooglePlaceModalProps> = memo(
                 </span>
               </div>
 
-              {/* Timings - Not available for Google Places, show placeholder */}
-              <div className="flex flex-row gap-2 items-center">
-                <ClockIcon size={4} />
-                <span className="font-poppins text-sm">9:00 am - 11:30 pm</span>
-              </div>
             </div>
           </div>
 

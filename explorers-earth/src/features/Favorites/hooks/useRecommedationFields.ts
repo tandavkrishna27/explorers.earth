@@ -39,6 +39,7 @@ export const useRecommendationFields = ({
         subcategory: "",
         contactName: personName || "",
         contactNumber: "",
+        contactVisibility: "private",
         socialLink: instagramLink || "",
         recommendationLink: instagramLink || "",
         reason: instagramCaption || "",
@@ -53,6 +54,7 @@ export const useRecommendationFields = ({
       subcategory: "",
       contactName: "",
       contactNumber: places?.formatted_phone_number || "",
+      contactVisibility: "private",
       socialLink: places?.website || "",
       recommendationLink: instagramLink || "",
       reason: instagramCaption || "",
@@ -72,6 +74,7 @@ export const useRecommendationFields = ({
     taxonomyUnavailable: fetchedPlace?.recommendedPlace.placesTaxonomy.selectionUnavailable,
     contactName: fetchedPlace?.recommendedPlace?.Contact_Name || "",
     contactNumber: fetchedPlace?.recommendedPlace?.Contact_Number || "",
+    contactVisibility: fetchedPlace?.recommendedPlace?.Contact_Visibility === "public" ? "public" : "private",
     socialLink:
       fetchedPlace?.recommendedPlace?.Places_Website ||
       fetchedPlace?.recommendedPlace?.Places_Social_Link ||
