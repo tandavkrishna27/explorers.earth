@@ -2,7 +2,7 @@ import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {toast} from 'sonner';
 import useAuthStore from '../../../store/store';
 import {explorersApiClient} from '../../../lib/explorersApiClient';
-import {handleCooldownFor,handleCooldownMessage,nextAllowedAtFrom} from '../handleCooldown';
+import {formatCooldownDate,handleCooldownFor,handleCooldownMessage,nextAllowedAtFrom} from '../handleCooldown';
 import {reportProfileSaveError} from '../profileSaveError';
 import en from '../../../i18n/resources/en.json';
 
@@ -22,9 +22,21 @@ describe('handle cooldown shown to the owner',()=>{
   const locked=handleCooldownFor('2026-11-18T12:00:00.000Z',NOW);
   expect(locked.locked).toBe(true);expect(locked.allowedAt?.toISOString()).toBe('2026-11-18T12:00:00.000Z');
  });
+ it('formats the date with the UI language instead of the browser regional format',()=>{
+  const date=new Date('2026-11-18T12:00:00.000Z');
+  expect(formatCooldownDate(date,'es')).toBe('18 de noviembre de 2026');
+  expect(formatCooldownDate(date,'de')).toBe('18. November 2026');
+  expect(formatCooldownDate(date,'en')).toBe('November 18, 2026');
+  expect(formatCooldownDate(date,'not a locale!!')).toMatch(/2026/);
+ });
+ it('follows the document language when no locale is given',()=>{
+  document.documentElement.lang='es';
+  try{expect(handleCooldownMessage(t,new Date('2026-11-18T12:00:00.000Z'))).toContain('18 de noviembre de 2026');}
+  finally{document.documentElement.lang='';}
+ });
  it('names the date the server reported',()=>{
   const date=new Date('2026-11-18T12:00:00.000Z');
-  expect(handleCooldownMessage(t,date)).toBe(`You can change your username again on ${date.toLocaleDateString()}.`);
+  expect(handleCooldownMessage(t,date,'en')).toBe('You can change your username again on November 18, 2026.');
   expect(handleCooldownMessage(t,null)).toBe(en.toast.warning.usernameCooldownReady);
  });
 });
@@ -43,7 +55,7 @@ describe('a handle change the server refused for the cooldown',()=>{
   const refusal=Object.assign(new Error('The handle can be changed again on 2026-11-18'),{status:409,code:'HANDLE_COOLDOWN',details:{nextAllowedAt:'2026-11-18T12:00:00.000Z'}});
   reportProfileSaveError(refusal,t as never);
   expect(toast.error).toHaveBeenCalledTimes(1);
-  expect(vi.mocked(toast.error).mock.calls[0][0]).toBe(`You can change your username again on ${new Date('2026-11-18T12:00:00.000Z').toLocaleDateString()}.`);
+  expect(vi.mocked(toast.error).mock.calls[0][0]).toBe('You can change your username again on November 18, 2026.');
  });
  it('is not mistaken for a stale-revision conflict',()=>{
   expect(nextAllowedAtFrom(Object.assign(new Error('x'),{code:'CONFLICT'}))).toBeUndefined();
