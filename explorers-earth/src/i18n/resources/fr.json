@@ -503,6 +503,7 @@
   "common": {
     "cancel": "Annuler",
     "error": "Une erreur s'est produite. Veuillez réessayer plus tard.",
+    "free": "Gratuit",
     "hidePassword": "Masquer le mot de passe",
     "loading": "Chargement...",
     "noResults": "Aucun résultat trouvé",

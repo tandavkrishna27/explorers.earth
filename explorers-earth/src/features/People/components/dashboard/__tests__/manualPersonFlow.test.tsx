@@ -207,6 +207,27 @@ describe('manual People edit', () => {
   expect(vi.mocked(PeopleClient.updateRecommendation).mock.calls[0][1]).toMatchObject({mediaIds: [existing]});
  });
 
+ it('saves snapshots in the order the owner arranged them', async () => {
+  const [a, b] = ['22222222-3333-4444-5555-666666666661', '22222222-3333-4444-5555-666666666662'];
+  loaded([a, b]); render(editElement());
+  await screen.findAllByAltText('Person snapshot');
+  fireEvent.click(screen.getByRole('button', {name: 'Move Snapshot 2 up'}));
+  fireEvent.click(screen.getByRole('button', {name: 'Save person'}));
+  await waitFor(() => expect(PeopleClient.updateRecommendation).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(PeopleClient.updateRecommendation).mock.calls[0][1]).toMatchObject({mediaIds: [b, a]});
+ });
+
+ it('saves tags in the order the owner arranged them', async () => {
+  loaded(); render(editElement());
+  await screen.findByLabelText('Full Name');
+  for (const tag of ['writing', 'research']) { fireEvent.change(screen.getByLabelText('New tag'), {target: {value: tag}}); fireEvent.click(screen.getByRole('button', {name: 'Add tag'})); }
+  fireEvent.click(screen.getByRole('button', {name: 'Move Tag research up'}));
+  fireEvent.click(screen.getByRole('button', {name: 'Move Tag research up'}));
+  fireEvent.click(screen.getByRole('button', {name: 'Save person'}));
+  await waitFor(() => expect(PeopleClient.updateRecommendation).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(PeopleClient.updateRecommendation).mock.calls[0][1]).toMatchObject({displayOverrides: {skillsTags: ['research', 'design', 'writing']}});
+ });
+
  it('hydrates the stored platform rather than its presented alias', async () => {
   loaded(); render(editElement());
   expect(await screen.findByLabelText('Full Name')).toHaveValue('Alex Lee');

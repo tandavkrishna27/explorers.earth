@@ -3,9 +3,10 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Star, Share2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import type { RecommendedProduct } from "../../types";
-import { buildImageUrl, extractNoteText, formatPrice } from "../../utils/productHelpers";
+import { buildImageUrl, extractNoteText } from "../../utils/productHelpers";
 import MediaViewer from "../../../../components/ui/MediaViewer";
 import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
+import { useFormatMoney } from "../../../../lib/money";
 
 interface ProductDetailModalProps {
   product: RecommendedProduct | null;
@@ -16,6 +17,7 @@ interface ProductDetailModalProps {
 const FALLBACK_IMAGE = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'><rect width='300' height='300' fill='%23171e2e'/></svg>`;
 
 const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps) => {
+  const formatMoney = useFormatMoney();
   const categoryStyles = usePublicCategoryThemeStyles();
   const { isOpen: isMediaOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
   const [imgIdx, setImgIdx] = useState(0);
@@ -84,9 +86,12 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
   const gallery = (product.images || []).map(buildImageUrl).filter(Boolean);
   const allImages = mainImg ? [mainImg, ...gallery.filter((i) => i !== mainImg)] : gallery;
   const noteText = extractNoteText(product.user_recommendation_note);
-  const specs = product.specifications || {};
-  const hasSpecs = Object.keys(specs).length > 0;
-  const priceStr = formatPrice(product.price, product.currency);
+  // The owner's order: the ordered list when the server sends one, else the legacy object.
+  const specs: [string, string][] = product.specification_list
+    ? product.specification_list.map((entry) => [entry.key, entry.value])
+    : Object.entries(product.specifications || {});
+  const hasSpecs = specs.length > 0;
+  const priceStr = formatMoney(product.price, product.currency);
   
   // Use the first gallery image as backdrop, or main image, or fallback workspace photo
   const backdropUrl = allImages.length > 0 ? allImages[imgIdx] : "https://images.unsplash.com/photo-1505740420928-5e560c06d30e";
@@ -216,7 +221,7 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
                     <div>
                       <p className="text-xs font-semibold text-[color:var(--category-muted,rgba(255,255,255,0.5))] uppercase tracking-wider mb-2">Specifications</p>
                       <div className="rounded-xl border border-[color:var(--category-border,rgba(255,255,255,0.1))] overflow-hidden bg-[var(--category-card,rgba(22,30,46,0.3))]">
-                        {Object.entries(specs).map(([key, val], i) => (
+                        {specs.map(([key, val], i) => (
                           <div key={key} className={`flex items-center px-4 py-2.5 text-xs ${i % 2 === 0 ? "bg-[var(--category-card,rgba(255,255,255,0.02))]" : ""}`}>
                             <span className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] w-1/3 font-medium">{key}</span>
                             <span className="text-[color:var(--category-text,rgba(255,255,255,0.8))] flex-1">{val}</span>

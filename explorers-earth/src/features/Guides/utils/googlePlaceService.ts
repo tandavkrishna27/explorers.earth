@@ -5,6 +5,7 @@
 
 import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
 import { browserPlacesProvider } from "../../../lib/browserPlacesProvider";
+import { formatMoney } from "../../../lib/money";
 
 /**
  * Price information returned from Google Places API
@@ -70,8 +71,8 @@ export const fetchPlacePriceLevel = async (
         if (priceRange.startPrice && priceRange.endPrice) {
           const startPrice = priceRange.startPrice;
           const endPrice = priceRange.endPrice;
-          const currencyCode = startPrice.currencyCode || endPrice.currencyCode || 'USD';
-          const currencySymbol = getCurrencySymbol(currencyCode);
+          // No currency from Google means none: amounts are shown bare, never as USD.
+          const currencyCode = startPrice.currencyCode || endPrice.currencyCode || null;
           
           // Handle units (can be string or number)
           const startUnits = startPrice.units !== undefined && startPrice.units !== null 
@@ -81,26 +82,25 @@ export const fetchPlacePriceLevel = async (
             ? String(endPrice.units) 
             : null;
           
-          // Format as "₹1–200"
+          // Format as "₹1–₹200" in the viewer's locale and the currency's own digits
           if (startUnits && endUnits) {
-            result.priceRange = `${currencySymbol}${startUnits}–${endUnits}`;
+            result.priceRange = `${formatMoney(startUnits, currencyCode)}–${formatMoney(endUnits, currencyCode)}`;
           } else if (startUnits) {
-            result.priceRange = `${currencySymbol}${startUnits}+`;
+            result.priceRange = `${formatMoney(startUnits, currencyCode)}+`;
           } else if (endUnits) {
-            result.priceRange = `${currencySymbol}up to ${endUnits}`;
+            result.priceRange = `up to ${formatMoney(endUnits, currencyCode)}`;
           }
         } 
         // Legacy format with min/max/currencyCode
         else if (priceRange.min !== undefined || priceRange.max !== undefined) {
           const min = priceRange.min;
           const max = priceRange.max;
-          const currencyCode = priceRange.currencyCode || 'USD';
-          const currencySymbol = getCurrencySymbol(currencyCode);
+          const currencyCode = priceRange.currencyCode || null;
           
           if (min !== undefined && max !== undefined) {
-            result.priceRange = `${currencySymbol}${min}–${max}`;
+            result.priceRange = `${formatMoney(min, currencyCode)}–${formatMoney(max, currencyCode)}`;
           } else if (min !== undefined) {
-            result.priceRange = `${currencySymbol}${min}+`;
+            result.priceRange = `${formatMoney(min, currencyCode)}+`;
           }
         }
       }
@@ -117,40 +117,3 @@ export const fetchPlacePriceLevel = async (
     return undefined;
   }
 };
-
-/**
- * Get currency symbol from currency code
- */
-function getCurrencySymbol(currencyCode: string): string {
-  const currencyMap: Record<string, string> = {
-    'USD': '$',
-    'EUR': '€',
-    'GBP': '£',
-    'INR': '₹',
-    'JPY': '¥',
-    'CNY': '¥',
-    'AUD': 'A$',
-    'CAD': 'C$',
-    'CHF': 'CHF',
-    'SEK': 'kr',
-    'NOK': 'kr',
-    'DKK': 'kr',
-    'PLN': 'zł',
-    'RUB': '₽',
-    'BRL': 'R$',
-    'MXN': '$',
-    'ZAR': 'R',
-    'KRW': '₩',
-    'SGD': 'S$',
-    'HKD': 'HK$',
-    'NZD': 'NZ$',
-    'THB': '฿',
-    'PHP': '₱',
-    'IDR': 'Rp',
-    'MYR': 'RM',
-    'VND': '₫',
-  };
-  
-  return currencyMap[currencyCode] || currencyCode;
-};
-

@@ -7,12 +7,14 @@ import { getBudgetDisplayText } from "../../utils/priceLevelUtils";
 import BudgetIcon from "../../../../assets/icons/BudgetIcon";
 import EditIcon from "../../../../assets/icons/EditIcon";
 import BudgetInputModal from "../BudgetInputModal";
+import { useFormatMoney } from "../../../../lib/money";
 
 interface BudgetTableProps {
   guide: {
     documentId?: string;
     guide_sections?: any[];
     Estimated_Budget?: number;
+    Estimated_Budget_Currency?: string | null;
   };
 }
 
@@ -32,6 +34,7 @@ interface BudgetItem {
 }
 
 const BudgetTable: React.FC<BudgetTableProps> = ({ guide }) => {
+  const formatMoney = useFormatMoney();
   const [editingBudget, setEditingBudget] = useState<BudgetItem | null>(null);
   const {getSection, saveSection} = useGuideEditing();
 
@@ -179,7 +182,7 @@ const BudgetTable: React.FC<BudgetTableProps> = ({ guide }) => {
   /**
    * Update budget with currency format (new format)
    */
-  const handleSaveBudgetCurrency = async (amount: number, currency: string) => {
+  const handleSaveBudgetCurrency = async (amount: number | null, currency: string) => {
     if (!editingBudget) return;
 
     try {
@@ -200,7 +203,7 @@ const BudgetTable: React.FC<BudgetTableProps> = ({ guide }) => {
       const updatePlaceBudget = (places: BudgetPlace[]) => {
         return places.map((place) => {
           if (place.place_id === editingBudget.placeId) {
-            if (amount > 0) {
+            if (amount !== null) {
               return {
                 ...place,
                 budgetAmount: amount,
@@ -244,7 +247,7 @@ const BudgetTable: React.FC<BudgetTableProps> = ({ guide }) => {
         Budget: updatedBudget,
       });
 
-      if (amount > 0) {
+      if (amount !== null) {
         toast.success("Budget updated successfully!");
       } else {
         toast.success("Budget removed successfully!");
@@ -300,13 +303,13 @@ const BudgetTable: React.FC<BudgetTableProps> = ({ guide }) => {
           </div>
         </div>
 
-        {guide.Estimated_Budget && (
+        {guide.Estimated_Budget != null && (
           <div className="bg-green-500/10 px-4 py-2 rounded-lg border border-green-400/30">
             <p className="text-xs text-green-400/70 font-poppins font-medium">
               Estimated Budget
             </p>
             <p className="text-lg text-green-400 font-poppins font-bold">
-              ${guide.Estimated_Budget}
+              {formatMoney(guide.Estimated_Budget, guide.Estimated_Budget_Currency)}
             </p>
           </div>
         )}

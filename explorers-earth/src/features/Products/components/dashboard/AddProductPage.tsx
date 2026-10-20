@@ -1,17 +1,22 @@
+import ReorderableMediaStrip from '../../../../components/reorder/ReorderableMediaStrip';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, ShoppingBag, X } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, Loader2, ShoppingBag, X } from 'lucide-react';
+import { moveItem } from '../../../../components/reorder/moveItem';
+import { useMoveAnnouncer } from '../../../../components/reorder/useMoveAnnouncer';
 import { toast } from 'sonner';
 import useAuthStore from '../../../../store/store';
 import type { RecommendationObservation } from '../../../../lib/explorersApiClient';
 import { ProductsClient, type ManualProductIntent } from '../../api/productsClient';
 import { useProductsCommands } from '../../api/query';
 import { invalidateProducts, useProductsOwner } from '../../hooks/useProductsOwner';
-import { SUPPORTED_CURRENCIES, productAmountSchema, amountScale, currencyMinorUnits, type SupportedCurrency } from '../../../../../../tunes/shared/explorersProductContract';
+import { productAmountSchema } from '../../../../../../tunes/shared/explorersProductContract';
+import CurrencyPicker from '../../../../components/ui/CurrencyPicker';
+import { suggestedCurrency } from '../../../../lib/currencyOptions';
+import { precisionMessage } from '../../../../lib/money';
 import { richNoteFromEditor } from '../../../../../../tunes/shared/explorersRichNoteContract';
 import TiptapEditor from '../../../Favorites/components/TiptapEditor';
-
-const CURRENCIES = Object.keys(SUPPORTED_CURRENCIES) as SupportedCurrency[];
 
 /**
  * Ticket 4.4. Native Products add/edit page.
@@ -33,7 +38,11 @@ const CURRENCIES = Object.keys(SUPPORTED_CURRENCIES) as SupportedCurrency[];
  * Price is a text field, not type="number". The amount is an exact decimal string all the
  * way to numeric(20,6), and routing it through a JS number would be the one place a float
  * could round an owner's price. The currency's minor units bound the precision, so "19.90"
- * is accepted as USD and refused as JPY.
+ * is accepted as USD and refused as JPY. Every active ISO 4217 currency is offered.
+ *
+ * A price needs a currency (an amount nobody can read is not a price) and a currency needs a
+ * price. The picker starts on the currency of the person's region when the browser reports
+ * one, never on a guess, and an empty price drops the currency instead of failing on it.
  *
  * The product URL is the shared entity's identity and is excluded from the override
  * vocabulary, so editing an existing recommendation cannot change it.
@@ -46,6 +55,10 @@ export default function AddProductPage() {
  const currentScope = useRef(scope); currentScope.current = scope;
  const active = useRef(0), controller = useRef<AbortController>();
  const owner = useProductsOwner(undefined, true), commands = useProductsCommands();
+ const { t, i18n } = useTranslation();
+ // Only a new product starts on a suggestion; an existing one shows what is stored.
+ const suggestion = suggestedCurrency([i18n?.language, ...(typeof navigator === 'undefined' ? [] : navigator.languages ?? [])]) ?? '';
+ const initialCurrency = productId ? '' : suggestion;
 
  const [existingId, setExistingId] = useState('');
  const existingProducts = [...new Map((owner.content?.view.lists.flatMap(list => list.recommended_products) ?? []).filter(product => !owner.content?.view.lists.find(list => list.documentId === listId)?.recommended_products.some(member => member.documentId === product.documentId)).map(product => [product.documentId, product])).values()];
@@ -53,7 +66,7 @@ export default function AddProductPage() {
  const [title, setTitle] = useState(''), [productUrl, setProductUrl] = useState('');
  const [brand, setBrand] = useState(''), [logoUrl, setLogoUrl] = useState('');
  const [description, setDescription] = useState(''), [buyUrl, setBuyUrl] = useState('');
- const [price, setPrice] = useState(''), [currency, setCurrency] = useState<SupportedCurrency | ''>('');
+ const [price, setPrice] = useState(''), [currency, setCurrency] = useState<string>(initialCurrency);
  const [specifications, setSpecifications] = useState<{ key: string; value: string }[]>([]);
  const [note, setNote] = useState(''), [rating, setRating] = useState<number | null>(null);
  const [media, setMedia] = useState<{ id: string; url: string }[]>([]), [pending, setPending] = useState(0);
@@ -62,9 +75,12 @@ export default function AddProductPage() {
  const intent = useRef<{ scope: string; signature: string; value: ManualProductIntent }>();
  const updateKey = useRef<{ signature: string; key: string }>();
  const mounted = useRef(true);
+ // Specification order is the order they are shown on the public product page.
+ const { announce: announceSpec, region: specRegion } = useMoveAnnouncer();
+ const moveSpecification = (index: number, delta: -1 | 1) => { setSpecifications(value => moveItem(value, index, index + delta)); announceSpec(`Specification ${index + 1}`, index + delta + 1, specifications.length); };
 
  useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.abort(); active.current++; }; }, []);
- useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setTitle(''); setProductUrl(''); setBrand(''); setLogoUrl(''); setDescription(''); setBuyUrl(''); setPrice(''); setCurrency(''); setSpecifications([]); setNote(''); setRating(null); setMedia([]); setPending(0); setSaving(false); setError(''); setExistingId(''); }, [scope]);
+ useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setTitle(''); setProductUrl(''); setBrand(''); setLogoUrl(''); setDescription(''); setBuyUrl(''); setPrice(''); setCurrency(initialCurrency); setSpecifications([]); setNote(''); setRating(null); setMedia([]); setPending(0); setSaving(false); setError(''); setExistingId(''); }, [scope]);
 
  useEffect(() => {
   if (!productId || !owner.content || initialized.current === scope) return;
@@ -76,8 +92,8 @@ export default function AddProductPage() {
   setLogoUrl(product.logo_url ?? ''); setDescription(product.description ?? ''); setBuyUrl(product.buy_url ?? '');
   // The exact decimal is read back from the observation, not from the display number.
   const offer = observed.detail.category === 'products' ? observed.detail.productOffer : undefined;
-  setPrice(offer?.price ?? ''); setCurrency((offer?.currencyCode as SupportedCurrency | null) ?? '');
-  setSpecifications(Object.entries(product.specifications ?? {}).map(([key, value]) => ({ key, value })));
+  setPrice(offer?.price ?? ''); setCurrency(offer?.currencyCode ?? '');
+  setSpecifications(product.specification_list ? product.specification_list.map(entry => ({ ...entry })) : Object.entries(product.specifications ?? {}).map(([key, value]) => ({ key, value })));
   setNote(typeof product.user_recommendation_note === 'string' ? product.user_recommendation_note : '');
   setRating(product.user_rating);
   // Without this the form starts empty and save() sends mediaIds: [], silently detaching
@@ -95,9 +111,9 @@ export default function AddProductPage() {
  const priceProblem = (() => {
   const trimmed = price.trim();
   if (trimmed === '') return undefined;
-  if (!productAmountSchema.safeParse(trimmed).success) return 'Enter an amount like 19.90, with no currency symbol.';
-  if (currency !== '' && amountScale(trimmed) > currencyMinorUnits(currency)) return `${currency} does not have that many decimal places.`;
-  return undefined;
+  if (!productAmountSchema.safeParse(trimmed).success) return t('currency.invalidAmount');
+  if (currency === '') return t('currency.needsCurrency');
+  return precisionMessage(t, trimmed, currency);
  })();
 
  const attachExisting = async () => {
@@ -121,10 +137,13 @@ export default function AddProductPage() {
   const captured = scope, operation = ++active.current; controller.current?.abort(); controller.current = new AbortController(); const signal = controller.current.signal;
   setSaving(true); setError('');
   try {
-   const specs = Object.fromEntries(specifications.filter(entry => entry.key.trim() && entry.value.trim()).map(entry => [entry.key.trim(), entry.value.trim()]));
+   // Ordered pairs; a repeated key keeps its first position and its last value.
+   const specs = [...new Map(specifications.filter(entry => entry.key.trim() && entry.value.trim()).map(entry => [entry.key.trim(), entry.value.trim()] as const)).entries()].map(([key, value]) => ({ key, value }));
    const facts = { brand: blank(brand), logoUrl: blank(logoUrl), description: blank(description), specifications: specs, imageUrls: [] as string[] };
-   // An empty amount is unknown, never zero; an empty currency stays unknown.
-   const offer = { price: blank(price), currencyCode: currency === '' ? null : currency, buyUrl: blank(buyUrl) };
+   // An empty amount is unknown, never zero, and a currency with no amount names nothing, so
+   // the two travel together or not at all.
+   const amount = blank(price);
+   const offer = { price: amount, currencyCode: amount === null || currency === '' ? null : currency, buyUrl: blank(buyUrl) };
    const draft = { title: title.trim(), productUrl: productUrl.trim(), ...facts, offer, note: richNoteFromEditor(note), userRating: rating, mediaIds: media.map(item => item.id) };
    const signature = JSON.stringify(draft);
    assertCurrent(captured, operation);
@@ -192,27 +211,28 @@ export default function AddProductPage() {
     <label className="block">Brand<input value={brand} onChange={event => setBrand(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
     <label className="block">Logo URL<input value={logoUrl} onChange={event => setLogoUrl(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
 
-    <label className="block">Price
+    <label className="block">{t('currency.priceLabel')}
      {/* Text, not number: the amount stays an exact decimal string end to end. */}
-     <input value={price} inputMode="decimal" onChange={event => setPrice(event.target.value)} disabled={saving} placeholder="79.99" className="block w-full bg-dashboard-muted rounded-xl p-3" />
+     <input value={price} inputMode="decimal" onChange={event => setPrice(event.target.value)} disabled={saving} placeholder="79.99" aria-invalid={Boolean(priceProblem) || undefined} className="block w-full bg-dashboard-muted rounded-xl p-3 text-base" />
     </label>
-    <label className="block">Currency
-     <select value={currency} onChange={event => setCurrency(event.target.value as SupportedCurrency | '')} disabled={saving} className="block bg-dashboard-muted p-2">
-      <option value="">Unknown</option>
-      {CURRENCIES.map(code => <option key={code} value={code}>{code}</option>)}
-     </select>
-    </label>
+    <div>
+     <label htmlFor="product-currency" className="block">{t('currency.label')}</label>
+     <CurrencyPicker inputId="product-currency" value={currency} onChange={setCurrency} disabled={saving} invalid={Boolean(priceProblem) && price.trim() !== '' && currency === ''} />
+    </div>
     {priceProblem && <p role="alert">{priceProblem}</p>}
-    <p className="text-sm text-dashboard-muted">An empty price means unknown, not free. Leave the currency as Unknown rather than guessing one.</p>
+    <p className="text-sm text-dashboard-muted">{t('currency.emptyMeansUnknown')}</p>
 
     <label className="block">Buy / Affiliate URL<input value={buyUrl} onChange={event => setBuyUrl(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
     <label className="block">Description<textarea value={description} onChange={event => setDescription(event.target.value)} disabled={saving} rows={3} className="block w-full bg-dashboard-muted rounded-xl p-3 resize-none" /></label>
 
     <fieldset><legend>Specifications</legend>
+     {specRegion}
      {specifications.map((entry, index) => <div key={index} className="flex gap-2">
       <input aria-label={`Specification key ${index + 1}`} value={entry.key} disabled={saving} onChange={event => setSpecifications(value => value.map((row, at) => at === index ? { ...row, key: event.target.value } : row))} placeholder="Key (e.g. Color)" className="bg-dashboard-muted rounded-xl p-2" />
       <input aria-label={`Specification value ${index + 1}`} value={entry.value} disabled={saving} onChange={event => setSpecifications(value => value.map((row, at) => at === index ? { ...row, value: event.target.value } : row))} placeholder="Value (e.g. Space Grey)" className="bg-dashboard-muted rounded-xl p-2" />
       <button aria-label={`Remove specification ${index + 1}`} disabled={saving} onClick={() => setSpecifications(value => value.filter((_row, at) => at !== index))}><X size={16} /></button>
+      <button type="button" aria-label={`Move specification ${index + 1} up`} disabled={saving || index === 0} onClick={() => moveSpecification(index, -1)} className="min-h-[44px] min-w-[44px] sm:min-h-8 sm:min-w-8 disabled:opacity-40"><ArrowUp aria-hidden="true" size={14} /></button>
+      <button type="button" aria-label={`Move specification ${index + 1} down`} disabled={saving || index === specifications.length - 1} onClick={() => moveSpecification(index, 1)} className="min-h-[44px] min-w-[44px] sm:min-h-8 sm:min-w-8 disabled:opacity-40"><ArrowDown aria-hidden="true" size={14} /></button>
      </div>)}
      <button disabled={saving || specifications.length >= 200} onClick={() => setSpecifications(value => [...value, { key: '', value: '' }])}>Add specification</button>
     </fieldset>
@@ -228,10 +248,7 @@ export default function AddProductPage() {
 
     <label className="block">Snapshots<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple disabled={saving || pending > 0} onChange={event => { void upload(Array.from(event.target.files ?? [])); event.target.value = ''; }} /></label>
     {pending > 0 && <p role="status">Uploading snapshots…</p>}
-    <div className="flex flex-wrap gap-3">{media.map(item => <div key={item.id}>
-     <img className="w-24 h-24 object-cover rounded" src={item.url} alt="Product snapshot" />
-     <button aria-label="Remove snapshot" disabled={saving} onClick={() => setMedia(value => value.filter(row => row.id !== item.id))}><X size={16} /></button>
-    </div>)}</div>
+    <ReorderableMediaStrip items={media} onChange={setMedia} noun="Snapshot" alt="Product snapshot" removeLabel="Remove snapshot" disabled={saving} />
 
     {error && <p role="alert">{error}</p>}
     <button onClick={save} disabled={saving || pending > 0 || !title.trim() || !productUrl.trim() || Boolean(priceProblem) || Boolean(productId && initialized.current !== scope)} className="bg-dashboard-accent text-white rounded-xl px-5 py-3">

@@ -10,7 +10,8 @@ import {readGuidesOwnerContent, type GuidesOwnerContent} from '../api/explorersA
 const changes = new EventTarget();
 export const invalidateGuides = () => changes.dispatchEvent(new Event('change'));
 
-export function useGuidesOwner(guideId?: string, enabled = true) {
+export function useGuidesOwner(guideId?: string, enabled = true, options: {keepWhileRefreshing?: boolean} = {}) {
+ const keepWhileRefreshing = options.keepWhileRefreshing === true;
  const generation = useAuthStore((state) => state.generation);
  const accountId = useAuthStore((state) => state.accountId);
  const location = useLocation();
@@ -31,7 +32,10 @@ export function useGuidesOwner(guideId?: string, enabled = true) {
  useEffect(() => {
   const controller = new AbortController();
   const identity = ++attempt.current;
-  setReceived(undefined);
+  // A refresh of the same owner and route may keep showing what it last read, so an editor
+  // that triggered the refresh (a reorder, say) is not unmounted and loses focus. A change
+  // of owner or route always clears it: `content` below is scope-checked either way.
+  setReceived((previous) => (keepWhileRefreshing && previous?.scope === scope ? previous : undefined));
   setError(undefined);
   if (!enabled || !accountId) {
    setLoading(false);
@@ -48,7 +52,7 @@ export function useGuidesOwner(guideId?: string, enabled = true) {
    })
    .finally(() => {if (!controller.signal.aborted && attempt.current === identity) setLoading(false);});
   return () => controller.abort();
- }, [scope, enabled, revision, accountId]);
+ }, [scope, enabled, revision, accountId, keepWhileRefreshing]);
 
  const content = received?.scope === scope ? received.content : undefined;
 

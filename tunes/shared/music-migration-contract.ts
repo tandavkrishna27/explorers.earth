@@ -1,4 +1,4 @@
-export const EXPECTED_MUSIC_MIGRATION_ID = "0061_explorers_handle_holds" as const;
+export const EXPECTED_MUSIC_MIGRATION_ID = "0062_explorers_handle_holds" as const;
 export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0001_runtime_baseline",
   "0002_identity_lifecycle",
@@ -60,6 +60,7 @@ export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0058_explorers_place_photo_backfill",
   "0059_explorers_person_suppression_audit",
   "0060_explorers_guide_budget_tier",
+  "0061_explorers_product_spec_order_budget_scale",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 export const LEGACY_CONTAINMENT_MIGRATION_MARKER = "containment-no-schema-change" as const;
@@ -125,6 +126,7 @@ export const DEPLOYABLE_MUSIC_MIGRATION_MARKERS = [
   "0058_explorers_place_photo_backfill",
   "0059_explorers_person_suppression_audit",
   "0060_explorers_guide_budget_tier",
+  "0061_explorers_product_spec_order_budget_scale",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 

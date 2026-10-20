@@ -44,13 +44,20 @@ function mapWriteFailure(error:unknown):never{
  throw error;
 }
 
+/**
+ * numeric(14,3) hands back three decimals ("42000.500"). The amount keeps its currency's
+ * natural precision: trailing zeros beyond the second decimal are dropped, so a two-decimal
+ * amount reads back exactly as it was written and a three-decimal one ("12.345") is kept.
+ */
+export const amountText=(value:string):string=>value.includes('.')?value.replace(/(\.[0-9]{2})0$/,'$1'):value;
+
 const DETAIL_COLUMNS=`guide_type,multi_city,number_of_days,estimated_budget::text AS estimated_budget,budget_currency,budget_type,budget_tier,
  best_time_to_visit,categories,tags,tips_notes,place_snapshot,location_entity_id`;
 
 /**
  * The guide's own fields, or null when the collection has none yet.
  *
- * estimated_budget comes back as text, not a number: numeric(14,2) through a JavaScript
+ * estimated_budget comes back as text, not a number: numeric(14,3) through a JavaScript
  * double is exactly the rounding the contract's decimal strings exist to avoid.
  */
 export async function readGuideDetails(db:Pick<Pool,'query'>,collectionId:string,accountId:string):Promise<GuideCollectionDetails|null>{
@@ -58,7 +65,7 @@ export async function readGuideDetails(db:Pick<Pool,'query'>,collectionId:string
  if(!row)return null;
  const parsed=guideCollectionDetailsSchema.safeParse({
   guideType:row.guide_type,multiCity:row.multi_city,numberOfDays:row.number_of_days,
-  estimatedBudget:row.estimated_budget,budgetCurrency:row.budget_currency,budgetType:row.budget_type,budgetTier:row.budget_tier,
+  estimatedBudget:row.estimated_budget===null?null:amountText(row.estimated_budget),budgetCurrency:row.budget_currency,budgetType:row.budget_type,budgetTier:row.budget_tier,
   bestTimeToVisit:row.best_time_to_visit,categories:row.categories,tags:row.tags,tipsNotes:row.tips_notes,
   place:row.place_snapshot,locationEntityId:row.location_entity_id,
  });

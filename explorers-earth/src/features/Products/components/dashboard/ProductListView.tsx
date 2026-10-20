@@ -1,3 +1,4 @@
+import ListItemOrder from "../../../../components/reorder/ListItemOrder";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,12 +12,13 @@ import Accordion from "../../../../components/ui/Accordian";
 import useAuthStore from "../../../../store/store";
 import { useProductsCommands, useProductsCallerCustody } from "../../api/query";
 import { useProductsOwner } from "../../hooks/useProductsOwner";
-import { deduplicateProducts, buildImageUrl, extractNoteText, formatPrice } from "../../utils/productHelpers";
+import { deduplicateProducts, buildImageUrl, extractNoteText } from "../../utils/productHelpers";
 import type { RecommendedProduct, ProductList } from "../../types";
 import Switch from "../../../../components/ui/Switch";
 import ProductDetailModal from "../public/ProductDetailModal";
 import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
 import QrCardTagline from "../../../../components/QrCardTagline";
+import { useFormatMoney } from "../../../../lib/money";
 
 const VITE_BASE_URL = import.meta.env.VITE_BASE_URL || "https://explorers.earth";
 
@@ -30,10 +32,11 @@ interface ProductRowProps {
 }
 
 const ProductRow = ({ product, onPinToggle, onEdit, onDelete, onClick, isPinning }: ProductRowProps) => {
+  const formatMoney = useFormatMoney();
   const [menuOpen, setMenuOpen] = useState(false);
   const notePreview = extractNoteText(product.user_recommendation_note);
   const imgUrl = buildImageUrl(product.logo_url);
-  const priceStr = formatPrice(product.price, product.currency);
+  const priceStr = formatMoney(product.price, product.currency);
 
   return (
     <div
@@ -137,7 +140,7 @@ const ProductListView = () => {
     listName: string;
   } | null>(null);
 
-  const { data, content, loading, refetch } = useProductsOwner(listId, Boolean(listId));
+  const { data, content, loading, refetch } = useProductsOwner(listId, Boolean(listId), true);
   const commands = useProductsCommands(), isUpdating = commands.loading, deletingList = commands.loading;
   const beginEffects = useProductsCallerCustody();
   const updateProductList = ({ variables }: { variables: { documentId?: string; Visibility?: boolean; List_Name?: string; list_description?: string | null }; optimisticResponse?: unknown; refetchQueries?: unknown[] }) => commands.updateList(variables.documentId!, { ...(variables.Visibility === undefined ? {} : { visibility: variables.Visibility ? 'public' : 'private', publicationState: variables.Visibility ? 'published' : 'draft' }), ...(variables.List_Name === undefined ? {} : { title: variables.List_Name }), ...(variables.list_description === undefined ? {} : { description: variables.list_description }) });
@@ -338,6 +341,11 @@ const ProductListView = () => {
           >
             <AddIcon size="5" /> Add Product
           </button>
+
+          {/* The order set here is the order of this list on its public page. */}
+
+          <ListItemOrder category="products" listId={listId!} items={products.map(item => ({ id: item.documentId, title: item.title }))} noun="Product" nounPlural="products" onChanged={() => { void refetch(); }} />
+
 
           {products.length === 0 ? (
             <div className="flex flex-col items-center py-16 text-center">

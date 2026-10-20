@@ -8,6 +8,8 @@ import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import Card from "../../../components/ui/Card";
 import { isNonNullObject, PublicRouteErrorState, PublicRouteLoadingState, PublicRoutePartialNotice } from "./PublicRouteContentState";
 import { usePublicRecommendationCategory } from "../api/usePublicRecommendationCategory";
+import { usePublicProfileShell } from "../api/usePublicProfileShell";
+import { useTrackAnalytics, createAnalyticsOptions } from "../../../services/analyticsService";
 
 type List = {
   recommended_places: {
@@ -107,6 +109,19 @@ const PlaceMapView = memo(() => {
   const hasUsableData = error
     ? recommendationLists.some((list) => list.recommended_places.length > 0)
     : completeCollection;
+  const { data: accountData } = usePublicProfileShell(username);
+  // Page view for the single-list map; the matched list is the analytics location.
+  useTrackAnalytics({
+    ...createAnalyticsOptions.home(
+      typeof accountData?.documentId === "string" ? accountData.documentId : "",
+      username,
+      (Array.isArray(rawRecommendationLists) ? rawRecommendationLists : [])
+        .map((list: unknown) => (isNonNullObject(list) && typeof list.documentId === "string" ? list.documentId : undefined))
+        .find(Boolean),
+    ),
+    ready: hasUsableData,
+    waitForLocation: true,
+  });
   const navigate = useNavigate();
 
   useEffect(() => {

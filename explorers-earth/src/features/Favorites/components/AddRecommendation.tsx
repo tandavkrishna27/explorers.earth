@@ -1,3 +1,5 @@
+import ReorderableMediaStrip from "../../../components/reorder/ReorderableMediaStrip";
+import ReorderableFileStrip from "../../../components/reorder/ReorderableFileStrip";
 import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom";
@@ -12,7 +14,6 @@ import { usePlacesOwner } from "../hooks/usePlacesOwner";
 import { Places } from "../../Profile/types/types";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { EarthLoader } from "../../../components/EarthLoader";
-import CrossIcon from "../../../assets/icons/CrossIcon";
 import { useAddRecommendation } from "../hooks/useAddRecommendation";
 import axios from "axios";
 import { useRecommendationFields } from "../hooks/useRecommedationFields";
@@ -271,6 +272,9 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
     handleUpdatePlaceDetails,
     handleFileChange,
     handleDeleteUserImage,
+    reorderUserMedia,
+    savedPhotoIds,
+    setSavedPhotoIds,
     handleUploadMedia,
     mediaStatus,
     mediaFeedback,
@@ -948,34 +952,36 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
               </div>
 
               <div className="flex flex-row mt-4 gap-5 items-center">
-                {showUserMedia &&
-                  previewUrl.length > 0 &&
-                  previewUrl.map((mediaItem, index: number) => (
-                    <div className="relative" key={index}>
-                      {mediaItem.type === "video" ? (
-                        <video
-                          src={mediaItem.url}
-                          className="object-cover h-32 w-32 rounded-xl"
-                          controls
-                          muted
-                        />
-                      ) : (
-                        <img
-                          src={mediaItem.url}
-                          alt={t("dashboard.recommendations.addRecommendationForm.imagePreview.alt")}
-                          className="object-cover h-32 w-32 rounded-xl"
-                        />
-                      )}
-                      <span
-                        className="absolute -top-2 -right-2 bg-white-danger p-1 rounded-full flex items-center justify-center cursor-pointer text-white"
-                        onClick={() =>
-                          handleDeleteUserImage(mediaItem.url, index)
-                        }
-                      >
-                        <CrossIcon size="4" />
-                      </span>
-                    </div>
-                  ))}
+                {/* Photos already saved on this place. Their order is the gallery order. */}
+                {showUserMedia && type === "edit" && savedPhotoIds.length > 0 && (
+                  <ReorderableMediaStrip
+                    items={savedPhotoIds.map((id) => ({ id, url: `/api/explorers/v1/media/${id}/content` }))}
+                    onChange={(next) => setSavedPhotoIds(next.map((item) => item.id))}
+                    noun="Saved photo"
+                    alt={t("dashboard.recommendations.addRecommendationForm.imagePreview.alt")}
+                    removeLabel="Remove saved photo"
+                    removable={false}
+                    disabled={isLoading}
+                  />
+                )}
+                {/* Photos chosen in this form upload after those, in this order, when saved. */}
+                {showUserMedia && previewUrl.length > 0 && (
+                  <ReorderableFileStrip
+                    files={previewUrl.map((item) => item.file)}
+                    previews={previewUrl.map((item) => item.url)}
+                    kinds={previewUrl.map((item) => item.type)}
+                    noun="New photo"
+                    alt={t("dashboard.recommendations.addRecommendationForm.imagePreview.alt")}
+                    removeLabel="Remove new photo"
+                    disabled={isLoading}
+                    onChange={(files) => {
+                      if (files.length < previewUrl.length) {
+                        const removed = previewUrl.findIndex((item) => !files.includes(item.file));
+                        if (removed >= 0) handleDeleteUserImage(previewUrl[removed].url, removed);
+                      } else reorderUserMedia(files);
+                    }}
+                  />
+                )}
                 {showUserMedia && previewUrl.length < 10 && (
                   <div
                     className="h-32 w-32 border-dotted border-2 cursor-pointer rounded-xl border-dashboard-accent flex flex-col items-center justify-center"

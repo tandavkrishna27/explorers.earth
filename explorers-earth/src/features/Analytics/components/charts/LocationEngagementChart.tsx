@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePlacesOwner } from '../../../Favorites/hooks/usePlacesOwner';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { PublicPageAnalyticsData } from '../../api/queries';
 import { useResponsiveChart } from '../../../../hooks/useResponsiveChart';
 import EmptyState from '../EmptyState';
+import { buildListNameMap } from '../../utils/listNames';
 
 interface LocationEngagementChartProps {
   rawAnalyticsData: PublicPageAnalyticsData[];
@@ -25,6 +27,7 @@ const LocationEngagementChart: React.FC<LocationEngagementChartProps> = ({ rawAn
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { chartConfig } = useResponsiveChart();
+  const { t } = useTranslation();
 
   // Fetch recommendation lists to get location names by ID
   // Ticket 5.1. recommendationLists is the Places category, and usePlacesOwner already
@@ -43,6 +46,13 @@ const LocationEngagementChart: React.FC<LocationEngagementChartProps> = ({ rawAn
     }
     return map;
   }, [recommendationListsData]);
+
+  // Places names come from the owner's lists; every other category's list name rides on
+  // its click events, so a list from any category resolves to its name.
+  const listNames = useMemo(
+    () => buildListNameMap(rawAnalyticsData, locationIdToNameMap),
+    [rawAnalyticsData, locationIdToNameMap],
+  );
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -78,10 +88,10 @@ const LocationEngagementChart: React.FC<LocationEngagementChartProps> = ({ rawAn
         const locationId = analyticsRecord.Location_Id;
         
         // Extract location name with improved logic
-        let locationName = 'Unknown Location';
+        let locationName = '';
         
         // 1. First try to get from database lookup using Location_Id
-        const dbLocationName = locationIdToNameMap.get(locationId);
+        const dbLocationName = listNames.get(locationId);
         if (dbLocationName) {
           locationName = dbLocationName;
         }
@@ -98,8 +108,8 @@ const LocationEngagementChart: React.FC<LocationEngagementChartProps> = ({ rawAn
         }
         
         // 4. Final fallback - use a more descriptive name
-        if (locationName === 'Unknown Location') {
-          locationName = `Location ${locationId.slice(0, 8)}`;
+        if (!locationName) {
+          locationName = t('analytics.dashboard.untitledList');
         }
         
         const existing = locationMap.get(locationId) || { name: locationName, viewCount: 0 };
@@ -117,7 +127,7 @@ const LocationEngagementChart: React.FC<LocationEngagementChartProps> = ({ rawAn
       .sort((a, b) => b.viewCount - a.viewCount);
 
     return locations;
-  }, [rawAnalyticsData, locationIdToNameMap]);
+  }, [rawAnalyticsData, listNames, t]);
 
   // Transform data for chart
   const chartData = useMemo(() => {

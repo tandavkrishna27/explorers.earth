@@ -4222,6 +4222,165 @@ var resolveProviderBookSchema = external_exports.object({ kind: external_exports
 var resolveManualBookSchema = external_exports.object({ kind: external_exports.literal("manual"), category: external_exports.literal("books"), details: external_exports.object(editable).partial().extend({ title: bookTitleSchema }).strict() }).strict();
 var replaceRecommendationEntitySchema = external_exports.object({ expectedRevision: external_exports.number().int().positive().safe(), entityId: external_exports.string().uuid() }).strict();
 
+// shared/currency.ts
+var ZERO = ["BIF", "CLP", "DJF", "GNF", "ISK", "JPY", "KMF", "KRW", "PYG", "RWF", "UGX", "VND", "VUV", "XAF", "XOF", "XPF"];
+var THREE = ["BHD", "IQD", "JOD", "KWD", "LYD", "OMR", "TND"];
+var TWO = [
+  "AED",
+  "AFN",
+  "ALL",
+  "AMD",
+  "AOA",
+  "ARS",
+  "AUD",
+  "AWG",
+  "AZN",
+  "BAM",
+  "BBD",
+  "BDT",
+  "BMD",
+  "BND",
+  "BOB",
+  "BRL",
+  "BSD",
+  "BTN",
+  "BWP",
+  "BYN",
+  "BZD",
+  "CAD",
+  "CDF",
+  "CHF",
+  "CNY",
+  "COP",
+  "CRC",
+  "CUP",
+  "CVE",
+  "CZK",
+  "DKK",
+  "DOP",
+  "DZD",
+  "EGP",
+  "ERN",
+  "ETB",
+  "EUR",
+  "FJD",
+  "FKP",
+  "GBP",
+  "GEL",
+  "GHS",
+  "GIP",
+  "GMD",
+  "GTQ",
+  "GYD",
+  "HKD",
+  "HNL",
+  "HTG",
+  "HUF",
+  "IDR",
+  "ILS",
+  "INR",
+  "IRR",
+  "JMD",
+  "KES",
+  "KGS",
+  "KHR",
+  "KPW",
+  "KYD",
+  "KZT",
+  "LAK",
+  "LBP",
+  "LKR",
+  "LRD",
+  "LSL",
+  "MAD",
+  "MDL",
+  "MGA",
+  "MKD",
+  "MMK",
+  "MNT",
+  "MOP",
+  "MRU",
+  "MUR",
+  "MVR",
+  "MWK",
+  "MXN",
+  "MYR",
+  "MZN",
+  "NAD",
+  "NGN",
+  "NIO",
+  "NOK",
+  "NPR",
+  "NZD",
+  "PAB",
+  "PEN",
+  "PGK",
+  "PHP",
+  "PKR",
+  "PLN",
+  "QAR",
+  "RON",
+  "RSD",
+  "RUB",
+  "SAR",
+  "SBD",
+  "SCR",
+  "SDG",
+  "SEK",
+  "SGD",
+  "SHP",
+  "SLE",
+  "SOS",
+  "SRD",
+  "SSP",
+  "STN",
+  "SVC",
+  "SYP",
+  "SZL",
+  "THB",
+  "TJS",
+  "TMT",
+  "TOP",
+  "TRY",
+  "TTD",
+  "TWD",
+  "TZS",
+  "UAH",
+  "USD",
+  "UYU",
+  "UZS",
+  "VED",
+  "VES",
+  "WST",
+  "XCD",
+  "XCG",
+  "YER",
+  "ZAR",
+  "ZMW",
+  "ZWG"
+];
+var build = (groups) => {
+  const table = {};
+  for (const [digits, codes] of groups) for (const code of codes) table[code] = digits;
+  return Object.freeze(table);
+};
+var CURRENCY_MINOR_UNITS = build([[0, ZERO], [2, TWO], [3, THREE]]);
+var RETIRED_CURRENCY_MINOR_UNITS = build([[2, ["ANG", "BGN", "CUC", "HRK", "MRO", "SLL", "STD", "VEF", "ZWL"]], [0, ["BYR"]]]);
+var CURRENCY_CODES = Object.freeze(Object.keys(CURRENCY_MINOR_UNITS).sort());
+var has = (table, code) => Object.prototype.hasOwnProperty.call(table, code);
+var isActiveCurrency = (code) => typeof code === "string" && has(CURRENCY_MINOR_UNITS, code);
+var isKnownCurrency = (code) => isActiveCurrency(code) || typeof code === "string" && has(RETIRED_CURRENCY_MINOR_UNITS, code);
+var minorUnitsOf = (code) => has(CURRENCY_MINOR_UNITS, code) ? CURRENCY_MINOR_UNITS[code] : has(RETIRED_CURRENCY_MINOR_UNITS, code) ? RETIRED_CURRENCY_MINOR_UNITS[code] : void 0;
+var decimalScale = (amount) => {
+  const at = amount.indexOf(".");
+  return at < 0 ? 0 : amount.length - at - 1;
+};
+function amountPrecisionProblem(amount, code) {
+  const units = minorUnitsOf(code);
+  if (units === void 0 || decimalScale(amount) <= units) return null;
+  return units === 0 ? `${code} has no decimal places; enter a whole amount.` : `${code} allows at most ${units} decimal place${units === 1 ? "" : "s"}.`;
+}
+
 // shared/explorersProductContract.ts
 var text6 = (max) => external_exports.string().trim().max(max).refine((v) => !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v) && !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(v), "Invalid text");
 var productTitleSchema = text6(1e3).refine((v) => v.length > 0 && Array.from(v).length <= 500 && !/[\u0000-\u001f\u007f]/.test(v), "Invalid title");
@@ -4233,24 +4392,30 @@ var safeProductUrlSchema = external_exports.string().max(2048).url().refine((v) 
     return false;
   }
 }, "Invalid URL");
-var SUPPORTED_CURRENCIES = { USD: 2, EUR: 2, GBP: 2, INR: 2, JPY: 0, AUD: 2, CAD: 2, SGD: 2 };
-var currencyCodeSchema = external_exports.enum(Object.keys(SUPPORTED_CURRENCIES));
-var currencyMinorUnits = (code) => SUPPORTED_CURRENCIES[code];
+var currencyCodeSchema = external_exports.string().refine(isKnownCurrency, "Unsupported currency code");
+var storedCurrencyCodeSchema = external_exports.string().regex(/^[A-Z]{3}$/, "Invalid currency code");
 var productAmountSchema = external_exports.string().regex(/^(?:0|[1-9][0-9]{0,13})(?:\.[0-9]{1,6})?$/, "Invalid amount");
-var amountScale = (amount) => {
-  const at = amount.indexOf(".");
-  return at < 0 ? 0 : amount.length - at - 1;
+var precision = (value, ctx) => {
+  const problem = value.price !== null && value.currencyCode !== null ? amountPrecisionProblem(value.price, value.currencyCode) : null;
+  if (problem) ctx.addIssue({ code: external_exports.ZodIssueCode.custom, path: ["price"], message: problem });
 };
-var offerFields = {
+var productOfferSchema = external_exports.object({
+  price: productAmountSchema.nullable(),
+  currencyCode: storedCurrencyCodeSchema.nullable(),
+  buyUrl: safeProductUrlSchema.nullable()
+}).strict().superRefine(precision);
+var productOfferWriteSchema = external_exports.object({
   price: productAmountSchema.nullable(),
   currencyCode: currencyCodeSchema.nullable(),
   buyUrl: safeProductUrlSchema.nullable()
-};
-var productOfferSchema = external_exports.object(offerFields).strict().superRefine((value, ctx) => {
-  if (value.price !== null && value.currencyCode !== null && amountScale(value.price) > currencyMinorUnits(value.currencyCode))
-    ctx.addIssue({ code: external_exports.ZodIssueCode.custom, path: ["price"], message: `Amount exceeds ${value.currencyCode} minor units` });
+}).strict().superRefine((value, ctx) => {
+  if (value.price !== null && value.currencyCode === null) ctx.addIssue({ code: external_exports.ZodIssueCode.custom, path: ["currencyCode"], message: "Choose a currency for the price" });
+  if (value.price === null && value.currencyCode !== null) ctx.addIssue({ code: external_exports.ZodIssueCode.custom, path: ["price"], message: "Enter a price for the currency, or clear the currency" });
+  precision(value, ctx);
 });
-var productSpecificationsSchema = external_exports.record(text6(200).refine((v) => v.length > 0, "Invalid key"), text6(2e3).refine((v) => v.length > 0, "Invalid value")).refine((v) => Object.keys(v).length <= 200, "Too many specifications");
+var specificationEntry = external_exports.object({ key: text6(200).refine((v) => v.length > 0, "Invalid key"), value: text6(2e3).refine((v) => v.length > 0, "Invalid value") }).strict();
+var orderedSpecifications = external_exports.array(specificationEntry).max(200, "Too many specifications").refine((v) => new Set(v.map((entry) => entry.key)).size === v.length, "Duplicate specification key");
+var productSpecificationsSchema = external_exports.preprocess((value) => value !== null && typeof value === "object" && !Array.isArray(value) ? Object.entries(value).map(([key, entry]) => ({ key, value: entry })) : value, orderedSpecifications);
 var fields3 = {
   productUrl: safeProductUrlSchema,
   brand: text6(200).nullable(),
@@ -4477,7 +4642,7 @@ var createRecommendationObjectSchema = external_exports.object({
   movieContext: movieContextSchema.optional(),
   movieTermIds: external_exports.array(contentIdSchema).max(32).refine((v) => new Set(v).size === v.length).optional(),
   appScreenshots: appScreenshotsSchema.optional(),
-  productOffer: productOfferSchema.optional(),
+  productOffer: productOfferWriteSchema.optional(),
   placeContext: placeRecommendationContextSchema.optional(),
   placePhotos: placePhotosSchema.optional(),
   placesTaxonomy: placesTaxonomyAssignmentSchema.optional(),
@@ -4495,7 +4660,7 @@ var updateRecommendationSchema = external_exports.object({
   movieContext: movieContextSchema.optional(),
   movieTermIds: external_exports.array(contentIdSchema).max(32).refine((v) => new Set(v).size === v.length).optional(),
   appScreenshots: appScreenshotsSchema.optional(),
-  productOffer: productOfferSchema.optional(),
+  productOffer: productOfferWriteSchema.optional(),
   placeContext: placeRecommendationContextSchema.optional(),
   placePhotos: placePhotosSchema.optional(),
   placesTaxonomy: placesTaxonomyAssignmentSchema.optional(),
@@ -4504,6 +4669,18 @@ var updateRecommendationSchema = external_exports.object({
 var reorderCollectionSchema = external_exports.object({
   expectedRevision: contentRevision,
   orderedRecommendationIds: external_exports.array(contentIdSchema).max(1e4)
+}).strict();
+var categoryListsOrderScopeSchema = external_exports.enum(["display", "pinned"]);
+var reorderCategoryListsSchema = external_exports.object({
+  expectedCategoryRevision: categoryContentRevisionSchema,
+  scope: categoryListsOrderScopeSchema,
+  orderedCollectionIds: external_exports.array(contentIdSchema.transform((v) => v.toLowerCase())).min(1).max(1e3).refine((ids) => new Set(ids).size === ids.length, "Duplicate list")
+}).strict();
+var categoryListsOrderResultSchema = external_exports.object({
+  category: contentCategorySchema,
+  scope: categoryListsOrderScopeSchema,
+  categoryRevision: categoryContentRevisionSchema,
+  lists: external_exports.array(external_exports.object({ id: contentIdSchema, position: external_exports.number().int().nonnegative() }).strict()).min(1).max(1e3)
 }).strict();
 var collectionCoreDtoSchema = external_exports.object({
   id: contentIdSchema,

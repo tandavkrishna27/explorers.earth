@@ -51,8 +51,17 @@ describe('numeric conversions for the current UI',()=>{
  it('refuses a broken details row or a broken offer rather than presenting a guess',()=>{
   for(const broken of [undefined,{},{...facts,productUrl:'javascript:alert(1)'}])
    expect(()=>productViewModel(detail({price:null,currencyCode:null,buyUrl:null},{effectiveProductDetails:broken}),membership())).toThrow();
-  for(const broken of [undefined,{price:'-1',currencyCode:'USD',buyUrl:null},{price:'10.00',currencyCode:'XYZ',buyUrl:null},{price:'100.50',currencyCode:'JPY',buyUrl:null}])
+  for(const broken of [undefined,{price:'-1',currencyCode:'USD',buyUrl:null},{price:'10.00',currencyCode:'usd',buyUrl:null},{price:'100.50',currencyCode:'JPY',buyUrl:null}])
    expect(()=>productViewModel(detail(broken),membership())).toThrow();
+ });
+
+ // Prices saved before a currency was required, or in a code ISO has withdrawn, are real
+ // prices and must open: the amount is kept and no currency is invented.
+ it('reads a legacy price with no currency, and a stored code outside the table, as stored',()=>{
+  expect(productViewModel(detail({price:'19.90',currencyCode:null,buyUrl:null}),membership())).toMatchObject({price:19.9,currency:null});
+  expect(productViewModel(detail({price:'0',currencyCode:null,buyUrl:null}),membership())).toMatchObject({price:0,currency:null});
+  expect(productViewModel(detail({price:'100.00',currencyCode:'HRK',buyUrl:null}),membership())).toMatchObject({price:100,currency:'HRK'});
+  expect(productViewModel(detail({price:'12.50',currencyCode:'XYZ',buyUrl:null}),membership())).toMatchObject({price:12.5,currency:'XYZ'});
  });
 
  it('does not pin a row through a membership of another collection',()=>{

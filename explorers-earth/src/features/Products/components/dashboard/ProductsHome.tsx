@@ -1,3 +1,4 @@
+import CategoryListsOrder from "../../../../components/reorder/CategoryListsOrder";
 import { NavigationStatus } from "../../../navigation/NavigationStatus";
 import type { IntentAuthority } from "../../../navigation/categoryNavigationPolicy";
 import { useCategoryNavigation } from "../../../navigation/CategoryNavigationProvider";
@@ -13,7 +14,8 @@ import useAuthStore from "../../../../store/store";
 import { useProductsCommands } from "../../api/query";
 import { useProductsOwner } from "../../hooks/useProductsOwner";
 import type { ProductList, RecommendedProduct } from "../../types";
-import { deduplicateProducts, buildImageUrl, generateSlug, formatPrice } from "../../utils/productHelpers";
+import { deduplicateProducts, buildImageUrl, generateSlug } from "../../utils/productHelpers";
+import { useFormatMoney } from "../../../../lib/money";
 import { getCurrentDomain } from "../../../../utils/getCurrentDomain";
 import Switch from "../../../../components/ui/Switch";
 import SwitchButton from "../../../../components/ui/SwitchButton";
@@ -160,6 +162,7 @@ export const ProductListCard = ({
   onToggleVisibility: (id: string, current: boolean) => void;
   togglingId: string | null;
 }) => {
+  const formatMoney = useFormatMoney();
   const uniqueProducts = deduplicateProducts(list.recommended_products);
   const productCount = uniqueProducts.length;
   const pinnedCount = uniqueProducts.filter((p) => p.is_pinned).length;
@@ -211,9 +214,9 @@ export const ProductListCard = ({
             </div>
           )}
           {/* Price of first product */}
-          {previewProducts[0]?.price && (
+          {previewProducts[0]?.price != null && (
             <span className="ml-1 self-center text-[10px] font-semibold text-emerald-400/80">
-              {formatPrice(previewProducts[0].price, previewProducts[0].currency)}
+              {formatMoney(previewProducts[0].price, previewProducts[0].currency)}
             </span>
           )}
         </div>
@@ -262,7 +265,7 @@ const ProductsHome = () => {
   const accountDocumentId = useAuthStore(state => state.accountId), ownerGeneration = useAuthStore(state => state.generation);
   useEffect(() => { setShowCreateModal(false); setShowManageTopPicks(false); setSelectedProduct(null); setDropdownOpen(false); }, [accountDocumentId, ownerGeneration]);
 
-  const { data, loading, error, refetch } = useProductsOwner();
+  const { data, loading, error, refetch } = useProductsOwner(undefined, true, true);
 
   useEffect(() => {
     if (!loading) (window as any).__dashboardLoaded = true;
@@ -413,6 +416,10 @@ const ProductsHome = () => {
               </div>
             )
           )}
+
+          {/* The order set here is the order of these lists on your public page. */}
+
+          <CategoryListsOrder category="products" lists={lists.map((list: any) => ({ id: list.documentId, title: list.List_Name ?? list.title ?? "" }))} onChanged={() => { void refetch(); }} />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
             {lists.map((list) => (

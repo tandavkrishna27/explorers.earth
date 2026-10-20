@@ -28,6 +28,8 @@ export interface RecommendedProduct {
   logo_url: string | null;
   description: string | null;
   specifications: Record<string, string> | null;
+  /** The same pairs in the owner's order; an object cannot carry order reliably. */
+  specification_list?: { key: string; value: string }[] | null;
   user_recommendation_note: any; // Blocks JSON (Tiptap)
   user_rating: number | null;    // 1-10 integer
   is_pinned: boolean;
@@ -88,5 +90,6 @@ export interface ProductScrapeResult {
   description?: string;
   buy_url?: string;
   specifications?: Record<string, string>;
+  specification_list?: { key: string; value: string }[] | null;
   images?: string[];
 }

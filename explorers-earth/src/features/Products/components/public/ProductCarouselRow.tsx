@@ -1,7 +1,8 @@
 import { ShoppingBag } from "lucide-react";
 import type { ProductList, RecommendedProduct } from "../../types";
-import { buildImageUrl, formatPrice } from "../../utils/productHelpers";
+import { buildImageUrl } from "../../utils/productHelpers";
 import { deduplicateProducts } from "../../utils/productHelpers";
+import { useFormatMoney } from "../../../../lib/money";
 
 interface ProductCarouselRowProps {
   list: ProductList;
@@ -10,6 +11,7 @@ interface ProductCarouselRowProps {
 }
 
 const ProductCarouselRow = ({ list, onProductClick, onViewAll }: ProductCarouselRowProps) => {
+  const formatMoney = useFormatMoney();
   const products = deduplicateProducts(list.recommended_products ?? []);
   if (products.length === 0) return null;
 
@@ -50,8 +52,8 @@ const ProductCarouselRow = ({ list, onProductClick, onViewAll }: ProductCarousel
             {product.brand && (
               <p className="text-[10px] text-[color:var(--category-muted,rgba(255,255,255,0.4))] truncate mb-1">{product.brand}</p>
             )}
-            {product.price && (
-              <p className="text-xs font-bold text-[color:var(--category-text,#34d399)]">{formatPrice(product.price, product.currency)}</p>
+            {product.price != null && (
+              <p className="text-xs font-bold text-[color:var(--category-text,#34d399)]">{formatMoney(product.price, product.currency)}</p>
             )}
           </button>
         ))}

@@ -1,3 +1,4 @@
+import ListItemOrder from "../../../../components/reorder/ListItemOrder";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 
@@ -332,7 +333,7 @@ const GameListView = () => {
     setModalState({ open: true, game });
   };
 
-  const { data, content, loading, error, refetch } = useGamesOwner(listId, Boolean(listId));
+  const { data, content, loading, error, refetch } = useGamesOwner(listId, Boolean(listId), true);
 
   const toggleGamePin = ({ variables }: { variables: { documentId: string; is_pinned: boolean; pin_order: number | null } }) => commands.pin(variables.documentId, listId!, variables.is_pinned);
   const deleteRecommendedGame = ({ variables }: { variables: { documentId: string } }) => commands.membership(variables.documentId, listId!, false);
@@ -517,6 +518,9 @@ const GameListView = () => {
           </button>
 
 <p className="text-xs text-dashboard-muted mb-3">Draft games stay private. Game publication applies across your published lists.</p>
+          {/* The order set here is the order of this list on its public page. */}
+          <ListItemOrder category="games" listId={listId!} items={games.map(item => ({ id: item.documentId, title: item.title }))} noun="Game" nounPlural="games" onChanged={() => { void refetch(); }} />
+
           {games.length === 0 ? (
             <div className="flex flex-col items-center py-16 text-center">
               <Gamepad2 size={40} className="text-white/15 mb-3" />

@@ -1,6 +1,6 @@
 import {explorersApiClient,assertCompleteMyCategoryContent,assertOwnerDetailObservation,ExplorersApiError,type CompleteMyCategoryContent,type CollectionObservation,type RecommendationObservation} from '../../../lib/explorersApiClient';
 import {createRecommendationObjectSchema,type UpdateCollectionInput,type UpdateRecommendationInput} from '../../../../../tunes/shared/explorersContract';
-import {resolveManualProductSchema,productOfferSchema,type ProductOffer} from '../../../../../tunes/shared/explorersProductContract';
+import {resolveManualProductSchema,productOfferWriteSchema,type ProductOffer} from '../../../../../tunes/shared/explorersProductContract';
 import type {RichNote} from '../../../../../tunes/shared/explorersRichNoteContract';
 import useAuthStore from '../../../store/store';
 
@@ -11,7 +11,7 @@ import useAuthStore from '../../../store/store';
 export type CompleteProductsOwnerContent=CompleteMyCategoryContent&{readonly category:'products'};
 export type ManualProductDraft={
  title:string;productUrl:string;brand:string|null;logoUrl:string|null;description:string|null;
- specifications:Record<string,string>;imageUrls:string[];
+ specifications:{key:string;value:string}[];imageUrls:string[];
  offer:ProductOffer;note:RichNote|null;userRating:number|null;mediaIds:string[];
 };
 export type ManualProductIntent=Readonly<{entityKey:string;recommendationKey:string;parent:CollectionObservation;draft:Readonly<ManualProductDraft>}>;
@@ -52,9 +52,9 @@ export const ProductsClient={
    title:draft.title,productUrl:draft.productUrl,brand:draft.brand,logoUrl:draft.logoUrl,
    description:draft.description,specifications:draft.specifications,imageUrls:draft.imageUrls,
   }}).details;
-  // The offer is validated separately because its rules are its own: a known currency
-  // constrains the amount's precision, and an unknown currency is still legitimate.
-  const offer=productOfferSchema.parse(draft.offer);
+  // The offer is validated separately because its rules are its own: a price needs a
+  // currency, and the currency constrains the amount's precision.
+  const offer=productOfferWriteSchema.parse(draft.offer);
   const normalized=createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict()
    .parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft',productOffer:offer});
   const intent=freeze({entityKey:key(),recommendationKey:key(),parent,draft:{
@@ -65,7 +65,7 @@ export const ProductsClient={
  async createManual(intent:ManualProductIntent,signal?:AbortSignal){
   const scope=intents.get(intent);if(!scope)fail();current(scope,signal);collection(intent.parent);
   const {title,productUrl,brand,logoUrl,description,specifications,imageUrls}=intent.draft;
-  const entity=await explorersApiClient.resolveProductEntity({kind:'manual',category:'products',details:{title,productUrl,brand,logoUrl,description,specifications:{...specifications},imageUrls:[...imageUrls]}},intent.entityKey,signal);
+  const entity=await explorersApiClient.resolveProductEntity({kind:'manual',category:'products',details:{title,productUrl,brand,logoUrl,description,specifications:specifications.map(entry=>({key:entry.key,value:entry.value})),imageUrls:[...imageUrls]}},intent.entityKey,signal);
   current(scope,signal);collection(intent.parent);
   const result=await explorersApiClient.createMyRecommendation(intent.parent,{entityId:entity.id,note:intent.draft.note,userRating:intent.draft.userRating,mediaIds:[...intent.draft.mediaIds],publicationState:'draft',productOffer:intent.draft.offer},intent.recommendationKey,signal);
   current(scope,signal);return result;
