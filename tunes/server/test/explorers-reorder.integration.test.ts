@@ -106,7 +106,14 @@ describe('items within a list: PATCH /collections/:id/order', () => {
 });
 
 describe('lists within a category: PATCH /categories/:category/lists/order', () => {
-  const lists = (owner: Owner, category: string, count: number) => Promise.all(Array.from({ length: count }, (_, i) => newList(owner, category, `L${i}`)));
+  // Created one after another so each list's display_order follows its index. Created concurrently the
+  // positions land in any order, and a reorder that names the order the lists already have is a no-op
+  // that does not move the category revision, which made the concurrent-reorder test below a coin flip.
+  const lists = async (owner: Owner, category: string, count: number) => {
+    const made: Awaited<ReturnType<typeof newList>>[] = [];
+    for (let i = 0; i < count; i += 1) made.push(await newList(owner, category, `L${i}`));
+    return made;
+  };
   const order = (owner: Owner, category: string, body: object, key?: string) => send(owner, 'patch', `/categories/${category}/lists/order`, body, key);
 
   it('assigns dense unique display positions in one command, even from a messy start', async () => {
