@@ -1,6 +1,7 @@
 import ReorderableMediaStrip from "../../../components/reorder/ReorderableMediaStrip";
 import ReorderableFileStrip from "../../../components/reorder/ReorderableFileStrip";
 import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
+import { ACCEPTED_IMAGE_ACCEPT_ATTRIBUTE } from "../../../utils/imageFileValidation";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import SwitchButton from "../../../components/ui/SwitchButton";
@@ -616,7 +617,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
             <Button
               size="xsmall"
               variant="ghost"
-              onClickHandler={() => navigate("/recommendations")}
+              onClickHandler={() => navigate("/recommendations/places")}
               startIcon={<BackIcon stroke="var(--dash-accent)" size="size-6" />}
             />
           </div>
@@ -998,7 +999,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
                       ref={userInputRef}
                       type="file"
                       multiple
-                      accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+                      accept={ACCEPTED_IMAGE_ACCEPT_ATTRIBUTE}
                       onChange={(e) => handleFileChange(e)}
                       className="hidden"
                     />

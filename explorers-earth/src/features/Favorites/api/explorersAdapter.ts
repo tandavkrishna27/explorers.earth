@@ -27,14 +27,18 @@ async function readPlacesOwnerContentOnce(signal?:AbortSignal):Promise<PlacesOwn
  try{checkTerminal();
  const initial=useAuthStore.getState(),assertCurrent=()=>{const state=useAuthStore.getState();if(signal?.aborted||state.accountId!==initial.accountId||state.generation!==initial.generation)throw new ExplorersApiError(409,'CONFLICT','Places owner changed while loading');};
  const first=await PlacesClient.readCompleteOwner(controller.signal);checkTerminal();assertCurrent();
- const details=new Map<string,RecommendationObservation>(),lists=new Map<string,CollectionObservation>();let index=0,listIndex=0,bytes=0;
+ const details=new Map<string,RecommendationObservation>(),lists=new Map<string,CollectionObservation>(),unavailable=new Set<string>();let index=0,listIndex=0,bytes=0;
  const budget=(value:unknown)=>{bytes+=new TextEncoder().encode(JSON.stringify(value)).byteLength;if(bytes>64*1024*1024)throw new ExplorersApiError(503,'READ_LIMIT','Places editable read limit exceeded');};
+ // The category read includes archived lists (their memberships must reconcile), but the
+ // editable-detail endpoint serves active lists only, so archived ones are not hydrated and
+ // a deleted list can never blank the page. A list that vanishes mid-read (404) is skipped.
+ const activeLists=first.collections.filter(row=>!row.archived);
  await Promise.all([
   ...Array.from({length:Math.min(4,first.recommendations.length)},async()=>{try{while(index<first.recommendations.length){checkTerminal();assertCurrent();const row=first.recommendations[index++],detail=await PlacesClient.observeRecommendation(row.id,controller.signal);checkTerminal();assertCurrent();if(detail.detail.revision!==row.revision||detail.detail.categoryRevision!==first.revision)throw new ExplorersApiError(409,'CONFLICT','Places changed while loading');budget(detail.detail);details.set(row.id,detail);}}catch(error){fail(error);}}),
-  ...Array.from({length:Math.min(4,first.collections.length)},async()=>{try{while(listIndex<first.collections.length){checkTerminal();assertCurrent();const row=first.collections[listIndex++],detail=await PlacesClient.observeCollection(row.id,controller.signal);checkTerminal();assertCurrent();if(detail.detail.revision!==row.revision||detail.detail.categoryRevision!==first.revision)throw new ExplorersApiError(409,'CONFLICT','Places lists changed while loading');budget(detail.detail);lists.set(row.id,detail);}}catch(error){fail(error);}}),
+  ...Array.from({length:Math.min(4,activeLists.length)},async()=>{try{while(listIndex<activeLists.length){checkTerminal();assertCurrent();const row=activeLists[listIndex++];let detail:CollectionObservation;try{detail=await PlacesClient.observeCollection(row.id,controller.signal);}catch(error){if(error instanceof ExplorersApiError&&error.status===404){unavailable.add(row.id);continue;}throw error;}checkTerminal();assertCurrent();if(detail.detail.revision!==row.revision||detail.detail.categoryRevision!==first.revision)throw new ExplorersApiError(409,'CONFLICT','Places lists changed while loading');budget(detail.detail);lists.set(row.id,detail);}}catch(error){fail(error);}}),
  ]);
  checkTerminal();const final=await PlacesClient.readCompleteOwner(controller.signal);checkTerminal();assertCurrent();if(first.revision!==final.revision||first.pinRevision!==final.pinRevision)throw new ExplorersApiError(409,'CONFLICT','Places changed while loading');
  recordViewedContent(final,details.values());
- return {observation:final,details,lists,view:placesViewModel.complete(final,lists,details,initial.user?.username??'')};
+  return {observation:final,details,lists,view:placesViewModel.complete(final,lists,details,initial.user?.username??'',unavailable)};
  }catch(error){return fail(error);}finally{signal?.removeEventListener('abort',forwardAbort);}
 }

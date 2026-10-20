@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { FALLBACK_POSTER } from "../../utils/moviePoster";
 import { motion, PanInfo } from "framer-motion";
 import { Play, Star } from "lucide-react";
 import type { RecommendedMovie } from "../../types";
@@ -73,7 +74,7 @@ const TopPicksMobileHero = ({ movies, onMovieClick, showManageButton = false, on
               onClick={() => diff === 0 && onMovieClick(movie)}
             >
               <img 
-                src={posterUrl || "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba"} 
+                src={posterUrl || FALLBACK_POSTER} 
                 alt={movie.title}
                 className="w-full h-full object-cover select-none pointer-events-none filter contrast-125"
               />

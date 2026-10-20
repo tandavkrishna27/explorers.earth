@@ -40,11 +40,11 @@ import {
   AdvancedMarker,
   Map,
   Pin,
-  useApiIsLoaded,
   useMap,
 } from "@vis.gl/react-google-maps";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import ErrorBoundary from "../../../components/ErrorBoundary";
+import { useMapsUsable } from "./useMapsUsable";
 import { usePublicHeaderDescriptor } from "./PublicHeaderDescriptorContext";
 import {
   isNonNullObject,
@@ -269,7 +269,7 @@ const MapPreviewFallback = ({ placeCount, compact = false }: { placeCount: numbe
 const PublicHome = memo(() => {
   const formatMoney = useFormatMoney();
   const categoryStyles = usePublicCategoryThemeStyles();
-  const mapsApiLoaded = useApiIsLoaded();
+  const mapsApiLoaded = useMapsUsable();
   // Map previews are decorative hero slides. Keeping them static avoids loading
   // several interactive map instances (and markers) before a visitor asks for a map.
   const enableLiveMapPreviews = true;
@@ -389,6 +389,14 @@ const PublicHome = memo(() => {
     );
     return deduplicateProducts(raw);
   }, [linkedProductLists]);
+
+  // A linked-content tab is only offered while it has content; fall back to Places when the
+  // active one empties (for example when its items are hidden).
+  useEffect(() => {
+    if ((activeTab === "people" && linkedPeople.length === 0) || (activeTab === "products" && linkedProducts.length === 0)) {
+      setActiveTab("places");
+    }
+  }, [activeTab, linkedPeople.length, linkedProducts.length]);
 
   // local state for inline details modals
   const [expandedState, setExpandedState] = useState<{
@@ -1611,7 +1619,7 @@ const PublicHome = memo(() => {
                             { key: "places", label: "Places", count: filteredPlaces?.length || 0 },
                             { key: "people", label: "People", count: linkedPeople.length },
                             { key: "products", label: "Products", count: linkedProducts.length },
-                          ] as const).map(({ key, label, count }) => (
+                          ] as const).filter(({ key, count }) => key === "places" || count > 0).map(({ key, label, count }) => (
                             <button
                               key={key}
                               onClick={() => setActiveTab(key)}
