@@ -502,6 +502,7 @@
   "common": {
     "cancel": "Ghairi",
     "error": "An error occurred. Please try again later.",
+    "free": "Bila malipo",
     "hidePassword": "Hide password",
     "loading": "Loading...",
     "noResults": "No results found",

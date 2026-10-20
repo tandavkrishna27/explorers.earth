@@ -856,11 +856,11 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
   const handleSaveBudgetCurrency = (
     segment: "morning" | "afternoon" | "evening",
     placeId: string,
-    amount: number,
+    amount: number | null,
     currency: string
   ) => {
     const updatePlace = (place: any) => {
-      if (amount > 0) {
+      if (amount !== null) {
         return {
           ...place,
           budgetAmount: amount,
@@ -899,7 +899,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
       );
     }
 
-    if (amount > 0) {
+    if (amount !== null) {
       toast.success("Budget updated successfully!");
     } else {
       toast.success("Budget removed!");
