@@ -27,6 +27,7 @@ import AppDetailModal from "../public/AppDetailModal";
 import AppTopPicksHero from "../public/AppTopPicksHero";
 import AppTopPicksMobileHero from "../public/AppTopPicksMobileHero";
 import AppTopPicksManager from "./AppTopPicksManager";
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 
 // ─────────────────────────────────────────────────────────────
@@ -77,7 +78,7 @@ export const CreateAppListModal = ({
 
   return (
     <AnimatePresence>
-      <motion.div
+      <DialogPanel onClose={onClose}
         className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[150] flex items-center justify-center p-4 md:p-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -173,7 +174,7 @@ export const CreateAppListModal = ({
             </div>
           </form>
         </motion.div>
-      </motion.div>
+      </DialogPanel>
     </AnimatePresence>
   );
 };

@@ -7,6 +7,7 @@ import type { RecommendedApp } from "../../types";
 import { buildLogoUrl, extractNoteText, getPriceTierColor, getPlatformColor } from "../../utils/appHelpers";
 import MediaViewer from "../../../../components/ui/MediaViewer";
 import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 interface AppDetailModalProps {
   app: RecommendedApp | null;
@@ -125,7 +126,7 @@ const AppDetailModal = ({ app, open, onClose }: AppDetailModalProps) => {
 
           {/* Modal panel wrapper */}
           <div className="fixed inset-0 pt-[88px] md:pt-8 flex items-end justify-center z-[150] pointer-events-none">
-            <motion.div
+            <DialogPanel onClose={onClose}
               data-category-detail-panel
               style={categoryStyles ?? undefined}
               className="relative bg-[var(--category-panel,#0d1117)] rounded-t-2xl w-full h-full md:max-w-3xl overflow-y-auto overflow-x-hidden flex flex-col shadow-2xl ring-1 ring-[color:var(--category-border,rgba(255,255,255,0.1))] hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pointer-events-auto"
@@ -318,7 +319,7 @@ const AppDetailModal = ({ app, open, onClose }: AppDetailModalProps) => {
                   )}
                 </div>
               </div>
-            </motion.div>
+            </DialogPanel>
           </div>
           <MediaViewer
             mediaItems={lightboxMediaItems}

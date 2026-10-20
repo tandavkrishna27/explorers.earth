@@ -4,6 +4,7 @@ import { parseTimeline } from "../../../Guides/utils/guideDataParser";
 import ClockIcon from "../../../../assets/icons/ClockIcon";
 import Location from "../../../../assets/icons/Location";
 import CrossIcon from "../../../../assets/icons/CrossIcon";
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 interface DayDetailModalProps {
   day: any;
@@ -33,7 +34,7 @@ const DayDetailModal = memo(({ day, isOpen, onClose }: DayDetailModalProps) => {
 
           {/* Modal Container */}
           <div className="fixed inset-x-0 bottom-0 top-12 md:top-12 z-[9999] md:max-w-4xl md:mx-auto pointer-events-none">
-            <motion.div
+            <DialogPanel onClose={onClose}
               initial={{ opacity: 0, y: "100%" }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: "100%" }}
@@ -184,7 +185,7 @@ const DayDetailModal = memo(({ day, isOpen, onClose }: DayDetailModalProps) => {
                     </div>
                   )}
               </div>
-            </motion.div>
+            </DialogPanel>
           </div>
         </>
       )}

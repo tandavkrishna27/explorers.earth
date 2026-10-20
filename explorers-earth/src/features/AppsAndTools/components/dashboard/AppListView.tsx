@@ -21,6 +21,7 @@ import Switch from "../../../../components/ui/Switch";
 import AppDetailModal from "../public/AppDetailModal";
 import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
 import QrCardTagline from "../../../../components/QrCardTagline";
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 interface AppRowProps {
   app: RecommendedApp;
@@ -514,7 +515,7 @@ const AppListView = () => {
 
       {/* Delete List Modal */}
       {showDeleteListModal && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <DialogPanel onClose={() => setShowDeleteListModal(false)} className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
           <div className="bg-dashboard-card rounded-2xl border border-dashboard-border p-6 w-full max-w-sm">
             <h3 className="text-lg font-semibold text-dashboard mb-2">Delete List?</h3>
             <p className="text-sm text-dashboard-muted mb-5">
@@ -534,7 +535,7 @@ const AppListView = () => {
               </button>
             </div>
           </div>
-        </div>
+        </DialogPanel>
       )}
 
       {/* Detail Modal */}

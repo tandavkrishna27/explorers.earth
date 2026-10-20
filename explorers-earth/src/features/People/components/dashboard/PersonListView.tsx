@@ -22,6 +22,7 @@ import Switch from "../../../../components/ui/Switch";
 import PersonDetailModal from "../public/PersonDetailModal";
 import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
 import PlatformIcon from "../PlatformIcon";
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 interface PersonRowProps {
   person: RecommendedPerson;
@@ -524,7 +525,7 @@ const PersonListView = () => {
       {/* Delete list confirmation */}
       <AnimatePresence>
         {showDeleteListModal && (
-          <motion.div
+          <DialogPanel onClose={() => setShowDeleteListModal(false)}
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[150] flex items-center justify-center p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -551,7 +552,7 @@ const PersonListView = () => {
                 </button>
               </div>
             </motion.div>
-          </motion.div>
+          </DialogPanel>
         )}
       </AnimatePresence>
 

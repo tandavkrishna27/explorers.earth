@@ -29,6 +29,7 @@ import type { RecommendedMovie } from "../../types";
 import Switch from "../../../../components/ui/Switch";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import { CategoryEmptyState } from "../../../../components/CategoryEmptyState";
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 
 
@@ -82,7 +83,7 @@ export const CreateMovieListModal = ({
 
   return (
     <AnimatePresence>
-      <motion.div
+      <DialogPanel onClose={onClose}
         className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[150] flex items-center justify-center p-4 md:p-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -185,7 +186,7 @@ export const CreateMovieListModal = ({
             </div>
           </form>
         </motion.div>
-      </motion.div>
+      </DialogPanel>
     </AnimatePresence>
   );
 };

@@ -25,6 +25,7 @@ import Button from "../../../../components/ui/Button";
 import { DayPlace, StayData, TimelineData, BudgetData, BudgetPlace } from "../../types/guideSectionTypes";
 import { parseStay, parseTimeline, parseBudget } from "../../utils/guideDataParser";
 import StayIcon from "../../../../assets/icons/StayIcon";
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 interface EditStayModalProps {
   isOpen: boolean;
@@ -283,7 +284,7 @@ const EditStayModal: React.FC<EditStayModalProps> = ({
           />
 
           {/* Modal */}
-          <motion.div
+          <DialogPanel onClose={onClose}
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -365,7 +366,7 @@ const EditStayModal: React.FC<EditStayModalProps> = ({
                 />
               </div>
             </div>
-          </motion.div>
+          </DialogPanel>
         </>
       )}
     </AnimatePresence>

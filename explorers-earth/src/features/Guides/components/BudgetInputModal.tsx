@@ -10,6 +10,7 @@ import { precisionMessage } from "../../../lib/money";
 import BudgetIcon from "../../../assets/icons/BudgetIcon";
 import { getBudgetDisplayText } from "../utils/priceLevelUtils";
 import CurrencyAmountInput from "../../../components/ui/CurrencyAmountInput";
+import DialogPanel from "../../../components/ui/DialogPanel";
 
 interface BudgetInputModalProps {
   isOpen: boolean;
@@ -137,7 +138,7 @@ const BudgetInputModal: React.FC<BudgetInputModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[150] p-4">
+    <DialogPanel onClose={onClose} className="fixed inset-0 bg-black/60 flex items-center justify-center z-[150] p-4">
       <div className="bg-dashboard-sidebar rounded-lg shadow-dashboard-elevated border border-dashboard max-w-md w-full p-6">
         {/* Header */}
         <div className="flex items-center gap-3 mb-4">
@@ -224,7 +225,7 @@ const BudgetInputModal: React.FC<BudgetInputModalProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </DialogPanel>
   );
 };
 

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2 } from "lucide-react";
 import { useCategoryNavigation } from "../features/navigation/CategoryNavigationProvider";
 import { CATEGORY_IDS, type IntentAuthority, type CategoryId } from "../features/navigation/categoryNavigationPolicy";
+import DialogPanel from "../components/ui/DialogPanel";
 
 interface CategoryVisibilityModalProps {
   isOpen: boolean;
@@ -57,7 +58,7 @@ export const CategoryVisibilityModal: FC<CategoryVisibilityModalProps> = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
+        <DialogPanel onClose={onClose}
           className="dashboard-theme fixed inset-0 z-[160] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -117,7 +118,7 @@ export const CategoryVisibilityModal: FC<CategoryVisibilityModalProps> = ({
               </div>
             </div>
           </motion.div>
-        </motion.div>
+        </DialogPanel>
       )}
     </AnimatePresence>
   );

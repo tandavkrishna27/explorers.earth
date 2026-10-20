@@ -8,6 +8,7 @@ import { buildCoverUrl, formatAuthors, extractNoteText, formatRating, formatPage
 import MediaViewer from "../../../../components/ui/MediaViewer";
 import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
 import SafePublicRichText from "../../../PublicHome/components/SafePublicRichText";
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 interface BookDetailModalProps {
   book: RecommendedBook | null;
@@ -138,7 +139,7 @@ const BookDetailModal = ({ book, open, onClose, onTrackClick }: BookDetailModalP
 
           {/* Modal Overlay Container */}
           <div className="fixed inset-0 pt-[88px] md:pt-8 flex items-end justify-center z-[150] pointer-events-none">
-            <motion.div
+            <DialogPanel onClose={onClose}
               data-category-detail-panel
               style={categoryStyles ?? undefined}
               className="relative bg-[var(--category-panel,#0d1117)] rounded-t-2xl w-full h-full md:max-w-2xl overflow-y-auto overflow-x-hidden flex flex-col shadow-2xl ring-1 ring-[color:var(--category-border,rgba(255,255,255,0.1))] hide-scrollbar scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pointer-events-auto"
@@ -376,7 +377,7 @@ const BookDetailModal = ({ book, open, onClose, onTrackClick }: BookDetailModalP
                   <Share2 size={14} /> Share
                 </button>
               </div>
-            </motion.div>
+            </DialogPanel>
           </div>
           <MediaViewer
             mediaItems={lightboxMediaItems}

@@ -21,6 +21,7 @@ import {
 } from "../services/locationImageService";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
+import DialogPanel from "../../../components/ui/DialogPanel";
 
 interface CreateGuidePageProps {
   type?: "create" | "edit";
@@ -714,7 +715,7 @@ export const CreateGuideModal = ({
             onClick={onClose}
           />
 
-          <motion.div
+          <DialogPanel onClose={onClose}
             className="bg-dashboard-sidebar rounded-xl border border-dashboard-border p-6 md:p-8 w-full max-w-4xl shadow-2xl relative z-10 my-8 text-left overflow-y-auto max-h-[90vh]"
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -728,7 +729,7 @@ export const CreateGuideModal = ({
               type="create"
               defaultTitle={defaultTitle}
             />
-          </motion.div>
+          </DialogPanel>
         </div>
       </div>
     </AnimatePresence>

@@ -16,6 +16,7 @@ import {
 import type { Guide } from "../../types";
 import {guideDescriptionText} from '../../../../utils/guideDescriptionText';
 import {encode} from 'html-entities';
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 interface EditGeneralTipsModalProps {
   isOpen: boolean;
@@ -121,7 +122,7 @@ const EditGeneralTipsModal: React.FC<EditGeneralTipsModalProps> = ({
           />
 
           {/* Modal */}
-          <motion.div
+          <DialogPanel onClose={onClose}
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -246,7 +247,7 @@ const EditGeneralTipsModal: React.FC<EditGeneralTipsModalProps> = ({
                 />
               </div>
             </div>
-          </motion.div>
+          </DialogPanel>
         </>
       )}
     </AnimatePresence>

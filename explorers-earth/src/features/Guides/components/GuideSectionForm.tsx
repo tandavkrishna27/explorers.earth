@@ -50,6 +50,7 @@ import MediaViewer from "../../../components/ui/MediaViewer";
 import { useMediaViewer } from "../../../hooks/useMediaViewer";
 import type { MediaItem } from "../../../components/ui/MediaViewer";
 import TopPlacesByCategory from "../../Favorites/components/TopPlacesByCategory";
+import DialogPanel from "../../../components/ui/DialogPanel";
 
 interface GuideSectionFormProps {
   guideDocumentId: string; // Document ID for guide relation
@@ -3079,7 +3080,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
 
       {/* Tips Edit Modal */}
       {editingTips && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+        <DialogPanel onClose={() => setEditingTips(null)} className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-dashboard-sidebar rounded-lg shadow-dashboard-elevated border border-dashboard max-w-md w-full p-6">
             <div className="flex items-center gap-3 mb-4">
               <TipsIcon size="6" color="white" />
@@ -3126,7 +3127,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
               </button>
             </div>
           </div>
-        </div>
+        </DialogPanel>
       )}
 
       {/* Budget Input Modal */}

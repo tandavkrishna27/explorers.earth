@@ -25,6 +25,7 @@ import Switch from "../../../../components/ui/Switch";
 import GameDetailModal from "../public/GameDetailModal";
 import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
 import QrCardTagline from "../../../../components/QrCardTagline";
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 interface GameRowProps {
   game: RecommendedGame;
@@ -601,7 +602,7 @@ const GameListView = () => {
 
       <AnimatePresence>
         {deleteTarget && (
-          <motion.div
+          <DialogPanel onClose={() => setDeleteTarget(null)}
             className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -629,7 +630,7 @@ const GameListView = () => {
                 </button>
               </div>
             </motion.div>
-          </motion.div>
+          </DialogPanel>
         )}
       </AnimatePresence>
       {list && listVisibilityPrompt && (

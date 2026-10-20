@@ -1,6 +1,7 @@
 import { FC } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2 } from "lucide-react";
+import DialogPanel from "../components/ui/DialogPanel";
 
 interface ListVisibilityModalProps {
   isOpen: boolean;
@@ -41,7 +42,7 @@ export const ListVisibilityModal: FC<ListVisibilityModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+      <DialogPanel onClose={onClose} className="fixed inset-0 z-[160] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
         <motion.div
           className="bg-dashboard-sidebar rounded-xl border border-dashboard-border p-6 md:p-8 w-full max-w-md shadow-2xl relative"
           initial={{ scale: 0.95, opacity: 0 }}
@@ -101,7 +102,7 @@ export const ListVisibilityModal: FC<ListVisibilityModalProps> = ({
             </div>
           </div>
         </motion.div>
-      </div>
+      </DialogPanel>
     </AnimatePresence>
   );
 };

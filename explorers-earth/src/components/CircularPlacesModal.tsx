@@ -6,6 +6,7 @@ import ImageWithFallback from "./ui/ImageWithFallback";
 import { useTranslation } from "react-i18next";
 
 import { usePublicCategoryThemeStyles } from "../features/PublicHome/components/PublicCategoryThemeContext";
+import DialogPanel from "../components/ui/DialogPanel";
 
 interface Place {
   List_Name: string;
@@ -207,7 +208,7 @@ const CircularPlacesModal: FC<CircularPlacesModalProps> = ({
 
   return (
     <AnimatePresence>
-      <motion.div
+      <DialogPanel onClose={onClose}
         className="fixed inset-0 bg-black/60 flex items-center justify-center z-[150]"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -307,7 +308,7 @@ const CircularPlacesModal: FC<CircularPlacesModalProps> = ({
             </div>
           </div>
         </motion.div>
-      </motion.div>
+      </DialogPanel>
     </AnimatePresence>
   );
 };

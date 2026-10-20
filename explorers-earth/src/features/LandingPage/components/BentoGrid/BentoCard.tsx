@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Maximize2, X } from 'lucide-react';
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 interface BentoCardProps {
   className?: string;
@@ -50,7 +51,7 @@ export default function BentoCard({ className, children, title, subtitle }: Bent
       {/* ── Expanded modal overlay ── */}
       <AnimatePresence>
         {expanded && (
-          <motion.div
+          <DialogPanel onClose={() => setExpanded(false)}
             className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-10"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -93,7 +94,7 @@ export default function BentoCard({ className, children, title, subtitle }: Bent
                 {children}
               </div>
             </motion.div>
-          </motion.div>
+          </DialogPanel>
         )}
       </AnimatePresence>
     </>

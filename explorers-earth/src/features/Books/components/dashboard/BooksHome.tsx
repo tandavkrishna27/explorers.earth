@@ -34,6 +34,7 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import { getCurrentDomain } from "../../../../utils/getCurrentDomain";
 import { AnimatePresence } from "framer-motion";
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 // ─────────────────────────────────────────────────────────────
 // Inline Create List Modal
@@ -87,7 +88,7 @@ export const CreateBookListModal = ({
 
   return (
     <AnimatePresence>
-      <motion.div
+      <DialogPanel onClose={onClose}
         className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[150] flex items-center justify-center p-4 md:p-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -190,7 +191,7 @@ export const CreateBookListModal = ({
             </div>
           </form>
         </motion.div>
-      </motion.div>
+      </DialogPanel>
     </AnimatePresence>
   );
 };
