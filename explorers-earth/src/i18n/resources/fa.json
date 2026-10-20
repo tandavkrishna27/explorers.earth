@@ -1301,14 +1301,14 @@
     "inputPlaceholder": "نام شما",
     "ctaButton": "صفحه Explorer خود را ادعا کنید",
     "signupPrompt": "برای دریافت مال خود همین الان ثبت نام کنید",
-    "headlinePrefix": "همه شما",
+    "headlinePrefix": "همه",
     "rotatingWords": [
-      "توصیه ها",
-      "مراقبت ها",
-      "مجموعه ها",
-      "موارد دلخواه"
+      "توصیه‌هایتان",
+      "گزیده‌هایتان",
+      "مجموعه‌هایتان",
+      "علاقه‌مندی‌هایتان"
     ],
-    "headlineSuffix": "در یک لینک و QR.",
+    "headlineSuffix": "در یک پیوند و QR.",
     "badge": "رایگان برای همیشه",
     "globalStrip": "Explorers توصیه هایی را در سراسر جهان به اشتراک می گذارد",
     "preview": {

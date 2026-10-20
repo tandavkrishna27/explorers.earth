@@ -74,9 +74,9 @@ const Header = memo(() => {
   const handleLogout = useLogout();
 
   const namedPages = [
-    { path: '/home', exact: true, label: 'Home', icon: <HomeIcon fill="currentColor" /> },
-    { path: '/profile', exact: true, label: 'Profile', icon: <Profile fill="currentColor" /> },
-    { path: '/settings', exact: true, label: 'Settings', icon: <SettingsIcon fill="currentColor" /> },
+    { path: '/home', exact: true, label: t('sidebar.home'), icon: <HomeIcon fill="currentColor" /> },
+    { path: '/profile', exact: true, label: t('sidebar.profile'), icon: <Profile fill="currentColor" /> },
+    { path: '/settings', exact: true, label: t('sidebar.settings'), icon: <SettingsIcon fill="currentColor" /> },
   ];
 
   const currentNamedPage = namedPages.find(p =>
@@ -198,7 +198,7 @@ const Header = memo(() => {
                   accountData?.profileImage?.url ||
                   IMAGE_CONFIG.defaultImages.profile
                 }
-                alt="profile"
+                alt={t("header.profileImageAlt", "Profile photo")}
               />
             ) : (
               <div className="bg-dashboard-muted p-2 rounded-xl border border-dashboard/800">
@@ -228,7 +228,7 @@ const Header = memo(() => {
               className="px-4 py-1.5 rounded-lg bg-[var(--dash-accent)] text-white font-medium text-sm hover:brightness-110 transition-all border-none cursor-pointer"
               onClick={() => navigate("/login")}
             >
-              Login
+              {t("header.login", "Login")}
             </button>
           )}
         </div>
@@ -255,13 +255,13 @@ const Header = memo(() => {
                         accountData?.profileImage?.url ||
                         IMAGE_CONFIG.defaultImages.profile
                       }
-                      alt="profile"
+                      alt={t("header.profileImageAlt", "Profile photo")}
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-dashboard truncate">
-                        {accountData?.displayName || accountData?.handle || "User"}
+                        {accountData?.displayName || accountData?.handle || t("header.user", "User")}
                       </p>
-                      <p className="text-xs text-dashboard-muted">Account Settings</p>
+                      <p className="text-xs text-dashboard-muted">{t("header.accountSettings", "Account Settings")}</p>
                     </div>
                   </div>
                 </div>
@@ -330,7 +330,7 @@ const Header = memo(() => {
                     setShowMobileMenu(false);
                   }}
                 >
-                  Login
+                  {t("header.login", "Login")}
                 </motion.button>
                 {isManualAuthEnabled() && (
                   <motion.button
@@ -342,7 +342,7 @@ const Header = memo(() => {
                       setShowMobileMenu(false);
                     }}
                   >
-                    Register
+                    {t("header.register", "Register")}
                   </motion.button>
                 )}
               </div>

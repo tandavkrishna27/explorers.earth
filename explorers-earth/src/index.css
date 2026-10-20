@@ -709,18 +709,25 @@ body[data-sidebar-open="false"] .dashboard-content {
 
 
 
-/* Remove default focus outlines and add custom focus styles */
-* {
-  outline: none !important;
+/* Keyboard focus indicator (WCAG 2.4.7). A former universal outline reset and an input
+   box-shadow reset (both marked important) removed every indicator, including the
+   rings components set for themselves. Mouse focus stays quiet; keyboard focus is always
+   visible, and a component can still opt out/in with its own focus-visible styles. */
+:root {
+  --focus-ring-color: #2563eb;
 }
 
-button:focus,
-a:focus,
-input:focus,
-select:focus,
-textarea:focus {
-  outline: none !important;
-  box-shadow: none !important;
+.dashboard-theme {
+  --focus-ring-color: var(--dash-accent, #2563eb);
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+:where(a, button, input, select, textarea, summary, [role="button"], [role="tab"], [tabindex]):focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
 }
 
 /* Custom focus styles for better UX */
@@ -1331,9 +1338,9 @@ body.hide-dashboard-header .sticky-top-offset {
 }
 
 /* Focus states for accessibility */
-button:focus,
-input:focus,
-a:focus {
+button:focus-visible,
+input:focus-visible,
+a:focus-visible {
   outline: 2px solid hsl(var(--cta-blue));
   outline-offset: 2px;
 }

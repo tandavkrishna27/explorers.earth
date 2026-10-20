@@ -1,9 +1,8 @@
 import { ApolloClient, ApolloLink, ApolloProvider, InMemoryCache, Observable } from '@apollo/client';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import MobileLayout from '../MobileLayout';
-import DashboardLayout from '../DashboardLayout';
+import ResponsiveLayout from '../ResponsiveLayout';
 import { useCategoryNavigation } from '../../features/navigation/CategoryNavigationProvider';
 import { loginSurface, surfaceAccount } from '../../features/navigation/__tests__/surfaceHarness';
 import { canonicalAccountFixture, canonicalCategoryAccount } from '../../test/canonicalAccountFixture';
@@ -20,6 +19,8 @@ function Consumer() {
   const navigation = useCategoryNavigation();
   return <div data-testid="publication-consumer">{navigation.authority?.accountDocumentId}</div>;
 }
+
+const resize = (width: number) => { act(() => { Object.defineProperty(window, 'innerWidth', { configurable: true, value: width }); window.dispatchEvent(new Event('resize')); }); };
 
 describe('real publication providers at each dashboard layout Outlet', () => {
   beforeEach(() => { loginSurface(); localStorage.setItem('dashboard-theme', 'light'); vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined); });
@@ -40,13 +41,14 @@ describe('real publication providers at each dashboard layout Outlet', () => {
       observer.next({ data: { usersPermissionsUser: { __typename: 'UsersPermissionsUser', documentId: 'u1', provider: 'google', confirmed: true, blocked: false, accounts: [surfaceAccount()] } } });
       observer.complete();
     })) });
-    const tree = (mobile: boolean) => <ApolloProvider client={client}><MemoryRouter><Routes><Route element={mobile ? <MobileLayout /> : <DashboardLayout />}><Route index element={<Consumer />} /></Route></Routes></MemoryRouter></ApolloProvider>;
+    const tree = () => <ApolloProvider client={client}><MemoryRouter><Routes><Route element={<ResponsiveLayout />}><Route index element={<Consumer />} /></Route></Routes></MemoryRouter></ApolloProvider>;
     const verified = canonicalAccountFixture().id;
-    const view = render(tree(true));
+    resize(700);
+    const view = render(tree());
     await waitFor(() => expect(screen.getByTestId('publication-consumer')).toHaveTextContent(verified));
-    view.rerender(tree(false));
+    resize(1100); view.rerender(tree());
     await waitFor(() => expect(screen.getByTestId('publication-consumer')).toHaveTextContent(verified));
-    view.rerender(tree(true));
+    view.rerender(tree());
     await waitFor(() => expect(screen.getByTestId('publication-consumer')).toHaveTextContent(verified));
     // The legacy account query is gone; the scope comes from the canonical profile, and
     // since P3-4 no layout mounts a Music provider, so no Music request is made.
