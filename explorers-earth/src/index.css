@@ -725,7 +725,13 @@ body[data-sidebar-open="false"] .dashboard-content {
   outline: none;
 }
 
-:where(a, button, input, select, textarea, summary, [role="button"], [role="tab"], [tabindex]):focus-visible {
+/* The selector is deliberately NOT wrapped in :where(): it has to out-rank Tailwind's
+   outline-none / focus:outline-none utilities, otherwise a component that removes the browser
+   outline never shows keyboard focus (XC-02, XC-X02). The pseudo-class is repeated to get
+   (0,2,x) specificity, which beats .focus\:outline-none:focus. A legacy rule here
+   built its outline colour from a custom property that was never defined, so the declaration
+   was invalid at computed-value time and wiped the outline entirely; do not reintroduce one. */
+:is(a, button, input, select, textarea, summary, [role="button"], [role="tab"], [role="radio"], [role="menuitem"], [tabindex]:not([tabindex="-1"])):focus-visible:focus-visible {
   outline: 2px solid var(--focus-ring-color);
   outline-offset: 2px;
 }
@@ -1335,14 +1341,6 @@ body.hide-dashboard-header .sticky-top-offset {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
-}
-
-/* Focus states for accessibility */
-button:focus-visible,
-input:focus-visible,
-a:focus-visible {
-  outline: 2px solid hsl(var(--cta-blue));
-  outline-offset: 2px;
 }
 
 /* Custom animations */
