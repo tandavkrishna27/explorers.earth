@@ -1,3 +1,7 @@
+import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
+import {cleanup} from '@testing-library/react';
+import useAuthStore from '../../../../store/store';
+import {conflictEvents,signIn,stubOwnerApi,viewed} from '../../../../test/revisionLockHarness';
 import React from 'react';
 import {act,renderHook} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
@@ -23,5 +27,20 @@ describeRevisionLock('Places commands','places',[
   else if(name==='archiveList')await c.archiveList(listId);
   else if(name==='publishPlace')await c.publishPlace(itemId,true);
   else await c.archivePlace(itemId);
+ });
+});
+
+describe('Places list delete after its places',()=>{
+ beforeEach(()=>{vi.unstubAllGlobals();signIn();history.replaceState({},'','/');});
+ afterEach(()=>{cleanup();vi.unstubAllGlobals();useAuthStore.getState().logout();});
+ it('archives the list at the revision the place archives left it, without a conflict',async()=>{
+  const server={list:5,item:3},writes=stubOwnerApi('places',server);viewed(5,3);
+  const hook=commands(),seen=conflictEvents();
+  await act(async()=>{await hook.current.archivePlaces([itemId],listId);});
+  server.list=6;
+  await act(async()=>{await hook.current.archiveList(listId);});
+  expect(seen).not.toHaveBeenCalled();
+  expect(writes.map(write=>write.method)).toEqual(['DELETE','DELETE']);
+  expect(writes[1].body.expectedRevision).toBe(6);
  });
 });

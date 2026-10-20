@@ -5,6 +5,7 @@ import type {CollectionObservation,RecommendationObservation} from '../../../lib
 import {PlacesClient,type CompletePlacesOwnerContent,type PlaceMembershipIntent,type ManualPlaceDraft,type ManualPlaceIntent} from './placesClient';
 import type {PlaceCollectionDetails,PlaceEntityDetails} from '../../../../../tunes/shared/explorersPlaceContract';
 import {invalidatePlaces} from '../hooks/usePlacesOwner';
+import {settleViewedRevision} from '../../../lib/viewedRevisions';
 
 // Ticket 5.1. Native Places commands, in their own module because api/query.ts is the
 // retired Strapi consumer and Epic 8 removes it after checking callers.
@@ -107,8 +108,13 @@ export function usePlacesCommands(listId?:string) {
    }
    return result;
   }),
-  archivePlaces:(ids:readonly string[])=>run(async(assert,signal)=>{
-   for(const id of ids){const signature=`archive-place:${id}`;begin(`recommendation:${id}`,signature);const observed=await observeRecommendation(signature,id,assert,signal);assert();await PlacesClient.archiveRecommendation(observed,key(signature),signal);assert();forget(signature);}
+  // Archiving a place moves its list's revision on the server, a side effect this tab did
+  // not read back. With the parent id the list stops being tracked at the revision it was
+  // viewed at, so the list's own archive that follows is not refused as a foreign change.
+  archivePlaces:(ids:readonly string[],parentId?:string)=>run(async(assert,signal)=>{
+   try{
+    for(const id of ids){const signature=`archive-place:${id}`;begin(`recommendation:${id}`,signature);const observed=await observeRecommendation(signature,id,assert,signal);assert();await PlacesClient.archiveRecommendation(observed,key(signature),signal);assert();forget(signature);}
+   }finally{if(parentId&&ids.length>0)settleViewedRevision('collection',parentId);}
   }),
   reorderList:(id:string,orderedRecommendationIds:string[])=>run(async(assert,signal)=>{const signature=`reorder:${id}:${JSON.stringify(orderedRecommendationIds)}`;begin(`collection:${id}`,signature);const observed=await observeComplete(signature,assert,signal);assert();const result=await PlacesClient.reorderCollection(observed,id,orderedRecommendationIds,key(signature),signal);assert();forget(signature);return result;}),
   membership:(id:string,collectionId:string,attached:boolean)=>run(async(assert,signal)=>{
