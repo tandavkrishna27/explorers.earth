@@ -9,6 +9,7 @@ import {
 import { RECOMMENDATION_CATEGORY_IDS } from "../../Profile/types/themeTypes";
 import PublicProfileFooter from "./PublicProfileFooter";
 import { PublicProfileHeroBackdrop, PublicProfileIdentity, PublicProfileWallpaper } from "./PublicProfileChromePrimitives";
+import { useTranslation } from "react-i18next";
 import { memo, useEffect, useState, useMemo, type KeyboardEvent } from "react";
 import { useParams, useNavigate, useOutletContext } from "react-router-dom";
 import { usePublicProfileShell } from "../api/usePublicProfileShell";
@@ -103,6 +104,7 @@ const ProfileSkeleton = memo(() => {
 ProfileSkeleton.displayName = "ProfileSkeleton";
 
 const PublicProfile = memo(() => {
+  const { t } = useTranslation();
   const { username } = useParams();
   const navigate = useNavigate();
   const outletContext = useOutletContext<{ isShellRevealed?: boolean; setIsPageLoaded?: (val: boolean) => void } | null>();
@@ -395,7 +397,7 @@ const PublicProfile = memo(() => {
   if (error && !hasUsableData) {
     return (
       <div className="min-h-screen bg-black text-white">
-        <PublicRouteErrorState title="Profile unavailable" error={error} onRetry={refetch} />
+        <PublicRouteErrorState title={t("publicProfile.unavailable", "Profile unavailable")} error={error} onRetry={refetch} />
       </div>
     );
   }
@@ -406,10 +408,10 @@ const PublicProfile = memo(() => {
       <div className="flex bg-black items-center justify-center min-h-screen">
         <div className="text-white text-center">
           <h2 className="text-lg font-poppins font-semibold mb-2">
-            Profile not found
+            {t("publicProfile.notFound", "Profile not found")}
           </h2>
           <p className="text-gray-400 text-sm">
-            This user profile is not available.
+            {t("publicProfile.notFoundText", "This user profile is not available.")}
           </p>
         </div>
       </div>
@@ -621,7 +623,7 @@ const PublicProfile = memo(() => {
           color: "var(--text-primary)",
         }}
       >
-        {Boolean(error) && <PublicRoutePartialNotice message="Some profile data is unavailable." />}
+        {Boolean(error) && <PublicRoutePartialNotice message={t("publicProfile.partialData", "Some profile data is unavailable.")} />}
         {/* Profile Content */}
 
         <PublicProfileWallpaper account={accountData} theme={themeSettings} />
@@ -859,7 +861,7 @@ const PublicProfile = memo(() => {
               {/* Tab List */}
               <div
                 role="tablist"
-                aria-label="Profile sections"
+                aria-label={t("publicProfile.sections", "Profile sections")}
                 className="flex w-full justify-center gap-8 border-b px-2 md:px-0 overflow-x-auto scrollbar-hide"
                 style={{ borderColor: "var(--border-card)" }}
               >
@@ -869,7 +871,7 @@ const PublicProfile = memo(() => {
                     id="public-profile-recommendations-tab"
                     role="tab"
                     type="button"
-                    aria-label="Recommendations"
+                    aria-label={t("publicProfile.recommendations.regionLabel", "Recommendations")}
                     aria-controls="public-profile-recommendations-panel"
                     tabIndex={focusedTab === "recommendations" ? 0 : -1}
                     className="profile-presentation-focus min-h-12 min-w-12 py-2.5 text-xs font-poppins font-medium tracking-wide transition-all border-b-2"
@@ -895,7 +897,7 @@ const PublicProfile = memo(() => {
                   id="public-profile-gallery-tab"
                   role="tab"
                   type="button"
-                  aria-label="Gallery"
+                  aria-label={t("publicProfile.gallery", "Gallery")}
                   aria-controls="public-profile-gallery-panel"
                   tabIndex={focusedTab === "gallery" ? 0 : -1}
                   className="profile-presentation-focus min-h-12 min-w-12 py-2.5 text-xs font-poppins font-medium tracking-wide transition-all border-b-2"
@@ -919,7 +921,7 @@ const PublicProfile = memo(() => {
                     id="public-profile-business-tab"
                     role="tab"
                     type="button"
-                    aria-label="Business Details"
+                    aria-label={t("publicProfile.businessDetails", "Business Details")}
                     aria-controls="public-profile-business-panel"
                     tabIndex={focusedTab === "business" ? 0 : -1}
                     className="profile-presentation-focus min-h-12 min-w-12 py-2.5 text-xs font-poppins font-medium tracking-wide transition-all border-b-2"
@@ -990,10 +992,10 @@ const PublicProfile = memo(() => {
                                 <FeedIcon className="size-8" />
                               </div>
                               <h3 className="text-lg font-poppins font-semibold mb-2" style={{ color: "var(--text-primary)" }}>
-                                No Photos Yet
+                                {t("publicProfile.noPhotosTitle", "No Photos Yet")}
                               </h3>
                               <p className="text-sm text-center max-w-sm" style={{ color: "var(--text-secondary)" }}>
-                                This user hasn't shared any photos in their feed yet. Check back later for updates!
+                                {t("publicProfile.noPhotosText", "This user hasn't shared any photos in their feed yet. Check back later for updates!")}
                               </p>
                             </div>
                           )}
@@ -1079,7 +1081,7 @@ const PublicProfile = memo(() => {
                                         className="profile-presentation-focus font-poppins text-sm transition-colors"
                                         style={{ color: "var(--text-secondary)" }}
                                       >
-                                        Visit Website
+                                        {t("publicProfile.visitWebsite", "Visit Website")}
                                       </a>
                                     </div>
                                   )}

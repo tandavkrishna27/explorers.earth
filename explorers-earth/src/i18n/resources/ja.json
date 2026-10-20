@@ -1301,14 +1301,14 @@
     "inputPlaceholder": "あなたの名前",
     "ctaButton": "Explorer ページを請求してください",
     "signupPrompt": "サインアップして今すぐ入手しましょう",
-    "headlinePrefix": "あなたのすべて",
+    "headlinePrefix": "あなたの",
     "rotatingWords": [
       "推奨事項",
       "キュレーション",
       "コレクション",
       "お気に入り"
     ],
-    "headlineSuffix": "1 つのリンクと QR にあります。",
+    "headlineSuffix": "をすべて、1 つのリンクと QR で。",
     "badge": "永久無料",
     "globalStrip": "Explorer は世界中で推奨事項を共有します",
     "preview": {

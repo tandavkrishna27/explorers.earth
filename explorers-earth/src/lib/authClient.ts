@@ -1,5 +1,6 @@
 import useAuthStore from "../store/store";
-import { adoptAccountLocale } from "./accountLocale";
+import i18n from "i18next";
+import { adoptAccountLocale, persistAccountLocale } from "./accountLocale";
 
 type AuthSession = { user?: { id?: string; email?: string }; session?: { id?: string } } | null;
 type CanonicalAccount = { id: string; handle: string | null; onboardingStatus: "incomplete" | "complete"; revision: number; locale?: string };
@@ -44,7 +45,10 @@ export const authClient = {
         id: account.id, userId: session.user.id, username: account.handle ?? "", email: session.user.email ?? "",
         onboardingStatus: account.onboardingStatus, revision: account.revision,
       });
-      void adoptAccountLocale(account.locale).catch(() => undefined);
+      // A never-onboarded account has only the column default, so it keeps the language the
+      // visitor signed up in (and saves it); an onboarded account applies its saved locale.
+      if (account.onboardingStatus === "incomplete") void persistAccountLocale(i18n.language).catch(() => undefined);
+      else void adoptAccountLocale(account.locale).catch(() => undefined);
     } catch { useAuthStore.getState().verificationFailed(generation, "error"); }
   },
   async startGoogleSignIn(recovery = false): Promise<void> {

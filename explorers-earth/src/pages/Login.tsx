@@ -15,32 +15,32 @@ export default function Login() {
   const status = useAuthStore((state) => state.status);
   const begin = () => {
     if (logoutError) return;
-    void authClient.startGoogleSignIn().catch(() => setError("Google sign-in is unavailable. Please try again."));
+    void authClient.startGoogleSignIn().catch(() => setError(t("auth.loginPage.googleUnavailable", "Google sign-in is unavailable. Please try again.")));
   };
   const retrySignOut = () => { const attemptId = useAuthStore.getState().logoutAttemptId;
     void authClient.signOut().then(() => {
     useAuthStore.getState().setLogoutError(false, attemptId);
     setError("");
-  }).catch(() => setError("Server sign-out is still unavailable. Please retry.")); };
+  }).catch(() => setError(t("auth.loginPage.signOutUnavailable", "Server sign-out is still unavailable. Please retry."))); };
   return <>
-    <SEO title={t("seo.loginTitle")} description="Sign in to your explorers account with Google."
+    <SEO title={t("seo.loginTitle")} description={t("auth.loginPage.seoDescription", "Sign in to your explorers account with Google.")}
       canonical={createCanonicalUrl("/login")} noIndex={true} />
     {(error || logoutError || params.has("error") || status === "error") && <div role="alert" className="bg-black text-center text-amber-300 py-3">
-      {error || (logoutError ? "Server sign-out is incomplete. Retry signing out before using this account." : "Google sign-in was cancelled or could not finish. Please try again.")}
-      {logoutError && <button type="button" onClick={retrySignOut} className="ml-3 underline">Retry sign-out</button>}
+      {error || (logoutError ? t("auth.loginPage.signOutIncomplete", "Server sign-out is incomplete. Retry signing out before using this account.") : t("auth.loginPage.cancelled", "Google sign-in was cancelled or could not finish. Please try again."))}
+      {logoutError && <button type="button" onClick={retrySignOut} className="ml-3 underline">{t("auth.loginPage.retrySignOut", "Retry sign-out")}</button>}
     </div>}
     <AuthLayout
       eyebrow={t("auth.brand.tagline", "Every place connects us")}
-      title={t("auth.login.title2", "Welcome back, explorer.")}
-      subtitle={t("auth.login.sub2", "Your map is right where you left it.")}
+      title={t("auth.loginPage.title2", "Welcome back, explorer.")}
+      subtitle={t("auth.loginPage.sub2", "Your map is right where you left it.")}
       googleLabel={t("auth.signInWithGoogle")}
       onGoogle={begin}
       termsPrefix={t("auth.terms.prefix", "By continuing you agree to our")}
       termsLabel={t("auth.terms.terms", "Terms")}
       privacyLabel={t("auth.terms.privacy", "Privacy Policy")}
       andWord={t("common.and", "and")}
-      switchPrompt="Need to restore a deactivated account?"
-      switchCta="Recover with Google"
+      switchPrompt={t("auth.loginPage.recoverPrompt", "Need to restore a deactivated account?")}
+      switchCta={t("auth.loginPage.recoverCta", "Recover with Google")}
       switchTo="/reactivate"
       secureLabel={t("auth.secureSignIn", "Secure sign-in")}
     />

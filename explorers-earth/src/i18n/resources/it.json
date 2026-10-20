@@ -497,7 +497,28 @@
         "willBeConvertedLowercase": "Il nome utente sarà convertito in minuscolo",
         "willConvertToLowercase": "Il nome utente verrà convertito in minuscole"
       }
-    }
+    },
+    "brand": {
+      "tagline": "Ogni luogo ci connette"
+    },
+    "loginPage": {
+      "title2": "Bentornato, esploratore.",
+      "sub2": "La tua mappa è esattamente dove l'avevi lasciata.",
+      "googleUnavailable": "L'accesso con Google non è disponibile. Riprova.",
+      "signOutUnavailable": "La disconnessione dal server non è ancora disponibile. Riprova.",
+      "seoDescription": "Accedi al tuo account explorers con Google.",
+      "signOutIncomplete": "La disconnessione dal server è incompleta. Riprova a disconnetterti prima di usare questo account.",
+      "cancelled": "L'accesso con Google è stato annullato o non è stato completato. Riprova.",
+      "retrySignOut": "Riprova la disconnessione",
+      "recoverPrompt": "Devi ripristinare un account disattivato?",
+      "recoverCta": "Recupera con Google"
+    },
+    "terms": {
+      "prefix": "Continuando accetti i nostri",
+      "terms": "Termini",
+      "privacy": "Informativa sulla privacy"
+    },
+    "secureSignIn": "Accesso sicuro"
   },
   "common": {
     "cancel": "Annulla",
@@ -510,7 +531,8 @@
     "showPassword": "Mostra password",
     "signInWithGoogle": "Accedi con Google",
     "signUpWithGoogle": "Registrati con Google",
-    "submit": "Invia"
+    "submit": "Invia",
+    "and": "e"
   },
   "contact": {
     "closingMessage": "Siamo un piccolo team con una grande visione — i tuoi pensieri ci importano. Mettiti in contatto e costruiamo qualcosa di locale e globale insieme.",
@@ -1292,7 +1314,12 @@
       "signUp": "Registrati",
       "claimFreePage": "Richiedi la pagina gratuita",
       "claimFree": "Richiedi gratuitamente"
-    }
+    },
+    "profileImageAlt": "Foto del profilo",
+    "user": "Utente",
+    "accountSettings": "Impostazioni account",
+    "login": "Accedi",
+    "register": "Registrati"
   },
   "hero": {
     "headline": "Tutti i tuoi consigli: un collegamento, un QR",
@@ -1301,14 +1328,14 @@
     "inputPlaceholder": "il tuo nome",
     "ctaButton": "Richiedi la tua pagina Explorer",
     "signupPrompt": "Iscriviti per ottenere il tuo adesso",
-    "headlinePrefix": "Tutto tuo",
+    "headlinePrefix": "Tutte le tue",
     "rotatingWords": [
       "raccomandazioni",
-      "curazioni",
+      "selezioni",
       "collezioni",
-      "preferiti"
+      "preferite"
     ],
-    "headlineSuffix": "in un collegamento e QR.",
+    "headlineSuffix": "in un unico link e QR.",
     "badge": "Libero per sempre",
     "globalStrip": "Gli Explorer condividono consigli in tutto il mondo",
     "preview": {
@@ -1384,7 +1411,9 @@
       "profileLabel": "Profilo:",
       "title": "Conferma modifica nome utente",
       "warning": "Qualsiasi codice QR o link con il tuo vecchio nome utente non funzionerà più — dovrai aggiornarli e condividerli di nuovo."
-    }
+    },
+    "dialog": "Finestra di dialogo",
+    "close": "Chiudi finestra di dialogo"
   },
   "reactivateAccount": {
     "backToLogin": "Back to Login",
@@ -1957,7 +1986,10 @@
     "places": "Places",
     "profile": "Profilo",
     "recommendations": "Raccomandazioni",
-    "settings": "Impostazioni"
+    "settings": "Impostazioni",
+    "accountImageAlt": "Account",
+    "account": "Account",
+    "viewPublicProfile": "Visualizza profilo pubblico"
   },
   "toast": {
     "error": {
@@ -2403,7 +2435,17 @@
       "regionLabel": "Recommendations",
       "retry": "Try again",
       "retrying": "Retrying…"
-    }
+    },
+    "unavailable": "Profilo non disponibile",
+    "notFound": "Profilo non trovato",
+    "notFoundText": "Questo profilo utente non è disponibile.",
+    "partialData": "Alcuni dati del profilo non sono disponibili.",
+    "sections": "Sezioni del profilo",
+    "gallery": "Galleria",
+    "businessDetails": "Dati dell'attività",
+    "noPhotosTitle": "Ancora nessuna foto",
+    "noPhotosText": "Questo utente non ha ancora condiviso foto. Torna più tardi!",
+    "visitWebsite": "Visita il sito web"
   },
   "useCases": {
     "cta": {
@@ -2491,5 +2533,12 @@
       "title": "Annulla l'eliminazione dell'account"
     },
     "scheduledForDeletion": "L'eliminazione del tuo account è prevista per il {{date}}. Continua con Google per annullare l'eliminazione."
+  },
+  "home": {
+    "shareProfile": "Condividi profilo"
+  },
+  "imageCropper": {
+    "success": "Immagine ritagliata con successo",
+    "error": "Errore durante il ritaglio dell'immagine"
   }
 }

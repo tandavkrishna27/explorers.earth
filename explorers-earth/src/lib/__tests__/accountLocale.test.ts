@@ -1,7 +1,8 @@
 import i18n from "i18next";
+import "../../i18n/index.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import useAuthStore from "../../store/store";
-import { adoptAccountLocale, persistAccountLocale, SHIPPED_LOCALES } from "../accountLocale";
+import { adoptAccountLocale, persistAccountLocale, rememberSignedOutLocale, SHIPPED_LOCALES } from "../accountLocale";
 
 function signIn() {
   const generation = useAuthStore.getState().beginVerification();
@@ -57,13 +58,47 @@ describe("account locale", () => {
     expect(change).toHaveBeenCalledWith("hi");
   });
 
-  it("does not let the 'en' column default override a local choice, or adopt an unshipped code", async () => {
-    // 'en' is the column default, so it cannot be told apart from "never chose"; treating it
-    // as a choice would undo a language the visitor picked before signing in.
+  it("adopts the account's 'en' over the language left by a previous account", async () => {
+    // Break caught: 'en' never overrode the browser language, so account B (saved 'en')
+    // inherited account A's Hindi in the same browser.
     const change = vi.spyOn(i18n, "changeLanguage").mockResolvedValue((() => "") as never);
+    vi.spyOn(i18n, "language", "get").mockReturnValue("hi");
     await adoptAccountLocale("en");
+    expect(change).toHaveBeenCalledWith("en");
+  });
+
+  it("ignores an unshipped or missing code", async () => {
+    const change = vi.spyOn(i18n, "changeLanguage").mockResolvedValue((() => "") as never);
     await adoptAccountLocale("xx");
     await adoptAccountLocale(undefined);
     expect(change).not.toHaveBeenCalled();
+  });
+
+  describe("sign-out", () => {
+    beforeEach(async () => { localStorage.clear(); await i18n.changeLanguage("en"); });
+
+    it("resets to the app default, not the previous account's language", async () => {
+      signIn();
+      await i18n.changeLanguage("hi");
+      expect(localStorage.getItem("explorers-language")).toBe("hi");
+      useAuthStore.getState().logout();
+      await vi.waitFor(() => expect(i18n.language).toBe("en"));
+      expect(localStorage.getItem("explorers-language")).toBe("en");
+    });
+
+    it("restores the explicit pick made while signed out", async () => {
+      rememberSignedOutLocale("es");
+      signIn();
+      await i18n.changeLanguage("hi");
+      useAuthStore.getState().logout();
+      await vi.waitFor(() => expect(i18n.language).toBe("es"));
+      expect(localStorage.getItem("explorers-language")).toBe("es");
+    });
+
+    it("does not record a pick made while signed in as the signed-out preference", () => {
+      signIn();
+      rememberSignedOutLocale("hi");
+      expect(localStorage.getItem("explorers-language-signed-out")).toBeNull();
+    });
   });
 });

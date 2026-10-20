@@ -525,7 +525,28 @@
         "willBeConvertedLowercase": "Username will be converted to lowercase",
         "willConvertToLowercase": "Username will be converted to lowercase"
       }
-    }
+    },
+    "brand": {
+      "tagline": "Every place connects us"
+    },
+    "loginPage": {
+      "title2": "Welcome back, explorer.",
+      "sub2": "Your map is right where you left it.",
+      "googleUnavailable": "Google sign-in is unavailable. Please try again.",
+      "signOutUnavailable": "Server sign-out is still unavailable. Please retry.",
+      "seoDescription": "Sign in to your explorers account with Google.",
+      "signOutIncomplete": "Server sign-out is incomplete. Retry signing out before using this account.",
+      "cancelled": "Google sign-in was cancelled or could not finish. Please try again.",
+      "retrySignOut": "Retry sign-out",
+      "recoverPrompt": "Need to restore a deactivated account?",
+      "recoverCta": "Recover with Google"
+    },
+    "terms": {
+      "prefix": "By continuing you agree to our",
+      "terms": "Terms",
+      "privacy": "Privacy Policy"
+    },
+    "secureSignIn": "Secure sign-in"
   },
   "common": {
     "reorder": {
@@ -546,7 +567,8 @@
     "showPassword": "Show password",
     "signInWithGoogle": "Sign in with Google",
     "signUpWithGoogle": "Sign up with Google",
-    "submit": "Submit"
+    "submit": "Submit",
+    "and": "and"
   },
   "contact": {
     "closingMessage": "We're a small team with a big vision — your thoughts matter to us. Reach out and let's build something local and global together.",
@@ -1335,7 +1357,12 @@
       "signUp": "Sign Up",
       "claimFreePage": "Claim free page",
       "claimFree": "Claim free"
-    }
+    },
+    "profileImageAlt": "Profile photo",
+    "user": "User",
+    "accountSettings": "Account Settings",
+    "login": "Login",
+    "register": "Register"
   },
   "hero": {
     "headline": "All your recommendations - one link, one QR",
@@ -1505,7 +1532,9 @@
       "profileLabel": "Profile:",
       "title": "Username Change Confirmation",
       "warning": "Any QR codes or links with your old username will no longer work — you'll need to update and re-share them."
-    }
+    },
+    "dialog": "Dialog",
+    "close": "Close dialog"
   },
   "reactivateAccount": {
     "backToLogin": "Back to Login",
@@ -2108,7 +2137,10 @@
     "places": "Places",
     "profile": "Profile",
     "recommendations": "Recommendations",
-    "settings": "Settings"
+    "settings": "Settings",
+    "accountImageAlt": "Account",
+    "account": "Account",
+    "viewPublicProfile": "View public profile"
   },
   "toast": {
     "error": {
@@ -2557,7 +2589,24 @@
       "regionLabel": "Recommendations",
       "retry": "Try again",
       "retrying": "Retrying…"
-    }
+    },
+    "unavailable": "Profile unavailable",
+    "notFound": "Profile not found",
+    "notFoundText": "This user profile is not available.",
+    "partialData": "Some profile data is unavailable.",
+    "sections": "Profile sections",
+    "gallery": "Gallery",
+    "businessDetails": "Business Details",
+    "noPhotosTitle": "No Photos Yet",
+    "noPhotosText": "This user hasn't shared any photos in their feed yet. Check back later for updates!",
+    "visitWebsite": "Visit Website"
+  },
+  "home": {
+    "shareProfile": "Share Profile"
+  },
+  "imageCropper": {
+    "success": "Image cropped successfully",
+    "error": "Error cropping the image"
   },
   "currency": {
     "amountLabel": "Amount",
