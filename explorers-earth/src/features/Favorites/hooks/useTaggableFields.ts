@@ -14,6 +14,8 @@ export const useTaggableFields = ({
     "recommendationDetails",
     "recommendation",
     ...(recommendationType === "place" ? ["userRating", "googleRating"] : []),
+    // A person's name is required, so its field is always shown rather than tag-in.
+    ...(recommendationType === "person" && type !== "edit" ? ["contactName"] : []),
     ...(type === "edit"
       ? [
         "title",
@@ -30,7 +32,7 @@ export const useTaggableFields = ({
   // Define taggable fields based on recommendation type
   const taggableFields = recommendationType === "person"
     ? [
-      "contactName",  // Person's name
+      // The person's name is required and always shown, so it is not a tag.
       "address",
       "contactNumber",
       "socialLink",
@@ -53,7 +55,7 @@ export const useTaggableFields = ({
       setActiveFields([
         "recommendationDetails",
         "recommendation",
-        ...(recommendationType === "person" ? ["subcategory"] : ["userRating", "googleRating"]),
+        ...(recommendationType === "person" ? ["subcategory", "contactName"] : ["userRating", "googleRating"]),
       ]);
     }
   }, [recommendationType, type]);

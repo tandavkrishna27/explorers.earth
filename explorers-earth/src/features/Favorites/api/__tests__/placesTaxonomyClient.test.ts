@@ -23,7 +23,7 @@ it('validates the person variant as a Places assignment before transport',async(
  expect(writes).toEqual([]);
 });
 it('forwards Places taxonomy for a person entity and replays exact frozen keys',async()=>{
- const intent=PlacesClient.prepareManualPersonIntent(await PlacesClient.observeCollection(list),draft({categoryTermId:root,subcategoryTermId:child}));
+ const named=draft({categoryTermId:root,subcategoryTermId:child});const intent=PlacesClient.prepareManualPersonIntent(await PlacesClient.observeCollection(list),{...named,context:{...named.context,contactName:'Synthetic person'}});
  const transport=vi.mocked(fetch),implementation=transport.getMockImplementation()!;let fail=true;transport.mockImplementation(async(...args)=>{if(String(args[0]).endsWith('/recommendations')&&fail){fail=false;writes.push(args[1]!);return new Response('{',{status:200});}return implementation(...args);});await expect(PlacesClient.createManual(intent)).rejects.toThrow();await PlacesClient.createManual(intent);
  expect(JSON.parse(writes[1].body as string).placesTaxonomy).toEqual({categoryTermId:root,subcategoryTermId:child});
  expect(writes[3].body).toBe(writes[1].body);expect(new Headers(writes[3].headers).get('Idempotency-Key')).toBe(intent.recommendationKey);
