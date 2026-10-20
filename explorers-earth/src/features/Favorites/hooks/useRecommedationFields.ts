@@ -96,6 +96,10 @@ export const useRecommendationFields = ({
     subcategory: Yup.string(),
     recommendationLink: Yup.string(),
     reason: Yup.string(),
+    // A person is shown publicly by name, so a person recommendation needs one.
+    contactName: recommendationType === "person"
+      ? Yup.string().trim().required(t("dashboard.recommendations.addRecommendationForm.validationMessages.personNameRequired"))
+      : Yup.string(),
     // Address is required for places, optional for persons
     address: recommendationType === "place"
       ? Yup.string().required(t("dashboard.recommendations.addRecommendationForm.validationMessages.addressRequired"))
@@ -217,7 +221,7 @@ export const useRecommendationFields = ({
           label: t("dashboard.recommendations.addRecommendationForm.taggableFields.personName"),
           type: "text",
           placeholder: t("dashboard.recommendations.addRecommendationForm.taggableFieldsPlaceholders.personName"),
-          isRequired: false,
+          isRequired: true,
         },
         ...commonFields,
       ];

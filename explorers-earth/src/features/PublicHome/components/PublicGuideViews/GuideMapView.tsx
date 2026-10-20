@@ -4,6 +4,7 @@ import React, { memo, useState, useMemo, useEffect, useRef, useCallback } from "
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { Map, AdvancedMarker, Pin, useMap, MapCameraChangedEvent } from "@vis.gl/react-google-maps";
+import { useMapsUsable } from "../useMapsUsable";
 import { withGoogleMapsProvider } from "../../../../components/GoogleMapsProvider";
 import { parseTimeline } from "../../../Guides/utils/guideDataParser";
 import GooglePlaceModal from "./GooglePlaceModal";
@@ -865,4 +866,24 @@ const GuideMapView = memo(({
 
 GuideMapView.displayName = "GuideMapView";
 
-export default withGoogleMapsProvider(GuideMapView);
+// The live map only mounts when Maps is usable; a rejected key otherwise throws while
+// mounting the markers and takes the guide page down with it.
+const GuideMapGate = (props: GuideMapViewProps) => {
+  const mapsUsable = useMapsUsable();
+  if (!mapsUsable) {
+    return (
+      <div className="flex items-center justify-center px-6 py-10 text-center text-[var(--category-text,#FFFFFF)]" role="status">
+        <div>
+          <h2 className="text-xl font-semibold mb-2">Map Unavailable</h2>
+          <p className="mb-5 text-[var(--category-muted,#9CA3AF)]">Use the list view while the map service is unavailable.</p>
+          <button type="button" onClick={props.onCloseMap} className="underline">
+            Back to list
+          </button>
+        </div>
+      </div>
+    );
+  }
+  return <GuideMapView {...props} />;
+};
+
+export default withGoogleMapsProvider(GuideMapGate);

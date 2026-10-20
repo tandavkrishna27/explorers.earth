@@ -188,12 +188,12 @@ describe("PlaceOverview public theme surface", () => {
   });
   it("preserves public tab switching", () => {
     renderOverview();
-    expect(screen.getByText("Call")).toBeInTheDocument();
+    expect(screen.getByText("Directions")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Media" }));
 
     expect(screen.getByText("Media content")).toBeInTheDocument();
-    expect(screen.queryByText("Call")).not.toBeInTheDocument();
+    expect(screen.queryByText("Directions")).not.toBeInTheDocument();
   });
 
   it("keeps dashboard callers on dashboard styling", () => {

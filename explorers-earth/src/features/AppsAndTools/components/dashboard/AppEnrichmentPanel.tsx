@@ -23,7 +23,7 @@ export default function AppEnrichmentPanel({observed,onAccepted,onReload,onBusyC
   {enrichment.loading&&<p role="status">Loading suggestions…</p>}
   {enrichment.data?.binding&&<div><p>Automatic enrichment: {enrichment.data.binding.optIn?'Enabled':'Disabled'}</p>{enrichment.data.binding.optIn&&<button disabled={locked} onClick={()=>{void enrichment.run(AppEnrichmentClient.prepareDisable(observed,enrichment.data!.binding!));}}>Disable enrichment</button>}</div>}
   {enrichment.data&&enrichment.data.suggestions.length===0&&<p>No owned suggestions are available.</p>}
-  {enrichment.data?.binding?.currentGenerationId&&enrichment.data.suggestions.map(snapshot=><fieldset key={snapshot.snapshotId} className="border border-dashboard-border rounded-xl p-3 space-y-2">
+  {enrichment.data?.binding?.currentGenerationId&&enrichment.data.suggestions.map(snapshot=><fieldset key={snapshot.snapshotId} className="min-w-0 border border-dashboard-border rounded-xl p-3 space-y-2">
    <legend>Observed {new Date(snapshot.fetchedAt).toLocaleString()}</legend>
    {appSelectableFields.filter(field=>Object.prototype.hasOwnProperty.call(snapshot.fields,field)).map(field=><div key={field}>
     <label><input type="checkbox" aria-label={labels[field]} disabled={locked} checked={selection?.snapshotId===snapshot.snapshotId&&selection.fields.includes(field)} onChange={event=>setSelection(current=>{const fields=current?.snapshotId===snapshot.snapshotId?current.fields:[];return {snapshotId:snapshot.snapshotId,fields:event.target.checked?[...fields,field]:fields.filter(item=>item!==field)};})}/>{labels[field]}</label>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useReorderPanelOpen } from './useReorderPanelOpen';
 import OrderPanel from './OrderPanel';
 import { reorderCategoryLists, type ReorderableListCategory } from '../../lib/reorderCategoryLists';
 
@@ -15,7 +15,7 @@ interface Props {
 
 /** "Reorder lists" for one category. The order set here is the order of the lists on the public page. */
 export default function CategoryListsOrder({ category, lists, noun = 'List', nounPlural = 'lists', onChanged }: Props) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useReorderPanelOpen(`lists:${category}`);
   return (
     <OrderPanel
       items={lists}

@@ -226,7 +226,7 @@ export default function AddPersonPage() {
     <label className="block">Followers<input value={followers} onChange={event => setFollowers(event.target.value)} disabled={saving} placeholder="12.4k" className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
     <p className="text-sm text-dashboard-muted">Follower counts are text you record for presentation. Nothing here follows anyone.</p>
 
-    <fieldset><legend>Tags</legend>
+    <fieldset className="min-w-0"><legend>Tags</legend>
      <div className="flex gap-2">
       <input aria-label="New tag" value={tagDraft} disabled={saving || tags.length >= 32} onChange={event => setTagDraft(event.target.value)} className="bg-dashboard-muted rounded-xl p-2" />
       <button disabled={saving || !tagDraft.trim() || tags.length >= 32} onClick={addTag}>Add tag</button>

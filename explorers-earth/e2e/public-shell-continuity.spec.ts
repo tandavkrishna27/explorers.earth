@@ -248,6 +248,9 @@ test('real toast photo viewer guide map portal and cold Earth obey the public st
   await overlay.context.addInitScript(() => {
     Object.defineProperty(navigator, 'share', { configurable: true, get: () => undefined });
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => undefined } });
+    // The guide map only mounts when Maps is usable (see useMapsUsable); the Maps fixture
+    // reports that from this marker constructor. No tile or marker is ever drawn.
+    (window as unknown as { google: unknown }).google = { maps: { marker: { AdvancedMarkerElement: class {} } } };
   });
   const evidence: Record<string, unknown> = {};
   try {

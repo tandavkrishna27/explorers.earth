@@ -458,6 +458,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/reorder/ReorderableMediaStrip.tsx
 !explorers-earth/src/components/reorder/moveItem.ts
 !explorers-earth/src/components/reorder/useMoveAnnouncer.tsx
+!explorers-earth/src/components/reorder/useReorderPanelOpen.ts
 !explorers-earth/src/components/theme-provider.tsx
 !explorers-earth/src/components/ui/Accordian.tsx
 !explorers-earth/src/components/ui/AddLocationModal.tsx

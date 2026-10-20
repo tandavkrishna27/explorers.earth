@@ -1289,6 +1289,7 @@
           "categoryRequired": "Category is required",
           "socialUrlInvalid": "Please enter a valid Instagram or LinkedIn URL",
           "socialUrlRequired": "Instagram or LinkedIn URL is required for person recommendations",
+          "personNameRequired": "Name is required for person recommendations",
           "titleRequired": "Title is required"
         },
         "contactVisibility": {

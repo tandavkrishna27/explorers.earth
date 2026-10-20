@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useReorderPanelOpen } from './useReorderPanelOpen';
 import OrderPanel from './OrderPanel';
 import { reorderListItems, type ReorderableItemCategory } from '../../lib/reorderListItems';
 
@@ -19,7 +19,7 @@ interface Props {
  * page; pinned Top Picks keep their own order, managed with Top Picks.
  */
 export default function ListItemOrder({ category, listId, items, noun, nounPlural, onChanged }: Props) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useReorderPanelOpen(`items:${category}:${listId}`);
   return (
     <OrderPanel
       items={items}

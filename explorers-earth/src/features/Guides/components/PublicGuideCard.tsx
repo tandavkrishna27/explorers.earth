@@ -30,11 +30,11 @@ const PublicGuideCard: FC<PublicGuideCardProps> = memo(
       }
     }
 
-    // Get rating for display (fallback to 5.0). Guard against non-numeric
-    // strings persisted in Place_Details so rating.toFixed can't crash.
+    // Show a rating only when the guide has one; none is invented. Guard against
+    // non-numeric strings persisted in Place_Details so rating.toFixed can't crash.
     const rating = isDisplayableNumber(placeDetails.Rating)
       ? toDisplayNumber(placeDetails.Rating)
-      : 5.0;
+      : null;
 
     // Extract location tags based on single vs multi-city
     const getLocationTags = (): string[] => {
@@ -104,7 +104,7 @@ const PublicGuideCard: FC<PublicGuideCardProps> = memo(
               {guide.Title}
             </h3>
             <span className="text-[0.58rem] text-[var(--category-muted,rgba(255,255,255,0.45))] font-medium font-poppins block">
-              ★ {rating.toFixed(1)} &middot; {guide.Number_Of_Days || 0} {guide.Number_Of_Days === 1 ? "Day" : "Days"} &middot; {guide.Guide_Type || "Itinerary"}
+              {rating !== null && <>★ {rating.toFixed(1)} &middot; </>}{guide.Number_Of_Days || 0} {guide.Number_Of_Days === 1 ? "Day" : "Days"} &middot; {guide.Guide_Type || "Itinerary"}
             </span>
           </div>
 

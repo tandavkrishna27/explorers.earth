@@ -9,6 +9,7 @@ import worldTopologyUrl from "world-atlas/countries-110m.json?url";
 import { AnalyticsEvent } from "../../api/queries";
 import { useResponsiveChart } from "../../../../hooks/useResponsiveChart";
 import EmptyState from '../EmptyState';
+import { countryCodeForGeography, getCountryName, normalizeCountryKey } from "../../utils/countryMapping";
 
 /**
  * Props interface for WorldMapChart component
@@ -40,6 +41,7 @@ interface CountryData {
 const WorldMapChart: React.FC<WorldMapChartProps> = ({ events, isResolvingCountries = false }) => {
   const { chartConfig } = useResponsiveChart();
   const [hoveredCountry, setHoveredCountry] = useState<string | null>(null);
+  const hoveredCode = hoveredCountry ? normalizeCountryKey(hoveredCountry) : undefined;
   const [mousePosition, setMousePosition] = useState<{
     x: number;
     y: number;
@@ -78,7 +80,7 @@ const WorldMapChart: React.FC<WorldMapChartProps> = ({ events, isResolvingCountr
 
     viewEvents.forEach((event) => {
       if (event.country) {
-        const country = event.country;
+        const country = normalizeCountryKey(event.country);
         countryMap[country] = (countryMap[country] || 0) + 1;
       }
     });
@@ -101,238 +103,17 @@ const WorldMapChart: React.FC<WorldMapChartProps> = ({ events, isResolvingCountr
       : 0;
   }, [countryData]);
 
-  // Country code to name mapping
-  const countryCodeToName: Record<string, string> = {
-    US: "United States of America",
-    IN: "India",
-    GB: "United Kingdom",
-    CA: "Canada",
-    AU: "Australia",
-    DE: "Germany",
-    FR: "France",
-    IT: "Italy",
-    ES: "Spain",
-    BR: "Brazil",
-    MX: "Mexico",
-    JP: "Japan",
-    CN: "China",
-    RU: "Russia",
-    KR: "South Korea",
-    NL: "Netherlands",
-    SE: "Sweden",
-    NO: "Norway",
-    DK: "Denmark",
-    FI: "Finland",
-    CH: "Switzerland",
-    AT: "Austria",
-    BE: "Belgium",
-    PL: "Poland",
-    CZ: "Czech Republic",
-    HU: "Hungary",
-    RO: "Romania",
-    BG: "Bulgaria",
-    GR: "Greece",
-    PT: "Portugal",
-    IE: "Ireland",
-    IS: "Iceland",
-    LU: "Luxembourg",
-    MT: "Malta",
-    CY: "Cyprus",
-    EE: "Estonia",
-    LV: "Latvia",
-    LT: "Lithuania",
-    SI: "Slovenia",
-    SK: "Slovakia",
-    HR: "Croatia",
-    BA: "Bosnia and Herzegovina",
-    RS: "Serbia",
-    ME: "Montenegro",
-    MK: "North Macedonia",
-    AL: "Albania",
-    XK: "Kosovo",
-    MD: "Moldova",
-    UA: "Ukraine",
-    BY: "Belarus",
-    GE: "Georgia",
-    AM: "Armenia",
-    AZ: "Azerbaijan",
-    KZ: "Kazakhstan",
-    UZ: "Uzbekistan",
-    KG: "Kyrgyzstan",
-    TJ: "Tajikistan",
-    TM: "Turkmenistan",
-    AF: "Afghanistan",
-    PK: "Pakistan",
-    BD: "Bangladesh",
-    LK: "Sri Lanka",
-    MV: "Maldives",
-    NP: "Nepal",
-    BT: "Bhutan",
-    MM: "Myanmar",
-    TH: "Thailand",
-    LA: "Laos",
-    KH: "Cambodia",
-    VN: "Vietnam",
-    MY: "Malaysia",
-    SG: "Singapore",
-    BN: "Brunei",
-    ID: "Indonesia",
-    PH: "Philippines",
-    TL: "East Timor",
-    MN: "Mongolia",
-    KP: "North Korea",
-    TW: "Taiwan",
-    HK: "Hong Kong",
-    MO: "Macau",
-    SA: "Saudi Arabia",
-    AE: "United Arab Emirates",
-    QA: "Qatar",
-    KW: "Kuwait",
-    BH: "Bahrain",
-    OM: "Oman",
-    YE: "Yemen",
-    IQ: "Iraq",
-    IR: "Iran",
-    SY: "Syria",
-    LB: "Lebanon",
-    JO: "Jordan",
-    IL: "Israel",
-    PS: "Palestine",
-    TR: "Turkey",
-    EG: "Egypt",
-    LY: "Libya",
-    TN: "Tunisia",
-    DZ: "Algeria",
-    MA: "Morocco",
-    SD: "Sudan",
-    SS: "South Sudan",
-    ET: "Ethiopia",
-    ER: "Eritrea",
-    DJ: "Djibouti",
-    SO: "Somalia",
-    KE: "Kenya",
-    UG: "Uganda",
-    TZ: "Tanzania",
-    RW: "Rwanda",
-    BI: "Burundi",
-    MW: "Malawi",
-    ZM: "Zambia",
-    ZW: "Zimbabwe",
-    BW: "Botswana",
-    NA: "Namibia",
-    ZA: "South Africa",
-    LS: "Lesotho",
-    SZ: "Eswatini",
-    MG: "Madagascar",
-    MU: "Mauritius",
-    SC: "Seychelles",
-    KM: "Comoros",
-    MZ: "Mozambique",
-    AO: "Angola",
-    CD: "Democratic Republic of the Congo",
-    CG: "Republic of the Congo",
-    CF: "Central African Republic",
-    TD: "Chad",
-    CM: "Cameroon",
-    NG: "Nigeria",
-    NE: "Niger",
-    ML: "Mali",
-    BF: "Burkina Faso",
-    CI: "Ivory Coast",
-    GH: "Ghana",
-    TG: "Togo",
-    BJ: "Benin",
-    SN: "Senegal",
-    GM: "Gambia",
-    GW: "Guinea-Bissau",
-    GN: "Guinea",
-    SL: "Sierra Leone",
-    LR: "Liberia",
-    MR: "Mauritania",
-    CV: "Cape Verde",
-    ST: "São Tomé and Príncipe",
-    GQ: "Equatorial Guinea",
-    GA: "Gabon",
-    AR: "Argentina",
-    BO: "Bolivia",
-    CL: "Chile",
-    CO: "Colombia",
-    EC: "Ecuador",
-    FK: "Falkland Islands",
-    GF: "French Guiana",
-    GY: "Guyana",
-    PY: "Paraguay",
-    PE: "Peru",
-    SR: "Suriname",
-    UY: "Uruguay",
-    VE: "Venezuela",
-    CU: "Cuba",
-    JM: "Jamaica",
-    HT: "Haiti",
-    DO: "Dominican Republic",
-    PR: "Puerto Rico",
-    TT: "Trinidad and Tobago",
-    BB: "Barbados",
-    LC: "Saint Lucia",
-    VC: "Saint Vincent and the Grenadines",
-    GD: "Grenada",
-    AG: "Antigua and Barbuda",
-    KN: "Saint Kitts and Nevis",
-    DM: "Dominica",
-    BS: "Bahamas",
-    BZ: "Belize",
-    GT: "Guatemala",
-    SV: "El Salvador",
-    HN: "Honduras",
-    NI: "Nicaragua",
-    CR: "Costa Rica",
-    PA: "Panama",
-    NZ: "New Zealand",
-    FJ: "Fiji",
-    PG: "Papua New Guinea",
-    SB: "Solomon Islands",
-    VU: "Vanuatu",
-    NC: "New Caledonia",
-    PF: "French Polynesia",
-    WS: "Samoa",
-    TO: "Tonga",
-    KI: "Kiribati",
-    TV: "Tuvalu",
-    NR: "Nauru",
-    PW: "Palau",
-    FM: "Micronesia",
-    MH: "Marshall Islands",
-  };
-
-  // Get country views by name (handles both country codes and names)
-  const getCountryViews = (countryName: string): number => {
-    // First try direct match
-    let country = countryData.find((d) => d.country === countryName);
-
-    // If not found, try to find by country code mapping
-    if (!country) {
-      const countryCode = Object.keys(countryCodeToName).find(
-        (code) => countryCodeToName[code] === countryName
-      );
-      if (countryCode) {
-        country = countryData.find((d) => d.country === countryCode);
-      }
-    }
-
-    // If still not found, try reverse lookup (country code to name)
-    if (!country) {
-      const mappedName = countryCodeToName[countryName];
-      if (mappedName) {
-        country = countryData.find((d) => d.country === mappedName);
-      }
-    }
-
-    return country ? country.views : 0;
-  };
+  // Views by normalized country code, so "GB", "uk" and "United Kingdom" are one country.
+  const viewsByCountry = useMemo(
+    () => new Map(countryData.map((entry) => [entry.country, entry.views])),
+    [countryData],
+  );
+  const getCountryViews = (code: string | undefined): number =>
+    code ? viewsByCountry.get(code) ?? 0 : 0;
 
   // Get color based on view count using red gradient
-  const getCountryColor = (countryName: string): string => {
-    const views = getCountryViews(countryName);
+  const getCountryColor = (code: string | undefined): string => {
+    const views = getCountryViews(code);
 
     if (views === 0) return "#F3F4F6"; // Light gray for no views
 
@@ -454,16 +235,18 @@ const WorldMapChart: React.FC<WorldMapChartProps> = ({ events, isResolvingCountr
                     geo.properties?.name_en ||
                     "Unknown";
 
+                  const countryCode = countryCodeForGeography(geo);
+
                   return (
                     <Geography
                       key={geo.rsmKey}
                       geography={geo}
-                      fill={getCountryColor(countryName)}
+                      fill={getCountryColor(countryCode)}
                       stroke="#374151"
                       strokeWidth={0.5}
                       style={{
                         default: {
-                          fill: getCountryColor(countryName),
+                          fill: getCountryColor(countryCode),
                           stroke: "#374151",
                           strokeWidth: 0.5,
                           outline: "none",
@@ -481,7 +264,8 @@ const WorldMapChart: React.FC<WorldMapChartProps> = ({ events, isResolvingCountr
                           outline: "none",
                         },
                       }}
-                      onMouseEnter={() => setHoveredCountry(countryName)}
+                      onMouseEnter={() => setHoveredCountry(countryCode ? getCountryName(countryCode) : countryName)}
+                      data-country={countryCode}
                     />
                   );
                 })
@@ -519,7 +303,7 @@ const WorldMapChart: React.FC<WorldMapChartProps> = ({ events, isResolvingCountr
           >
             <p className="dt-label mb-1">{hoveredCountry}</p>
             <p className="dt-subtext text-dashboard-accent">
-              {getCountryViews(hoveredCountry)} views
+              {getCountryViews(hoveredCode)} views
             </p>
           </div>
         )}

@@ -1,4 +1,5 @@
 import { usePublicCategoryThemeStyles } from "../../../PublicHome/components/PublicCategoryThemeContext";
+import { notePreviewText } from "../../../../utils/notePreviewText";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, ChevronLeft, ChevronRight, Star } from "lucide-react";
@@ -168,7 +169,7 @@ const TopReadsHero = ({ books, onBookClick, showManageButton = false, onManageCl
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
               className="text-white/80 text-sm md:text-base leading-relaxed line-clamp-3 max-w-xl font-medium drop-shadow-md"
             >
-              {activeBook.description?.replace(/<[^>]+>/g, '') || "Explore this featured recommendation."}
+              {(activeBook.description && notePreviewText(activeBook.description)) || "Explore this featured recommendation."}
             </motion.p>
             
             <motion.div 

@@ -1,6 +1,7 @@
 
 
 import ListItemOrder from "../../../components/reorder/ListItemOrder";
+import { notePreviewText } from "../../../utils/notePreviewText";
 import {
   FC,
   memo,
@@ -850,7 +851,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
                       <div>
                         <h4 className="text-sm font-bold text-white">{list.List_Name}</h4>
                         {list.list_description && (
-                          <p className="text-xs text-dashboard-muted mt-0.5 line-clamp-1">{list.list_description}</p>
+                          <p className="text-xs text-dashboard-muted mt-0.5 line-clamp-1">{notePreviewText(list.list_description)}</p>
                         )}
                       </div>
                       <button
@@ -931,7 +932,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
                       <div>
                         <h4 className="text-sm font-bold text-white">{list.List_Name}</h4>
                         {list.list_description && (
-                          <p className="text-xs text-dashboard-muted mt-0.5 line-clamp-1">{list.list_description}</p>
+                          <p className="text-xs text-dashboard-muted mt-0.5 line-clamp-1">{notePreviewText(list.list_description)}</p>
                         )}
                       </div>
                       <button

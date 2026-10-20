@@ -16,13 +16,15 @@ import { useGuidesOwner } from "../hooks/useGuidesOwner";
 import { GuideEditingProvider } from "../context/GuideEditingProvider";
 
 const GuideSectionFormPage = () => {
-    const { guideId } = useParams<{ guideId: string }>();
+    const { guideId, sectionId } = useParams<{ guideId: string; sectionId?: string }>();
     const navigate = useNavigate();
     const location = useLocation();
 
-    // The editing section (if any) is passed via navigation state
-    const editingSection = location.state?.editingSection ?? null;
-    const isEditMode = !!editingSection?.documentId;
+    // The route names the section being edited, so a cold open or reload has it. The
+    // navigation state only saves a lookup when the page was reached from the guide.
+    const stateSection = location.state?.editingSection ?? null;
+    const routedSection = stateSection?.documentId === sectionId ? stateSection : null;
+    const isEditRoute = Boolean(sectionId);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -75,6 +77,19 @@ const GuideSectionFormPage = () => {
         (s: any, i: number, self: any[]) =>
             i === self.findIndex((x: any) => x.documentId === s.documentId)
     );
+    const editingSection = isEditRoute
+        ? routedSection ?? sections.find((s: any) => s.documentId === sectionId) ?? null
+        : stateSection;
+    const isEditMode = !!editingSection?.documentId;
+
+    if (isEditRoute && !editingSection) {
+        return (
+            <div className="dashboard-theme flex flex-col justify-center items-center min-h-screen bg-dashboard-bg gap-4">
+                <p className="text-red-500 font-poppins text-sm">This day or stop could not be found.</p>
+                <Button variant="primary" onClickHandler={handleBack} btnText="Back to Guide" />
+            </div>
+        );
+    }
 
     // ── Page heading ────────────────────────────────────────────────────────
     let headingText = "Add Day or Stop";

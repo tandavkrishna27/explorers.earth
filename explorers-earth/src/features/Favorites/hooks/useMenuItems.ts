@@ -53,7 +53,7 @@ export const useMenuItems = ({
       // must not stop the list from being archived.
       const places = observedList()?.recommended_places ?? [];
       try {
-        await commands.archivePlaces(places.map((place) => place.documentId));
+        await commands.archivePlaces(places.map((place) => place.documentId), listId);
       } catch (placeError) {
         console.error("Error archiving individual places:", placeError);
       }

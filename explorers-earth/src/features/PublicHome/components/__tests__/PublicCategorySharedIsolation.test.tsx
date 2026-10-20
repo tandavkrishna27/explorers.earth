@@ -92,7 +92,10 @@ vi.mock('@vis.gl/react-google-maps', () => ({
   Map: ({ children }: { children?: ReactNode }) => <div data-testid="mock-guide-map">{children}</div>,
   Pin: () => <span aria-hidden="true" />,
   useMap: () => null,
+  useApiIsLoaded: () => true,
 }));
+// Maps counts as usable only when the marker library is present.
+(window as unknown as { google: unknown }).google = { maps: { marker: { AdvancedMarkerElement: class {} } } };
 
 it('uses category primary text for Guide Day labels while preserving the blue fallback and accent bar', () => {
   const sections = [{
@@ -330,7 +333,13 @@ it('keeps map control and link class/style contracts scoped to category context'
   expect({ className: restoredLink.className, style: restoredLink.getAttribute('style') }).toEqual(originalLinkPresentation);
 });
 
-it.each([true, false])('keeps phone enabled=%s semantics and opts only category glyph into readable ink', enabled => {
+it('renders no phone control without a number', () => {
+  const Overview = PlaceContentOverview as ComponentType<any>;
+  render(<Overview fetchedPlace={{ Place_Details: {}, Contact_Number: '' }} isPublicCategory />);
+  expect(screen.queryByText('Call')).toBeNull();
+});
+
+it.each([true])('keeps phone enabled=%s semantics and opts only category glyph into readable ink', enabled => {
   const Overview = PlaceContentOverview as ComponentType<any>;
   const place = { Place_Details: {}, Contact_Number: enabled ? '123456' : '' };
   const { rerender } = render(<Overview fetchedPlace={place} />);

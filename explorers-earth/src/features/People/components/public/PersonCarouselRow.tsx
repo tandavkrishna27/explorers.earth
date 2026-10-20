@@ -1,4 +1,5 @@
 import { Users } from "lucide-react";
+import { notePreviewText } from "../../../../utils/notePreviewText";
 import type { PersonList, RecommendedPerson } from "../../types";
 import { buildImageUrl } from "../../utils/personHelpers";
 import PlatformIcon from "../PlatformIcon";
@@ -19,7 +20,7 @@ const PersonCarouselRow = ({ list, onPersonClick, onViewAll }: PersonCarouselRow
         <div>
           <h2 className="text-sm font-bold text-[color:var(--category-text,#fff)]">{list.List_Name}</h2>
           {list.list_description && (
-            <p className="text-xs text-[color:var(--category-muted,rgba(255,255,255,0.4))] mt-0.5 line-clamp-1">{list.list_description}</p>
+            <p className="text-xs text-[color:var(--category-muted,rgba(255,255,255,0.4))] mt-0.5 line-clamp-1">{notePreviewText(list.list_description)}</p>
           )}
         </div>
         <button

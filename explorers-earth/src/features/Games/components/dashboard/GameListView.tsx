@@ -6,12 +6,13 @@ import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Star, MoreVertical, Trash2,
-  Loader2, Gamepad2, Pencil, Copy, Check
+  Loader2, Gamepad2, Pencil, Copy, Check, Share2, Download
 } from "lucide-react";
 import { AddIcon } from "../../../../assets/icons/AddIcon";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
 import { buildListPublicUrl, buildQrUrl } from "../../../../utils/listShareUrls";
+import { downloadQrSvgAsPng } from "../../../../utils/qrDownload";
 import Accordion from "../../../../components/ui/Accordian";
 import useAuthStore from "../../../../store/store";
 import { useGamesCommands, useGamesCallerCustody } from "../../api/query";
@@ -125,7 +126,7 @@ const GameRow = ({ game, onPinToggle, onEdit, onDelete, onClick, isPinning }: Ga
   );
 };
 
-const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () => void }) => {
+export const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () => void }) => {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -288,18 +289,46 @@ const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () => void 
                   <div className="p-2 bg-white rounded-lg shadow-md mb-3">
                     <QRCodeSVG id="list-qr-games" value={buildQrUrl(shareUrl)} size={90} />
                   </div>
-                  <QrCardTagline category="games" className="bg-amber-100 text-amber-900 px-4 py-1.5 font-poppins rounded-full text-[11px] font-semibold whitespace-nowrap" />
+                  <QrCardTagline category="games" className="bg-gray-200 text-black px-4 py-1.5 font-poppins rounded-full text-[11px] font-semibold whitespace-nowrap" />
                 </div>
               </div>
             </div>
 
             <div className="flex items-center justify-center gap-8 mt-5 mb-1 pt-4 border-t border-white/5">
+              <button
+                type="button"
+                className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => {
+                  if (navigator.share) {
+                    navigator.share({ title: list.List_Name, url: shareUrl }).catch(() => undefined);
+                  } else {
+                    handleCopyUrl();
+                  }
+                }}
+              >
+                <span className="p-2 bg-white/5 rounded-full flex items-center justify-center border border-white/10">
+                  <Share2 size={18} className="text-white" />
+                </span>
+                <span className="text-[11px] text-white/60 font-medium">Share</span>
+              </button>
               <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={handleCopyUrl}>
                 <div className="p-2 bg-white/5 rounded-full flex items-center justify-center border border-white/10">
                   {copied ? <Check size={18} className="text-green-400" /> : <Copy size={18} className="text-white" />}
                 </div>
                 <span className="text-[11px] text-white/60 font-medium">{copied ? "Copied" : "Link"}</span>
               </div>
+              <button
+                type="button"
+                className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => {
+                  downloadQrSvgAsPng("list-qr-games", `QR_${list.slug}.png`, 20);
+                }}
+              >
+                <span className="p-2 bg-white/5 rounded-full flex items-center justify-center border border-white/10">
+                  <Download size={18} className="text-white" />
+                </span>
+                <span className="text-[11px] text-white/60 font-medium tracking-tight">Image</span>
+              </button>
             </div>
           </div>
         </Accordion>

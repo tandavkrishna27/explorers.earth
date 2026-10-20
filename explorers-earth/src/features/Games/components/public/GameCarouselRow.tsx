@@ -1,4 +1,5 @@
 import { useRef, memo, useState, useEffect } from "react";
+import { notePreviewText } from "../../../../utils/notePreviewText";
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { RecommendedGame } from "../../types";
@@ -67,7 +68,7 @@ const GameCarouselRow = memo(({
               </h2>
             )}
           </div>
-          {description && <p className="text-[color:var(--category-muted,rgba(255,255,255,0.6))] text-sm mt-1 line-clamp-1">{description}</p>}
+          {description && <p className="text-[color:var(--category-muted,rgba(255,255,255,0.6))] text-sm mt-1 line-clamp-1">{notePreviewText(description)}</p>}
         </div>
 
         <div className="flex flex-col items-end pt-1 flex-shrink-0 ml-4">

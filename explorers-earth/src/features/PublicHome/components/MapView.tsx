@@ -1,4 +1,5 @@
-import { AdvancedMarker, Map, MapCameraChangedEvent, Pin, useApiIsLoaded, useMap } from "@vis.gl/react-google-maps";
+import { AdvancedMarker, Map, MapCameraChangedEvent, Pin, useMap } from "@vis.gl/react-google-maps";
+import { useMapsUsable } from "./useMapsUsable";
 import { withGoogleMapsProvider } from "../../../components/GoogleMapsProvider";
 import { memo, useState, useCallback, useEffect, useRef } from "react";
 import Button from "../../../components/ui/Button";
@@ -213,7 +214,7 @@ const SmoothMapController = ({ targetCoords, targetZoom }: { targetCoords: Geome
 };
 
 const MapView = memo(() => {
-  const mapsApiLoaded = useApiIsLoaded();
+  const mapsApiLoaded = useMapsUsable();
   const [currentCoords, setCurrentCoords] = useState<Geometry>({
     lat: 20.5937,
     lng: 78.9629,

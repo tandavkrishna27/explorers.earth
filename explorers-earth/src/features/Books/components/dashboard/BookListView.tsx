@@ -1,4 +1,5 @@
 import ListItemOrder from "../../../../components/reorder/ListItemOrder";
+import { notePreviewText } from "../../../../utils/notePreviewText";
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import { explorersApiClient } from "../../../../lib/explorersApiClient";
@@ -89,7 +90,7 @@ const BookRow = ({
         </div>
         {notePreview && (
           <p className="text-[11px] text-white/30 truncate mt-1 italic line-clamp-1">
-            {notePreview.replace(/<[^>]+>/g, '')}
+            {notePreviewText(notePreview)}
           </p>
         )}
       </div>
@@ -301,7 +302,7 @@ const ManageTab = ({ list, onRefetch }: ManageTabProps) => {
                   <div className="p-2 bg-white rounded-xl shadow-md mb-3">
                     <QRCodeSVG id="list-qr-books" value={buildQrUrl(shareUrl)} size={90} />
                   </div>
-                  <QrCardTagline category="books" className="bg-amber-100 text-amber-900 px-4 py-1.5 font-poppins rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap" />
+                  <QrCardTagline category="books" className="bg-gray-200 text-black px-4 py-1.5 font-poppins rounded-full text-[11px] font-semibold whitespace-nowrap" />
                 </div>
               </div>
             </div>

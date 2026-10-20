@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { AnalyticsEvent } from '../../api/queries';
 import { useResponsiveChart } from '../../../../hooks/useResponsiveChart';
-import { getCountryName } from '../../utils/countryMapping';
+import { getCountryName, normalizeCountryKey } from '../../utils/countryMapping';
 import EmptyState from '../EmptyState';
 
 /**
@@ -36,7 +36,7 @@ const TopCountriesChart: React.FC<TopCountriesChartProps> = ({ events, isResolvi
 
     events.forEach(event => {
       if (event.type === 'view' && event.country) {
-        const country = event.country;
+        const country = normalizeCountryKey(event.country);
         countryData[country] = (countryData[country] || 0) + 1;
       }
     });

@@ -5,8 +5,10 @@ import GuideMapView from '../GuideMapView';
 vi.mock('@vis.gl/react-google-maps', () => ({
   APIProvider: ({ children }: { children?: ReactNode }) => <>{children}</>,
   AdvancedMarker: forwardRef<HTMLDivElement, { children?: ReactNode; onClick?: () => void }>(({ children, onClick }, ref) => <div ref={ref} data-testid="map-marker" onClick={onClick}>{children}</div>),
-  Map: ({ children }: { children?: ReactNode }) => <div>{children}</div>, Pin: () => <span />, useMap: () => null,
+  Map: ({ children }: { children?: ReactNode }) => <div>{children}</div>, Pin: () => <span />, useMap: () => null, useApiIsLoaded: () => true,
 }));
+// Maps counts as usable only when the marker library is present.
+(window as unknown as { google: unknown }).google = { maps: { marker: { AdvancedMarkerElement: class {} } } };
 const photo = (id: string) => ({ id, documentId: id, url: `/fixture/${id}`, fileName: id, width: 800, height: 600, aspectRatio: '4:3' });
 const place = (photos: unknown[]) => ({ id: 'map-entry', name: 'Map fixture', place_id: 'map-provider', formatted_address: 'Fixture street', geometry: { location: { lat: 15, lng: 74 } }, photos });
 function mount(photos: unknown[], activities: unknown[] = []) {

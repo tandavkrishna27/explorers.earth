@@ -1,4 +1,5 @@
 import CategoryListsOrder from "../../../../components/reorder/CategoryListsOrder";
+import { notePreviewText } from "../../../../utils/notePreviewText";
 import { NavigationStatus } from "../../../navigation/NavigationStatus";
 import { useBooksNavigation as useCategoryNavigation } from "../../api/useBooksNavigation";
 import { useState, useMemo, useEffect } from "react";
@@ -231,7 +232,7 @@ export const BookListCard = ({
             </span>
           </div>
           {list.list_description && (
-            <p className="text-xs text-dashboard-muted mt-0.5 line-clamp-2">{list.list_description}</p>
+            <p className="text-xs text-dashboard-muted mt-0.5 line-clamp-2">{notePreviewText(list.list_description)}</p>
           )}
         </div>
         <div

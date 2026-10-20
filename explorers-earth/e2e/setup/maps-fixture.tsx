@@ -7,5 +7,7 @@ export const Map = () => null;
 export const AdvancedMarker = () => null;
 export const Pin = () => null;
 export const useMap = () => null;
-export const useApiIsLoaded = () => false;
+// A journey opts in to a usable Maps by defining `google.maps.marker.AdvancedMarkerElement`
+// before load (the same signal `useMapsUsable` requires); otherwise Maps reports not loaded.
+export const useApiIsLoaded = () => Boolean((globalThis as any).google?.maps?.marker?.AdvancedMarkerElement);
 export const useMapsLibrary = () => null;

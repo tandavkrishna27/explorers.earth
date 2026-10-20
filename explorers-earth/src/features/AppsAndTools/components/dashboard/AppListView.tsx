@@ -1,4 +1,5 @@
 import ListItemOrder from "../../../../components/reorder/ListItemOrder";
+import { notePreviewText } from "../../../../utils/notePreviewText";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -73,7 +74,7 @@ const AppRow = ({ app, onPinToggle, onEdit, onDelete, onClick, isPinning }: AppR
         </div>
         {notePreview && (
           <p className="text-[11px] text-white/30 truncate mt-1 italic line-clamp-1">
-            {notePreview.replace(/<[^>]+>/g, "")}
+            {notePreviewText(notePreview)}
           </p>
         )}
       </div>

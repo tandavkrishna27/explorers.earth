@@ -13,7 +13,10 @@ vi.mock('@vis.gl/react-google-maps', () => ({
   Map: ({ children }: { children?: ReactNode }) => <div data-map-id="guide-map">{children}</div>,
   Pin: () => <span aria-hidden="true" />,
   useMap: () => null,
+  useApiIsLoaded: () => true,
 }));
+// Maps counts as usable only when the marker library is present.
+(window as unknown as { google: unknown }).google = { maps: { marker: { AdvancedMarkerElement: class {} } } };
 
 vi.mock('../../../../Guides/utils/guideDataParser', () => ({
   parseTimeline: () => ({

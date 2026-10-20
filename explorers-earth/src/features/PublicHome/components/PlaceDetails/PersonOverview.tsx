@@ -162,9 +162,10 @@ const PersonOverview: FC<PersonOverviewProps> = memo(({ personId, onClose, isPub
   const OverviewContent = () => (
     <div className="px-4 mb-20 overflow-x-hidden">
       {/* Action Icons with Labels */}
+      {(fetchedPerson?.Contact_Number || personDetails?.instagram || fetchedPerson?.Users_Social_URL) && (
       <div className="flex flex-row items-center justify-around py-4">
         {/* Phone Icon */}
-        <div className="flex flex-col items-center gap-2">
+        {fetchedPerson?.Contact_Number && <div className="flex flex-col items-center gap-2">
           <button
             onClick={handlePhoneCall}
             disabled={!fetchedPerson?.Contact_Number}
@@ -173,10 +174,10 @@ const PersonOverview: FC<PersonOverviewProps> = memo(({ personId, onClose, isPub
             <Dailer size="20" />
           </button>
           <span className="text-dashboard text-xs font-poppins">Call</span>
-        </div>
+        </div>}
 
         {/* Instagram/LinkedIn Icon */}
-        <div className="flex flex-col items-center gap-2">
+        {personDetails?.instagram && <div className="flex flex-col items-center gap-2">
           <button
             onClick={handleInstagramRedirect}
             disabled={!personDetails?.instagram}
@@ -185,10 +186,10 @@ const PersonOverview: FC<PersonOverviewProps> = memo(({ personId, onClose, isPub
             <BoldLinkIcon color="var(--dash-text)" />
           </button>
           <span className="text-dashboard text-xs font-poppins">Social</span>
-        </div>
+        </div>}
 
         {/* Website/Portfolio Icon */}
-        <div className="flex flex-col items-center gap-2">
+        {fetchedPerson?.Users_Social_URL && <div className="flex flex-col items-center gap-2">
           <button
             onClick={handleWebsiteRedirect}
             disabled={!fetchedPerson?.Users_Social_URL}
@@ -197,8 +198,9 @@ const PersonOverview: FC<PersonOverviewProps> = memo(({ personId, onClose, isPub
             <BoldLinkIcon color="var(--dash-text)" />
           </button>
           <span className="text-dashboard text-xs font-poppins">Website</span>
-        </div>
+        </div>}
       </div>
+      )}
 
       {/* Conditional Rendering: If both Users_Social_URL and recommendation note exist */}
       {fetchedPerson?.Users_Social_URL && fetchedPerson?.user_recommendation_note ? (

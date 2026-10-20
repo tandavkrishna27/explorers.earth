@@ -1,4 +1,5 @@
 import { usePublicCategoryThemeStyles } from "../../../PublicHome/components/PublicCategoryThemeContext";
+import { notePreviewText } from "../../../../utils/notePreviewText";
 import { Smartphone } from "lucide-react";
 import type { AppList, RecommendedApp } from "../../types";
 import { buildLogoUrl, getPriceTierColor } from "../../utils/appHelpers";
@@ -21,7 +22,7 @@ const AppCarouselRow = ({ list, onAppClick, onViewAll }: AppCarouselRowProps) =>
         <div>
           <h2 className="text-sm font-bold text-[color:var(--category-text,#fff)]">{list.List_Name}</h2>
           {list.list_description && (
-            <p className="text-xs text-[color:var(--category-muted,rgba(255,255,255,0.4))] mt-0.5 line-clamp-1">{list.list_description}</p>
+            <p className="text-xs text-[color:var(--category-muted,rgba(255,255,255,0.4))] mt-0.5 line-clamp-1">{notePreviewText(list.list_description)}</p>
           )}
         </div>
         <button

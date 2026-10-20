@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { MIN_QR_DOWNLOAD_SIZE } from "../utils/qrDownload";
 import { toPng } from "html-to-image";
 import { toast } from "sonner";
 import { getCurrentDomain } from "../utils/getCurrentDomain";
@@ -75,7 +76,12 @@ export const useQRActions = ({
     }
 
     try {
-      const dataUrl = await toPng(qrRef.current, { cacheBust: true });
+      // Render at least MIN_QR_DOWNLOAD_SIZE square however small the card is on screen.
+      const width = qrRef.current.offsetWidth || MIN_QR_DOWNLOAD_SIZE;
+      const dataUrl = await toPng(qrRef.current, {
+        cacheBust: true,
+        pixelRatio: Math.max(window.devicePixelRatio || 1, Math.ceil(MIN_QR_DOWNLOAD_SIZE / width)),
+      });
 
       const link = document.createElement("a");
       link.href = dataUrl;
