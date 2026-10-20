@@ -1010,7 +1010,12 @@
         "visible": "Visible",
         "whatsappNumber": "Numéro WhatsApp",
         "removeProfileImage": "Supprimer la photo de profil",
-        "removeCoverImage": "Supprimer l'image de couverture"
+        "removeCoverImage": "Supprimer l'image de couverture",
+        "removeProfileImageConfirmTitle": "Supprimer la photo de profil ?",
+        "removeProfileImageConfirmMessage": "Votre photo de profil sera remplacée par l’image par défaut sur votre profil.",
+        "removeCoverImageConfirmTitle": "Supprimer l’image de couverture ?",
+        "removeCoverImageConfirmMessage": "Votre image de couverture sera remplacée par l’image par défaut sur votre profil.",
+        "removeConfirm": "Supprimer"
       },
       "publicProfile": {
         "accountTypes": {

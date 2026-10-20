@@ -1012,7 +1012,12 @@
         "visible": "दृश्यमान",
         "whatsappNumber": "WhatsApp नंबर",
         "removeProfileImage": "प्रोफ़ाइल फ़ोटो हटाएँ",
-        "removeCoverImage": "कवर इमेज हटाएँ"
+        "removeCoverImage": "कवर इमेज हटाएँ",
+        "removeProfileImageConfirmTitle": "प्रोफ़ाइल फ़ोटो हटाएँ?",
+        "removeProfileImageConfirmMessage": "आपकी प्रोफ़ाइल फ़ोटो की जगह आपकी प्रोफ़ाइल पर डिफ़ॉल्ट तस्वीर दिखेगी।",
+        "removeCoverImageConfirmTitle": "कवर इमेज हटाएँ?",
+        "removeCoverImageConfirmMessage": "आपकी कवर इमेज की जगह आपकी प्रोफ़ाइल पर डिफ़ॉल्ट इमेज दिखेगी।",
+        "removeConfirm": "हटाएँ"
       },
       "publicProfile": {
         "accountTypes": {

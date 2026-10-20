@@ -1047,7 +1047,12 @@
         "visible": "Visible",
         "whatsappNumber": "WhatsApp Number",
         "removeProfileImage": "Remove profile photo",
-        "removeCoverImage": "Remove cover image"
+        "removeCoverImage": "Remove cover image",
+        "removeProfileImageConfirmTitle": "Remove profile photo?",
+        "removeProfileImageConfirmMessage": "Your profile photo will be replaced by the default picture on your profile.",
+        "removeCoverImageConfirmTitle": "Remove cover image?",
+        "removeCoverImageConfirmMessage": "Your cover image will be replaced by the default on your profile.",
+        "removeConfirm": "Remove"
       },
       "publicProfile": {
     "loadError": {

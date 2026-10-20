@@ -54,6 +54,7 @@ import { IMAGE_CONFIG } from "../config";
 import { explorersApiClient } from "../lib/explorersApiClient";
 import UsernameChangeConfirmationModal from "../components/ui/UsernameChangeConfirmationModal";
 import UnsavedChangesModal from "../components/ui/UnsavedChangesModal";
+import ConfirmationModal from "../components/ui/ConfirmationModal";
 import { validateUsername } from "../utils/usernameValidation";
 import useSetupStore from "../store/useSetupStore";
 import { calculateIsProfileComplete } from "../utils/setupStatusCalculations";
@@ -438,6 +439,8 @@ const Profile = memo(() => {
 
   // Unsaved changes modal state
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
+  // Removing a picture is destructive, so the buttons only ask; this holds the slot awaiting confirmation.
+  const [pendingRemoveSlot, setPendingRemoveSlot] = useState<"profile" | "background" | null>(null);
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [hasUnsavedFeedChanges, setHasUnsavedFeedChanges] = useState(false);
   const [pendingFeedOperations, setPendingFeedOperations] = useState(
@@ -1787,7 +1790,7 @@ const Profile = memo(() => {
                         testId="remove-profile-image"
                         label={t('dashboard.profile.common.removeProfileImage')}
                         disabled={isUploading}
-                        onRemove={() => void handleRemoveMedia("profile")}
+                        onRemove={() => setPendingRemoveSlot("profile")}
                       />
                     )}
                   </div>
@@ -1805,7 +1808,7 @@ const Profile = memo(() => {
                       testId="remove-cover-image"
                       label={t('dashboard.profile.common.removeCoverImage')}
                       disabled={isUploading}
-                      onRemove={() => void handleRemoveMedia("background")}
+                      onRemove={() => setPendingRemoveSlot("background")}
                     />
                   )}
                 </div>
@@ -2029,6 +2032,21 @@ const Profile = memo(() => {
               onClose={handleCancelUnsavedChanges}
               onSave={handleSaveChanges}
               onDiscard={handleDiscardChanges}
+            />
+
+            <ConfirmationModal
+              isOpen={pendingRemoveSlot !== null}
+              onClose={() => setPendingRemoveSlot(null)}
+              onConfirm={() => {
+                const slot = pendingRemoveSlot;
+                setPendingRemoveSlot(null);
+                if (slot) void handleRemoveMedia(slot);
+              }}
+              title={t(pendingRemoveSlot === "background" ? "dashboard.profile.common.removeCoverImageConfirmTitle" : "dashboard.profile.common.removeProfileImageConfirmTitle")}
+              message={t(pendingRemoveSlot === "background" ? "dashboard.profile.common.removeCoverImageConfirmMessage" : "dashboard.profile.common.removeProfileImageConfirmMessage")}
+              confirmText={t("dashboard.profile.common.removeConfirm")}
+              cancelText={t("common.cancel")}
+              isDanger
             />
 
             {/* Profile Walkthrough */}

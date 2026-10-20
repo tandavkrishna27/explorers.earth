@@ -1010,7 +1010,12 @@
         "visible": "Sichtbar",
         "whatsappNumber": "WhatsApp-Nummer",
         "removeProfileImage": "Profilfoto entfernen",
-        "removeCoverImage": "Titelbild entfernen"
+        "removeCoverImage": "Titelbild entfernen",
+        "removeProfileImageConfirmTitle": "Profilfoto entfernen?",
+        "removeProfileImageConfirmMessage": "Dein Profilfoto wird in deinem Profil durch das Standardbild ersetzt.",
+        "removeCoverImageConfirmTitle": "Titelbild entfernen?",
+        "removeCoverImageConfirmMessage": "Dein Titelbild wird in deinem Profil durch das Standardbild ersetzt.",
+        "removeConfirm": "Entfernen"
       },
       "publicProfile": {
         "accountTypes": {
