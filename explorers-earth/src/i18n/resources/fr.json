@@ -1248,7 +1248,9 @@
       },
       "travelLikeLocal": "Voyagez comme un local",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
-      "viewAll": "Voir tout"
+      "viewAll": "Voir tout",
+      "bookNotFound": "Livre introuvable.",
+      "goBack": "Retour"
     },
     "shareModal": {
       "copied": "Copié !",

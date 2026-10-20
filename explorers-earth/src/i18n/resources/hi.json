@@ -1250,7 +1250,9 @@
       },
       "travelLikeLocal": "स्थानीय की तरह यात्रा करें",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
-      "viewAll": "सभी देखें"
+      "viewAll": "सभी देखें",
+      "bookNotFound": "पुस्तक नहीं मिली।",
+      "goBack": "वापस जाएँ"
     },
     "shareModal": {
       "copied": "कॉपी हो गया!",

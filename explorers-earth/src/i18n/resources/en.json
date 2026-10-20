@@ -1299,7 +1299,9 @@
       },
       "travelLikeLocal": "Travel like a local",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
-      "viewAll": "View all"
+      "viewAll": "View all",
+      "bookNotFound": "Book not found.",
+      "goBack": "Go back"
     },
     "shareModal": {
       "copied": "Copied!",
