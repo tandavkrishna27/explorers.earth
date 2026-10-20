@@ -34,6 +34,22 @@ describe("profile compatibility mapper", () => {
     expect(update).not.toHaveProperty("status");
   });
 
+  it("saves the editor HTML as plain text in bioPlain and as blocks in bioRich (PRF-X03)", () => {
+    const update = toAccountUpdate({ bio: "<p>Hello&nbsp;there</p><p>Bye</p>" }, account);
+    expect(update.bioPlain).toBe("Hello there\nBye");
+    expect(update.bioRich).toEqual({ blocks: [{ text: "Hello there" }, { text: "Bye" }] });
+    expect(updateAccountRequestSchema.safeParse(update).success).toBe(true);
+    const empty = toAccountUpdate({ bio: "<p><br></p>" }, account);
+    expect(empty).toMatchObject({ bioPlain: null, bioRich: null });
+  });
+
+  it("normalises HTML already stored in bioPlain when reading", () => {
+    const view = toProfileViewModel({ ...account, bioPlain: "<p>Old&nbsp;bio</p>" } as typeof account);
+    expect(view.Bio_1).toBe("Old bio");
+    expect(view.Bio).toBe("<p>Old&nbsp;bio</p>");
+    expect(toProfileViewModel(account).Bio).toBe("<p>Hello</p>");
+  });
+
   it("sends local feed attachments by media ID under the account revision", () => {
     const view = toProfileViewModel(account);
     const update = toAccountUpdate({ Feed_Data: view.Feed_Data }, account);

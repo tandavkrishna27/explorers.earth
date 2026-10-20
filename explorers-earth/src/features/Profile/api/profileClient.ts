@@ -1,5 +1,6 @@
 import type { AccountDto, UpdateAccountInput, RevisionInput } from "../../../../../tunes/shared/explorersContract";
 import type { KeyValuePair } from "../types/profileSave";
+import { bioToHtml, toBioPlain, toBioRich } from "../utils/bio";
 import { explorersApiClient } from "../../../lib/explorersApiClient";
 
 /** Only the compatibility mapper uses documentId; persistence always uses canonical UUIDs. */
@@ -10,7 +11,7 @@ export function toProfileViewModel(account: AccountDto): KeyValuePair {
   }
   return {
     documentId: account.id, username: account.handle, Account_Name: account.displayName,
-    Account_Type: account.accountType, Bio: account.bioPlain ?? "", Bio_1: account.bioPlain ?? "",
+    Account_Type: account.accountType, Bio: bioToHtml(account.bioPlain), Bio_1: toBioPlain(account.bioPlain),
     Addresss: account.additionalAddresses[0] ?? {}, Primary_Address: account.primaryAddress,
     Public_Profile_Address: account.publicAddress,
     Feed_Data: (account.feedItems ?? []).map((item) => ({ id: item.id, documentId: item.mediaId ?? undefined,
@@ -44,7 +45,11 @@ export function toAccountUpdate(values: KeyValuePair, account: Pick<AccountDto, 
     const type = String(values.accountType).toLowerCase();
     result.accountType = type === "business" ? "Business" : type === "creator" ? "Creator" : "Personal";
   }
-  if ("bio" in values) result.bioPlain = optional(values.bio);
+  if ("bio" in values) {
+    // The editor hands over HTML; the contract keeps plain text in bioPlain and blocks in bioRich.
+    result.bioPlain = optional(toBioPlain(values.bio));
+    result.bioRich = toBioRich(values.bio);
+  }
   if ("mobilenumberLink" in values) result.mobileNumber = optional(values.mobilenumberLink);
   if ("mobilenumberVisiblity" in values) result.mobileNumberVisible = Boolean(values.mobilenumberVisiblity);
   if ("primaryAddressCombined" in values) result.primaryAddress = optional(values.primaryAddressCombined)

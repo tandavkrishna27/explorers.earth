@@ -44,6 +44,7 @@ import SEO from "../../../components/SEO";
 import { createCanonicalUrl } from "../../../utils/getCurrentDomain";
 import { createProfileGEOData } from "../../../utils/geoHelpers";
 import ProfileRecommendationsTab from "./ProfileRecommendationsTab";
+import { bioToHtml, toBioPlain } from "../../Profile/utils/bio";
 import {
   normalizePublicEmailHref,
   normalizePublicWebHref,
@@ -146,7 +147,7 @@ const PublicProfile = memo(() => {
     [accountData?.Public_Profile_Address],
   );
   const sanitizedProfileBio = useMemo(
-    () => sanitizePublicRichText(accountData?.Bio),
+    () => sanitizePublicRichText(bioToHtml(accountData?.Bio)),
     [accountData?.Bio],
   );
   const rawBusinessDescription =
@@ -432,7 +433,7 @@ const PublicProfile = memo(() => {
 
   // Enhanced dynamic SEO data preparation with all profile data
   const profileLocation = accountData?.Primary_Address?.address || "";
-  const profileBio = accountData?.Bio || "";
+  const profileBio = toBioPlain(accountData?.Bio);
   const profileUsername = username || "";
 
   // Extract all available social media links for SEO
