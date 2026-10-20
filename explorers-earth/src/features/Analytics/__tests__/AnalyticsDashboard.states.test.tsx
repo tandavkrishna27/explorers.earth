@@ -113,4 +113,27 @@ describe('AnalyticsDashboard error and custom-range states', () => {
     expect(screen.queryByText('analytics.dashboard.dateRange.endBeforeStart')).toBeNull();
     expect(readEvents).toHaveBeenCalledTimes(1);
   });
+
+  it('shows the how-to-start tips for an empty account but hides them for every range problem', async () => {
+    readEvents.mockResolvedValue([]);
+    const user = userEvent.setup();
+    const { container } = render(<AnalyticsDashboard />);
+    await waitFor(() => expect(readEvents).toHaveBeenCalledTimes(1));
+    expect(screen.getByText('analytics.dashboard.emptyState.howToStart.title')).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: 'analytics.dashboard.timeFilter.last30days' }));
+    await user.click(screen.getByRole('button', { name: 'analytics.dashboard.timeFilter.custom' }));
+    // Neither date chosen yet.
+    expect(screen.queryByText('analytics.dashboard.emptyState.howToStart.title')).toBeNull();
+    const [from, to] = Array.from(container.querySelectorAll<HTMLInputElement>('input[type="date"]'));
+    // One date chosen.
+    fireEvent.change(from, { target: { value: '2026-08-20' } });
+    expect(screen.queryByText('analytics.dashboard.emptyState.howToStart.title')).toBeNull();
+    // Both chosen, inverted.
+    fireEvent.change(to, { target: { value: '2026-08-10' } });
+    expect(screen.queryByText('analytics.dashboard.emptyState.howToStart.title')).toBeNull();
+    // Corrected: a valid range with no data is the ordinary empty state again.
+    fireEvent.change(to, { target: { value: '2026-08-25' } });
+    await waitFor(() => expect(screen.getByText('analytics.dashboard.emptyState.howToStart.title')).toBeTruthy());
+  });
 });
