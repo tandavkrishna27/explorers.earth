@@ -101,6 +101,8 @@ vi.mock('../../services/analyticsService', () => ({
   }),
   createAnalyticsOptions: {
     books: (accountId: string, pageUsername?: string) => ({ accountId, pageUsername, pageName: "public-books" }),
+    movies: (accountId: string, pageUsername?: string) => ({ accountId, pageUsername, pageName: "public-movies" }),
+    games: (accountId: string, pageUsername?: string) => ({ accountId, pageUsername, pageName: "public-games" }),
     apps: analyticsMocks.appsOptions,
     products: analyticsMocks.productsOptions,
     people: analyticsMocks.peopleOptions,

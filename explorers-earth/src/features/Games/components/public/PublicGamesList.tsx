@@ -5,6 +5,8 @@ import { deduplicateGames, buildCoverUrl } from "../../utils/gameHelpers";
 import type { RecommendedGame, GameList } from "../../types";
 import GameDetailModal from "./GameDetailModal";
 import GameCoverCard from "./GameCoverCard";
+import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
+import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
@@ -27,6 +29,7 @@ const PublicGamesList = () => {
 
   useEffect(() => setModalState({ open: false, game: null }), [username, listSlug]);
 
+  const { data: accountData } = usePublicProfileShell(username);
   const page = usePublicProfileDetail(username, "games", listSlug);
   const { data, loading, error, refetch } = page;
 
@@ -55,9 +58,22 @@ const PublicGamesList = () => {
     },
   } : undefined);
 
+  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const analytics = useTrackAnalytics({
+    ...createAnalyticsOptions.games(accountDocumentId || "", username, list?.documentId),
+    waitForLocation: true,
+  });
+
   const handleGameClick = useCallback((game: RecommendedGame) => {
     setModalState({ open: true, game });
-  }, []);
+    analytics.trackClick("game-card", {
+      id: game.documentId,
+      listId: game.game_list?.documentId || list?.documentId,
+      listName: list?.List_Name,
+      title: game.title,
+      genres: game.genres?.join(", "),
+    });
+  }, [analytics, list]);
 
   if (loading && !hasUsableData) {
     return (

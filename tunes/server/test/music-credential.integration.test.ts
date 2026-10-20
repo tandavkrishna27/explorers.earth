@@ -5,6 +5,7 @@ import { migrateMusicDatabase } from "../db/migrate";
 import { MusicPrincipalService } from "../middleware/musicPrincipal";
 import { MusicIdentityRepository, type EnsureMusicIdentityInput } from "../repositories/musicIdentityRepository";
 import { MusicTokenService } from "../services/musicTokenService";
+import { trackPostgresPoolShutdown } from "./helpers/postgresPoolShutdown";
 
 const exactTarget = process.env.DATABASE_URL_TEST ?? "postgresql://music_migrator:music@127.0.0.1:55432/music_fixture";
 const enabled = process.env.MUSIC_C5_POSTGRES_TEST === "1";
@@ -12,6 +13,7 @@ const describePg = enabled ? describe.sequential : describe.skip;
 const databaseName = `music_c5_credentials_${process.pid}`;
 let admin: pg.Pool;
 let pool: pg.Pool;
+let closePool: (() => Promise<void>) | undefined;
 let repository: MusicIdentityRepository;
 
 function revocationOperation(suffix: number): string {
@@ -45,12 +47,13 @@ describePg("C5 Music credentials on real PostgreSQL 15", () => {
     const target = new URL(exactTarget);
     target.pathname = `/${databaseName}`;
     pool = new pg.Pool({ connectionString: target.toString(), max: 24 });
+    closePool = trackPostgresPoolShutdown(pool);
     await migrateMusicDatabase(pool);
     repository = new MusicIdentityRepository(pool);
   });
 
   afterAll(async () => {
-    await pool?.end();
+    await closePool?.();
     await admin?.query("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1 AND pid<>pg_backend_pid()", [databaseName]);
     await admin?.query(`DROP DATABASE IF EXISTS ${databaseName}`);
     await admin?.end();

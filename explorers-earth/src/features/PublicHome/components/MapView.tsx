@@ -13,6 +13,8 @@ import { createCanonicalUrl } from "../../../utils/getCurrentDomain";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { isNonNullObject, PublicRouteLoadingState, PublicRoutePartialNotice, settlePublicRouteRetries } from "./PublicRouteContentState";
 import { usePublicRecommendationCategory } from "../api/usePublicRecommendationCategory";
+import { usePublicProfileShell } from "../api/usePublicProfileShell";
+import { useTrackAnalytics, createAnalyticsOptions } from "../../../services/analyticsService";
 // import Logo from "../../../assets/icons/Logo";
 
 type List = {
@@ -300,6 +302,12 @@ const MapView = memo(() => {
   const hasUsableData = error
     ? recommendationLists.some((list) => list.recommended_places.length > 0)
     : completeCollection;
+  const { data: accountData } = usePublicProfileShell(username);
+  // Page view for the all-places map, so this public page is counted like the rest.
+  useTrackAnalytics({
+    ...createAnalyticsOptions.home(typeof accountData?.documentId === "string" ? accountData.documentId : "", username),
+    ready: hasUsableData,
+  });
   const navigate = useNavigate();
   const outlet = useOutletContext<{ setIsPageLoaded?: (loaded: boolean) => void } | null>();
 
