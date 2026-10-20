@@ -1,11 +1,11 @@
 import {gameCatalogRequestSchema} from '../../shared/explorersGameOwnerContract';
 import {movieGenreTermsResultSchema} from '../../shared/explorersMovieMediaContract';
-import {MovieCatalog} from '../services/movieCatalog';
+import {MovieCatalog,MovieProviderFailure} from '../services/movieCatalog';
 import {movieEntityDtoSchema,resolveManualMovieSchema} from '../../shared/explorersMovieContract';
 import type { Pool } from 'pg';
 import { entityCoreDtoSchema, resolveEntitySchema,commandKeySchema,type RequestContext } from '../../shared/explorersContract';
 import type { Actor } from './actor';
-import { authorizeOperation } from './authorization';
+import { authorizeOperation,AuthorizationError } from './authorization';
 import { parseContent } from './recommendations';
 import { RecommendationFailure,ExplorersRecommendationRepository } from '../repositories/explorersRecommendationRepository';
 import {BookCatalog} from '../services/bookCatalog';
@@ -16,6 +16,18 @@ import {personEntityDtoSchema,resolveManualPersonSchema} from '../../shared/expl
 import {placeEntityDtoSchema,resolveManualPlaceSchema} from '../../shared/explorersPlaceContract';
 
 export class MovieGenreFailure extends Error {constructor(readonly status:422|503,readonly code:'INVALID_INPUT'|'READ_LIMIT'){super(code==='INVALID_INPUT'?'Genre parameters are not supported':'Movie genre configuration unavailable');}}
+/**
+ * The response for a failed Movie search. Provider and validation failures keep their own
+ * status; an actor/authorization failure returns null so the caller answers it as one; and
+ * anything unexpected is a catalog failure, never an account problem.
+ */
+export function movieSearchFailure(error:unknown,requestId:string):{status:number;body:{error:{code:string;message:string;requestId:string}}}|null {
+  if(error instanceof MovieProviderFailure)return {status:error.status,body:{error:{code:error.code,message:error.message,requestId}}};
+  if(error instanceof RecommendationFailure)return {status:error.status,body:{error:{code:'INVALID_INPUT',message:error.message,requestId}}};
+  if(error instanceof AuthorizationError)return null;
+  console.error('Movie catalog search failed',error);
+  return {status:503,body:{error:{code:'PROVIDER_UNAVAILABLE',message:'Movie details are unavailable',requestId}}};
+}
 export class GameCatalogFailure extends Error {
  readonly status=503;readonly code='PROVIDER_UNAVAILABLE' as const;
  constructor(){super('Games provider is unavailable');}

@@ -1,4 +1,5 @@
 import { usePublicCategoryThemeStyles } from "../../../PublicHome/components/PublicCategoryThemeContext";
+import { FALLBACK_POSTER } from "../../utils/moviePoster";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, ChevronLeft, ChevronRight, Star } from "lucide-react";
@@ -78,7 +79,7 @@ const TopPicksHero = ({ movies, onMovieClick, showManageButton = false, onManage
           onClick={() => onMovieClick(activeMovie)}
         >
           <img
-            src={backdropUrl || "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba"}
+            src={backdropUrl || FALLBACK_POSTER}
             alt={activeMovie.title}
             className="w-full h-full object-cover opacity-90"
           />
@@ -201,7 +202,7 @@ const TopPicksHero = ({ movies, onMovieClick, showManageButton = false, onManage
                       className={`relative flex-shrink-0 w-32 aspect-video rounded-md overflow-hidden transition-all duration-300 ${isSelected ? 'ring-2 ring-white scale-110 z-10 shadow-xl' : 'opacity-60 hover:opacity-100 hover:scale-105 filter brightness-75 hover:brightness-100'}`}
                     >
                       <img 
-                        src={thumbUrl || "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba"} 
+                        src={thumbUrl || FALLBACK_POSTER} 
                         alt={movie.title}
                         className="w-full h-full object-cover"
                       />

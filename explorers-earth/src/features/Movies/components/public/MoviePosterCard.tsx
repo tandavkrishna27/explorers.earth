@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { FALLBACK_POSTER } from "../../utils/moviePoster";
 import { usePublicCategoryThemeStyles } from "../../../PublicHome/components/PublicCategoryThemeContext";
 import { motion } from "framer-motion";
 import type { RecommendedMovie } from "../../types";
@@ -11,7 +12,6 @@ interface MoviePosterCardProps {
   size?: "sm" | "md" | "lg";
 }
 
-const FALLBACK_POSTER = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='450' viewBox='0 0 300 450'><defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'><stop offset='0%25' stop-color='%23171e2e'/><stop offset='100%25' stop-color='%230d1117'/></linearGradient></defs><rect width='300' height='450' fill='url(%23g)'/><rect x='110' y='150' width='80' height='100' rx='8' fill='%231d2d44' opacity='0.8'/><circle cx='150' cy='185' r='22' fill='%233a86ff' opacity='0.6'/><text x='150' y='290' text-anchor='middle' font-family='sans-serif' font-size='13' fill='%234a6fa5'>No Poster</text></svg>`;
 
 const MoviePosterCard = memo(({ movie, onClick, size = "md" }: MoviePosterCardProps) => {
   const categoryStyles = usePublicCategoryThemeStyles();
