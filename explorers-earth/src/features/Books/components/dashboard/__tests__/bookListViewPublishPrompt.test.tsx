@@ -116,7 +116,7 @@ describe("Books bounded diagnostic rendered branch attributes", () => {
   it.each([
     ["error", false, true, true, false],
     ["loading", false, true, false, false],
-    ["missing", false, false, false, true],
+    ["missing", false, false, false, false],
     ["ready-empty", true, false, false, true],
     ["ready-nonempty", true, false, false, true],
     ["ready-empty", true, true, true, true],
@@ -130,6 +130,7 @@ describe("Books bounded diagnostic rendered branch attributes", () => {
       expect(screen.getByRole("button", { name: "Add Book", exact: true })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Back", exact: true })).toBeInTheDocument();
     } else expect(screen.queryByRole("button", { name: "Add Book", exact: true })).not.toBeInTheDocument();
+    if (state === "missing") expect(screen.getByRole("alert")).toHaveTextContent("List not found.");
     if (state === "error") {
       expect(screen.getByRole("alert")).toHaveTextContent("Owner read failed");
       expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
@@ -141,7 +142,7 @@ describe("Books bounded diagnostic rendered branch attributes", () => {
     const view = render(ui()); marker(view.container, "loading");
     ownerState.error = new Error("Owner read failed"); view.rerender(ui()); marker(view.container, "error");
     ownerState.loading = false; ownerState.error = undefined; view.rerender(ui()); marker(view.container, "missing");
-    expect(screen.getByRole("button", { name: "Add Book", exact: true })).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("List not found.");
     ownerState.present = true; view.rerender(ui()); marker(view.container, "ready-empty");
     listState.books = [{ documentId: "b1", title: "Dune", is_pinned: false }];
     view.rerender(ui()); marker(view.container, "ready-nonempty");

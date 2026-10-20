@@ -114,6 +114,9 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
   }, [settingsLoading]);
 
   const { t, i18n } = useTranslation();
+  // Settings strings that used to be hard-coded English; the English text is the default.
+  const ui = (key: string, fallback: string, options: Record<string, unknown> = {}) =>
+    t(`settings.ui.${key}`, { defaultValue: fallback, interpolation: { escapeValue: false }, ...options }) as string;
   const navText = (key: string, fallback: string) => {
     const fullKey = `settings.publicNavigation.${key}`;
     const value = t(fullKey, { defaultValue: fallback });
@@ -238,9 +241,23 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
     if (origin && !navigationSaving) void categoryNavigation.setAutoPinning(enabled, origin);
   };
 
+  // The pin checkbox is disabled while its save is in flight, and the browser drops focus to
+  // <body> from a control that becomes disabled. Remember which pin had focus and hand it back
+  // when the save settles so keyboard users can keep toggling or Tab on from the same place.
+  const pinFocusKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (categoryNavigation.busy || !pinFocusKey.current) return;
+    const key = pinFocusKey.current;
+    pinFocusKey.current = null;
+    const control = document.querySelector<HTMLInputElement>(`input[data-nav-pin-key="${key}"]`);
+    if (control && !control.disabled && document.activeElement !== control) control.focus();
+  }, [categoryNavigation.busy, navigationSaving]);
+
   const handleNavPinUpdate = (tabType: string, isPinned: boolean) => {
     const origin = categoryNavigation.authority;
     if (!origin || navigationSaving || isAutoPinningEnabled || !CATEGORY_IDS.includes(tabType as CategoryId)) return;
+    const active = document.activeElement;
+    if (active instanceof HTMLInputElement && active.dataset.navPinKey === tabType) pinFocusKey.current = tabType;
     void categoryNavigation.request({ category: tabType as CategoryId, action: isPinned ? "pin" : "unpin" }, origin);
   };
 
@@ -250,11 +267,11 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
     const outcome = await categoryNavigation.request({ category: tabType, action: isVisible ? "publish" : "unpublish" }, origin);
     if (outcome.kind === "confirmed") {
       if (!isVisible) {
-        toast.success(wasPinned ? "Category unpublished and removed from navigation." : "Category unpublished.");
+        toast.success(wasPinned ? ui("categoryUnpublishedUnpinned", "Category unpublished and removed from navigation.") : ui("categoryUnpublished", "Category unpublished."));
       } else if (!isAutoPinningEnabled && !isTabPinned(tabType) && getPinnedNavTabs().length < 5) {
-        toast.success("Category is public.", {
+        toast.success(ui("categoryPublic", "Category is public."), {
           action: {
-            label: "Add to navigation",
+            label: ui("addToNavigation", "Add to navigation"),
             onClick: () => {
               const currentAuthority = categoryNavigation.authority;
               if (currentAuthority) void categoryNavigation.request({ category: tabType, action: "pin" }, currentAuthority);
@@ -262,17 +279,17 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
           },
         });
       } else {
-        toast.success("Category is public.");
+        toast.success(ui("categoryPublic", "Category is public."));
       }
     } else if (outcome.kind === "uncertain" || outcome.kind === "conflict") {
-      toast.error("Could not verify this change.", {
+      toast.error(ui("couldNotVerify", "Could not verify this change."), {
         duration: Infinity,
-        action: { label: "Retry", onClick: () => { void saveTabVisibility(tabType, isVisible); } },
+        action: { label: ui("retry", "Retry"), onClick: () => { void saveTabVisibility(tabType, isVisible); } },
       });
     } else if (outcome.kind === "cleanup-pending") {
-      toast.error("Visibility changed, but navigation needs repair.", {
+      toast.error(ui("navNeedsRepair", "Visibility changed, but navigation needs repair."), {
         duration: Infinity,
-        action: { label: "Refresh settings", onClick: () => { void categoryNavigation.refresh(); } },
+        action: { label: ui("refreshSettings", "Refresh settings"), onClick: () => { void categoryNavigation.refresh(); } },
       });
     }
     return outcome;
@@ -304,7 +321,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
       toast.error(t("settings.account.handleMismatch")); return;
     }
     const revision = canonicalAccount.data?.revision;
-    if (!revision) { toast.error("Account details are unavailable. Retry after refreshing."); return; }
+    if (!revision) { toast.error(ui("accountUnavailable", "Account details are unavailable. Retry after refreshing.")); return; }
     if (!beginLifecycleAction()) return;
     try {
       await accountLifecycle.deactivate(revision, crypto.randomUUID());
@@ -313,7 +330,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
       setShowModal(false);
       await endSession({ serverRevoked: true });
     } catch (error) {
-      if (lifecycleIdentity.isCurrent()) toast.error(error instanceof Error ? error.message : "Deactivation failed.");
+      if (lifecycleIdentity.isCurrent()) toast.error(error instanceof Error ? error.message : ui("deactivationFailed", "Deactivation failed."));
     } finally { finishLifecycleAction(); }
   };
 
@@ -355,7 +372,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
       toast.error(t("settings.account.deleteAccount.step4.reasonRequired"));
       return;
     }
-    if (!revision) { toast.error("Account details are unavailable. Retry after refreshing."); return; }
+    if (!revision) { toast.error(ui("accountUnavailable", "Account details are unavailable. Retry after refreshing.")); return; }
     if (!beginLifecycleAction()) return;
     deletionAttemptKey.current ??= crypto.randomUUID();
     if (feedbackAttempt.current?.reason !== reason) feedbackAttempt.current = { reason, key: crypto.randomUUID() };
@@ -390,7 +407,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
       const result = await accountLifecycle.status();
       if (lifecycleIdentity.isCurrent()) setDeletionLifecycle(result);
     } catch (error) {
-      if (lifecycleIdentity.isCurrent()) toast.error(error instanceof Error ? error.message : "Lifecycle status is unavailable.");
+      if (lifecycleIdentity.isCurrent()) toast.error(error instanceof Error ? error.message : ui("lifecycleUnavailable", "Lifecycle status is unavailable."));
     }
   };
   // Show loading screen during password change redirect
@@ -427,7 +444,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search settings..."
+                placeholder={ui("searchPlaceholder", "Search settings...")}
                 className="w-full bg-transparent text-xs text-dashboard font-poppins outline-none border-none"
               />
             </div>
@@ -438,7 +455,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
               matchesSearch("public visibility tab visibility profile control display") ||
               matchesSearch("pinned navigation tabs profile control navigation pin menu")) && (
               <>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-dashboard-muted mb-1 font-poppins">Quick Access</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-dashboard-muted mb-1 font-poppins">{ui("quickAccess", "Quick Access")}</p>
                 <div
                   className="rounded-xl mb-3"
                   style={{
@@ -526,8 +543,8 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                       >
                         <span className="text-base leading-none">👁️</span>
                         <div className="flex-1 min-w-0">
-                          <div className="text-xs font-semibold text-dashboard font-poppins">Public Visibility</div>
-                          <div className="text-[10px] text-dashboard-muted font-poppins mt-0.5">Profile · Control which tabs appear on your public profile</div>
+                          <div className="text-xs font-semibold text-dashboard font-poppins">{ui("publicVisibility", "Public Visibility")}</div>
+                          <div className="text-[10px] text-dashboard-muted font-poppins mt-0.5">{ui("publicVisibilityHint", "Profile · Control which tabs appear on your public profile")}</div>
                         </div>
                         <svg
                           width="14" height="14" fill="none" stroke="var(--dash-border)" viewBox="0 0 24 24"
@@ -539,7 +556,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
 
                       {/* Public Visibility expanded panel */}
                       {publicVisibilitySectionOpen && (
-                        <div role="region" aria-label="Public visibility settings"
+                        <div role="region" aria-label={ui("publicVisibilityRegion", "Public visibility settings")}
                           ref={(el) => {
                             if (el && !el.dataset.scrolled) {
                               el.dataset.scrolled = 'true';
@@ -592,18 +609,19 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                               </svg>
                             )},
-                          ].map(({ key, label, icon }) => {
+                          ].map(({ key, label: englishLabel, icon }) => {
+                            const label = ui(`tab.${key}`, englishLabel);
                             const isProfile = key === 'public_profile';
                             const rowSaving = !isProfile && isCategoryPending(key as CategoryId);
                             const rowLabel = <div className="flex items-center gap-2">
                               <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">{icon}</div>
-                              <span className="text-xs text-white font-poppins">{label}{!isProfile && categoryNavigation.content?.eligibility[key as CategoryId] !== 'allowed' && <span className="text-[10px] text-dashboard-muted ml-2">{categoryNavigation.content?.eligibility[key as CategoryId] === 'no-content' ? 'No content' : 'Unavailable – refresh to verify'}</span>}</span>
+                              <span className="text-xs text-white font-poppins">{label}{!isProfile && categoryNavigation.content?.eligibility[key as CategoryId] !== 'allowed' && <span className="text-[10px] text-dashboard-muted ml-2">{categoryNavigation.content?.eligibility[key as CategoryId] === 'no-content' ? ui('noContent', 'No content') : ui('unavailableRefresh', 'Unavailable – refresh to verify')}</span>}</span>
                             </div>;
                             return (
                               <div key={key} aria-busy={rowSaving || undefined} className={`flex items-center justify-between py-1.5 transition-opacity duration-150 ${isProfile ? 'opacity-50 cursor-not-allowed select-none' : ''}`}>
                                 {rowLabel}
                                 <div className="flex items-center gap-2">
-                                  {rowSaving && <span className="text-[10px] text-dashboard-muted">Saving and verifying…</span>}
+                                  {rowSaving && <span className="text-[10px] text-dashboard-muted">{ui("savingVerifying", "Saving and verifying…")}</span>}
                                   <label className={`relative inline-flex items-center ${
                                     !categoryNavigation.authority || rowSaving || isProfile ? 'pointer-events-none cursor-not-allowed' : 'cursor-pointer'
                                   }`}>
@@ -740,11 +758,12 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                                 </svg>
                               )},
-                            ].map(({ key, label, icon }) => {
+                            ].map(({ key, label: englishLabel, icon }) => {
+                            const label = ui(`tab.${key}`, englishLabel);
                               const isProfile = key === 'public_profile';
                               const isEnabled = key === "public_profile" || categoryNavigation.snapshot?.visibility[key as CategoryId] === "Yes";
                               const isPinned = isTabPinned(key);
-                              const pinHint = isProfile ? null : !isEnabled ? 'Visibility off' : categoryNavigation.content?.eligibility[key as CategoryId] === 'no-content' ? 'No content' : categoryNavigation.content?.eligibility[key as CategoryId] !== 'allowed' ? 'Unavailable – refresh to verify' : null;
+                              const pinHint = isProfile ? null : !isEnabled ? ui('visibilityOff', 'Visibility off') : categoryNavigation.content?.eligibility[key as CategoryId] === 'no-content' ? ui('noContent', 'No content') : categoryNavigation.content?.eligibility[key as CategoryId] !== 'allowed' ? ui('unavailableRefresh', 'Unavailable – refresh to verify') : null;
                               return (
                                 <div key={key} className={`flex min-h-11 min-w-0 items-center justify-between gap-3 py-1.5 transition-opacity duration-150 ${(isProfile || (!isEnabled && !isPinned)) ? 'opacity-50' : ''}`}>
                                   <div className="flex min-w-0 items-center gap-2 break-words">
@@ -756,7 +775,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                                       {pinHint && <span className="text-[9px] text-white/35 ml-1.5 font-normal font-poppins">({pinHint})</span>}
                                       {isAutoPinningEnabled && isPinned && (
                                         <span className="text-[9px] bg-green-500/10 text-green-400 border border-green-500/20 px-1.5 py-0.5 rounded-full ml-1.5 font-medium font-poppins">
-                                          Auto-pinned
+                                          {ui("autoPinned", "Auto-pinned")}
                                         </span>
                                       )}
                                     </span>
@@ -767,9 +786,10 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
                                     }`}>
                                       <input
                                         type="checkbox"
-                                        aria-label={`Pin ${label}`}
+                                        aria-label={ui("pinTab", "Pin {{label}}", { label })}
                                         className="sr-only peer"
                                         checked={isPinned}
+                                        data-nav-pin-key={key}
                                         disabled={(!isEnabled && !isPinned) || navigationSaving || isProfile || isAutoPinningEnabled}
                                         onChange={(e) => handleNavPinUpdate(key, e.target.checked)}
                                       />

@@ -476,6 +476,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/ui/MediaPreviewGrid.tsx
 !explorers-earth/src/components/ui/MediaViewer.tsx
 !explorers-earth/src/components/ui/Modal.tsx
+!explorers-earth/src/components/ui/ModalPortal.tsx
 !explorers-earth/src/components/ui/NavButton.tsx
 !explorers-earth/src/components/ui/NoImagePlaceCard.tsx
 !explorers-earth/src/components/ui/OnboardingUsernameInput.tsx
@@ -1055,6 +1056,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/utils/fileValidation.ts
 !explorers-earth/src/utils/formatAddress.ts
 !explorers-earth/src/utils/formatLifecycleDate.ts
+!explorers-earth/src/utils/friendlyError.ts
 !explorers-earth/src/utils/geoHelpers.ts
 !explorers-earth/src/utils/getCroppedImage.ts
 !explorers-earth/src/utils/getCurrentDomain.ts
@@ -1062,6 +1064,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/utils/googleMapsDirections.ts
 !explorers-earth/src/utils/guideDescriptionText.ts
 !explorers-earth/src/utils/imageFileValidation.ts
+!explorers-earth/src/utils/listShareUrls.ts
 !explorers-earth/src/utils/mapAddress.ts
 !explorers-earth/src/utils/navPinning.ts
 !explorers-earth/src/utils/notePreviewText.ts
@@ -1071,6 +1074,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/utils/placesFilter.ts
 !explorers-earth/src/utils/publicGuideSlug.ts
 !explorers-earth/src/utils/qrCodeService.ts
+!explorers-earth/src/utils/qrDownload.ts
 !explorers-earth/src/utils/rating.ts
 !explorers-earth/src/utils/resizeMediaToAspectRatio.ts
 !explorers-earth/src/utils/safeInternalPath.ts

@@ -521,14 +521,14 @@
     "secureSignIn": "Inicio de sesión seguro"
   },
   "common": {
-    "cancel": "Cancel",
+    "cancel": "Cancelar",
     "error": "Ocurrió un error. Por favor, inténtalo de nuevo más tarde.",
+    "hidePassword": "Ocultar contraseña",
     "free": "Gratis",
-    "hidePassword": "Hide password",
     "loading": "Cargando...",
     "noResults": "No se encontraron resultados",
     "retry": "Intentar de nuevo",
-    "showPassword": "Show password",
+    "showPassword": "Mostrar contraseña",
     "signInWithGoogle": "Iniciar sesión con Google",
     "signUpWithGoogle": "Registrarse con Google",
     "submit": "Enviar",
@@ -1250,7 +1250,7 @@
     "shareModal": {
       "copied": "¡Copiado!",
       "copyLink": "Copiar enlace",
-      "linkCopiedToast": "¡¡Enlace copiado!!"
+      "linkCopiedToast": "¡Enlace copiado!"
     }
   },
   "emailVerification": {
@@ -1972,7 +1972,50 @@
     },
     "subtitle": "Administre la configuración y preferencias de su cuenta",
     "title": "Configuración",
-    "dangerZone": "Zona de peligro"
+    "dangerZone": "Zona de peligro",
+    "ui": {
+      "categoryUnpublishedUnpinned": "Categoría despublicada y eliminada de la navegación.",
+      "categoryUnpublished": "Categoría despublicada.",
+      "categoryPublic": "La categoría es pública.",
+      "addToNavigation": "Añadir a la navegación",
+      "couldNotVerify": "No se pudo verificar este cambio.",
+      "retry": "Reintentar",
+      "navNeedsRepair": "La visibilidad cambió, pero la navegación necesita repararse.",
+      "refreshSettings": "Actualizar ajustes",
+      "accountUnavailable": "Los datos de la cuenta no están disponibles. Vuelve a intentarlo tras actualizar.",
+      "deactivationFailed": "No se pudo desactivar la cuenta.",
+      "feedbackUnavailable": "Los comentarios o los datos de la cuenta no están disponibles.",
+      "lifecycleUnavailable": "El estado de la cuenta no está disponible.",
+      "searchPlaceholder": "Buscar en ajustes...",
+      "quickAccess": "Acceso rápido",
+      "publicVisibility": "Visibilidad pública",
+      "publicVisibilityHint": "Perfil · Controla qué pestañas aparecen en tu perfil público",
+      "publicVisibilityRegion": "Ajustes de visibilidad pública",
+      "autoPinned": "Fijada automáticamente",
+      "visibilityOff": "Visibilidad desactivada",
+      "noContent": "Sin contenido",
+      "unavailableRefresh": "No disponible: actualiza para verificar",
+      "savingVerifying": "Guardando y verificando…",
+      "pinTab": "Fijar {{label}}",
+      "tab": {
+        "public_profile": "Pestaña Perfil",
+        "public_recommendations": "Pestaña Lugares",
+        "public_guides": "Pestaña Guías",
+        "public_movie": "Pestaña Películas y series",
+        "public_books": "Pestaña Libros",
+        "public_games": "Pestaña Juegos",
+        "public_apps": "Pestaña Apps y herramientas",
+        "public_products": "Pestaña Productos",
+        "public_people": "Pestaña Personas"
+      },
+      "unpublishTitle": "Despublicar {{categoryName}}",
+      "unpublishing": "Despublicando {{categoryName}}",
+      "unpublishBody": "Esto quita {{categoryName}} de tu perfil público y de tu navegación pública. Tus recomendaciones siguen guardadas.",
+      "deletionComplete": "La eliminación de la cuenta ha finalizado. Continúa para iniciar sesión si quieres usar otra cuenta.",
+      "deletionPending": "La eliminación de la cuenta está pendiente. El acceso está en pausa.",
+      "cancelDeletionGoogle": "Cancelar la eliminación con Google",
+      "checkDeletionStatus": "Comprobar el estado de la eliminación"
+    }
   },
   "sidebar": {
     "analytics": "Analíticas",
@@ -2533,6 +2576,23 @@
       "title": "Cancelar la eliminación de la cuenta"
     },
     "scheduledForDeletion": "Tu cuenta está programada para eliminarse el {{date}}. Continúa con Google para cancelar la eliminación."
+  },
+  "qrCard": {
+    "tagline": {
+      "apps": "Descubre mis aplicaciones favoritas",
+      "products": "Descubre mis productos favoritos",
+      "people": "Conecta con creadores",
+      "movies": "Mira mis favoritas",
+      "books": "Lee mis favoritos",
+      "games": "Juega mis favoritos",
+      "places": "Viaja como un local",
+      "profile": "Explora mis selecciones"
+    }
+  },
+  "validation": {
+    "urlRule": "Introduce una dirección web que empiece por http:// o https://. No se permiten puertos (como :8443) ni nombres de usuario o contraseñas en la dirección.",
+    "checkField": "Revisa el campo {{field}}.",
+    "generic": "Revisa los campos marcados e inténtalo de nuevo."
   },
   "home": {
     "shareProfile": "Compartir perfil"

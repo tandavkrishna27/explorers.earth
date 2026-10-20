@@ -4,6 +4,7 @@
  */
 
 import React from "react";
+import { guideDescriptionText } from "../../../../utils/guideDescriptionText";
 
 interface DescriptionRendererProps {
   description: string | any[] | null | undefined;
@@ -20,7 +21,7 @@ const DescriptionRenderer: React.FC<DescriptionRendererProps> = ({
 
   const renderContent = () => {
     if (typeof description === "string") {
-      return <p>{description}</p>;
+      return <p>{guideDescriptionText(description)}</p>;
     }
 
     if (Array.isArray(description)) {
@@ -30,7 +31,7 @@ const DescriptionRenderer: React.FC<DescriptionRendererProps> = ({
             if (block.type === "paragraph") {
               return (
                 <p key={idx}>
-                  {block.children?.map((child: any) => child.text).join(" ")}
+                  {guideDescriptionText([block])}
                 </p>
               );
             }

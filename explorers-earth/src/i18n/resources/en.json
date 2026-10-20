@@ -1293,7 +1293,7 @@
     "shareModal": {
       "copied": "Copied!",
       "copyLink": "Copy Link",
-      "linkCopiedToast": "Link Copied!!"
+      "linkCopiedToast": "Link copied!"
     }
   },
   "emailVerification": {
@@ -2123,7 +2123,50 @@
     },
     "subtitle": "Manage your account settings and preferences",
     "title": "Settings",
-    "dangerZone": "Danger zone"
+    "dangerZone": "Danger zone",
+    "ui": {
+      "categoryUnpublishedUnpinned": "Category unpublished and removed from navigation.",
+      "categoryUnpublished": "Category unpublished.",
+      "categoryPublic": "Category is public.",
+      "addToNavigation": "Add to navigation",
+      "couldNotVerify": "Could not verify this change.",
+      "retry": "Retry",
+      "navNeedsRepair": "Visibility changed, but navigation needs repair.",
+      "refreshSettings": "Refresh settings",
+      "accountUnavailable": "Account details are unavailable. Retry after refreshing.",
+      "deactivationFailed": "Deactivation failed.",
+      "feedbackUnavailable": "Feedback or account details are unavailable.",
+      "lifecycleUnavailable": "Lifecycle status is unavailable.",
+      "searchPlaceholder": "Search settings...",
+      "quickAccess": "Quick Access",
+      "publicVisibility": "Public Visibility",
+      "publicVisibilityHint": "Profile · Control which tabs appear on your public profile",
+      "publicVisibilityRegion": "Public visibility settings",
+      "autoPinned": "Auto-pinned",
+      "visibilityOff": "Visibility off",
+      "noContent": "No content",
+      "unavailableRefresh": "Unavailable – refresh to verify",
+      "savingVerifying": "Saving and verifying…",
+      "pinTab": "Pin {{label}}",
+      "tab": {
+        "public_profile": "Profile Tab",
+        "public_recommendations": "Places Tab",
+        "public_guides": "Guides Tab",
+        "public_movie": "Movies & Shows Tab",
+        "public_books": "Books Tab",
+        "public_games": "Games Tab",
+        "public_apps": "Apps & Tools Tab",
+        "public_products": "Products Tab",
+        "public_people": "People Tab"
+      },
+      "unpublishTitle": "Unpublish {{categoryName}}",
+      "unpublishing": "Unpublishing {{categoryName}}",
+      "unpublishBody": "This removes {{categoryName}} from your public profile and it will be removed from your public navigation. Your recommendations stay saved.",
+      "deletionComplete": "Account deletion is complete. Continue to sign in if you want to use a different account.",
+      "deletionPending": "Account deletion is pending. Access is paused.",
+      "cancelDeletionGoogle": "Cancel deletion with Google",
+      "checkDeletionStatus": "Check deletion status"
+    }
   },
   "sidebar": {
     "analytics": "Analytics",
@@ -2635,5 +2678,22 @@
       "title": "Cancel account deletion"
     },
     "scheduledForDeletion": "Your account is scheduled for deletion on {{date}}. Continue with Google to cancel the deletion."
+  },
+  "qrCard": {
+    "tagline": {
+      "apps": "Discover my favorite apps",
+      "products": "Discover my favorite products",
+      "people": "Connect with creators",
+      "movies": "Watch my favorites",
+      "books": "Read my favorites",
+      "games": "Play my favorites",
+      "places": "Travel like a local",
+      "profile": "Explore my picks"
+    }
+  },
+  "validation": {
+    "urlRule": "Enter a web address starting with http:// or https://. Ports (like :8443) and usernames or passwords in the address are not allowed.",
+    "checkField": "Please check the {{field}} field.",
+    "generic": "Please check the highlighted fields and try again."
   }
 }
