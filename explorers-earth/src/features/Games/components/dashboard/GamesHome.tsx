@@ -1,3 +1,4 @@
+import CategoryListsOrder from "../../../../components/reorder/CategoryListsOrder";
 import { NavigationStatus } from "../../../navigation/NavigationStatus";
 import { useCategoryNavigation } from "../../../navigation/CategoryNavigationProvider";
 import { useState, useMemo, useEffect } from "react";
@@ -295,7 +296,7 @@ const GamesHome = () => {
 
 
 
-  const { data, loading, error, refetch } = useGamesOwner();
+  const { data, loading, error, refetch } = useGamesOwner(undefined, true, true);
 
   useEffect(() => {
     if (!loading) {
@@ -499,6 +500,10 @@ const GamesHome = () => {
               </div>
             )
           )}
+
+          {/* The order set here is the order of these lists on your public page. */}
+
+          <CategoryListsOrder category="games" lists={lists.map((list: any) => ({ id: list.documentId, title: list.List_Name ?? list.title ?? "" }))} onChanged={() => { void refetch(); }} />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
             {lists.map(list => (

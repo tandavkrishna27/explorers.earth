@@ -1,4 +1,5 @@
 import { notePreviewText } from "../../../../utils/notePreviewText";
+import ListItemOrder from "../../../../components/reorder/ListItemOrder";
 import { createMoviesOwnerDiagnostic, type MoviesOwnerObserver } from '../../api/moviesOwnerDiagnostic';
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
@@ -183,7 +184,7 @@ const MovieListView = () => {
     }
     attemptObserverRef.current?.(event);
   }, []);
-  const { content, data, loading, error, refetch } = useMoviesOwner(listId, Boolean(listId), observeOwner);
+  const { content, data, loading, error, refetch } = useMoviesOwner(listId, Boolean(listId), observeOwner, true);
 
   const [isUpdating,setIsUpdating]=useState(false),[deletingList,setDeletingList]=useState(false);
   const togglePin=async({variables}:{variables:{documentId:string;is_pinned:boolean;pin_order?:number|null};refetchQueries?:unknown[]})=>toggleMoviePin(variables.documentId,variables.is_pinned);
@@ -390,6 +391,9 @@ const MovieListView = () => {
           </button>
 
           {/* Movie list */}
+          {/* The order set here is the order of this list on its public page. */}
+          <ListItemOrder category="movies" listId={listId!} items={movies.map(item => ({ id: item.documentId, title: item.title }))} noun="Movie" nounPlural="movies" onChanged={() => { void refetch(); }} />
+
           {movies.length === 0 ? (
             <div className="flex flex-col items-center py-16 text-center">
               <Film size={40} className="text-white/15 mb-3" />

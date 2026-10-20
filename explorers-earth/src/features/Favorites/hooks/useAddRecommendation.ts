@@ -225,7 +225,7 @@ export const useAddRecommendation = ({
   const commands = usePlacesCommands();
   const generation = useAuthStore(state=>state.generation);
   const accountId = useAuthStore(state=>state.accountId);
-  const editAttempt = useRef<{scope:string; observation:RecommendationObservation; signature:string; files:File[]; uploadedIds:string[]; patch:Parameters<typeof commands.updatePlace>[1]|null}|null>(null);
+  const editAttempt = useRef<{scope:string; observation:RecommendationObservation; signature:string; photoKey:string; files:File[]; uploadedIds:string[]; patch:Parameters<typeof commands.updatePlace>[1]|null}|null>(null);
   const scope = JSON.stringify([generation,accountId,placeId,listId,fetchedListId]);
   if(editAttempt.current && (editAttempt.current.scope!==scope || editAttempt.current.observation!==editObservation))editAttempt.current=null;
   const retireDraftIntent = ()=>{editAttempt.current=null;commands.retireDraftIntent();};
@@ -243,10 +243,15 @@ export const useAddRecommendation = ({
 
   // A place holds ten photos (0047 bounds slot_index at 0..9). Every source counts against
   // the same ten: provider photos and Instagram imports on create, the saved photos on edit.
-  const existingPlacePhotoIds = (): string[] => {
+  const observedPlacePhotoIds = (): string[] => {
     const observed = editObservation?.detail.category === 'places' ? editObservation.detail.placePhotos?.photoMediaIds : undefined;
     return Array.isArray(observed) ? observed.filter(Boolean) : [];
   };
+  // The owner's arrangement of the photos already saved, held against the observation it was
+  // made on so a reload (a new observation) starts again from what the server holds.
+  const [savedPhotoArrangement, setSavedPhotoArrangement] = useState<{ observation: unknown; ids: string[] } | null>(null);
+  const existingPlacePhotoIds = (): string[] =>
+    savedPhotoArrangement && savedPhotoArrangement.observation === editObservation ? savedPhotoArrangement.ids : observedPlacePhotoIds();
   const otherPhotoCount = (): number => type === "edit" ? existingPlacePhotoIds().length
     : (Array.isArray(fetchedGoogleMedia) ? fetchedGoogleMedia : []).filter(media => media.photoBlob instanceof Blob).length
       + (Array.isArray(instagramMedia) ? instagramMedia : []).filter(media => media.photoBlob instanceof Blob).length;
@@ -254,6 +259,20 @@ export const useAddRecommendation = ({
     if (total <= PLACE_PHOTO_LIMIT) return false;
     toast.error(t("toast.error.placePhotoLimit", { limit: PLACE_PHOTO_LIMIT, count: total - PLACE_PHOTO_LIMIT }));
     return true;
+  };
+
+  /** Arranges (or removes from) the photos already saved on this place. Order is slot order. */
+  const setSavedPhotoIds = (ids: string[]) => {
+    retireDraftIntent();
+    setSavedPhotoArrangement({ observation: editObservation, ids });
+  };
+  /** Arranges the photos chosen in this form; they upload and save in this order. */
+  const reorderUserMedia = (files: File[]) => {
+    const position = new Map(files.map((file, index) => [file, index]));
+    if (position.size !== uploadedUserMedia.length || uploadedUserMedia.some(item => !position.has(item.file))) return;
+    retireDraftIntent();
+    setUploadedUserMedia(prev => [...prev].sort((a, b) => position.get(a.file)! - position.get(b.file)!));
+    setPreviewUrl(prev => [...prev].sort((a, b) => (position.get(a.file) ?? 0) - (position.get(b.file) ?? 0)));
   };
 
   const handleDeleteUserImage = (_fileName: string, index: number) => {
@@ -524,8 +543,9 @@ export const useAddRecommendation = ({
       const signature=JSON.stringify(values);
       let attempt=editAttempt.current;
       const files=uploadedUserMedia.map(item=>item.file);
-      if(!attempt || attempt.signature!==signature || attempt.files.length!==files.length || files.some((file,index)=>file!==attempt!.files[index])){
-        attempt={scope,observation:editObservation,signature,files,uploadedIds:[],patch:null};
+      const photoKey=existingPlacePhotoIds().join('|');
+      if(!attempt || attempt.signature!==signature || attempt.photoKey!==photoKey || attempt.files.length!==files.length || files.some((file,index)=>file!==attempt!.files[index])){
+        attempt={scope,observation:editObservation,signature,photoKey,files,uploadedIds:[],patch:null};
         editAttempt.current=attempt;
       }
       if (refusePhotoOverflow(existingPlacePhotoIds().length + uploadedUserMedia.length)) {
@@ -687,6 +707,9 @@ export const useAddRecommendation = ({
     handleUploadMedia,
     handleSubmit,
     handleDeleteUserImage,
+    reorderUserMedia,
+    savedPhotoIds: existingPlacePhotoIds(),
+    setSavedPhotoIds,
     handleUpdatePlaceDetails,
     addExternalMedia,
     mediaStatus,

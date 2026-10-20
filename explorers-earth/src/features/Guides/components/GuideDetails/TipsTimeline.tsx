@@ -46,13 +46,15 @@ const TipsTimeline: React.FC<TipsTimelineProps> = ({ guide }) => {
   };
 
   // Helper function to remove redundant "Day X:" prefix from title
-  const cleanTitle = (title: string, dayNumber: number): string => {
+  // Any leading "Day N" is dropped, not only the current number: a reordered day keeps the text
+  // it was typed with, and the number beside it is its position.
+  const cleanTitle = (title: string, _dayNumber?: number): string => {
     if (!title) return title;
     // Remove patterns like "Day X: ", "Day X ", or "Day X" at the start
     const patterns = [
-      new RegExp(`^Day ${dayNumber}:\\s*`, 'i'),
-      new RegExp(`^Day ${dayNumber}\\s+`, 'i'),
-      new RegExp(`^Day ${dayNumber}$`, 'i'),
+      new RegExp(`^Day \\d+:\\s*`, 'i'),
+      new RegExp(`^Day \\d+\\s+`, 'i'),
+      new RegExp(`^Day \\d+$`, 'i'),
     ];
     let cleaned = title;
     for (const pattern of patterns) {

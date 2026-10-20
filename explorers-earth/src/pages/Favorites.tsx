@@ -1,3 +1,4 @@
+import CategoryListsOrder from "../components/reorder/CategoryListsOrder";
 import { NavigationStatus } from "../features/navigation/NavigationStatus";
 import type { IntentAuthority } from "../features/navigation/categoryNavigationPolicy";
 import { useCategoryNavigation } from "../features/navigation/CategoryNavigationProvider";
@@ -194,7 +195,7 @@ const Favorites = memo(() => {
   // Ticket 5.1. The owner's Places lists come from the native owner API, which scopes
   // them to the signed-in account rather than filtering by an account id read from a
   // separate query.
-  const placesOwner = usePlacesOwner();
+  const placesOwner = usePlacesOwner(undefined, true, true);
   const commands = usePlacesCommands();
   const cities = placesOwner.data;
   const loading = placesOwner.loading;
@@ -1355,7 +1356,7 @@ const Favorites = memo(() => {
                           className="w-full flex items-center justify-between p-4 rounded-[14px] border border-amber-500/25 bg-amber-500/5 hover:bg-amber-500/10 transition-all duration-300 cursor-pointer mb-6"
                         >
                           <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-[#fbbf24]">
-                            <span className="text-amber-400">★</span> Manage Top Picks ({pinnedCities.length}/{filteredCities.length})
+                            <span className="text-amber-400">★</span> Manage Top Picks ({pinnedCities.length}/5)
                           </div>
                           <div className="flex items-center text-amber-500">
                             <svg className="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
@@ -1364,6 +1365,11 @@ const Favorites = memo(() => {
                           </div>
                         </div>
                       )}
+
+                      {/* The order set here is the order of your location lists on your public page. */}
+                      <CategoryListsOrder category="places" noun="List" nounPlural="lists"
+                        lists={[...((cities?.recommendationLists as any[]) ?? [])].sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0)).map((city: any) => ({ id: city.documentId, title: city.List_Name ?? "" }))}
+                        onChanged={() => { void refetchCities(); }} />
 
                       {/* Locations Grid */}
                       <div>

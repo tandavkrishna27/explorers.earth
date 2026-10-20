@@ -1,3 +1,4 @@
+import CategoryListsOrder from "../../../../components/reorder/CategoryListsOrder";
 import { NavigationStatus } from "../../../navigation/NavigationStatus";
 import type { IntentAuthority } from "../../../navigation/categoryNavigationPolicy";
 import { useCategoryNavigation } from "../../../navigation/CategoryNavigationProvider";
@@ -324,7 +325,7 @@ const AppsHome = () => {
     }
   }, [location.state, location.key, navigation.authority, navigation.snapshot]);
 
-  const { data, loading, error, refetch } = useAppsOwner();
+  const { data, loading, error, refetch } = useAppsOwner(undefined, true, true);
 
   useEffect(() => {
     if (!loading) {
@@ -504,6 +505,10 @@ const AppsHome = () => {
               </button>
             )
           )}
+
+          {/* The order set here is the order of these lists on your public page. */}
+
+          <CategoryListsOrder category="apps" lists={lists.map((list: any) => ({ id: list.documentId, title: list.List_Name ?? list.title ?? "" }))} onChanged={() => { void refetch(); }} />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
             {lists.map((list) => (
