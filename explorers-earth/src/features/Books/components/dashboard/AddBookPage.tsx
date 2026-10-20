@@ -1,3 +1,5 @@
+import ReorderableMediaStrip from '../../../../components/reorder/ReorderableMediaStrip';
+import ReorderableFileStrip from '../../../../components/reorder/ReorderableFileStrip';
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { explorersApiClient, type RecommendationObservation, type CollectionObservation } from "../../../../lib/explorersApiClient";
@@ -451,42 +453,10 @@ const AddBookPage = () => {
               Photos (optional)
             </label>
             <div className="flex flex-col gap-3">
-              {existingSnapshots.length > 0 && (
-                <div className="flex flex-wrap gap-3">
-                  {existingSnapshots.map((snap) => (
-                    <div key={snap.id} className="relative w-24 h-24 rounded-xl overflow-hidden shadow-sm group">
-                      <img
-                        src={snap.url}
-                        className="w-full h-full object-cover"
-                        alt=""
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setExistingSnapshots((prev) => prev.filter((s) => s.id !== snap.id))}
-                        className="absolute top-1 right-1 bg-black/60 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {newSnapshots.length > 0 && (
-                <div className="flex flex-wrap gap-3">
-                  {newSnapshots.map((_file, i) => (
-                    <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden shadow-sm group border border-white/10">
-                      <img src={snapshotPreviews[i]} className="w-full h-full object-cover" alt="" />
-                      <button
-                        type="button"
-                        onClick={() => setNewSnapshots((prev) => prev.filter((_, idx) => idx !== i))}
-                        className="absolute top-1 right-1 bg-black/60 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {/* Saved photos: this order is the saved and public order. */}
+              <ReorderableMediaStrip items={existingSnapshots} onChange={setExistingSnapshots} noun="Photo" alt="Photo" removeLabel="Remove photo" disabled={saving} />
+              {/* New photos upload after the saved ones, in this order, when saved. */}
+              <ReorderableFileStrip files={newSnapshots} previews={snapshotPreviews} onChange={setNewSnapshots} noun="New photo" alt="New photo preview" removeLabel="Remove new photo" disabled={saving} />
               <label className="w-full md:w-auto self-start cursor-pointer flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 border-dashed rounded-xl px-5 py-3 text-sm text-white/70 transition-colors">
                 <Upload size={16} className="text-white/50" />
                 <span>Upload Images</span>

@@ -1,3 +1,4 @@
+import ListItemOrder from "../../../../components/reorder/ListItemOrder";
 import { runtimeOrigin } from "../../../../lib/publicRuntimeConfig";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
@@ -558,6 +559,11 @@ const BookListView = () => {
           >
             <AddIcon size="5" /> Add Book
           </button>
+
+          {/* The order set here is the order of this list on its public page. */}
+
+          <ListItemOrder category="books" listId={listId!} items={books.map(item => ({ id: item.documentId, title: item.title }))} noun="Book" nounPlural="books" onChanged={() => { void refetch(); }} />
+
 
           {books.length === 0 ? (
             <div className="flex flex-col items-center py-16 text-center">

@@ -203,14 +203,16 @@ describe("guide money", () => {
   const details = (estimatedBudget: string | null, budgetCurrency: string | null) => ({
     guideType: null, multiCity: false, numberOfDays: null, estimatedBudget, budgetCurrency, budgetType: null,
     bestTimeToVisit: [], categories: [], tags: [], tipsNotes: null,
-    place: { name: "x", types: [], formattedAddress: null, geometry: null, placeId: null },
+    place: {},
     locationEntityId: null,
   });
-  it("holds the guide estimate to two places, because the column is numeric(14,2)", () => {
-    const result = guideCollectionDetailsSchema.safeParse(details("1.250", "KWD"));
-    expect(result.success).toBe(false);
-    expect(messages(result as never).join(" ")).toMatch(/at most 2 decimal places|estimated budget/);
+  it("holds the guide estimate to the currency's own minor units (numeric(14,3) column)", () => {
+    expect(messages(guideCollectionDetailsSchema.safeParse(details("1.250", "KWD")) as never)).toEqual([]);
+    expect(guideCollectionDetailsSchema.safeParse(details("100.50", "USD")).success).toBe(true);
+    expect(messages(guideCollectionDetailsSchema.safeParse(details("1.2505", "KWD")) as never).length).toBeGreaterThan(0);
+    expect(messages(guideCollectionDetailsSchema.safeParse(details("1.250", "USD")) as never)).toContain("USD allows at most 2 decimal places.");
     expect(messages(guideCollectionDetailsSchema.safeParse(details("100.50", "JPY")) as never)).toContain("JPY has no decimal places; enter a whole amount.");
+    expect(guideCollectionDetailsSchema.safeParse(details("123456789012", "USD")).success).toBe(false);
   });
 
   const tripPlace = (budgetCurrency: string) => ({

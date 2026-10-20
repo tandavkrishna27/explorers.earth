@@ -134,7 +134,7 @@ export async function startPlacesControl(options:{pool:Pool;composed:ReturnType<
       async function recommendation(list:Collection,title:string,order:number) {
         const entityId=randomUUID(),id=randomUUID(),kind=list.category==='places'?'place':list.category==='products'?'product':'person';
         await db.query("INSERT INTO entities(id,kind,title,origin) VALUES($1,$2,$3,'manual')",[entityId,kind,title]);newEntities.push(entityId);
-        if(kind==='product')await insertProductDetails(db,entityId,{productUrl:'https://example.invalid/owned-product',brand:null,logoUrl:null,description:null,specifications:{},imageUrls:[]});
+        if(kind==='product')await insertProductDetails(db,entityId,{productUrl:'https://example.invalid/owned-product',brand:null,logoUrl:null,description:null,specifications:[],imageUrls:[]});
         if(kind==='place')await insertPlaceDetails(db,entityId,{...emptyPlaceDetails(),latitude:0,longitude:0,formattedAddress:'Owned Test Country'});
         await db.query("INSERT INTO recommendations(id,account_id,category,entity_id,publication_state) VALUES($1,$2,$3,$4,'published')",[id,list.accountId,list.category,entityId]);
         // The four Places cases seed one shared private contact on purpose, because they

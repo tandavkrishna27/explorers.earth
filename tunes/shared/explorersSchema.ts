@@ -265,7 +265,7 @@ export const placeCollectionDetails=pgTable('place_collection_details',{
 export const guideCollectionDetails=pgTable('guide_collection_details',{
  collectionId:uuid('collection_id').primaryKey(),accountId:uuid('account_id').notNull(),category:text('category').notNull().default('guides'),
  guideType:text('guide_type'),multiCity:boolean('multi_city').notNull().default(false),numberOfDays:integer('number_of_days'),
- estimatedBudget:numeric('estimated_budget',{precision:14,scale:2}),budgetCurrency:text('budget_currency'),budgetType:text('budget_type'),budgetTier:text('budget_tier'),
+ estimatedBudget:numeric('estimated_budget',{precision:14,scale:3}),budgetCurrency:text('budget_currency'),budgetType:text('budget_type'),budgetTier:text('budget_tier'),
  bestTimeToVisit:jsonb('best_time_to_visit').notNull().default(sql`'[]'::jsonb`),categories:jsonb('categories').notNull().default(sql`'[]'::jsonb`),
  tags:jsonb('tags').notNull().default(sql`'[]'::jsonb`),tipsNotes:jsonb('tips_notes'),
  placeSnapshot:jsonb('place_snapshot').notNull().default(sql`'{}'::jsonb`),
@@ -323,7 +323,7 @@ export const personEntityDetails=pgTable('person_entity_details',{
 export const productEntityDetails=pgTable('product_entity_details',{
  entityId:uuid('entity_id').primaryKey().references(()=>entities.id,{onDelete:'cascade'}),
  productUrl:text('product_url').notNull(),brand:text('brand'),logoUrl:text('logo_url'),description:text('description'),
- specifications:jsonb('specifications').notNull().default(sql`'{}'::jsonb`),imageUrls:text('image_urls').array().notNull().default(sql`'{}'::text[]`),
+ specifications:jsonb('specifications').notNull().default(sql`'[]'::jsonb`),imageUrls:text('image_urls').array().notNull().default(sql`'{}'::text[]`),
 });
 // 0044 owns composite ownership FKs, the price CHECK and category revisions. price is
 // numeric(20,6) and is read and written as an exact decimal string, never a float.

@@ -205,6 +205,7 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
         ["GET", "/api/explorers/v1/categories/:category/top-picks"],
          ["PUT", "/api/explorers/v1/categories/:category/top-picks"],
          ["PATCH", "/api/explorers/v1/categories/:category/top-picks/order"],
+        ["PATCH", "/api/explorers/v1/categories/:category/lists/order"],
         ["PATCH", "/api/explorers/v1/collections/:id"],
         ["PATCH", "/api/explorers/v1/collections/:id/order"],
         ["DELETE", "/api/explorers/v1/collections/:id"],

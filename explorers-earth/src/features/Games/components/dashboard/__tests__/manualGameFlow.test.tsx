@@ -25,6 +25,15 @@ describe('native manual Games', () => {
  it('waits for actual uploaded media readiness before saving', async () => {
   const upload = deferred<{ id: string }>(); vi.mocked(GamesClient.upload).mockReturnValue(upload.promise as never); mount(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Uploaded game' } }); fireEvent.change(screen.getByLabelText('Snapshots'), { target: { files: [new File(['bytes'], 'snapshot.png', { type: 'image/png' })] } }); expect(screen.getByRole('button', { name: 'Save game' })).toBeDisabled(); expect(GamesClient.createManual).not.toHaveBeenCalled(); await act(async () => upload.resolve({ id: 'media-1' })); await waitFor(() => expect(screen.getByRole('button', { name: 'Save game' })).toBeEnabled()); fireEvent.click(screen.getByRole('button', { name: 'Save game' })); await screen.findByText('Saved list'); expect(GamesClient.prepareManualIntent).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ mediaIds: ['media-1'] }));
  });
+ it('saves uploaded snapshots in the order the owner arranged them', async () => {
+  let next = 0; vi.mocked(GamesClient.upload).mockImplementation(async () => ({ id: `shot-${++next}` }) as never);
+  const { container } = mount(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Ordered game' } });
+  fireEvent.change(container.querySelector('input[type=file]')!, { target: { files: [new File(['a'], 'a.png', { type: 'image/png' }), new File(['b'], 'b.png', { type: 'image/png' }), new File(['c'], 'c.png', { type: 'image/png' })] } });
+  await waitFor(() => expect(screen.getAllByAltText('Game snapshot')).toHaveLength(3));
+  fireEvent.click(screen.getByRole('button', { name: 'Move Snapshot 3 up' })); fireEvent.click(screen.getByRole('button', { name: 'Move Snapshot 2 up' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save game' })); await screen.findByText('Saved list');
+  expect(vi.mocked(GamesClient.prepareManualIntent).mock.calls[0][1]).toMatchObject({ mediaIds: ['shot-3', 'shot-1', 'shot-2'] });
+ });
  it('retains the same manual command intent on an explicit network retry', async () => {
   vi.mocked(GamesClient.createManual).mockRejectedValueOnce(new Error('Temporarily unavailable')).mockResolvedValueOnce({ id: 'game-1' } as never); mount(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Retained draft' } }); fireEvent.click(screen.getByRole('button', { name: 'Save game' })); await screen.findByRole('alert'); expect(screen.getByLabelText('Game title')).toHaveValue('Retained draft'); fireEvent.click(screen.getByRole('button', { name: 'Save game' })); await screen.findByText('Saved list'); expect(GamesClient.prepareManualIntent).toHaveBeenCalledTimes(1); expect(vi.mocked(GamesClient.createManual).mock.calls[0][0]).toBe(vi.mocked(GamesClient.createManual).mock.calls[1][0]);
  });

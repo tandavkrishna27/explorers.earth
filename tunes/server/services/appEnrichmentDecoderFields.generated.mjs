@@ -4413,7 +4413,9 @@ var productOfferWriteSchema = external_exports.object({
   if (value.price === null && value.currencyCode !== null) ctx.addIssue({ code: external_exports.ZodIssueCode.custom, path: ["price"], message: "Enter a price for the currency, or clear the currency" });
   precision(value, ctx);
 });
-var productSpecificationsSchema = external_exports.record(text6(200).refine((v) => v.length > 0, "Invalid key"), text6(2e3).refine((v) => v.length > 0, "Invalid value")).refine((v) => Object.keys(v).length <= 200, "Too many specifications");
+var specificationEntry = external_exports.object({ key: text6(200).refine((v) => v.length > 0, "Invalid key"), value: text6(2e3).refine((v) => v.length > 0, "Invalid value") }).strict();
+var orderedSpecifications = external_exports.array(specificationEntry).max(200, "Too many specifications").refine((v) => new Set(v.map((entry) => entry.key)).size === v.length, "Duplicate specification key");
+var productSpecificationsSchema = external_exports.preprocess((value) => value !== null && typeof value === "object" && !Array.isArray(value) ? Object.entries(value).map(([key, entry]) => ({ key, value: entry })) : value, orderedSpecifications);
 var fields3 = {
   productUrl: safeProductUrlSchema,
   brand: text6(200).nullable(),
@@ -4667,6 +4669,18 @@ var updateRecommendationSchema = external_exports.object({
 var reorderCollectionSchema = external_exports.object({
   expectedRevision: contentRevision,
   orderedRecommendationIds: external_exports.array(contentIdSchema).max(1e4)
+}).strict();
+var categoryListsOrderScopeSchema = external_exports.enum(["display", "pinned"]);
+var reorderCategoryListsSchema = external_exports.object({
+  expectedCategoryRevision: categoryContentRevisionSchema,
+  scope: categoryListsOrderScopeSchema,
+  orderedCollectionIds: external_exports.array(contentIdSchema.transform((v) => v.toLowerCase())).min(1).max(1e3).refine((ids) => new Set(ids).size === ids.length, "Duplicate list")
+}).strict();
+var categoryListsOrderResultSchema = external_exports.object({
+  category: contentCategorySchema,
+  scope: categoryListsOrderScopeSchema,
+  categoryRevision: categoryContentRevisionSchema,
+  lists: external_exports.array(external_exports.object({ id: contentIdSchema, position: external_exports.number().int().nonnegative() }).strict()).min(1).max(1e3)
 }).strict();
 var collectionCoreDtoSchema = external_exports.object({
   id: contentIdSchema,

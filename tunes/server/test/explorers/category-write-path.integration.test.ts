@@ -87,7 +87,7 @@ describePg("owner write path for typed categories", () => {
       title: "Widget", productUrl: "https://example.com/widget", brand: "Acme", specifications: {Weight: "1kg"}, imageUrls: ["https://example.com/a.png"],
     }}, key());
     expect(entity).toMatchObject({kind: "product", title: "Widget", origin: "manual"});
-    expect(entity.details).toMatchObject({productUrl: "https://example.com/widget", brand: "Acme", specifications: {Weight: "1kg"}});
+    expect(entity.details).toMatchObject({productUrl: "https://example.com/widget", brand: "Acme", specifications: [{key: "Weight", value: "1kg"}]});
     expect((await pool.query("SELECT product_url FROM product_entity_details WHERE entity_id=$1", [entity.id])).rows[0].product_url).toBe("https://example.com/widget");
   });
 
