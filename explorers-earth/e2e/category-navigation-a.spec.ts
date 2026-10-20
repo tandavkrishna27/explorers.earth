@@ -65,12 +65,10 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 320, height: 900
 
     const terminalState = fixtureState({ pinned_nav_tabs: ['public_profile', 'public_apps'] });
     seedTask6App(terminalState);
-    terminalState.faults.set('PublicAppData', [
-      // React strict-effects may replay the first category effect. Both cold
-      // requests must therefore receive the terminal response.
-      { kind: 'error' },
-      { kind: 'error' },
-    ]);
+    // Identical concurrent reads share one request, so whether a strict-effect replay joins the
+    // in-flight read or starts its own is a timing detail. Every cold read therefore fails, and
+    // the script is cleared before Retry so the retry never inherits an unused failure.
+    terminalState.faults.set('PublicAppData', Array.from({ length: 8 }, () => ({ kind: 'error' as const })));
     const terminal = await openFixture(browser, baseURL!, terminalState, options);
     try {
       await terminal.page.goto(`/${fixtureUser.username}/apps`);
@@ -84,6 +82,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 320, height: 900
       await expectTask6Shell(terminal.page);
       await terminal.page.screenshot({ path: test.info().outputPath(`task6-terminal-before-retry-${viewport.width}.png`), fullPage: true });
       await beginTask6FrameAudit(terminal.page);
+      terminalState.faults.set('PublicAppData', []);
       await terminal.page.getByRole('button', { name: 'Retry', exact: true }).click({ force: true });
       await expect(terminal.page.getByText('Public apps', { exact: true })).toBeVisible();
       await expectTask6Shell(terminal.page);
