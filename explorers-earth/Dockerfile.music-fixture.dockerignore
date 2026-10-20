@@ -210,6 +210,8 @@ explorers-earth/src/features/Profile/constants/*
 explorers-earth/src/features/Profile/hooks/*
 !explorers-earth/src/features/Profile/types/
 explorers-earth/src/features/Profile/types/*
+!explorers-earth/src/features/Profile/utils/
+explorers-earth/src/features/Profile/utils/*
 !explorers-earth/src/features/PublicHome/api/
 explorers-earth/src/features/PublicHome/api/*
 !explorers-earth/src/features/PublicHome/components/
@@ -850,6 +852,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Profile/types/profileWorkspaces.ts
 !explorers-earth/src/features/Profile/types/themeTypes.ts
 !explorers-earth/src/features/Profile/types/types.ts
+!explorers-earth/src/features/Profile/utils/bio.ts
 !explorers-earth/src/features/PublicHome/api/PublicAccountIdentityProvider.tsx
 !explorers-earth/src/features/PublicHome/api/publicProfileGatewayClient.ts
 !explorers-earth/src/features/PublicHome/api/publicProfileInvalidation.ts

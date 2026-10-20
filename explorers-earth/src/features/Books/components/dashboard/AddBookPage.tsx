@@ -2,7 +2,8 @@ import ReorderableMediaStrip from '../../../../components/reorder/ReorderableMed
 import ReorderableFileStrip from '../../../../components/reorder/ReorderableFileStrip';
 import { useState, useEffect, useRef, useCallback } from "react";
 import { friendlyErrorMessage, urlFieldError } from "../../../../utils/friendlyError";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { explorersApiClient, type RecommendationObservation, type CollectionObservation } from "../../../../lib/explorersApiClient";
 import { useBooksOwnerContent } from "../../api/useBooksOwnerContent";
 import { booksCommandKey } from "../../api/booksClient";
@@ -122,6 +123,7 @@ export const InlineSearch = ({ onSelect }: InlineSearchProps) => {
 const AddBookPage = () => {
   const { listId, bookId } = useParams<{ listId: string; bookId?: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const generation = useAuthStore(state=>state.generation);
   const isEdit = Boolean(bookId);
 
@@ -156,6 +158,11 @@ const AddBookPage = () => {
   // Load existing book list (for display_order)
   const { data:listData,content,error:loadError } = useBooksOwnerContent(listId);
   const existingBooks: RecommendedBook[] = deduplicateBooks(listData?.bookLists?.[0]?.recommended_books);
+
+  // Edit URL for a book that is not in this list (missing, deleted or someone else's): the owner
+  // content has loaded for the current account but holds no such book (SEC-X03).
+  const bookNotFound = isEdit && !loadError && content?.observation.generation === generation
+    && Boolean(listData) && !existingBooks.some((b) => b.documentId === bookId);
 
   // Load book for edit mode
   useEffect(() => {
@@ -267,6 +274,12 @@ const AddBookPage = () => {
 
       <div className="max-w-2xl mx-auto px-4 pt-4 md:px-0">
         {loadError && <p role="alert">{loadError.message}</p>}
+        {bookNotFound && (
+          <p role="alert" className="text-red-400">
+            {t("dashboard.recommendations.bookNotFound")}{" "}
+            <Link to="/recommendations/books" className="text-blue-400 underline">{t("dashboard.recommendations.goBack")}</Link>
+          </p>
+        )}
         {/* Step 1: Search */}
         {!isEdit && (
           <div className="mb-4 bg-dashboard-sidebar border border-dashboard-border rounded-2xl p-4">

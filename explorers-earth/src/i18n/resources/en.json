@@ -570,7 +570,8 @@
     "signInWithGoogle": "Sign in with Google",
     "signUpWithGoogle": "Sign up with Google",
     "submit": "Submit",
-    "and": "and"
+    "and": "and",
+    "confirm": "Confirm"
   },
   "contact": {
     "closingMessage": "We're a small team with a big vision — your thoughts matter to us. Reach out and let's build something local and global together.",
@@ -887,7 +888,98 @@
       },
       "startCurating": "Start curating your recommendations and share them with the world!",
       "viewPublicProfileTooltip": "View your public profile as seen by others",
-      "welcomeBack": "Welcome back"
+      "welcomeBack": "Welcome back",
+      "tabs": {
+        "places": "Places",
+        "movies": "Movies",
+        "books": "Books",
+        "games": "Games",
+        "guides": "Guides",
+        "apps": "Apps & Tools",
+        "products": "Products",
+        "people": "Persons"
+      },
+      "search": {
+        "places": "Search places, lists…",
+        "movies": "Search movies, lists…",
+        "books": "Search books, lists…",
+        "games": "Search games, lists…",
+        "guides": "Search guides, lists…",
+        "apps": "Search apps & tools, lists…",
+        "products": "Search products, lists…",
+        "people": "Search persons, lists…"
+      },
+      "add": {
+        "places": "Add Places",
+        "movies": "Add Movies",
+        "books": "Add Books",
+        "games": "Add Games",
+        "guides": "Add Guides",
+        "apps": "Add Apps",
+        "products": "Add Products",
+        "people": "Add Persons"
+      },
+      "emptyState": {
+        "places": {
+          "tag": "No places yet",
+          "tagline": "Map your world",
+          "sub": "Pin the places that shaped you. Build curated lists of destinations, spots & hidden gems you love.",
+          "add": "+ Add Places List"
+        },
+        "movies": {
+          "tag": "No movies yet",
+          "tagline": "Your personal cinema",
+          "sub": "Curate the films that moved you. Share your watch-lists, favorites and guilty pleasures with the world.",
+          "add": "+ Add Movies List"
+        },
+        "books": {
+          "tag": "No books yet",
+          "tagline": "Build your library",
+          "sub": "Collect the reads that changed your thinking. Share curated lists on any genre or theme.",
+          "add": "+ Add Books List"
+        },
+        "games": {
+          "tag": "No games yet",
+          "tagline": "Level up your lists",
+          "sub": "From indie gems to AAA epics — curate your game recommendations and share them with fellow players.",
+          "add": "+ Add Games List"
+        },
+        "music": {
+          "tag": "No music yet",
+          "tagline": "Set the soundtrack",
+          "sub": "Share the songs, albums and artists that define your taste. Build playlists for every mood.",
+          "add": "+ Add Music List"
+        },
+        "guides": {
+          "tag": "No guides yet",
+          "tagline": "Write the itinerary",
+          "sub": "Craft travel guides and day-by-day itineraries. Help others explore the world the way you did.",
+          "add": "+ Add Guide"
+        },
+        "apps": {
+          "tag": "No apps yet",
+          "tagline": "Your stack, curated",
+          "sub": "Share the apps and tools you actually use. Build your digital toolkit for others to discover.",
+          "add": "+ Add Apps & Tools List"
+        },
+        "products": {
+          "tag": "No products yet",
+          "tagline": "Showcase your picks",
+          "sub": "Recommend the products worth buying. From gear to gadgets — curate lists your followers will love.",
+          "add": "+ Add Products List"
+        },
+        "people": {
+          "tag": "No people yet",
+          "tagline": "Celebrate great minds",
+          "sub": "Compile lists of thinkers, creators and leaders worth following. Share your inspirations.",
+          "add": "+ Add People List"
+        }
+      },
+      "stats": {
+        "activeLists": "Active Lists",
+        "recommendations": "Recommendations"
+      },
+      "shareRecommendationsLink": "Share recommendations link"
     },
     "profile": {
       "account": {
@@ -955,7 +1047,12 @@
         "visible": "Visible",
         "whatsappNumber": "WhatsApp Number",
         "removeProfileImage": "Remove profile photo",
-        "removeCoverImage": "Remove cover image"
+        "removeCoverImage": "Remove cover image",
+        "removeProfileImageConfirmTitle": "Remove profile photo?",
+        "removeProfileImageConfirmMessage": "Your profile photo will be replaced by the default picture on your profile.",
+        "removeCoverImageConfirmTitle": "Remove cover image?",
+        "removeCoverImageConfirmMessage": "Your cover image will be replaced by the default on your profile.",
+        "removeConfirm": "Remove"
       },
       "publicProfile": {
     "loadError": {
@@ -1299,7 +1396,9 @@
       },
       "travelLikeLocal": "Travel like a local",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
-      "viewAll": "View all"
+      "viewAll": "View all",
+      "bookNotFound": "Book not found.",
+      "goBack": "Go back"
     },
     "shareModal": {
       "copied": "Copied!",
@@ -2658,7 +2757,24 @@
     "businessDetails": "Business Details",
     "noPhotosTitle": "No Photos Yet",
     "noPhotosText": "This user hasn't shared any photos in their feed yet. Check back later for updates!",
-    "visitWebsite": "Visit Website"
+    "visitWebsite": "Visit Website",
+    "footer": {
+      "poweredBy": "Powered by",
+      "createProfile": "Create your profile",
+      "report": "Report",
+      "privacy": "Privacy"
+    },
+    "nav": {
+      "places": "Places",
+      "guides": "Guides",
+      "profile": "Profile",
+      "movies": "Movies",
+      "books": "Books",
+      "games": "Games",
+      "apps": "Apps",
+      "products": "Products",
+      "people": "People"
+    }
   },
   "home": {
     "shareProfile": "Share Profile"

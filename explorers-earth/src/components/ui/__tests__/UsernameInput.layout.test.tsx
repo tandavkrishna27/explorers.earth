@@ -35,8 +35,24 @@ describe('username input message area',()=>{
   expect(screen.getByTestId('username-messages')).toHaveClass('min-h-[1.75rem]');
  });
 
- it('only reserves the space where availability is checked',()=>{
+ it('always renders the message container, with or without availability checks',()=>{
   renderField(false);
-  expect(screen.getByTestId('username-messages')).not.toHaveClass('min-h-[1.75rem]');
+  expect(screen.getByTestId('username-messages')).toHaveClass('min-h-[1.75rem]');
+ });
+
+ it('reserves the hint slot whether or not the input is focused',()=>{
+  render(
+   <Formik initialValues={{username:'old-handle'}} onSubmit={()=>undefined}>
+    <UsernameInput name="username" label="Username" originalValue="old-handle" hintOnFocus="cooldown info"/>
+   </Formik>);
+  const slot=screen.getByTestId('username-hint');
+  expect(slot).toHaveClass('min-h-[1.25rem]');
+  expect(screen.queryByText('cooldown info')).toBeNull();
+  const input=screen.getByRole('textbox');
+  fireEvent.focus(input);
+  expect(screen.getByText('cooldown info')).toBeInTheDocument();
+  fireEvent.blur(input);
+  expect(screen.queryByText('cooldown info')).toBeNull();
+  expect(screen.getByTestId('username-hint')).toHaveClass('min-h-[1.25rem]');
  });
 });

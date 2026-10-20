@@ -769,6 +769,19 @@ describe("Profile save orchestration", () => {
       expect(screen.queryByTestId("remove-cover-image")).toBeNull();
     });
 
+    it("asks before removing and does nothing when the user cancels", async () => {
+      accountScope.current = { ...accountScope.current, profile_picture: { url: "/api/explorers/v1/media/p/content" } };
+      render(<Profile />);
+
+      fireEvent.click(screen.getByTestId("remove-profile-image"));
+      expect(await screen.findByText("dashboard.profile.common.removeProfileImageConfirmTitle")).toBeInTheDocument();
+      expect(removeMedia).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole("button", { name: "common.cancel" }));
+      await waitFor(() => expect(screen.queryByText("dashboard.profile.common.removeProfileImageConfirmTitle")).toBeNull());
+      expect(removeMedia).not.toHaveBeenCalled();
+      expect(screen.getByTestId("remove-profile-image")).toBeInTheDocument();
+    });
+
     it("detaches the photo and the cover from the account being shown", async () => {
       accountScope.current = {
         ...accountScope.current,
@@ -778,8 +791,10 @@ describe("Profile save orchestration", () => {
       render(<Profile />);
 
       fireEvent.click(screen.getByTestId("remove-profile-image"));
+      fireEvent.click(await screen.findByRole("button", { name: "dashboard.profile.common.removeConfirm" }));
       await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("toast.success.profileImageRemoved"));
       fireEvent.click(screen.getByTestId("remove-cover-image"));
+      fireEvent.click(await screen.findByRole("button", { name: "dashboard.profile.common.removeConfirm" }));
       await waitFor(() => expect(toastSuccess).toHaveBeenCalledWith("toast.success.backgroundImageRemoved"));
 
       expect(removeMedia.mock.calls.map(([slot, shown]) => [slot, shown.revision])).toEqual([["profile", 1], ["background", 1]]);
@@ -794,10 +809,12 @@ describe("Profile save orchestration", () => {
 
       removeMedia.mockRejectedValueOnce(Object.assign(new Error("Account changed"), { status: 409, code: "CONFLICT" }));
       fireEvent.click(screen.getByTestId("remove-profile-image"));
+      fireEvent.click(await screen.findByRole("button", { name: "dashboard.profile.common.removeConfirm" }));
       await waitFor(() => expect(toastError).toHaveBeenCalledWith("conflict.changedElsewhere", expect.anything()));
 
       removeMedia.mockRejectedValueOnce(new Error("offline"));
       fireEvent.click(screen.getByTestId("remove-profile-image"));
+      fireEvent.click(await screen.findByRole("button", { name: "dashboard.profile.common.removeConfirm" }));
       await waitFor(() => expect(toastError).toHaveBeenCalledWith("toast.error.profileImageRemoveFailed"));
     });
   });

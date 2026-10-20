@@ -533,7 +533,8 @@
     "signInWithGoogle": "Se connecter avec Google",
     "signUpWithGoogle": "S'inscrire avec Google",
     "submit": "Soumettre",
-    "and": "et"
+    "and": "et",
+    "confirm": "Confirmer"
   },
   "contact": {
     "closingMessage": "Nous sommes une petite équipe avec une grande vision — vos pensées nous importent. Contactez-nous et construisons quelque chose de local et global ensemble.",
@@ -808,7 +809,7 @@
         "ariaLabel": "{{label}}: {{value}}",
         "loading": "Loading",
         "unavailable": "Unavailable",
-        "viewsLast90Days": "Views · last 90 days"
+        "viewsLast90Days": "Vues · 90 derniers jours"
       },
       "draft": "Brouillon",
       "error": {
@@ -850,7 +851,98 @@
       },
       "startCurating": "Commencez à organiser vos recommandations et partagez-les avec le monde !",
       "viewPublicProfileTooltip": "Voir votre profil public tel qu'il est vu par les autres",
-      "welcomeBack": "Bon retour"
+      "welcomeBack": "Bon retour",
+      "tabs": {
+        "places": "Lieux",
+        "movies": "Films",
+        "books": "Livres",
+        "games": "Jeux",
+        "guides": "Guides",
+        "apps": "Apps et outils",
+        "products": "Produits",
+        "people": "Personnes"
+      },
+      "search": {
+        "places": "Rechercher des lieux, listes…",
+        "movies": "Rechercher des films, listes…",
+        "books": "Rechercher des livres, listes…",
+        "games": "Rechercher des jeux, listes…",
+        "guides": "Rechercher des guides, listes…",
+        "apps": "Rechercher des apps et outils, listes…",
+        "products": "Rechercher des produits, listes…",
+        "people": "Rechercher des personnes, listes…"
+      },
+      "add": {
+        "places": "Ajouter des lieux",
+        "movies": "Ajouter des films",
+        "books": "Ajouter des livres",
+        "games": "Ajouter des jeux",
+        "guides": "Ajouter des guides",
+        "apps": "Ajouter des apps",
+        "products": "Ajouter des produits",
+        "people": "Ajouter des personnes"
+      },
+      "emptyState": {
+        "places": {
+          "tag": "Aucun lieu pour l’instant",
+          "tagline": "Cartographiez votre monde",
+          "sub": "Épinglez les lieux qui vous ont marqué. Créez des listes de destinations, d’adresses et de pépites cachées que vous aimez.",
+          "add": "+ Ajouter une liste de lieux"
+        },
+        "movies": {
+          "tag": "Aucun film pour l’instant",
+          "tagline": "Votre cinéma personnel",
+          "sub": "Composez la liste des films qui vous ont ému. Partagez vos films à voir, vos favoris et vos plaisirs coupables avec le monde.",
+          "add": "+ Ajouter une liste de films"
+        },
+        "books": {
+          "tag": "Aucun livre pour l’instant",
+          "tagline": "Construisez votre bibliothèque",
+          "sub": "Rassemblez les lectures qui ont changé votre façon de penser. Partagez des listes organisées par genre ou thème.",
+          "add": "+ Ajouter une liste de livres"
+        },
+        "games": {
+          "tag": "Aucun jeu pour l’instant",
+          "tagline": "Montez vos listes en niveau",
+          "sub": "Des pépites indé aux superproductions : composez vos recommandations de jeux et partagez-les avec d’autres joueurs.",
+          "add": "+ Ajouter une liste de jeux"
+        },
+        "music": {
+          "tag": "Aucune musique pour l’instant",
+          "tagline": "Choisissez la bande-son",
+          "sub": "Partagez les titres, albums et artistes qui définissent vos goûts. Créez des playlists pour chaque humeur.",
+          "add": "+ Ajouter une liste de musique"
+        },
+        "guides": {
+          "tag": "Aucun guide pour l’instant",
+          "tagline": "Écrivez l’itinéraire",
+          "sub": "Rédigez des guides de voyage et des itinéraires jour par jour. Aidez les autres à explorer le monde comme vous l’avez fait.",
+          "add": "+ Ajouter un guide"
+        },
+        "apps": {
+          "tag": "Aucune app pour l’instant",
+          "tagline": "Votre stack, sélectionné",
+          "sub": "Partagez les apps et outils que vous utilisez vraiment. Construisez votre boîte à outils numérique à faire découvrir.",
+          "add": "+ Ajouter une liste d’apps et outils"
+        },
+        "products": {
+          "tag": "Aucun produit pour l’instant",
+          "tagline": "Mettez en avant vos coups de cœur",
+          "sub": "Recommandez les produits qui valent le coup. De l’équipement aux gadgets : créez des listes que vos abonnés adoreront.",
+          "add": "+ Ajouter une liste de produits"
+        },
+        "people": {
+          "tag": "Aucune personne pour l’instant",
+          "tagline": "Célébrez les grands esprits",
+          "sub": "Composez des listes de penseurs, de créateurs et de leaders à suivre. Partagez vos sources d’inspiration.",
+          "add": "+ Ajouter une liste de personnes"
+        }
+      },
+      "stats": {
+        "activeLists": "Listes actives",
+        "recommendations": "Recommandations"
+      },
+      "shareRecommendationsLink": "Partager le lien des recommandations"
     },
     "profile": {
       "account": {
@@ -918,7 +1010,12 @@
         "visible": "Visible",
         "whatsappNumber": "Numéro WhatsApp",
         "removeProfileImage": "Supprimer la photo de profil",
-        "removeCoverImage": "Supprimer l'image de couverture"
+        "removeCoverImage": "Supprimer l'image de couverture",
+        "removeProfileImageConfirmTitle": "Supprimer la photo de profil ?",
+        "removeProfileImageConfirmMessage": "Votre photo de profil sera remplacée par l’image par défaut sur votre profil.",
+        "removeCoverImageConfirmTitle": "Supprimer l’image de couverture ?",
+        "removeCoverImageConfirmMessage": "Votre image de couverture sera remplacée par l’image par défaut sur votre profil.",
+        "removeConfirm": "Supprimer"
       },
       "publicProfile": {
         "accountTypes": {
@@ -1248,7 +1345,9 @@
       },
       "travelLikeLocal": "Voyagez comme un local",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
-      "viewAll": "Voir tout"
+      "viewAll": "Voir tout",
+      "bookNotFound": "Livre introuvable.",
+      "goBack": "Retour"
     },
     "shareModal": {
       "copied": "Copié !",
@@ -1293,7 +1392,7 @@
       "cookies": "Politique en matière de cookies",
       "product": "Produit",
       "shareAnywhere": "Partagez n'importe où",
-      "useCases": "Use Cases"
+      "useCases": "Cas d'usage"
     },
     "copyright": "© 2025 explorateurs. Tous droits réservés.",
     "madeWithLove": "Fait avec amour sur terre",
@@ -1310,7 +1409,7 @@
       "share": "Partager",
       "openMenu": "Ouvrir le menu de navigation",
       "closeMenu": "Fermer le menu de navigation",
-      "useCases": "Use Cases"
+      "useCases": "Cas d'usage"
     },
     "auth": {
       "login": "Se connecter",
@@ -2453,7 +2552,24 @@
     "businessDetails": "Informations professionnelles",
     "noPhotosTitle": "Aucune photo pour le moment",
     "noPhotosText": "Cet utilisateur n'a pas encore partagé de photos. Revenez plus tard !",
-    "visitWebsite": "Visiter le site web"
+    "visitWebsite": "Visiter le site web",
+    "footer": {
+      "poweredBy": "Propulsé par",
+      "createProfile": "Créez votre profil",
+      "report": "Signaler",
+      "privacy": "Confidentialité"
+    },
+    "nav": {
+      "places": "Lieux",
+      "guides": "Guides",
+      "profile": "Profil",
+      "movies": "Films",
+      "books": "Livres",
+      "games": "Jeux",
+      "apps": "Apps",
+      "products": "Produits",
+      "people": "Personnes"
+    }
   },
   "useCases": {
     "cta": {

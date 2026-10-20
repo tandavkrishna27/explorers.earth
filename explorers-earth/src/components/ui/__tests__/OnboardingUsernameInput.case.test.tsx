@@ -22,3 +22,10 @@ describe('OnboardingUsernameInput lowercase notice (ONB-02)', () => {
     expect(screen.queryByTestId('username-lowercase-notice')).toBeNull();
   });
 });
+
+describe('OnboardingUsernameInput layout (PRF-X01)', () => {
+  it('always renders the message container', () => {
+    render(<Formik initialValues={{ username: '' }} onSubmit={() => undefined}><OnboardingUsernameInput name="username" label="Username" /></Formik>);
+    expect(screen.getByTestId('username-messages')).toHaveClass('min-h-[1.75rem]');
+  });
+});

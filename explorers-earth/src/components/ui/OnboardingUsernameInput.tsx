@@ -314,7 +314,8 @@ const OnboardingUsernameInput: React.FC<OnboardingUsernameInputProps> = ({
         </p>
       )}
 
-      {/* Validation Messages */}
+      {/* Validation Messages (container always rendered so the layout does not jump) */}
+      <div data-testid="username-messages" aria-live="polite" className="min-h-[1.75rem]">
       {hasBeenTouched && formatMessages && (
         <div className="space-y-1">
           {/* Errors */}
@@ -354,6 +355,7 @@ const OnboardingUsernameInput: React.FC<OnboardingUsernameInputProps> = ({
             )}
         </div>
       )}
+      </div>
     </div>
   );
 };

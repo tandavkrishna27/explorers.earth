@@ -141,13 +141,13 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
           )}
           <div className="mt-4 flex justify-end gap-2">
             <Button
-              btnText="Cancel"
+              btnText={t("common.cancel")}
               variant="redText"
               size="small"
               onClickHandler={handleCancel}
             />
             <Button
-              btnText="Confirm"
+              btnText={t("common.confirm")}
               variant="primary"
               size="small"
               onClickHandler={handleCropComplete}

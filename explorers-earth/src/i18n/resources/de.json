@@ -533,7 +533,8 @@
     "signInWithGoogle": "Mit Google anmelden",
     "signUpWithGoogle": "Mit Google registrieren",
     "submit": "Absenden",
-    "and": "und"
+    "and": "und",
+    "confirm": "Bestätigen"
   },
   "contact": {
     "closingMessage": "Wir sind ein kleines Team mit einer großen Vision — Ihre Gedanken sind uns wichtig. Kontaktieren Sie uns und lassen Sie uns etwas Lokales und Globales zusammen aufbauen.",
@@ -808,7 +809,7 @@
         "ariaLabel": "{{label}}: {{value}}",
         "loading": "Loading",
         "unavailable": "Unavailable",
-        "viewsLast90Days": "Views · last 90 days"
+        "viewsLast90Days": "Aufrufe · letzte 90 Tage"
       },
       "draft": "Entwurf",
       "error": {
@@ -850,7 +851,98 @@
       },
       "startCurating": "Beginnen Sie mit der Kuratierung Ihrer Empfehlungen und teilen Sie sie mit der Welt!",
       "viewPublicProfileTooltip": "View your public profile as seen by others",
-      "welcomeBack": "Willkommen zurück"
+      "welcomeBack": "Willkommen zurück",
+      "tabs": {
+        "places": "Orte",
+        "movies": "Filme",
+        "books": "Bücher",
+        "games": "Spiele",
+        "guides": "Guides",
+        "apps": "Apps & Tools",
+        "products": "Produkte",
+        "people": "Personen"
+      },
+      "search": {
+        "places": "Orte und Listen suchen…",
+        "movies": "Filme und Listen suchen…",
+        "books": "Bücher und Listen suchen…",
+        "games": "Spiele und Listen suchen…",
+        "guides": "Guides und Listen suchen…",
+        "apps": "Apps & Tools und Listen suchen…",
+        "products": "Produkte und Listen suchen…",
+        "people": "Personen und Listen suchen…"
+      },
+      "add": {
+        "places": "Orte hinzufügen",
+        "movies": "Filme hinzufügen",
+        "books": "Bücher hinzufügen",
+        "games": "Spiele hinzufügen",
+        "guides": "Guides hinzufügen",
+        "apps": "Apps hinzufügen",
+        "products": "Produkte hinzufügen",
+        "people": "Personen hinzufügen"
+      },
+      "emptyState": {
+        "places": {
+          "tag": "Noch keine Orte",
+          "tagline": "Kartiere deine Welt",
+          "sub": "Markiere die Orte, die dich geprägt haben. Erstelle kuratierte Listen mit Reisezielen, Plätzen und versteckten Schätzen.",
+          "add": "+ Ortsliste hinzufügen"
+        },
+        "movies": {
+          "tag": "Noch keine Filme",
+          "tagline": "Dein persönliches Kino",
+          "sub": "Stelle die Filme zusammen, die dich bewegt haben. Teile Merklisten, Favoriten und Guilty Pleasures mit der Welt.",
+          "add": "+ Filmliste hinzufügen"
+        },
+        "books": {
+          "tag": "Noch keine Bücher",
+          "tagline": "Baue deine Bibliothek auf",
+          "sub": "Sammle die Lektüren, die dein Denken verändert haben. Teile kuratierte Listen zu jedem Genre oder Thema.",
+          "add": "+ Bücherliste hinzufügen"
+        },
+        "games": {
+          "tag": "Noch keine Spiele",
+          "tagline": "Bring deine Listen aufs nächste Level",
+          "sub": "Von Indie-Perlen bis zu AAA-Titeln: Kuratiere deine Spieleempfehlungen und teile sie mit anderen Spielern.",
+          "add": "+ Spieleliste hinzufügen"
+        },
+        "music": {
+          "tag": "Noch keine Musik",
+          "tagline": "Wähle den Soundtrack",
+          "sub": "Teile die Songs, Alben und Künstler, die deinen Geschmack prägen. Erstelle Playlists für jede Stimmung.",
+          "add": "+ Musikliste hinzufügen"
+        },
+        "guides": {
+          "tag": "Noch keine Guides",
+          "tagline": "Schreibe die Reiseroute",
+          "sub": "Erstelle Reiseführer und Tagesrouten. Hilf anderen, die Welt so zu entdecken wie du.",
+          "add": "+ Guide hinzufügen"
+        },
+        "apps": {
+          "tag": "Noch keine Apps",
+          "tagline": "Dein Stack, kuratiert",
+          "sub": "Teile die Apps und Tools, die du wirklich nutzt. Baue dein digitales Werkzeugset für andere zum Entdecken.",
+          "add": "+ Apps-&-Tools-Liste hinzufügen"
+        },
+        "products": {
+          "tag": "Noch keine Produkte",
+          "tagline": "Zeige deine Favoriten",
+          "sub": "Empfiehl die Produkte, die sich lohnen. Von Ausrüstung bis Gadgets: Erstelle Listen, die deine Follower lieben werden.",
+          "add": "+ Produktliste hinzufügen"
+        },
+        "people": {
+          "tag": "Noch keine Personen",
+          "tagline": "Feiere kluge Köpfe",
+          "sub": "Stelle Listen von Denkern, Kreativen und Vorbildern zusammen, denen es sich zu folgen lohnt. Teile deine Inspirationen.",
+          "add": "+ Personenliste hinzufügen"
+        }
+      },
+      "stats": {
+        "activeLists": "Aktive Listen",
+        "recommendations": "Empfehlungen"
+      },
+      "shareRecommendationsLink": "Link zu den Empfehlungen teilen"
     },
     "profile": {
       "account": {
@@ -918,7 +1010,12 @@
         "visible": "Sichtbar",
         "whatsappNumber": "WhatsApp-Nummer",
         "removeProfileImage": "Profilfoto entfernen",
-        "removeCoverImage": "Titelbild entfernen"
+        "removeCoverImage": "Titelbild entfernen",
+        "removeProfileImageConfirmTitle": "Profilfoto entfernen?",
+        "removeProfileImageConfirmMessage": "Dein Profilfoto wird in deinem Profil durch das Standardbild ersetzt.",
+        "removeCoverImageConfirmTitle": "Titelbild entfernen?",
+        "removeCoverImageConfirmMessage": "Dein Titelbild wird in deinem Profil durch das Standardbild ersetzt.",
+        "removeConfirm": "Entfernen"
       },
       "publicProfile": {
         "accountTypes": {
@@ -1248,7 +1345,9 @@
       },
       "travelLikeLocal": "Reisen Sie wie ein Einheimischer",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
-      "viewAll": "Alle anzeigen"
+      "viewAll": "Alle anzeigen",
+      "bookNotFound": "Buch nicht gefunden.",
+      "goBack": "Zurück"
     },
     "shareModal": {
       "copied": "Kopiert!",
@@ -1293,7 +1392,7 @@
       "cookies": "Cookie-Richtlinie",
       "product": "Produkt",
       "shareAnywhere": "Überall teilen",
-      "useCases": "Use Cases"
+      "useCases": "Anwendungsfälle"
     },
     "copyright": "© 2025 Entdecker. Alle Rechte vorbehalten.",
     "madeWithLove": "Hergestellt mit Liebe auf Erden",
@@ -1310,7 +1409,7 @@
       "share": "Aktie",
       "openMenu": "Navigationsmenü öffnen",
       "closeMenu": "Navigationsmenü schließen",
-      "useCases": "Use Cases"
+      "useCases": "Anwendungsfälle"
     },
     "auth": {
       "login": "Anmelden",
@@ -2453,7 +2552,24 @@
     "businessDetails": "Geschäftsdaten",
     "noPhotosTitle": "Noch keine Fotos",
     "noPhotosText": "Dieser Nutzer hat noch keine Fotos geteilt. Schau später wieder vorbei!",
-    "visitWebsite": "Website besuchen"
+    "visitWebsite": "Website besuchen",
+    "footer": {
+      "poweredBy": "Bereitgestellt von",
+      "createProfile": "Erstelle dein Profil",
+      "report": "Melden",
+      "privacy": "Datenschutz"
+    },
+    "nav": {
+      "places": "Orte",
+      "guides": "Guides",
+      "profile": "Profil",
+      "movies": "Filme",
+      "books": "Bücher",
+      "games": "Spiele",
+      "apps": "Apps",
+      "products": "Produkte",
+      "people": "Personen"
+    }
   },
   "useCases": {
     "cta": {
