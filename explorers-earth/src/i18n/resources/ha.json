@@ -502,6 +502,7 @@
   "common": {
     "cancel": "Soke",
     "error": "An error occurred. Please try again later.",
+    "free": "Kyauta",
     "hidePassword": "Hide password",
     "loading": "Loading...",
     "noResults": "No results found",

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { friendlyErrorMessage, urlFieldError } from "../../../../utils/friendlyError";
+import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, ShoppingBag, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -8,11 +9,12 @@ import type { RecommendationObservation } from '../../../../lib/explorersApiClie
 import { ProductsClient, type ManualProductIntent } from '../../api/productsClient';
 import { useProductsCommands } from '../../api/query';
 import { invalidateProducts, useProductsOwner } from '../../hooks/useProductsOwner';
-import { SUPPORTED_CURRENCIES, productAmountSchema, amountScale, currencyMinorUnits, type SupportedCurrency } from '../../../../../../tunes/shared/explorersProductContract';
+import { productAmountSchema } from '../../../../../../tunes/shared/explorersProductContract';
+import CurrencyPicker from '../../../../components/ui/CurrencyPicker';
+import { suggestedCurrency } from '../../../../lib/currencyOptions';
+import { precisionMessage } from '../../../../lib/money';
 import { richNoteFromEditor } from '../../../../../../tunes/shared/explorersRichNoteContract';
 import TiptapEditor from '../../../Favorites/components/TiptapEditor';
-
-const CURRENCIES = Object.keys(SUPPORTED_CURRENCIES) as SupportedCurrency[];
 
 /**
  * Ticket 4.4. Native Products add/edit page.
@@ -34,7 +36,11 @@ const CURRENCIES = Object.keys(SUPPORTED_CURRENCIES) as SupportedCurrency[];
  * Price is a text field, not type="number". The amount is an exact decimal string all the
  * way to numeric(20,6), and routing it through a JS number would be the one place a float
  * could round an owner's price. The currency's minor units bound the precision, so "19.90"
- * is accepted as USD and refused as JPY.
+ * is accepted as USD and refused as JPY. Every active ISO 4217 currency is offered.
+ *
+ * A price needs a currency (an amount nobody can read is not a price) and a currency needs a
+ * price. The picker starts on the currency of the person's region when the browser reports
+ * one, never on a guess, and an empty price drops the currency instead of failing on it.
  *
  * The product URL is the shared entity's identity and is excluded from the override
  * vocabulary, so editing an existing recommendation cannot change it.
@@ -47,6 +53,10 @@ export default function AddProductPage() {
  const currentScope = useRef(scope); currentScope.current = scope;
  const active = useRef(0), controller = useRef<AbortController>();
  const owner = useProductsOwner(undefined, true), commands = useProductsCommands();
+ const { t, i18n } = useTranslation();
+ // Only a new product starts on a suggestion; an existing one shows what is stored.
+ const suggestion = suggestedCurrency([i18n?.language, ...(typeof navigator === 'undefined' ? [] : navigator.languages ?? [])]) ?? '';
+ const initialCurrency = productId ? '' : suggestion;
 
  const [existingId, setExistingId] = useState('');
  const existingProducts = [...new Map((owner.content?.view.lists.flatMap(list => list.recommended_products) ?? []).filter(product => !owner.content?.view.lists.find(list => list.documentId === listId)?.recommended_products.some(member => member.documentId === product.documentId)).map(product => [product.documentId, product])).values()];
@@ -54,7 +64,7 @@ export default function AddProductPage() {
  const [title, setTitle] = useState(''), [productUrl, setProductUrl] = useState('');
  const [brand, setBrand] = useState(''), [logoUrl, setLogoUrl] = useState('');
  const [description, setDescription] = useState(''), [buyUrl, setBuyUrl] = useState('');
- const [price, setPrice] = useState(''), [currency, setCurrency] = useState<SupportedCurrency | ''>('');
+ const [price, setPrice] = useState(''), [currency, setCurrency] = useState<string>(initialCurrency);
  const [specifications, setSpecifications] = useState<{ key: string; value: string }[]>([]);
  const [note, setNote] = useState(''), [rating, setRating] = useState<number | null>(null);
  const [media, setMedia] = useState<{ id: string; url: string }[]>([]), [pending, setPending] = useState(0);
@@ -65,7 +75,7 @@ export default function AddProductPage() {
  const mounted = useRef(true);
 
  useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.abort(); active.current++; }; }, []);
- useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setTitle(''); setProductUrl(''); setBrand(''); setLogoUrl(''); setDescription(''); setBuyUrl(''); setPrice(''); setCurrency(''); setSpecifications([]); setNote(''); setRating(null); setMedia([]); setPending(0); setSaving(false); setError(''); setExistingId(''); }, [scope]);
+ useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setTitle(''); setProductUrl(''); setBrand(''); setLogoUrl(''); setDescription(''); setBuyUrl(''); setPrice(''); setCurrency(initialCurrency); setSpecifications([]); setNote(''); setRating(null); setMedia([]); setPending(0); setSaving(false); setError(''); setExistingId(''); }, [scope]);
 
  useEffect(() => {
   if (!productId || !owner.content || initialized.current === scope) return;
@@ -77,7 +87,7 @@ export default function AddProductPage() {
   setLogoUrl(product.logo_url ?? ''); setDescription(product.description ?? ''); setBuyUrl(product.buy_url ?? '');
   // The exact decimal is read back from the observation, not from the display number.
   const offer = observed.detail.category === 'products' ? observed.detail.productOffer : undefined;
-  setPrice(offer?.price ?? ''); setCurrency((offer?.currencyCode as SupportedCurrency | null) ?? '');
+  setPrice(offer?.price ?? ''); setCurrency(offer?.currencyCode ?? '');
   setSpecifications(Object.entries(product.specifications ?? {}).map(([key, value]) => ({ key, value })));
   setNote(typeof product.user_recommendation_note === 'string' ? product.user_recommendation_note : '');
   setRating(product.user_rating);
@@ -96,9 +106,9 @@ export default function AddProductPage() {
  const priceProblem = (() => {
   const trimmed = price.trim();
   if (trimmed === '') return undefined;
-  if (!productAmountSchema.safeParse(trimmed).success) return 'Enter an amount like 19.90, with no currency symbol.';
-  if (currency !== '' && amountScale(trimmed) > currencyMinorUnits(currency)) return `${currency} does not have that many decimal places.`;
-  return undefined;
+  if (!productAmountSchema.safeParse(trimmed).success) return t('currency.invalidAmount');
+  if (currency === '') return t('currency.needsCurrency');
+  return precisionMessage(t, trimmed, currency);
  })();
 
  const attachExisting = async () => {
@@ -127,8 +137,10 @@ export default function AddProductPage() {
   try {
    const specs = Object.fromEntries(specifications.filter(entry => entry.key.trim() && entry.value.trim()).map(entry => [entry.key.trim(), entry.value.trim()]));
    const facts = { brand: blank(brand), logoUrl: blank(logoUrl), description: blank(description), specifications: specs, imageUrls: [] as string[] };
-   // An empty amount is unknown, never zero; an empty currency stays unknown.
-   const offer = { price: blank(price), currencyCode: currency === '' ? null : currency, buyUrl: blank(buyUrl) };
+   // An empty amount is unknown, never zero, and a currency with no amount names nothing, so
+   // the two travel together or not at all.
+   const amount = blank(price);
+   const offer = { price: amount, currencyCode: amount === null || currency === '' ? null : currency, buyUrl: blank(buyUrl) };
    const draft = { title: title.trim(), productUrl: productUrl.trim(), ...facts, offer, note: richNoteFromEditor(note), userRating: rating, mediaIds: media.map(item => item.id) };
    const signature = JSON.stringify(draft);
    assertCurrent(captured, operation);
@@ -198,18 +210,16 @@ export default function AddProductPage() {
     <label className="block">Logo URL<input value={logoUrl} onChange={event => setLogoUrl(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
     {urlErrors.logoUrl && <p role="alert" className="text-sm text-red-400">{urlErrors.logoUrl}</p>}
 
-    <label className="block">Price
+    <label className="block">{t('currency.priceLabel')}
      {/* Text, not number: the amount stays an exact decimal string end to end. */}
-     <input value={price} inputMode="decimal" onChange={event => setPrice(event.target.value)} disabled={saving} placeholder="79.99" className="block w-full bg-dashboard-muted rounded-xl p-3" />
+     <input value={price} inputMode="decimal" onChange={event => setPrice(event.target.value)} disabled={saving} placeholder="79.99" aria-invalid={Boolean(priceProblem) || undefined} className="block w-full bg-dashboard-muted rounded-xl p-3 text-base" />
     </label>
-    <label className="block">Currency
-     <select value={currency} onChange={event => setCurrency(event.target.value as SupportedCurrency | '')} disabled={saving} className="block bg-dashboard-muted p-2">
-      <option value="">Unknown</option>
-      {CURRENCIES.map(code => <option key={code} value={code}>{code}</option>)}
-     </select>
-    </label>
+    <div>
+     <label htmlFor="product-currency" className="block">{t('currency.label')}</label>
+     <CurrencyPicker inputId="product-currency" value={currency} onChange={setCurrency} disabled={saving} invalid={Boolean(priceProblem) && price.trim() !== '' && currency === ''} />
+    </div>
     {priceProblem && <p role="alert">{priceProblem}</p>}
-    <p className="text-sm text-dashboard-muted">An empty price means unknown, not free. Leave the currency as Unknown rather than guessing one.</p>
+    <p className="text-sm text-dashboard-muted">{t('currency.emptyMeansUnknown')}</p>
 
     <label className="block">Buy / Affiliate URL<input value={buyUrl} onChange={event => setBuyUrl(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
     {urlErrors.buyUrl && <p role="alert" className="text-sm text-red-400">{urlErrors.buyUrl}</p>}

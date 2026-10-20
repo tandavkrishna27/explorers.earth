@@ -4,9 +4,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import ModalPortal from "../../../../components/ui/ModalPortal";
 import { X, Star, Share2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import type { RecommendedProduct } from "../../types";
-import { buildImageUrl, extractNoteText, formatPrice } from "../../utils/productHelpers";
+import { buildImageUrl, extractNoteText } from "../../utils/productHelpers";
 import MediaViewer from "../../../../components/ui/MediaViewer";
 import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
+import { useFormatMoney } from "../../../../lib/money";
 
 interface ProductDetailModalProps {
   product: RecommendedProduct | null;
@@ -17,6 +18,7 @@ interface ProductDetailModalProps {
 const FALLBACK_IMAGE = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'><rect width='300' height='300' fill='%23171e2e'/></svg>`;
 
 const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps) => {
+  const formatMoney = useFormatMoney();
   const categoryStyles = usePublicCategoryThemeStyles();
   const { isOpen: isMediaOpen, currentIndex, openViewer, closeViewer } = useMediaViewer();
   const [imgIdx, setImgIdx] = useState(0);
@@ -87,7 +89,7 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
   const noteText = extractNoteText(product.user_recommendation_note);
   const specs = product.specifications || {};
   const hasSpecs = Object.keys(specs).length > 0;
-  const priceStr = formatPrice(product.price, product.currency);
+  const priceStr = formatMoney(product.price, product.currency);
   
   // Use the first gallery image as backdrop, or main image, or fallback workspace photo
   const backdropUrl = allImages.length > 0 ? allImages[imgIdx] : "https://images.unsplash.com/photo-1505740420928-5e560c06d30e";

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, Link, useOutletContext, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import type { MovieList, RecommendedMovie } from "../../types";
@@ -6,6 +6,8 @@ import { deduplicateMovies, buildPosterUrl } from "../../utils/movieHelpers";
 import MoviePosterCard from "./MoviePosterCard";
 import MovieDetailModal from "./MovieDetailModal";
 import MoviePosterSkeleton from "./MoviePosterSkeleton";
+import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
+import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
@@ -20,6 +22,7 @@ const PublicMovieList = () => {
   const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
+  const { data: accountData } = usePublicProfileShell(username);
   const page = usePublicProfileDetail(username, "movies", listSlug);
   const { data, loading, error, refetch } = page;
 
@@ -37,10 +40,23 @@ const PublicMovieList = () => {
 
   const movies: RecommendedMovie[] = deduplicateMovies(list?.recommended_movies ?? []);
 
-  const handleMovieClick = (movie: RecommendedMovie) => {
+  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const analytics = useTrackAnalytics({
+    ...createAnalyticsOptions.movies(accountDocumentId || "", username, list?.documentId),
+    waitForLocation: true,
+  });
+
+  const handleMovieClick = useCallback((movie: RecommendedMovie) => {
     setSelectedMovie(movie);
     setModalOpen(true);
-  };
+    analytics.trackClick("movie-card", {
+      id: movie.documentId,
+      listId: movie.movie_list?.documentId || list?.documentId,
+      listName: list?.List_Name,
+      title: movie.title,
+      mediaType: movie.media_type || "movie",
+    });
+  }, [analytics, list]);
 
   usePublicHeaderDescriptor(list ? {
     navigationKey: location.key,

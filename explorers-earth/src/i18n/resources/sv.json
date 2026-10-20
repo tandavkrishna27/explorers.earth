@@ -502,6 +502,7 @@
   "common": {
     "cancel": "Avbryt",
     "error": "Ett fel uppstod. Försök igen senare.",
+    "free": "Gratis",
     "hidePassword": "Dölj lösenord",
     "loading": "Laddar...",
     "noResults": "Inga resultat hittades",

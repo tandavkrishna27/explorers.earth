@@ -502,6 +502,7 @@
   "common": {
     "cancel": "రద్దు చేయి",
     "error": "An error occurred. Please try again later.",
+    "free": "ఉచితం",
     "hidePassword": "Hide password",
     "loading": "Loading...",
     "noResults": "No results found",

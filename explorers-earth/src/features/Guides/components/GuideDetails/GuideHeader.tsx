@@ -11,6 +11,7 @@ import EditIcon from "../../../../assets/icons/EditIcon";
 import SwitchButton from "../../../../components/ui/SwitchButton";
 import type { Guide } from "../../types";
 import { guideDescriptionText } from "../../../../utils/guideDescriptionText";
+import { useFormatMoney } from "../../../../lib/money";
 
 interface GuideHeaderProps {
   guide: Guide;
@@ -19,6 +20,7 @@ interface GuideHeaderProps {
 }
 
 const GuideHeader: React.FC<GuideHeaderProps> = ({ guide, guideId, onVisibilityChange }) => {
+  const formatMoney = useFormatMoney();
   const navigate = useNavigate();
   const [isPublished, setIsPublished] = useState<boolean>(guide.Visibility || false);
 
@@ -142,15 +144,11 @@ const GuideHeader: React.FC<GuideHeaderProps> = ({ guide, guideId, onVisibilityC
         <div className="mb-3 sm:mb-4 max-w-3xl">{renderDescription()}</div>
 
         {/* Budget */}
-        {guide.Estimated_Budget &&
-          typeof guide.Estimated_Budget === 'object' &&
-          ((guide.Estimated_Budget as any).currency ||
-            (guide.Estimated_Budget as any).amount) && (
-            <p className="text-sm md:text-base opacity-90 font-medium">
-              Budget: {(guide.Estimated_Budget as any).currency}{" "}
-              {(guide.Estimated_Budget as any).amount}
-            </p>
-          )}
+        {guide.Estimated_Budget != null && (
+          <p className="text-sm md:text-base opacity-90 font-medium">
+            Budget: {formatMoney(guide.Estimated_Budget, guide.Estimated_Budget_Currency)}
+          </p>
+        )}
       </div>
 
       {/* Edit Guide Button - Bottom Right */}

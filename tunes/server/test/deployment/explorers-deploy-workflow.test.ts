@@ -150,7 +150,8 @@ describe("explorers deploy workflow", () => {
   });
 
   it("ships host scripts that parse", () => {
-    for (const file of ["deploy/host/explorers-deploy.sh", "deploy/host/explorers-bootstrap.sh", "deploy/host/api-acceptance.sh", "deploy/rehearsal/rehearse.sh"]) {
+    for (const file of ["deploy/host/explorers-deploy.sh", "deploy/host/explorers-bootstrap.sh", "deploy/host/api-acceptance.sh",
+      "deploy/host/validate-production-env.sh", "deploy/render-production-env.sh", "deploy/rehearsal/rehearse.sh"]) {
       const result = spawnSync("bash", ["-n", resolve(repositoryRoot, file)], { encoding: "utf8" });
       expect(result.status, `${file}: ${result.stderr}`).toBe(0);
     }
