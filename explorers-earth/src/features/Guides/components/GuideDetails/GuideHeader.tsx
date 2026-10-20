@@ -16,9 +16,11 @@ interface GuideHeaderProps {
   guide: Guide;
   guideId: string;
   onVisibilityChange?: () => void;
+  /** Called instead of the plain success toast when the guide has just been published. */
+  onPublished?: () => void;
 }
 
-const GuideHeader: React.FC<GuideHeaderProps> = ({ guide, guideId, onVisibilityChange }) => {
+const GuideHeader: React.FC<GuideHeaderProps> = ({ guide, guideId, onVisibilityChange, onPublished }) => {
   const formatMoney = useFormatMoney();
   const navigate = useNavigate();
   const [isPublished, setIsPublished] = useState<boolean>(guide.Visibility || false);
@@ -34,7 +36,8 @@ const GuideHeader: React.FC<GuideHeaderProps> = ({ guide, guideId, onVisibilityC
     setIsUpdating(true);
     try {
       await setPublished(newVisibility);
-      toast.success(newVisibility ? "Guide published" : "Guide unpublished");
+      if (newVisibility && onPublished) onPublished();
+      else toast.success(newVisibility ? "Guide published" : "Guide unpublished");
       onVisibilityChange?.();
     } catch (error: any) {
       setIsPublished(!newVisibility);

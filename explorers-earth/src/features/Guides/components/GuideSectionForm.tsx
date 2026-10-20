@@ -40,6 +40,9 @@ import { TravelModeSelector } from "./TravelModeSelector";
 import { isAccommodation } from "../utils/accommodationDetector";
 import { isActivity } from "../utils/activityDetector";
 import ActivityCard from "./ActivityCard";
+import PlaceMoveButtons from "./PlaceMoveButtons";
+import ActivityPhotoOrder from "./ActivityPhotoOrder";
+import { useMoveAnnouncer } from "../../../components/reorder/useMoveAnnouncer";
 import { fetchGooglePlacePhotos } from "../utils/googlePhotosService";
 import { fetchPlacePriceLevel } from "../utils/googlePlaceService";
 import { uploadActivityPhotos } from "../services/activityPhotoService";
@@ -119,6 +122,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
 
   // Activity places state
   const [activityPlaces, setActivityPlaces] = useState<DayPlace[]>([]);
+  const { announce, region: moveRegion } = useMoveAnnouncer();
 
   // Tracks in-flight activity photo uploads so submit can await them before
   // serializing Recommendation_Activity. Without this, saving a day/stop before
@@ -1180,18 +1184,42 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {/* Sequence - Smaller width */}
         <div className="md:col-span-1">
-          <label className="text-dashboard block font-medium mb-2 font-poppins text-sm">
-            Day <span className="text-red-500">*</span>
+          <label htmlFor="guide-day-number" className="text-dashboard block font-medium mb-2 font-poppins text-sm">
+            Day {!sectionId && <span className="text-red-500">*</span>}
           </label>
-          <input
-            type="number"
-            className="w-full px-3 py-2 bg-dashboard-bg border border-dashboard-muted rounded-lg text-dashboard placeholder-dashboard-light focus:outline-none focus:ring-2 focus:ring-dashboard-accent/50 focus:border-dashboard-accent transition-all duration-200 font-poppins"
-            placeholder="#"
-            value={sequence}
-            onChange={(e) => setSequence(parseInt(e.target.value) || 1)}
-            min={1}
-            required
-          />
+          {sectionId ? (
+            // A day's number is its position in the guide. Editing it here was never saved,
+            // so an existing day shows its number and is moved from the guide page instead.
+            <>
+              <output
+                id="guide-day-number"
+                aria-describedby="guide-day-number-hint"
+                className="block w-full px-3 py-2 bg-dashboard-bg border border-dashboard-muted rounded-lg text-dashboard font-poppins"
+              >
+                {sequence}
+              </output>
+              <p id="guide-day-number-hint" className="mt-1 text-xs text-dashboard-light font-poppins">
+                To move this day, use Reorder days on the guide page.
+              </p>
+            </>
+          ) : (
+            <>
+              <input
+                id="guide-day-number"
+                type="number"
+                aria-describedby="guide-day-number-hint"
+                className="w-full px-3 py-2 bg-dashboard-bg border border-dashboard-muted rounded-lg text-dashboard placeholder-dashboard-light focus:outline-none focus:ring-2 focus:ring-dashboard-accent/50 focus:border-dashboard-accent transition-all duration-200 font-poppins"
+                placeholder="#"
+                value={sequence}
+                onChange={(e) => setSequence(parseInt(e.target.value) || 1)}
+                min={1}
+                required
+              />
+              <p id="guide-day-number-hint" className="mt-1 text-xs text-dashboard-light font-poppins">
+                Later days move down by one.
+              </p>
+            </>
+          )}
         </div>
 
         {/* Title - Larger width */}
@@ -1385,6 +1413,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
               {/* Timeline Container with Continuous Bar - Only show when places exist */}
               {(morningPlaces.length > 0 || afternoonPlaces.length > 0 || eveningPlaces.length > 0) && (
                 <div className="relative pl-6 space-y-6">
+                  {moveRegion}
                   {/* Continuous vertical timeline bar */}
                   <div className="absolute left-2 top-0 bottom-0 w-0.5 border-l-2 border-dashed border-red-500"></div>
 
@@ -1437,6 +1466,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
                                       <circle cx="11" cy="12" r="1.5" />
                                     </svg>
                                   </div>
+                                  <PlaceMoveButtons name={place.name} index={index} places={morningPlaces} setPlaces={setMorningPlaces} announce={announce} />
                                   {getPlaceIcon(place.types, "5", "white")}
                                   <div className="flex-1 min-w-0">
                                     <h5 className="text-dashboard font-poppins font-semibold text-sm truncate">
@@ -1787,6 +1817,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
                                       <circle cx="11" cy="12" r="1.5" />
                                     </svg>
                                   </div>
+                                  <PlaceMoveButtons name={place.name} index={index} places={afternoonPlaces} setPlaces={setAfternoonPlaces} announce={announce} />
                                   {getPlaceIcon(place.types, "5", "white")}
                                   <div className="flex-1 min-w-0">
                                     <h5 className="text-dashboard font-poppins font-semibold text-sm truncate">
@@ -2137,6 +2168,7 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
                                       <circle cx="11" cy="12" r="1.5" />
                                     </svg>
                                   </div>
+                                  <PlaceMoveButtons name={place.name} index={index} places={eveningPlaces} setPlaces={setEveningPlaces} announce={announce} />
                                   {getPlaceIcon(place.types, "5", "white")}
                                   <div className="flex-1 min-w-0">
                                     <h5 className="text-dashboard font-poppins font-semibold text-sm truncate">
@@ -2657,17 +2689,23 @@ const GuideSectionForm: React.FC<GuideSectionFormProps> = ({
                   </p>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {activityPlaces.map((activity) => (
-                      <ActivityCard
-                        key={activity.id}
-                        activity={activity}
-                        onClick={() => {
-                          // Only open viewer if photos are available
-                          if (activity.photos && activity.photos.length > 0) {
-                            setSelectedActivityId(activity.id);
-                            openViewer(0);
-                          }
-                        }}
-                      />
+                      <div key={activity.id}>
+                        <ActivityCard
+                          activity={activity}
+                          onClick={() => {
+                            // Only open viewer if photos are available
+                            if (activity.photos && activity.photos.length > 0) {
+                              setSelectedActivityId(activity.id);
+                              openViewer(0);
+                            }
+                          }}
+                        />
+                        <ActivityPhotoOrder
+                          name={activity.name}
+                          photos={activity.photos ?? []}
+                          onChange={(next) => setActivityPlaces((prev) => prev.map((act) => (act.id === activity.id ? { ...act, photos: next } : act)))}
+                        />
+                      </div>
                     ))}
                   </div>
 

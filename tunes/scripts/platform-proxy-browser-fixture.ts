@@ -19,7 +19,7 @@ const db=new pg.Pool({host:'postgres',port:5432,user:'platform_owner',password,d
 await migrateMusicDatabase(db);
 await provisionMusicRuntimeLogin(db,{loginRole:authority.runtimeRole,password:runtimePassword},{ownershipComment:'platform-proxy:'+authority.runId});
 const runtime=new pg.Pool({host:'postgres',port:5432,user:authority.runtimeRole,password:runtimePassword,database:authority.database,max:6});
-const schema=await checkMusicDatabaseReadiness(runtime);if(!schema.ready||schema.currentId!=='0060_explorers_guide_budget_tier')throw new Error('FIXTURE_SCHEMA_NOT_READY');
+const schema=await checkMusicDatabaseReadiness(runtime);if(!schema.ready||schema.currentId!=='0061_explorers_product_spec_order_budget_scale')throw new Error('FIXTURE_SCHEMA_NOT_READY');
 const config=resolveExplorersAuthConfig({EXPLORERS_PUBLIC_ORIGIN:authority.origin,EXPLORERS_AUTH_SECRET:randomBytes(32).toString('hex'),GOOGLE_CLIENT_ID:'synthetic.apps.googleusercontent.com',GOOGLE_CLIENT_SECRET:'synthetic-only'});
 const composed=createCanonicalApp(runtime,config,fixtureProviders(config.secret,'/private'));
 mkdirSync('/private/sessions',{recursive:true});

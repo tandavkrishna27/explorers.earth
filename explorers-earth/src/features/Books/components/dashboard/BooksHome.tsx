@@ -1,3 +1,4 @@
+import CategoryListsOrder from "../../../../components/reorder/CategoryListsOrder";
 import { NavigationStatus } from "../../../navigation/NavigationStatus";
 import { useBooksNavigation as useCategoryNavigation } from "../../api/useBooksNavigation";
 import { useState, useMemo, useEffect } from "react";
@@ -505,6 +506,10 @@ const BooksHome = () => {
               </div>
             )
           )}
+
+          {/* The order set here is the order of these lists on your public page. */}
+
+          <CategoryListsOrder category="books" lists={lists.map((list: any) => ({ id: list.documentId, title: list.List_Name ?? list.title ?? "" }))} onChanged={() => { void refetch(); }} />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
             {lists.map(list => (
