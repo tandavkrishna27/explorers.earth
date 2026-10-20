@@ -1,4 +1,5 @@
-import { AdvancedMarker, Map, MapCameraChangedEvent, Pin, useApiIsLoaded } from "@vis.gl/react-google-maps";
+import { AdvancedMarker, Map, MapCameraChangedEvent, Pin } from "@vis.gl/react-google-maps";
+import { useMapsUsable } from "./useMapsUsable";
 import { withGoogleMapsProvider } from "../../../components/GoogleMapsProvider";
 import { memo, useState, useCallback, useEffect } from "react";
 import { Maximize2, Minimize2 } from "lucide-react";
@@ -54,7 +55,7 @@ type Geometry = {
 };
 const PlaceMapView = memo(() => {
   const outlet = useOutletContext<{ setIsPageLoaded?: (loaded: boolean) => void } | null>();
-  const mapsApiLoaded = useApiIsLoaded();
+  const mapsApiLoaded = useMapsUsable();
   const [currentCoords, setCurrentCoords] = useState<Geometry | null>(null);
   const [activeMarker, setActiveMarker] = useState<Geometry | null>(null);
   // local state for handle catgeories
