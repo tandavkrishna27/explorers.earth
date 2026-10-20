@@ -1,10 +1,11 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useParams, Link, useOutletContext, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import type { RecommendedGame } from "../../types";
 import { slugToGenreName, deduplicateGames, genreToSlug } from "../../utils/gameHelpers";
 import GameCoverCard from "./GameCoverCard";
 import GameDetailModal from "./GameDetailModal";
+import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
@@ -61,10 +62,23 @@ const PublicGamesGenre = () => {
     });
   }, [allGames, genreSlug]);
 
-  const handleGameClick = (game: RecommendedGame) => {
+  const analytics = useTrackAnalytics({
+    ...createAnalyticsOptions.games(accountDocumentId || "", username),
+    ready: hasUsableData && accountData?.public_games === "Yes",
+  });
+
+  const handleGameClick = useCallback((game: RecommendedGame) => {
     setSelectedGame(game);
     setModalOpen(true);
-  };
+    analytics.trackClick("game-card", {
+      id: game.documentId,
+      listId: game.game_list?.documentId,
+      listName: game.game_list?.List_Name,
+      title: game.title,
+      genres: game.genres?.join(", "),
+      genre: genreSlug,
+    });
+  }, [analytics, genreSlug]);
 
   usePublicHeaderDescriptor(genreSlug ? {
     navigationKey: location.key,

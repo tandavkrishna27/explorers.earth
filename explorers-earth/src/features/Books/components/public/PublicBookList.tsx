@@ -53,8 +53,8 @@ const PublicBookList = () => {
   const analytics = useTrackAnalytics({ ...createAnalyticsOptions.books(rawList?.account?.documentId || '', username, rawList?.documentId), ready: hasUsableData });
   const handleBookClick = useCallback((book: RecommendedBook) => {
     setModalState({ open: true, book });
-    analytics.trackClick('book-card', { id: book.documentId, listId: book.book_list?.documentId || rawList?.documentId, title: book.title });
-  }, [analytics, rawList?.documentId]);
+    analytics.trackClick('book-card', { id: book.documentId, listId: book.book_list?.documentId || rawList?.documentId, listName: book.book_list?.List_Name || rawList?.List_Name, title: book.title });
+  }, [analytics, rawList?.documentId, rawList?.List_Name]);
 
   const pinnedBooks = books.filter((b) => b.is_pinned);
   const restBooks = books.filter((b) => !b.is_pinned);
