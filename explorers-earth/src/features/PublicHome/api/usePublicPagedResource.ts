@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { usePublicRevalidation } from "./usePublicRevalidation";
 import { PUBLIC_PROFILE_PAGE_SIZE, validatePublicPageSize, type PublicProfilePageSize } from "./publicProfilePagination";
 
 export type PublicPagePayload = Record<string, unknown[]>;
@@ -30,6 +31,8 @@ export type PublicPagedOptions = {
   retainOnFirst?: boolean;
   restartOnConflict?: boolean;
   cursorTraversal?: boolean;
+  /** Re-read the first page on focus / every 60 s while visible, silently. Default off. */
+  revalidate?: boolean;
 };
 type Snapshot = Omit<PublicPagedState, "loadMore" | "refetch"> & { scope: string | undefined; partialError: Error | null };
 type Request = { controller: AbortController; settle: () => void };
@@ -67,11 +70,12 @@ export function usePublicPagedResource(options: PublicPagedOptions): PublicPaged
     request.current = undefined;
   }, []);
 
-  const start = useCallback((first: boolean, bypass = false): Promise<void> => {
+  const start = useCallback((first: boolean, bypass = false, silent = false): Promise<void> => {
     const config = callbacks.current;
     const scope = config.scope;
     if (!mounted.current || !config.enabled || !scope) return Promise.resolve();
     if (!first && (request.current || current.current.scope !== scope || !current.current.hasMore || !current.current.data)) return Promise.resolve();
+    if (first && silent && request.current) return Promise.resolve();
     if (first) {
       cancel();
       offset.current = 0;
@@ -100,8 +104,9 @@ export function usePublicPagedResource(options: PublicPagedOptions): PublicPaged
       return { data, rows };
     };
 
-    let retained = first && config.retainOnFirst === false ? undefined : previous.data;
-    let retainedPartialError = first && config.retainOnFirst === false ? null : previous.partialError;
+    const dropOnFirst = first && !silent && config.retainOnFirst === false;
+    let retained = dropOnFirst ? undefined : previous.data;
+    let retainedPartialError = dropOnFirst ? null : previous.partialError;
     if (first && !bypass && !retained && config.peek) {
       try {
         const cached = config.peek();
@@ -113,7 +118,7 @@ export function usePublicPagedResource(options: PublicPagedOptions): PublicPaged
       } catch { /* Invalid cached data must never become visible. Revalidate it. */ }
     }
     publish(first
-      ? { ...empty(scope), data: retained, partialError: retainedPartialError, loading: (config.showLoadingOnRevalidation ?? true) || retained === undefined }
+      ? { ...empty(scope), data: retained, partialError: retainedPartialError, loading: silent ? retained === undefined : (config.showLoadingOnRevalidation ?? true) || retained === undefined }
       : { ...previous, loadingMore: true, loadMoreError: null });
     const bypassCache = first ? bypass : bypassGeneration.current || previous.loadMoreError !== null;
     void (async () => {
@@ -138,6 +143,7 @@ export function usePublicPagedResource(options: PublicPagedOptions): PublicPaged
           void start(true,true);
         }
         else if (blocking(error)) publish({ ...empty(scope), error });
+        else if (first && silent) publish({ ...previous, loading: false });
         else if (first) publish({ ...empty(scope), data: retained, partialError: retainedPartialError, error });
         else publish({ ...previous, loadingMore: false, loadMoreError: error });
       } finally {
@@ -160,6 +166,12 @@ export function usePublicPagedResource(options: PublicPagedOptions): PublicPaged
   }, [options.scope, options.enabled, options.refreshVersion, cancel, publish, start]);
 
   const loadMore = useCallback(() => start(false), [start]);
+  // Silent revalidation re-reads only the first page, so it is skipped once the visitor has paged
+  // further (their extra pages would be dropped) or while a read is in flight.
+  usePublicRevalidation(() => {
+    if (request.current || offset.current > (callbacks.current.pageSize ?? PUBLIC_PROFILE_PAGE_SIZE)) return;
+    void start(true, false, true);
+  }, Boolean(options.revalidate && options.enabled && options.scope));
   const refetch = useCallback(() => start(true, true), [start]);
   // Effects run after render: never expose another scope's data in that gap.
   const visible = options.enabled && options.scope && snapshot.scope === options.scope

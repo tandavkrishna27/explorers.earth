@@ -24,17 +24,19 @@ const PublicNav = memo(() => {
   const accountData = identity.account;
   const loading = identity.status === "loading" && !accountData;
 
+  // revalidate:false - the nav keeps its counts fresh through the shell (public_navigation_counts),
+  // which revalidates on focus; eight more category re-reads a minute would be wasted volume.
   // Category projections are the only anonymous source of published list data.
   // Their bounded result sizes are sufficient for auto-pin ranking while avoiding
   // a broad anonymous Strapi aggregate query.
-  const places = usePublicRecommendationCategory(username, "places", accountData?.public_recommendations === "Yes");
-  const movies = usePublicRecommendationCategory(username, "movies", accountData?.public_movie === "Yes");
-  const books = usePublicRecommendationCategory(username, "books", accountData?.public_books === "Yes");
-  const games = usePublicRecommendationCategory(username, "games", accountData?.public_games === "Yes");
-  const apps = usePublicRecommendationCategory(username, "apps", accountData?.public_apps === "Yes");
-  const products = usePublicRecommendationCategory(username, "products", accountData?.public_products === "Yes");
-  const people = usePublicRecommendationCategory(username, "people", accountData?.public_people === "Yes");
-  const guides = usePublicRecommendationCategory(username, "guides", accountData?.public_guides === "Yes");
+  const places = usePublicRecommendationCategory(username, "places", accountData?.public_recommendations === "Yes", { revalidate: false });
+  const movies = usePublicRecommendationCategory(username, "movies", accountData?.public_movie === "Yes", { revalidate: false });
+  const books = usePublicRecommendationCategory(username, "books", accountData?.public_books === "Yes", { revalidate: false });
+  const games = usePublicRecommendationCategory(username, "games", accountData?.public_games === "Yes", { revalidate: false });
+  const apps = usePublicRecommendationCategory(username, "apps", accountData?.public_apps === "Yes", { revalidate: false });
+  const products = usePublicRecommendationCategory(username, "products", accountData?.public_products === "Yes", { revalidate: false });
+  const people = usePublicRecommendationCategory(username, "people", accountData?.public_people === "Yes", { revalidate: false });
+  const guides = usePublicRecommendationCategory(username, "guides", accountData?.public_guides === "Yes", { revalidate: false });
 
   // Helper function to normalize paths by removing trailing slashes
   const normalizePath = (path: string | undefined) => {

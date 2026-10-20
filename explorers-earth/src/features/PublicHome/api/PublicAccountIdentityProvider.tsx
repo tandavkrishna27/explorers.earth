@@ -7,6 +7,7 @@ export type PublicAccountIdentity = {
   status: "loading" | "ready" | "terminal-error";
   account?: Record<string, any>;
   error?: unknown;
+  refetch?: () => Promise<void>;
 };
 
 type PublicAccountShell = { identity: PublicAccountIdentity; shell: PublicProfileShellState };
@@ -31,7 +32,8 @@ export function PublicAccountIdentityProvider({ children }: { children: ReactNod
     status: accountMatches ? "ready" : loading ? "loading" : "terminal-error",
     ...(accountMatches ? { account } : {}),
     ...(!accountMatches && !loading && error ? { error } : {}),
-  }), [account, accountMatches, error, loading, usernameKey]);
+    refetch,
+  }), [account, accountMatches, error, loading, refetch, usernameKey]);
   const value = useMemo(() => ({ identity, shell: { data, loading, error, refetch } }),
     [identity, data, loading, error, refetch]);
   return <PublicAccountShellContext.Provider value={value}>{children}</PublicAccountShellContext.Provider>;

@@ -24,6 +24,7 @@ import CurrLocation from "../assets/icons/CurrLocation";
 import { AuthFormField } from "../features/Authentication/components/AuthForm";
 import { GOOGLE_GEOCODING_BASE_URL } from "../config";
 import { createUsernameValidation } from "../features/Authentication/data";
+import { confirmHandleAvailable } from "../utils/usernameValidation";
 import Modal from "../components/ui/Modal";
 
 //import { usernameValidation } from "../features/Authentication/data";
@@ -625,6 +626,22 @@ const OnBoarding = () => {
     try {
       const currentStepSchema = steps[activeStep].validationSchema;
       await currentStepSchema.validate(values, { abortEarly: false });
+
+      // Step 1 must not advance on a handle that is taken or whose availability could not be
+      // checked: the schema above is syntax-only and the server would only refuse at the end (ONB-03).
+      if (activeStep === 0 && typeof values.username === "string") {
+        const confirmation = await confirmHandleAvailable(
+          values.username,
+          { taken: t("auth.validations.username.alreadyExists"), unavailable: t("auth.validations.username.unableToCheck") },
+          { own: (canonicalAccount.data as { handle?: string | null } | undefined)?.handle },
+        );
+        if (!confirmation.ok) {
+          formikHelpers.setFieldError("username", confirmation.error);
+          formikHelpers.setFieldTouched("username", true, false);
+          toast.error(confirmation.error);
+          return;
+        }
+      }
 
       const updatedFormData = {
         ...formData,

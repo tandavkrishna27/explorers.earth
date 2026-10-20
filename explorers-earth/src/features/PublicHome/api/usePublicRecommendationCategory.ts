@@ -14,6 +14,7 @@ export function usePublicRecommendationCategory(
   username: string | undefined,
   category: PublicCategory,
   enabled: boolean,
+  { revalidate = true }: { revalidate?: boolean } = {},
 ): PublicPagedState {
   const normalizedUsername = username?.trim().toLowerCase();
   const [peopleRevision,setPeopleRevision]=useState(0);
@@ -39,7 +40,7 @@ export function usePublicRecommendationCategory(
     peek: () => category==='places'?undefined:publicProfileGatewayClient.peekCategory(username!, category) as PublicPagePayload | undefined,
     readRows: (data) => readPublicPageRows(data, category, false),
     merge: (previous, next) => category==='games'?mergeGamePage(previous,next,false,PUBLIC_PROFILE_PAGE_SIZE):category==='movies'?mergeMoviePage(previous,next,false,PUBLIC_PROFILE_PAGE_SIZE):mergePublicPage(previous, next, category, false),
-    showLoadingOnRevalidation: true,
+    showLoadingOnRevalidation: true, revalidate,
   });
 
   useEffect(() => {

@@ -510,6 +510,7 @@
       },
       "username": {
         "alreadyExists": "Username already exists",
+        "unableToCheck": "Unable to check username availability. Please try again.",
         "available": "Username is available",
         "cannotBeAllNumbers": "Username cannot be all numbers",
         "cannotStartEndHyphen": "Username cannot start or end with a hyphen",
@@ -957,6 +958,13 @@
         "removeCoverImage": "Remove cover image"
       },
       "publicProfile": {
+    "loadError": {
+      "title": "This page could not be loaded",
+      "rateLimited": "Too many requests right now. We will try again shortly.",
+      "body": "Something went wrong while loading this page. It still exists; please try again.",
+      "retry": "Try again",
+      "retrying": "Retrying..."
+    },
         "accountTypes": {
           "business": "Business",
           "creator": "Creator",

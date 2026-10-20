@@ -67,6 +67,8 @@ const OnboardingUsernameInput: React.FC<OnboardingUsernameInputProps> = ({
   );
   const [hasBeenTouched, setHasBeenTouched] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  // The field lowercases on input, so validateUsername never sees the capitals; remember them here (ONB-02).
+  const [typedUppercase, setTypedUppercase] = useState(false);
 
   // Use the new username validation hook
   const { validateUsernameWithAvailability, isValidating } =
@@ -166,6 +168,7 @@ const OnboardingUsernameInput: React.FC<OnboardingUsernameInputProps> = ({
   };
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setTypedUppercase(/[A-Z]/.test(event.target.value));
     // Convert to lowercase immediately
     const lowercaseValue = event.target.value.toLowerCase();
     setFieldValue(name, lowercaseValue);
@@ -303,6 +306,12 @@ const OnboardingUsernameInput: React.FC<OnboardingUsernameInputProps> = ({
             {helperText.replace("{username}", values[name] || "username")}
           </div>
         </div>
+      )}
+
+      {typedUppercase && (
+        <p role="status" data-testid="username-lowercase-notice" className="text-xs font-poppins text-yellow-400">
+          {t('auth.validations.username.willConvertToLowercase')}
+        </p>
       )}
 
       {/* Validation Messages */}

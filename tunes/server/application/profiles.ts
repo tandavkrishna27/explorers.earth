@@ -1,7 +1,7 @@
 import type { Pool } from "pg";
 import { newInvalidPostalCodes, accountDtoSchema, updateAccountRequestSchema, type AccountDto, type RequestContext,
   type RevisionInput, type UpdateAccountInput } from "../../shared/explorersContract";
-import { isReservedHandle } from "../../shared/explorersReservedHandles";
+import { handleViolationsOnSave } from "../../shared/explorersReservedHandles";
 import type { Actor } from "./actor";
 import { authorizeOperation } from "./authorization";
 import { AccountConflict, AccountInvalidAttachment, ExplorersAccountRepository } from "../repositories/explorersAccountRepository";
@@ -24,8 +24,9 @@ export class ProfileService {
     const normalized = { ...parsed.data };
     if (typeof normalized.handle === "string") {
       normalized.handle = normalized.handle.toLowerCase();
-      if (!/^[a-z][a-z0-9-]{2,29}$/.test(normalized.handle) || normalized.handle.includes("--")
-        || normalized.handle.endsWith("-") || isReservedHandle(normalized.handle)) throw new ProfileInputError("Handle is unavailable");
+      // Only a changed handle is held to the rules; an existing holder keeps saving (see handleViolationsOnSave).
+      const current = (await this.repository.get(actor.accountId)).handle;
+      if (handleViolationsOnSave(current, normalized.handle).length > 0) throw new ProfileInputError("Handle is unavailable");
     }
     if (normalized.primaryAddress?.postalCode !== undefined || normalized.additionalAddresses?.some((a) => a.postalCode !== undefined)) {
       const stored = await this.repository.get(actor.accountId);

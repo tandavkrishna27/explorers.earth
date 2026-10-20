@@ -7,11 +7,14 @@ import { MediaService, MediaInputError, MediaUnavailable, type MediaUploadInput 
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /**
- * How long a shared cache may serve a public attachment without asking again. It bounds
- * how long an unpublished image can still be handed out, so it is deliberately short;
- * past it, revalidation is a 304 with no bytes rather than a fresh download.
+ * `no-cache` (not max-age): a cache may keep the bytes but must revalidate with the origin on
+ * every use. Revalidation re-runs the public-attachment check, so an unpublished image answers
+ * 404 on the very next use instead of lingering for a max-age window (UAT MED-01 / visibility
+ * freshness). While it is still public the answer is a 304 with no body. Worst-case staleness
+ * of a media response is therefore 0 s for a cache that honours the header; a browser page
+ * that already rendered the <img> keeps showing it until its next load or revalidation tick.
  */
-const PUBLIC_MEDIA_MAX_AGE = 300;
+const PUBLIC_MEDIA_CACHE_CONTROL = "public, no-cache";
 const failure = (status: number, code: string, message: string) => ({ status, body: { error: { code, message, requestId: randomUUID() } } });
 
 export function setupExplorersMediaRoutes(app: Express, pool: Pool, auth: ExplorersAuth, config: ExplorersAuthConfig,
@@ -63,13 +66,13 @@ export function setupExplorersMediaRoutes(app: Express, pool: Pool, auth: Explor
       // Media is written once per id, so bytes for a given URL never change and a cache
       // hit can never be wrong about content. What can change is whether they may be
       // served at all, which is why only an already-public attachment is cacheable and
-      // why the window is short: unpublishing takes effect in a shared cache within it.
+      // why it must revalidate on every use: unpublishing takes effect on the next request.
       // Owner-only bytes stay no-store.
       //
       // Until now every public view re-downloaded the full object through this server:
       // no-store meant browsers kept no ETag, so the 304 branch below could never be
       // reached from a browser.
-      if (object.publicAttachment) response.setHeader("Cache-Control", `public, max-age=${PUBLIC_MEDIA_MAX_AGE}, must-revalidate`);
+      if (object.publicAttachment) response.setHeader("Cache-Control", PUBLIC_MEDIA_CACHE_CONTROL);
       const etag = `"${object.sha256}"`;
       response.setHeader("ETag", etag);
       response.setHeader("Content-Type", object.mimeType);

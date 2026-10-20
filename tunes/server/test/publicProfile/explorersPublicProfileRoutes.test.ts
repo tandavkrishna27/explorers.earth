@@ -1,6 +1,6 @@
 import express from "express";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { setupExplorersPublicProfileRoutes } from "../../routes/explorersPublicProfileRoutes";
+import { PUBLIC_PROFILE_RATE_LIMIT, setupExplorersPublicProfileRoutes } from "../../routes/explorersPublicProfileRoutes";
 import { createLoopbackSupertestScope } from "../helpers/loopback-supertest";
 
 const loopback = createLoopbackSupertestScope();
@@ -59,6 +59,27 @@ describe("explorers public profile routes", () => {
     await request.get("/api/explorers/v1/profiles/tk2727/recommendations/apps").expect(200);
     const response = await request.get("/api/explorers/v1/profiles/tk2727/recommendations/apps").expect(429);
     expect(response.body).toEqual({ version: "explorers-public-error/v1", error: { code: "RATE_LIMITED", retryable: true } });
+  });
+
+  it("answers 429 with Retry-After so the SPA can schedule a retry", async () => {
+    const app = express();
+    setupExplorersPublicProfileRoutes(app, { category: async () => ({ appLists: [] }) }, { rateLimit: { limit: 1, windowMs: 60_000 } });
+    const { request } = await loopback.open({ app });
+    await request.get("/api/explorers/v1/profiles/tk2727/recommendations/apps").expect(200);
+    const response = await request.get("/api/explorers/v1/profiles/tk2727/recommendations/apps").expect(429);
+    expect(Number(response.headers["retry-after"])).toBeGreaterThan(0);
+  });
+
+  it("lets a shared-NAT crowd load profiles but still stops a tight loop", async () => {
+    // Defaults: 600/min sustained, 150 per 5 s burst. 30 page loads of ~5 reads each pass.
+    expect(PUBLIC_PROFILE_RATE_LIMIT.limit).toBeGreaterThanOrEqual(5 * 120);
+    const app = express();
+    setupExplorersPublicProfileRoutes(app, { category: async () => ({ appLists: [] }) });
+    const { request } = await loopback.open({ app });
+    for (let i = 0; i < PUBLIC_PROFILE_RATE_LIMIT.burstLimit; i += 1) {
+      await request.get("/api/explorers/v1/profiles/tk2727/recommendations/apps").expect(200);
+    }
+    await request.get("/api/explorers/v1/profiles/tk2727/recommendations/apps").expect(429);
   });
 
   it("rejects malformed public identifiers before calling the gateway", async () => {

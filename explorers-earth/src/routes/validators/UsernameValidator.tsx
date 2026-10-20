@@ -3,6 +3,8 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { usePublicColdEntry } from "../../layouts/PublicColdEntryBoundary";
 import NotFound from "../../pages/NotFound";
 import { usePublicAccountIdentity } from "../../features/PublicHome/api/PublicAccountIdentityProvider";
+import { isPublicProfileNotFound } from "../../features/PublicHome/api/publicProfileGatewayClient";
+import PublicProfileLoadError from "../../features/PublicHome/components/PublicProfileLoadError";
 
 interface UsernameValidatorProps { children: ReactNode }
 
@@ -51,9 +53,8 @@ const UsernameValidator = ({ children }: UsernameValidatorProps) => {
   const normalizedUsername = username?.trim().toLowerCase();
   const identity = usePublicAccountIdentity();
   const loading = identity.status === "loading";
-  const error = identity.status === "terminal-error"
-    ? identity.error ?? new Error("PROFILE_UNAVAILABLE")
-    : undefined;
+  // No error at all means the shell resolved without this account: absent, so not-found.
+  const error = identity.status === "terminal-error" ? identity.error : undefined;
   const account = identity.account as { username?: unknown } | undefined;
   const canonicalUsername = typeof account?.username === "string"
     ? account.username.trim().toLowerCase()
@@ -79,6 +80,8 @@ const UsernameValidator = ({ children }: UsernameValidatorProps) => {
       return;
     }
     if (loading) { cold.reportValidation("pending"); return; }
+    // Both a real 404 and a retryable failure end cold entry (the overlay must not hide the
+    // error view); only the 404 renders not-found below.
     cold.reportValidation("terminal-invalid");
   }, [accountMatches, canonicalPathname, canonicalUsername, cold.reportValidation, error, loading,
     location.hash, location.search, navigate, needsCanonicalRedirect, validPath]);
@@ -88,6 +91,11 @@ const UsernameValidator = ({ children }: UsernameValidatorProps) => {
     return <>{children}</>;
   }
   if (loading) return null;
+  // Only a real 404 (or a shell that resolved to a different account) is "not found". 429, 5xx and
+  // network failures say nothing about whether the profile exists (UAT PUB-X01).
+  if (error !== undefined && !isPublicProfileNotFound(error)) {
+    return <PublicProfileLoadError error={error} onRetry={() => identity.refetch?.() ?? Promise.resolve()} />;
+  }
   return <NotFound />;
 };
 

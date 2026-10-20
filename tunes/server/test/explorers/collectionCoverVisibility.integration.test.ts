@@ -107,7 +107,7 @@ async function positive(media: Asset, cookie?: string) {
   const response = cookie ? await request(composed.app).get(media.url).set("cookie", cookie) : await request(composed.app).get(media.url);
   expect(response.status).toBe(200);
   expect(response.body).toEqual(png);
-  expect(response.headers["cache-control"]).toBe(cookie ? "no-store" : "public, max-age=300, must-revalidate");
+  expect(response.headers["cache-control"]).toBe(cookie ? "no-store" : "public, no-cache");
   expect(response.headers.etag).toBe(`"${createHash("sha256").update(png).digest("hex")}"`);
   return response.headers.etag as string;
 }
@@ -142,7 +142,7 @@ describe("collection cover public visibility", () => {
       const { media } = await fixture(category), etag = await positive(media);
       const head = await request(composed.app).head(media.url);
       expect(head.status).toBe(200); expect(head.text ?? "").toBe("");
-      expect(head.headers["cache-control"]).toBe("public, max-age=300, must-revalidate");
+      expect(head.headers["cache-control"]).toBe("public, no-cache");
       const range = await request(composed.app).get(media.url).set("range", "bytes=0-3");
       expect(range.status).toBe(206); expect(range.body).toEqual(png.subarray(0, 4));
       expect(range.headers["content-range"]).toBe(`bytes 0-3/${png.length}`);
@@ -287,7 +287,7 @@ describe("collection cover public visibility", () => {
     const publicGuideOwner = await request(composed.app).get(guide.media.url).set("cookie", owner.cookie);
     expect(publicGuideOwner.status).toBe(200); expect(publicGuideOwner.body).toEqual(png);
     expect(publicGuideOwner.headers.etag).toBe(guideEtag);
-    expect(publicGuideOwner.headers["cache-control"]).toBe("public, max-age=300, must-revalidate");
+    expect(publicGuideOwner.headers["cache-control"]).toBe("public, no-cache");
     await pool.query("UPDATE collections SET publication_state='draft',visibility='private' WHERE id=$1", [guide.list.id]);
     await denied(guide.media, guideEtag); await positive(guide.media, owner.cookie);
   });
