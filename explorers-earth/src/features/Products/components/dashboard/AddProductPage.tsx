@@ -232,7 +232,7 @@ export default function AddProductPage() {
     {urlErrors.buyUrl && <p role="alert" className="text-sm text-red-400">{urlErrors.buyUrl}</p>}
     <label className="block">Description<textarea value={description} onChange={event => setDescription(event.target.value)} disabled={saving} rows={3} className="block w-full bg-dashboard-muted rounded-xl p-3 resize-none" /></label>
 
-    <fieldset><legend>Specifications</legend>
+    <fieldset className="min-w-0"><legend>Specifications</legend>
      {specRegion}
      {specifications.map((entry, index) => <div key={index} className="flex min-w-0 gap-2">
       <input aria-label={`Specification key ${index + 1}`} value={entry.key} disabled={saving} onChange={event => setSpecifications(value => value.map((row, at) => at === index ? { ...row, key: event.target.value } : row))} placeholder="Key (e.g. Color)" className="min-w-0 flex-1 bg-dashboard-muted rounded-xl p-2" />

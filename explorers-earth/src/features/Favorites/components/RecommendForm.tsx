@@ -983,7 +983,7 @@ const RecommendationForm = memo(
             return (
               <Form className="font-poppins h-full md:w-full w-full md:max-w-3xl px-2 flex flex-col gap-4">
                 <DraftChangeEffect onChange={onDraftChange} category={selectedCategory} subcategory={selectedSubcategory} reason={recommendedReason}/>
-                <fieldset className="flex flex-col gap-2">
+                <fieldset className="flex min-w-0 flex-col gap-2">
                   <legend>Places taxonomy (optional)</legend>
                   {taxonomyValidationError && <p role="alert">{taxonomyValidationError}</p>}
                   {taxonomyState === 'loading' && <p role="status">Loading Places taxonomy…</p>}

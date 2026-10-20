@@ -194,14 +194,14 @@ export default function AddAppPage() {
     {urlErrors.downloadUrl && <p role="alert" className="text-sm text-red-400">{urlErrors.downloadUrl}</p>}
     <label className="block">Description<textarea value={description} onChange={event => setDescription(event.target.value)} disabled={saving} rows={3} className="block w-full bg-dashboard-muted rounded-xl p-3 resize-none" /></label>
 
-    <fieldset><legend>Price</legend>
+    <fieldset className="min-w-0"><legend>Price</legend>
      <div className="flex flex-wrap gap-2">
       <button type="button" aria-pressed={priceTier === ''} disabled={saving} onClick={() => setPriceTier('')} className="px-3 py-1.5 rounded-lg border border-white/10 text-sm">Not stated</button>
       {PRICE_TIERS.map(tier => <button key={tier} type="button" aria-pressed={priceTier === tier} disabled={saving} onClick={() => setPriceTier(tier)} className="px-3 py-1.5 rounded-lg border border-white/10 text-sm">{tier}</button>)}
      </div>
     </fieldset>
 
-    <fieldset><legend>Platforms</legend>
+    <fieldset className="min-w-0"><legend>Platforms</legend>
      <div className="flex flex-wrap gap-2">
       {ALL_PLATFORMS.map(platform => <button key={platform} type="button" aria-pressed={platforms.includes(platform)} disabled={saving} onClick={() => togglePlatform(platform)} className="px-3 py-1.5 rounded-lg border border-white/10 text-sm">{platform}</button>)}
      </div>
