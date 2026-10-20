@@ -10,10 +10,32 @@
   <!-- Runtime renderer supplies the environment canonical metadata. -->
 
   <title>explorers</title>
+  <style>
+    /* Inline loading shell: paints from the HTML alone while the app chunks download. */
+    html, body { margin: 0; }
+    #app-shell {
+      min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 16px; background: #f6f1e7; color: #17231a; font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    .app-shell-spinner {
+      width: 36px; height: 36px; border-radius: 50%; border: 4px solid rgba(27, 59, 26, .18);
+      border-top-color: #1b3b1a; animation: app-shell-spin .9s linear infinite;
+    }
+    .app-shell-brand { font-size: 1.15rem; font-weight: 700; letter-spacing: -.01em; }
+    @keyframes app-shell-spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .app-shell-spinner { animation-duration: 3s; } }
+    @media (prefers-color-scheme: dark) { #app-shell { background: #102513; color: #f6f1e7; } .app-shell-spinner { border-color: rgba(246, 241, 231, .2); border-top-color: #f6f1e7; } }
+  </style>
 </head>
 
 <body>
-  <div id="root"></div>
+  <div id="root">
+    <!-- Painted before any script runs; React replaces it on first render. -->
+    <div id="app-shell" role="status" aria-live="polite" aria-label="Loading explorers">
+      <span class="app-shell-spinner" aria-hidden="true"></span>
+      <span class="app-shell-brand">explorers</span>
+    </div>
+  </div>
   <!-- Google Maps API is now loaded through @vis.gl/react-google-maps -->
   <script type="module" src="/src/bootstrap.ts"></script>
 </body>

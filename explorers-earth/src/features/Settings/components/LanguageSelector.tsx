@@ -2,7 +2,7 @@ import { memo, useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { ChevronDown, Search } from "lucide-react";
-import { persistAccountLocale } from "../../../lib/accountLocale";
+import { persistAccountLocale, rememberSignedOutLocale } from "../../../lib/accountLocale";
 
 // Language configuration with flags and display names
 const LANGUAGES = [
@@ -72,6 +72,7 @@ const LanguageSelector = memo(() => {
   // Handle language change
   const handleLanguageChange = (languageCode: string) => {
     i18n.changeLanguage(languageCode);
+    rememberSignedOutLocale(languageCode);
     void persistAccountLocale(languageCode);
     const selectedLanguage = LANGUAGES.find(
       (lang) => lang.code === languageCode

@@ -9,7 +9,7 @@ import {
 import useAuthStore from "../store/store";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { lazy, Suspense, useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import Button from "../components/ui/Button";
 import * as Yup from "yup";
@@ -32,7 +32,7 @@ import { useUserForOnboarding } from "../features/Authentication/hooks/useCurren
 import { EarthLoader } from "../components/EarthLoader";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { LogOut, ArrowLeft } from "lucide-react";
-import GlobeCanvas from "../components/auth/GlobeCanvas";
+const GlobeCanvas = lazy(() => import("../components/auth/GlobeCanvas"));
 import OnboardingProgress from "../components/onboarding/OnboardingProgress";
 import {
   createFinalizeLock,
@@ -987,7 +987,7 @@ const OnBoarding = () => {
   return (
     <div className="ob-scene dashboard-theme dashboard-theme-dark">
       {/* Earthrise scene — shared with the auth screens for a continuous journey */}
-      <GlobeCanvas />
+      <Suspense fallback={null}><GlobeCanvas /></Suspense>
       <div className="ob-vignette" />
       <div className="ob-card ob-frame relative w-full max-w-md sm:max-w-md md:max-w-lg lg:max-w-2xl flex flex-col">
         {/* Header (fixed) — controls row (back / log out) + slim progress.

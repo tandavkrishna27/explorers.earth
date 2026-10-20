@@ -33,10 +33,49 @@ export async function persistAccountLocale(locale: string): Promise<void> {
 }
 
 /**
- * Apply the saved locale at sign-in. 'en' is the column default, indistinguishable from
- * "never chose", so it never overrides a language picked in this browser before sign-in.
+ * Apply the account's saved locale at sign-in, 'en' included: the language of whoever was
+ * signed in before (or of the signed-out page) must never carry over into this account.
  */
 export async function adoptAccountLocale(locale: string | undefined): Promise<void> {
-  if (!locale || locale === "en" || !SHIPPED_LOCALES.has(locale) || i18n.language === locale) return;
+  if (!locale || !SHIPPED_LOCALES.has(locale) || i18n.language === locale) return;
   await i18n.changeLanguage(locale);
 }
+
+const SIGNED_OUT_KEY = "explorers-language-signed-out";
+
+function readSignedOutLocale(): string | null {
+  try {
+    const stored = localStorage.getItem(SIGNED_OUT_KEY);
+    return stored && SHIPPED_LOCALES.has(stored) ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Remember an explicit language pick made while signed out (e.g. on the landing page). */
+export function rememberSignedOutLocale(locale: string): void {
+  if (!SHIPPED_LOCALES.has(locale) || useAuthStore.getState().isAuthenticated) return;
+  try {
+    localStorage.setItem(SIGNED_OUT_KEY, locale);
+  } catch {
+    // Preference is a convenience only.
+  }
+}
+
+/**
+ * After sign-out go back to the signed-out preference: the explicit pick made while signed
+ * out if there is one, otherwise the app default. Never the previous account's language.
+ */
+export async function resetToSignedOutLocale(): Promise<void> {
+  const target = readSignedOutLocale() ?? "en";
+  if (i18n.language !== target) await i18n.changeLanguage(target);
+  else {
+    try { localStorage.setItem("explorers-language", target); } catch { /* ignore */ }
+  }
+}
+
+useAuthStore.subscribe((state, previous) => {
+  if (previous.isAuthenticated && !state.isAuthenticated && state.status !== "loading") {
+    void resetToSignedOutLocale().catch(() => undefined);
+  }
+});

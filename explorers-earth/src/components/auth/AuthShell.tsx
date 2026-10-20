@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import GlobeCanvas from "./GlobeCanvas";
+// three.js + react-globe.gl are ~1 MB; the decorative globe must not block the sign-in form.
+const GlobeCanvas = lazy(() => import("./GlobeCanvas"));
 import { LogoFull } from "../../assets/icons/EoeLogo";
 import "./authShell.css";
 
@@ -11,7 +12,7 @@ import "./authShell.css";
  */
 const AuthShell = ({ children }: { children: ReactNode }) => (
   <div className="ea-root">
-    <GlobeCanvas />
+    <Suspense fallback={null}><GlobeCanvas /></Suspense>
     <div className="ea-vignette" />
 
     <Link to="/" className="ea-header" aria-label="explorers.earth home">
