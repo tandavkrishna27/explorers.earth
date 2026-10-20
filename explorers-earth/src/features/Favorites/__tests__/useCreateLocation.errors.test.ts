@@ -36,6 +36,7 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (k: string) => k }),
 }));
 
+import { ExplorersApiError } from "../../../lib/explorersApiClient";
 import { useCreateLocation } from "../hooks/useCreateLocation";
 
 describe("useCreateLocation error handling (BUG-5)", () => {
@@ -69,6 +70,22 @@ describe("useCreateLocation error handling (BUG-5)", () => {
     expect(setIsLoading).toHaveBeenLastCalledWith(false);
     // The command must not run when the pre-flight lookup fails.
     expect(createList).not.toHaveBeenCalled();
+  });
+
+  it("names a duplicate URL instead of a generic failure", async () => {
+    axiosGet.mockResolvedValueOnce({ data: { photos: undefined, location: { latitude: 1, longitude: 2 } } });
+    createList.mockRejectedValueOnce(new ExplorersApiError(409, "CONFLICT", "Content conflicts with an existing resource"));
+    const { result } = renderHook(() =>
+      useCreateLocation({
+        setIsLocationModalOpen: vi.fn(),
+        refetchCities: vi.fn(),
+        setIsLoading: vi.fn(),
+        cities: { recommendationLists: [] },
+        onCreated: vi.fn(),
+      })
+    );
+    expect(await result.current.handleLocationSubmit({ placeId: "x", listName: "Y" } as never)).toBe(false);
+    expect(toastError).toHaveBeenCalledWith("dashboard.recommendations.toastMessages.listUrlTaken");
   });
 
   it("does not create a list when the thumbnail import fails", async () => {

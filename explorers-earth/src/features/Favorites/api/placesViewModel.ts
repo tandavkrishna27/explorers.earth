@@ -157,13 +157,17 @@ export function collectionViewModel(collection:Readonly<EditableOwnerCollection>
 export type PlacesOwnerView={lists:RecommendationListView[]};
 
 export const placesViewModel={
- complete(observed:CompletePlacesOwnerContent,lists:ReadonlyMap<string,CollectionObservation>,details:ReadonlyMap<string,RecommendationObservation>,username=''):Readonly<PlacesOwnerView>{
+ complete(observed:CompletePlacesOwnerContent,lists:ReadonlyMap<string,CollectionObservation>,details:ReadonlyMap<string,RecommendationObservation>,username='',unavailable:ReadonlySet<string>=new Set()):Readonly<PlacesOwnerView>{
   assertCompleteMyCategoryContent(observed);
   if(observed.category!=='places')throw new ExplorersApiError(409,'CONFLICT','Places category required');
-  return {lists:observed.collections.map(collection=>{
+  const visible=observed.collections.filter(collection=>!collection.archived);
+  return {lists:visible.flatMap(collection=>{
    const observation=lists.get(collection.id);
+   // A list that disappeared mid-read (reported by the adapter) is left out rather than
+   // failing the whole owner view; any other missing detail is still an error.
+   if(!observation&&unavailable.has(collection.id))return [];
    if(!observation)throw new ExplorersApiError(409,'CONFLICT','Places list detail missing while mapping');
-   return collectionViewModel(
+   return [collectionViewModel(
     observation.detail as Readonly<EditableOwnerCollection>,
     observed.memberships
      .filter(member=>member.collectionId===collection.id&&!member.collectionArchived&&!member.recommendationArchived)
@@ -174,7 +178,7 @@ export const placesViewModel={
       return placeViewModel(detail.detail as Readonly<EditableOwnerRecommendation>,member);
      }),
     username,
-   );
+   )];
   })};
  },
 };

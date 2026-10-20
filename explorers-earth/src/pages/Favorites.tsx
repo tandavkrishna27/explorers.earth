@@ -255,7 +255,10 @@ const Favorites = memo(() => {
     const originalLocation = original?.detail.placeLocation;
 
     if (data.Visibility !== undefined) {
-      await commands.publishList(id, Boolean(data.Visibility));
+      // Publishing a list publishes its places too, or the public list would be empty.
+      const placeIds = (placesOwner.data?.recommendationLists?.find((list: any) => list.documentId === id)?.recommended_places ?? [])
+        .map((place: any) => place.documentId);
+      await commands.publishListWithPlaces(id, Boolean(data.Visibility), placeIds);
     }
     if (data.is_pinned !== undefined || data.pin_order !== undefined) {
       // is_pinned is "pin_order is set", so an unpin is an explicit null.
@@ -282,8 +285,14 @@ const Favorites = memo(() => {
     }
     // The call sites only read back what they already sent, so the echo is enough.
     return { data: { updateRecommendationList: { ...data, documentId: id } as Record<string, any> } };
-  }, [commands, placesOwner.content, accountId, sessionGeneration]);
+  }, [commands, placesOwner.content, placesOwner.data, accountId, sessionGeneration]);
 
+  // Why the Public Visibility switch cannot be used right now, so a disabled switch explains itself.
+  const visibilityDisabledReason = !navigation.authority
+    ? "Checking your account. Public visibility can be changed in a moment."
+    : navigation.busy
+      ? "Saving your last change. Try again when it finishes."
+      : undefined;
   const handleVisibilityToggle = () => {
     const origin = navigation.authority;
     if (origin && !navigation.busy) void navigation.request({ category: "public_recommendations", action: categoryVisible ? "unpublish" : "publish" }, origin);
@@ -1060,7 +1069,7 @@ const Favorites = memo(() => {
                     <div id="step-1-dashboard" className="pt-2">
                       {/* Desktop Screen actions row */}
                       <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4 border border-white/5">
-                        <div className="flex items-center gap-2 bg-dashboard-muted/50 px-3 py-2 rounded-xl">
+                        <div className="flex items-center gap-2 bg-dashboard-muted/50 px-3 py-2 rounded-xl" title={visibilityDisabledReason}>
                           <SwitchButton
                             isChecked={categoryVisible}
                             onChange={handleVisibilityToggle}
@@ -1103,7 +1112,7 @@ const Favorites = memo(() => {
                         {mobileDropdownOpen && (
                           <div className="absolute top-[calc(100%+6px)] right-0 left-0 p-3.5 z-[100] border border-dashboard-accent/30 rounded-2xl bg-dashboard-sidebar/95 backdrop-blur-md shadow-xl flex justify-between items-center">
                             <span className="text-[11px] text-white/90 font-semibold">Manage Public Visibility</span>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2" title={visibilityDisabledReason}>
                               <span className={`text-[10px] font-bold uppercase ${categoryVisible ? "text-[#4ade80]" : "text-[#f87171]"}`}>
                                 {categoryVisible ? "Pub" : "Draft"}
                               </span>
