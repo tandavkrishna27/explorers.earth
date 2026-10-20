@@ -5,6 +5,7 @@ import getCroppedImg from "../utils/getCroppedImage";
 import Modal from "./ui/Modal";
 import Button from "./ui/Button";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { IMAGE_CONFIG } from "../config";
 import { ACCEPT_STRINGS } from "../hooks/useFileUpload";
 
@@ -21,6 +22,7 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
   buttonTitle = "Edit Image",
   maxSizeMB = 10,
 }) => {
+  const { t } = useTranslation();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [croppedArea, setCroppedArea] = useState<Area | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -73,10 +75,10 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
 
       if (croppedImage) {
         onFileUpload?.(croppedImage as File);
-        toast.success("Image cropped successfully");
+        toast.success(t("imageCropper.success", "Image cropped successfully"));
       }
     } catch (error) {
-      toast.error("Error cropping the image");
+      toast.error(t("imageCropper.error", "Error cropping the image"));
       console.error("Error cropping image:", error);
     }
   };

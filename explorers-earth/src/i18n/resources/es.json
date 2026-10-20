@@ -497,7 +497,28 @@
         "willBeConvertedLowercase": "El nombre de usuario se convertirá a minúsculas",
         "willConvertToLowercase": "El nombre de usuario se convertirá a minúsculas"
       }
-    }
+    },
+    "brand": {
+      "tagline": "Cada lugar nos conecta"
+    },
+    "loginPage": {
+      "title2": "Te damos la bienvenida de nuevo, explorador.",
+      "sub2": "Tu mapa está justo donde lo dejaste.",
+      "googleUnavailable": "El inicio de sesión con Google no está disponible. Inténtalo de nuevo.",
+      "signOutUnavailable": "El cierre de sesión en el servidor sigue sin estar disponible. Vuelve a intentarlo.",
+      "seoDescription": "Inicia sesión en tu cuenta de explorers con Google.",
+      "signOutIncomplete": "El cierre de sesión en el servidor está incompleto. Vuelve a cerrar sesión antes de usar esta cuenta.",
+      "cancelled": "El inicio de sesión con Google se canceló o no pudo completarse. Inténtalo de nuevo.",
+      "retrySignOut": "Reintentar cierre de sesión",
+      "recoverPrompt": "¿Necesitas restaurar una cuenta desactivada?",
+      "recoverCta": "Recuperar con Google"
+    },
+    "terms": {
+      "prefix": "Al continuar aceptas nuestros",
+      "terms": "Términos",
+      "privacy": "Política de privacidad"
+    },
+    "secureSignIn": "Inicio de sesión seguro"
   },
   "common": {
     "cancel": "Cancelar",
@@ -510,7 +531,8 @@
     "showPassword": "Mostrar contraseña",
     "signInWithGoogle": "Iniciar sesión con Google",
     "signUpWithGoogle": "Registrarse con Google",
-    "submit": "Enviar"
+    "submit": "Enviar",
+    "and": "y"
   },
   "contact": {
     "closingMessage": "Somos un equipo pequeño con una gran visión — tus pensamientos nos importan. Ponte en contacto y construyamos algo local y global juntos.",
@@ -1292,7 +1314,12 @@
       "signUp": "Registrarse",
       "claimFreePage": "Reclamar página gratuita",
       "claimFree": "Reclama gratis"
-    }
+    },
+    "profileImageAlt": "Foto de perfil",
+    "user": "Usuario",
+    "accountSettings": "Ajustes de la cuenta",
+    "login": "Iniciar sesión",
+    "register": "Registrarse"
   },
   "hero": {
     "headline": "Todas sus recomendaciones: un enlace, un QR",
@@ -1301,12 +1328,12 @@
     "inputPlaceholder": "Su nombre",
     "ctaButton": "Reclama tu página Explorer",
     "signupPrompt": "Regístrate para obtener el tuyo ahora",
-    "headlinePrefix": "Todo tu",
+    "headlinePrefix": "Todas tus",
     "rotatingWords": [
       "recomendaciones",
-      "curaciones",
+      "selecciones",
       "colecciones",
-      "favoritos"
+      "favoritas"
     ],
     "headlineSuffix": "en un enlace y QR.",
     "badge": "Gratis para siempre",
@@ -1384,7 +1411,9 @@
       "profileLabel": "Perfil:",
       "title": "Confirmación de cambio de nombre de usuario",
       "warning": "Cualquier código QR o enlace con tu nombre de usuario anterior ya no funcionará: necesitarás actualizarlos y volver a compartirlos."
-    }
+    },
+    "dialog": "Diálogo",
+    "close": "Cerrar diálogo"
   },
   "reactivateAccount": {
     "backToLogin": "Back to Login",
@@ -1994,7 +2023,10 @@
     "places": "Places",
     "profile": "Perfil",
     "recommendations": "Recomendaciones",
-    "settings": "Configuración"
+    "settings": "Configuración",
+    "accountImageAlt": "Cuenta",
+    "account": "Cuenta",
+    "viewPublicProfile": "Ver perfil público"
   },
   "toast": {
     "error": {
@@ -2440,7 +2472,17 @@
       "regionLabel": "Recommendations",
       "retry": "Try again",
       "retrying": "Retrying…"
-    }
+    },
+    "unavailable": "Perfil no disponible",
+    "notFound": "Perfil no encontrado",
+    "notFoundText": "Este perfil de usuario no está disponible.",
+    "partialData": "Algunos datos del perfil no están disponibles.",
+    "sections": "Secciones del perfil",
+    "gallery": "Galería",
+    "businessDetails": "Datos del negocio",
+    "noPhotosTitle": "Aún no hay fotos",
+    "noPhotosText": "Este usuario todavía no ha compartido fotos. ¡Vuelve más tarde!",
+    "visitWebsite": "Visitar sitio web"
   },
   "useCases": {
     "cta": {
@@ -2536,5 +2578,12 @@
     "urlRule": "Introduce una dirección web que empiece por http:// o https://. No se permiten puertos (como :8443) ni nombres de usuario o contraseñas en la dirección.",
     "checkField": "Revisa el campo {{field}}.",
     "generic": "Revisa los campos marcados e inténtalo de nuevo."
+  },
+  "home": {
+    "shareProfile": "Compartir perfil"
+  },
+  "imageCropper": {
+    "success": "Imagen recortada correctamente",
+    "error": "Error al recortar la imagen"
   }
 }

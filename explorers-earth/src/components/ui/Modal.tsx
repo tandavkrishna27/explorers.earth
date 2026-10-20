@@ -1,6 +1,8 @@
-import { CSSProperties, FC, ReactNode } from "react";
+import { CSSProperties, FC, ReactNode, useEffect, useId, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import CrossIcon from "../../assets/icons/CrossIcon";
+import { useDialogA11y } from "../../hooks/useDialogA11y";
 import { usePublicCategoryThemeStyles } from "../../features/PublicHome/components/PublicCategoryThemeContext";
 
 // types for modal component
@@ -9,16 +11,38 @@ interface ModalProps {
   onClose: () => void;
   children: ReactNode;
   type?: string;
+  /** Accessible name when the content has no heading to label it. */
+  ariaLabel?: string;
 }
 
-const Modal: FC<ModalProps> = ({ isOpen, onClose, children, type }) => {
+const Modal: FC<ModalProps> = ({ isOpen, onClose, children, type, ariaLabel }) => {
+  const { t } = useTranslation();
   const categoryStyles = usePublicCategoryThemeStyles();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const headingId = useId();
+  const [labelledBy, setLabelledBy] = useState<string | undefined>();
+  useDialogA11y(isOpen, dialogRef, onClose);
+  // Label the dialog by its first heading when the content has one.
+  useEffect(() => {
+    if (!isOpen) return;
+    const heading = dialogRef.current?.querySelector<HTMLElement>("[data-modal-panel] :is(h1, h2, h3, h4)");
+    if (heading && !ariaLabel) {
+      if (!heading.id) heading.id = headingId;
+      setLabelledBy(heading.id);
+    } else setLabelledBy(undefined);
+  }, [isOpen, children, ariaLabel, headingId]);
   const modalAvailableHeight = 'min(95dvh, calc(100dvh - var(--modal-gutter)))';
   // edge case when modal is not open or the state is false
   if (!isOpen) return null;
 
   return createPortal(
     <div 
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={ariaLabel ?? (labelledBy ? undefined : t("modal.dialog", "Dialog"))}
+      aria-labelledby={labelledBy}
+      tabIndex={-1}
       data-category-modal={categoryStyles ? true : undefined}
       className={`${categoryStyles ? 'fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 text-[var(--category-text)] backdrop-blur-sm p-2 sm:p-4' : 'dashboard-theme fixed inset-0 z-[9999] flex items-center justify-center bg-dashboard-overlay backdrop-blur-sm p-2 sm:p-4'} ${
         type === 'crop' ? 'bg-black/80' : ''
@@ -51,7 +75,7 @@ const Modal: FC<ModalProps> = ({ isOpen, onClose, children, type }) => {
           <div className="relative h-[60px] shrink-0" data-modal-close-slot>
             <button
               type="button"
-              aria-label="Close dialog"
+              aria-label={t("modal.close", "Close dialog")}
               onClick={(e) => {
                 e.stopPropagation();
                 onClose();

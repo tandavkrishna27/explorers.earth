@@ -1,16 +1,18 @@
+import { lazy } from "react";
 import { Navigate, Route } from "react-router-dom";
-import Login from "../pages/Login";
-import GoogleAuthRedirect from "../pages/GoogleAuthRedirect";
-import Landing from "../pages/Landing";
-import Contact from "../pages/Contact";
-import About from "../pages/About";
-import UseCases from "../pages/UseCases";
-import Privacy from "../pages/Privacy";
-import Cookies from "../pages/Cookies";
-import Terms from "../pages/Terms";
-import ReactivateAccount from "../pages/ReactivateAccount";
-import ReactivateConfirm from "../pages/ReactivateConfirm";
 import GuestRoute from "../components/GuestRoute";
+
+const Login = lazy(() => import("../pages/Login"));
+const GoogleAuthRedirect = lazy(() => import("../pages/GoogleAuthRedirect"));
+const Landing = lazy(() => import("../pages/Landing"));
+const Contact = lazy(() => import("../pages/Contact"));
+const About = lazy(() => import("../pages/About"));
+const UseCases = lazy(() => import("../pages/UseCases"));
+const Privacy = lazy(() => import("../pages/Privacy"));
+const Cookies = lazy(() => import("../pages/Cookies"));
+const Terms = lazy(() => import("../pages/Terms"));
+const ReactivateAccount = lazy(() => import("../pages/ReactivateAccount"));
+const ReactivateConfirm = lazy(() => import("../pages/ReactivateConfirm"));
 
 const AuthRoutes = [
   /* Guest-only routes — logged-in users are redirected to /home */
