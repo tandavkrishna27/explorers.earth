@@ -874,7 +874,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
           isOpen={showPasswordModal}
           onClose={() => setShowPasswordModal(false)}
         >
-          <div className="dashboard-theme flex flex-col gap-6 w-full mx-auto min-w-[300px] sm:min-w-[500px] md:min-w-[600px] max-w-2xl py-4 sm:py-6 md:py-8 px-6 sm:px-8 md:px-12">
+          <div className="dashboard-theme flex flex-col gap-6 w-full py-4 sm:py-6 md:py-8 px-5 sm:px-6 md:px-8">
             <h2 className="dt-heading mb-2">
               {t("settings.account.changePassword.modalTitle")}
             </h2>
@@ -1000,7 +1000,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
       {
         showModal && (
           <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
-            <div className="dashboard-theme flex flex-col gap-6 w-full mx-auto min-w-[300px] sm:min-w-[500px] md:min-w-[600px] max-w-2xl py-4 sm:py-6 md:py-8 px-6 sm:px-8 md:px-12">
+            <div className="dashboard-theme flex flex-col gap-6 w-full py-4 sm:py-6 md:py-8 px-5 sm:px-6 md:px-8">
               <h1 className="dt-heading">{t("settings.account.deactivateAccount.modalTitle")}</h1>
               <p className="dt-label text-white-muted">
                 {t("settings.account.deactivateAccount.modalDescription")}
@@ -1079,12 +1079,12 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
             isOpen={showDeleteAccountModal}
             onClose={() => setShowDeleteAccountModal(false)}
           >
-            <div className="dashboard-theme w-full mx-auto min-w-[300px] sm:min-w-[500px] md:min-w-[600px] max-w-2xl py-4 sm:py-6 md:py-8 px-6 sm:px-8 md:px-12">
+            <div className="dashboard-theme w-full py-4 sm:py-6 md:py-8 px-5 sm:px-6 md:px-8">
               <h1 className="dt-heading">{t("settings.account.deleteAccount.step1.modalTitle")}</h1>
-              <p className="dt-label w-3/4 text-white-muted mt-6">
+              <p className="dt-label w-full text-white-muted mt-6">
                 {t("settings.account.deleteAccount.step1.modalDescriptionGrace")}
               </p>
-              <p className="dt-label w-3/4 text-white-muted mt-2">
+              <p className="dt-label w-full text-white-muted mt-2">
                 {t("settings.account.deleteAccount.step1.modalDescription2")}
               </p>
               <div className="flex flex-col sm:flex-row gap-2 mt-6">
@@ -1120,7 +1120,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
             isOpen={showDeleteAccountModal}
             onClose={() => setShowDeleteAccountModal(false)}
           >
-            <div className="dashboard-theme w-full mx-auto min-w-[300px] sm:min-w-[500px] md:min-w-[600px] max-w-2xl py-4 sm:py-6 md:py-8 px-6 sm:px-8 md:px-12">
+            <div className="dashboard-theme w-full py-4 sm:py-6 md:py-8 px-5 sm:px-6 md:px-8">
               <h1 className="dt-heading">{t("settings.account.deleteAccount.step2.modalTitle")}</h1>
               <div className="flex flex-col mt-6 gap-2 md:justify-center mx-auto">
                 <div className="flex flex-col gap-1 dt-subtext">
@@ -1216,7 +1216,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
             isOpen={showDeleteAccountModal}
             onClose={() => setShowDeleteAccountModal(false)}
           >
-            <div className="dashboard-theme w-full mx-auto min-w-[300px] sm:min-w-[500px] md:min-w-[600px] max-w-2xl py-4 sm:py-6 md:py-8 px-6 sm:px-8 md:px-12">
+            <div className="dashboard-theme w-full py-4 sm:py-6 md:py-8 px-5 sm:px-6 md:px-8">
               <h1 className="dt-heading">{t("settings.account.deleteAccount.step3.modalTitle")}</h1>
               <div className="flex flex-col mt-6 gap-2 md:justify-center mx-auto">
                 <textarea
@@ -1255,7 +1255,7 @@ const IdentitySettings = ({ lifecycleIdentity }: { lifecycleIdentity: ReturnType
             isOpen={showDeleteAccountModal}
             onClose={() => setShowDeleteAccountModal(false)}
           >
-            <div className="dashboard-theme w-full mx-auto min-w-[300px] sm:min-w-[500px] md:min-w-[600px] max-w-2xl py-4 sm:py-6 md:py-8 px-6 sm:px-8 md:px-12">
+            <div className="dashboard-theme w-full py-4 sm:py-6 md:py-8 px-5 sm:px-6 md:px-8">
               {!deletionActionsBlocked && (<>
                 <h1 className="dt-heading"> {t("settings.account.deleteAccount.step4.modalTitle")}</h1>
                 <div className="flex flex-col mt-8 gap-4 md:justify-center mx-auto">

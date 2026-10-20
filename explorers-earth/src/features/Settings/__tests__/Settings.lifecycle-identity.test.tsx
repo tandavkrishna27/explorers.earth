@@ -207,3 +207,17 @@ describe("Settings canonical lifecycle", () => {
     expect(apolloMutation).not.toHaveBeenCalled();
   });
 });
+
+describe("Settings delete-account dialog layout", () => {
+  beforeEach(() => { vi.clearAllMocks(); signIn(); });
+
+  it("fills the dialog panel instead of centring a narrow block with a wide empty margin", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => active()));
+    render(<Settings />);
+    fireEvent.click(await screen.findByRole("button", { name: DELETE_ENTRY }));
+    const content = document.querySelector("[data-modal-panel] .modal-content > div") as HTMLElement;
+    expect(content).toBeTruthy();
+    expect(content).toHaveClass("w-full");
+    expect(content.className).not.toMatch(/\bmx-auto\b|min-w-\[|max-w-2xl|md:px-12/);
+  });
+});
