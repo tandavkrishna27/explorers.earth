@@ -1,6 +1,6 @@
 import {explorersApiClient,assertCompleteMyCategoryContent,assertOwnerDetailObservation,ExplorersApiError,type CompleteMyCategoryContent,type CollectionObservation,type RecommendationObservation} from '../../../lib/explorersApiClient';
 import {createRecommendationObjectSchema,type UpdateCollectionInput,type UpdateRecommendationInput} from '../../../../../tunes/shared/explorersContract';
-import {resolveManualProductSchema,productOfferSchema,type ProductOffer} from '../../../../../tunes/shared/explorersProductContract';
+import {resolveManualProductSchema,productOfferWriteSchema,type ProductOffer} from '../../../../../tunes/shared/explorersProductContract';
 import type {RichNote} from '../../../../../tunes/shared/explorersRichNoteContract';
 import useAuthStore from '../../../store/store';
 
@@ -52,9 +52,9 @@ export const ProductsClient={
    title:draft.title,productUrl:draft.productUrl,brand:draft.brand,logoUrl:draft.logoUrl,
    description:draft.description,specifications:draft.specifications,imageUrls:draft.imageUrls,
   }}).details;
-  // The offer is validated separately because its rules are its own: a known currency
-  // constrains the amount's precision, and an unknown currency is still legitimate.
-  const offer=productOfferSchema.parse(draft.offer);
+  // The offer is validated separately because its rules are its own: a price needs a
+  // currency, and the currency constrains the amount's precision.
+  const offer=productOfferWriteSchema.parse(draft.offer);
   const normalized=createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict()
    .parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft',productOffer:offer});
   const intent=freeze({entityKey:key(),recommendationKey:key(),parent,draft:{

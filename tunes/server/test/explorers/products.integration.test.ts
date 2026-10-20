@@ -73,12 +73,13 @@ describePg("Products storage against PostgreSQL", () => {
     ["0.00", "USD", "0.00"],
     ["0", "USD", "0.00"],
     ["19.90", "USD", "19.90"],
-    ["19.90", null, "19.9"],
-    ["0.00", null, "0"],
     ["1234.567890", "USD", null],
-    [null, "USD", null],
     [null, null, null],
     ["100", "JPY", "100"],
+    ["1.250", "KWD", "1.250"],
+    ["1.5", "KWD", "1.500"],
+    ["12.345", "BHD", "12.345"],
+    ["15000", "VND", "15000"],
   ] as const)("persists price %s with currency %s exactly", async (price, currencyCode, expected) => {
     const {accountId, recommendationId} = await seed();
     if (expected === null && price !== null) {
@@ -97,6 +98,25 @@ describePg("Products storage against PostgreSQL", () => {
     expect(stored.currency_code).toBe(currencyCode);
     if (price === null) expect(stored.price).toBeNull();
     else expect(Number(stored.price)).toBe(Number(price));
+  });
+
+  it("refuses a price without a currency and a currency without a price", async () => {
+    const {accountId, recommendationId} = await seed();
+    for (const offer of [{price: "19.90", currencyCode: null, buyUrl: null}, {price: "0.00", currencyCode: null, buyUrl: null}, {price: null, currencyCode: "USD", buyUrl: null}])
+      await expect(withClient(client => writeProductOffer(client, recommendationId, accountId, offer))).rejects.toThrow();
+    expect(await readProductOffer(pool, recommendationId, accountId)).toEqual({price: null, currencyCode: null, buyUrl: null});
+  });
+
+  // Rows saved before a currency was required, or in a code ISO has since withdrawn, are
+  // real prices. They must read back as they were stored, with no currency invented.
+  it("reads legacy rows exactly as stored", async () => {
+    const {accountId, recommendationId} = await seed();
+    await pool.query("INSERT INTO product_recommendation_context(recommendation_id,account_id,price,currency_code) VALUES($1,$2,19.9,NULL)", [recommendationId, accountId]);
+    expect(await readProductOffer(pool, recommendationId, accountId)).toEqual({price: "19.9", currencyCode: null, buyUrl: null});
+    await pool.query("UPDATE product_recommendation_context SET price=0 WHERE recommendation_id=$1", [recommendationId]);
+    expect(await readProductOffer(pool, recommendationId, accountId)).toEqual({price: "0", currencyCode: null, buyUrl: null});
+    await pool.query("UPDATE product_recommendation_context SET price=100, currency_code='HRK' WHERE recommendation_id=$1", [recommendationId]);
+    expect(await readProductOffer(pool, recommendationId, accountId)).toEqual({price: "100.00", currencyCode: "HRK", buyUrl: null});
   });
 
   it("treats an absent offer row as unknown rather than free", async () => {

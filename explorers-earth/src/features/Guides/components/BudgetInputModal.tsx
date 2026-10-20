@@ -4,6 +4,9 @@
  */
 
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { suggestedCurrency } from "../../../lib/currencyOptions";
+import { precisionMessage } from "../../../lib/money";
 import BudgetIcon from "../../../assets/icons/BudgetIcon";
 import { getBudgetDisplayText } from "../utils/priceLevelUtils";
 import CurrencyAmountInput from "../../../components/ui/CurrencyAmountInput";
@@ -17,7 +20,8 @@ interface BudgetInputModalProps {
   existingPriceRange?: string;
   existingPriceLevel?: number;
   onSave: (budget: string) => void;
-  onSaveCurrency?: (amount: number, currency: string) => void;
+  /** amount is null to clear the budget; 0 is a real amount, shown as Free. */
+  onSaveCurrency?: (amount: number | null, currency: string) => void;
   onClose: () => void;
 }
 
@@ -35,10 +39,13 @@ const BudgetInputModal: React.FC<BudgetInputModalProps> = ({
 }) => {
   // Always use new currency format if onSaveCurrency is provided
   const useNewFormat = !!onSaveCurrency;
+  const { t, i18n } = useTranslation();
+  // The region's currency when the browser reports one; otherwise empty, never USD.
+  const startingCurrency = suggestedCurrency([i18n?.language, ...(typeof navigator === "undefined" ? [] : navigator.languages ?? [])]) ?? "";
   
   const [budgetValue, setBudgetValue] = useState<{ amount: string; currency: string }>({
     amount: budgetAmount?.toString() || "",
-    currency: budgetCurrency || "USD",
+    currency: budgetCurrency || startingCurrency,
   });
   const [legacyBudget, setLegacyBudget] = useState(currentBudget || "");
   const [error, setError] = useState("");
@@ -57,12 +64,12 @@ const BudgetInputModal: React.FC<BudgetInputModalProps> = ({
           // For now, just initialize with empty and let user enter new value
           setBudgetValue({
             amount: "",
-            currency: "USD",
+            currency: startingCurrency,
           });
         } else {
           setBudgetValue({
             amount: "",
-            currency: "USD",
+            currency: startingCurrency,
           });
         }
       } else {
@@ -77,8 +84,17 @@ const BudgetInputModal: React.FC<BudgetInputModalProps> = ({
     if (useNewFormat) {
       // New currency format
       const amount = parseFloat(budgetValue.amount);
-      if (!budgetValue.amount || isNaN(amount) || amount <= 0) {
+      if (!budgetValue.amount || isNaN(amount) || amount < 0) {
         setError("Please enter a valid budget amount");
+        return;
+      }
+      if (!budgetValue.currency) {
+        setError(t("currency.needsCurrency"));
+        return;
+      }
+      const problem = precisionMessage(t, budgetValue.amount, budgetValue.currency);
+      if (problem) {
+        setError(problem);
         return;
       }
       onSaveCurrency!(amount, budgetValue.currency);
@@ -106,7 +122,7 @@ const BudgetInputModal: React.FC<BudgetInputModalProps> = ({
 
   const handleClear = () => {
     if (useNewFormat) {
-      onSaveCurrency!(0, "USD");
+      onSaveCurrency!(null, budgetValue.currency);
     } else {
       onSave("");
     }
@@ -183,7 +199,7 @@ const BudgetInputModal: React.FC<BudgetInputModalProps> = ({
 
         {/* Action Buttons */}
         <div className="flex gap-2 justify-end mt-4">
-          {(currentBudget || (useNewFormat && budgetAmount && budgetAmount > 0) || (useNewFormat && budgetValue.amount && parseFloat(budgetValue.amount) > 0)) && (
+          {(currentBudget || (useNewFormat && budgetAmount !== undefined) || (useNewFormat && budgetValue.amount !== "")) && (
             <button
               type="button"
               onClick={handleClear}

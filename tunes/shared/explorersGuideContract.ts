@@ -1,4 +1,5 @@
 import {z} from 'zod/v3';
+import {amountPrecisionProblem,isKnownCurrency} from './currency';
 // Ticket 5.3. Guides are account-owned collections with *ordered sections*, and a section
 // is a structured block, not a recommendation of an entity.
 //
@@ -36,11 +37,20 @@ const coordinate=(max:number)=>z.number().refine(Number.isFinite,'Invalid coordi
 // summed across a day and a trip, and binary floats do not add up. The view model converts
 // to the number the existing budget components expect; storage stays exact so a re-read
 // never drifts.
-const money=z.string().regex(/^(0|[1-9][0-9]{0,11})(\.[0-9]{1,2})?$/,'Invalid amount');
+//
+// Three fraction digits because KWD, BHD and the other three-digit currencies need them;
+// the currency's own minor units (./currency) bound the amount, not this pattern.
+const money=z.string().regex(/^(0|[1-9][0-9]{0,11})(\.[0-9]{1,3})?$/,'Invalid amount');
 // A guide's estimated budget is numeric(14,3) since 0061: up to eleven integer digits and three
-// decimals, so KWD, BHD and OMR amounts are stored exactly.
+// decimals, so KWD, BHD and OMR amounts are stored exactly. The currency's own minor units
+// (amountPrecisionProblem) narrow that further per currency.
 const estimatedBudgetAmount=z.string().regex(/^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/,'Invalid amount');
+// Reading accepts any stored three-letter code (see the write schemas below for what a new
+// write may use): a guide saved with a code outside today's table must still open.
 const currency=z.string().regex(/^[A-Z]{3}$/,'Invalid currency');
+// The regexes above cap the scale at three; the currency's own minor units are the real bound.
+const moneyProblem=(amount:string|null,code:string|null):string|null=>
+ amount===null||code===null?null:amountPrecisionProblem(amount,code);
 // ISO 4217 is three uppercase letters; the provider id is Google's opaque place id.
 const providerPlaceId=z.string().trim().min(1).max(512).regex(/^[A-Za-z0-9_\-]+$/,'Invalid place id');
 
@@ -93,6 +103,8 @@ export const guideDayPlaceSchema=z.object({
  verified:z.boolean(),
 }).strict().superRefine((v,ctx)=>{
  if((v.budgetAmount===null)!==(v.budgetCurrency===null))ctx.addIssue({code:'custom',message:'An amount needs its currency',path:['budgetCurrency']});
+ const budgetProblem=moneyProblem(v.budgetAmount,v.budgetCurrency);
+ if(budgetProblem)ctx.addIssue({code:'custom',message:budgetProblem,path:['budgetAmount']});
  if(v.source==='ai-unverified'&&v.verified)ctx.addIssue({code:'custom',message:'An unverified place cannot claim verification',path:['verified']});
 });
 
@@ -117,7 +129,11 @@ export const guideBudgetPlaceSchema=z.object({
  localId:filled(100),placeId:providerPlaceId,name:filled(500),
  priceLevel:z.number().int().min(0).max(4).nullable(),priceRange:text(200).nullable(),
  customBudget:text(200).nullable(),budgetAmount:money.nullable(),budgetCurrency:currency.nullable(),
-}).strict().refine(v=>(v.budgetAmount===null)===(v.budgetCurrency===null),{message:'An amount needs its currency',path:['budgetCurrency']});
+}).strict().superRefine((v,ctx)=>{
+ if((v.budgetAmount===null)!==(v.budgetCurrency===null))ctx.addIssue({code:'custom',message:'An amount needs its currency',path:['budgetCurrency']});
+ const problem=moneyProblem(v.budgetAmount,v.budgetCurrency);
+ if(problem)ctx.addIssue({code:'custom',message:problem,path:['budgetAmount']});
+});
 const budgetSegment=z.array(guideBudgetPlaceSchema).max(40);
 export const guideBudgetSchema=z.object({morning:budgetSegment,afternoon:budgetSegment,evening:budgetSegment}).strict();
 
@@ -262,6 +278,8 @@ export const guideCollectionDetailsSchema=z.object({
  locationEntityId:z.string().uuid().nullable(),
 }).strict().superRefine((v,ctx)=>{
  if((v.estimatedBudget===null)!==(v.budgetCurrency===null))ctx.addIssue({code:'custom',message:'A budget needs its currency',path:['budgetCurrency']});
+ const estimateProblem=moneyProblem(v.estimatedBudget,v.budgetCurrency);
+ if(estimateProblem)ctx.addIssue({code:'custom',message:estimateProblem,path:['estimatedBudget']});
  if(v.estimatedBudget===null&&v.budgetType!==null)ctx.addIssue({code:'custom',message:'A budget type needs a budget',path:['budgetType']});
  if(new TextEncoder().encode(JSON.stringify(v)).length>65536)ctx.addIssue({code:'custom',message:'Guide details too large',path:['tipsNotes']});
 });
@@ -317,20 +335,42 @@ export const guideAggregateDtoSchema=z.object({
 // with 409 and changes nothing, which is what lets eight separate micro editors edit one
 // guide without overwriting each other.
 const at=z.object({revision}).strict();
+/** A command that carries only the revision it was composed against. */
+export const guideRevisionSchema=at;
 
-export const writeGuideDetailsSchema=at.extend({details:guideCollectionDetailsSchema}).strict();
+// What a new write may name as a currency. Reads stay lenient (see `currency`), so an old
+// guide with a code outside the table still opens; saving it asks the author to pick a
+// real one, with a message that says so.
+const unsupportedCurrency=(codes:ReadonlyArray<string|null>,ctx:z.RefinementCtx,path:(string|number)[])=>{
+ const bad=codes.find(code=>code!==null&&!isKnownCurrency(code));
+ if(bad)ctx.addIssue({code:'custom',message:`${bad} is not a supported currency`,path});
+};
+
+export const writeGuideDetailsSchema=at.extend({details:guideCollectionDetailsSchema}).strict()
+ .superRefine((v,ctx)=>unsupportedCurrency([v.details.budgetCurrency],ctx,['details','budgetCurrency']));
 
 // A section write carries complete validated block state. There is no partial block patch:
 // assembling the whole block from the form is what stops a missing field in one modal from
 // becoming a null that erases what another modal wrote.
-export const writeGuideSectionSchema=at.extend({
+const writeGuideSectionBase=at.extend({
  title:filled(200),description:text(20000).nullable(),blocks:guideSectionBlocksSchema,
 }).strict();
+// Every budgetCurrency in the section's blocks, wherever the block puts it: timeline entries
+// and the budget projection both carry one, and a new write must be able to name either.
+const budgetCurrencies=(node:unknown,found:string[]=[]):string[]=>{
+ if(Array.isArray(node))node.forEach(item=>budgetCurrencies(item,found));
+ else if(node&&typeof node==='object')for(const [key,value] of Object.entries(node)){
+  if(key==='budgetCurrency'&&typeof value==='string')found.push(value);else budgetCurrencies(value,found);
+ }
+ return found;
+};
+const checkSectionCurrencies=(v:{blocks:unknown},ctx:z.RefinementCtx)=>unsupportedCurrency(budgetCurrencies(v.blocks),ctx,['blocks']);
+export const writeGuideSectionSchema=writeGuideSectionBase.superRefine(checkSectionCurrencies);
 
-export const createGuideSectionSchema=writeGuideSectionSchema.extend({
+export const createGuideSectionSchema=writeGuideSectionBase.extend({
  // Where to insert. Omitted appends, which is what the wizard does.
  position:z.number().int().nonnegative().max(GUIDE_SECTION_LIMIT-1).optional(),
-}).strict();
+}).strict().superRefine(checkSectionCurrencies);
 
 // A reorder names the complete new order, not a move. The server rejects any list that is
 // not exactly the guide's current section set, so a reorder composed against a guide

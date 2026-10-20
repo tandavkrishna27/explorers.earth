@@ -42,7 +42,8 @@ import { ChevronDown, Users, ShoppingBag } from "lucide-react";
 import ProductDetailModal from "../../Products/components/public/ProductDetailModal";
 import PersonDetailModal from "../../People/components/public/PersonDetailModal";
 import { deduplicatePeople, buildImageUrl, PlatformIcon } from "../../People";
-import { deduplicateProducts, formatPrice } from "../../Products/utils/productHelpers";
+import { deduplicateProducts } from "../../Products/utils/productHelpers";
+import { useFormatMoney } from "../../../lib/money";
 
 // ⭐ TS declaration for window.__walkthrough
 declare global {
@@ -178,6 +179,7 @@ interface RecommendationsProps {
 
 const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
   const { t } = useTranslation();
+  const formatMoney = useFormatMoney();
   const { selectedCity, setSelectedCity } = useCityStore();
   const navigate = useNavigate();
   const { isProfileComplete, isRecommendationsComplete } = useSetupStore();
@@ -962,7 +964,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
                           )}
                           {product.price != null && (
                             <p className="text-xs font-bold text-orange-400">
-                              {formatPrice(product.price, product.currency)}
+                              {formatMoney(product.price, product.currency)}
                             </p>
                           )}
                         </button>

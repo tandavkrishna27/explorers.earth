@@ -502,6 +502,7 @@
   "common": {
     "cancel": "ரத்துசெய்",
     "error": "An error occurred. Please try again later.",
+    "free": "இலவசம்",
     "hidePassword": "Hide password",
     "loading": "Loading...",
     "noResults": "No results found",

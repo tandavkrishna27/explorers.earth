@@ -464,6 +464,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/ui/ConfirmationModal.tsx
 !explorers-earth/src/components/ui/CountryCodeDropdown.tsx
 !explorers-earth/src/components/ui/CurrencyAmountInput.tsx
+!explorers-earth/src/components/ui/CurrencyPicker.tsx
 !explorers-earth/src/components/ui/Dropdown.tsx
 !explorers-earth/src/components/ui/FeedLayout.tsx
 !explorers-earth/src/components/ui/GlobeDemo.tsx
@@ -980,8 +981,10 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/lib/authClient.ts
 !explorers-earth/src/lib/browserPlacesProvider.ts
 !explorers-earth/src/lib/canonicalMedia.ts
+!explorers-earth/src/lib/currencyOptions.ts
 !explorers-earth/src/lib/explorerAccountSelection.ts
 !explorers-earth/src/lib/explorersApiClient.ts
+!explorers-earth/src/lib/money.ts
 !explorers-earth/src/lib/musicDevelopmentTransport.ts
 !explorers-earth/src/lib/publicRuntimeConfig.ts
 !explorers-earth/src/lib/publicRuntimeContract.ts
@@ -1074,6 +1077,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/tsconfig.json
 !explorers-earth/tsconfig.node.json
 !explorers-earth/vite.config.ts
+!tunes/shared/currency.ts
 !tunes/shared/explorersAppContract.ts
 !tunes/shared/explorersAppEnrichmentContract.ts
 !tunes/shared/explorersBookContract.ts

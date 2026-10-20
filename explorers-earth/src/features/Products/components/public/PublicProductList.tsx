@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useParams, Link, useOutletContext, useLocation } from "react-router-dom";
 import { ShoppingBag, ArrowLeft } from "lucide-react";
-import { deduplicateProducts, buildImageUrl, formatPrice } from "../../utils/productHelpers";
+import { deduplicateProducts, buildImageUrl } from "../../utils/productHelpers";
 import type { RecommendedProduct, ProductList } from "../../types";
 import ProductDetailModal from "./ProductDetailModal";
 import SEO from "../../../../components/SEO";
@@ -12,11 +12,13 @@ import { isNonNullObject, isPublicProfileNotFound, PublicRouteErrorState, Public
 import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
 import { usePublicProfileDetail } from "../../../PublicHome/api/usePublicProfileDetail";
 import { PublicScrollContinuation } from "../../../PublicHome/components/PublicScrollContinuation";
+import { useFormatMoney } from "../../../../lib/money";
 
 const isRenderableProductList = (value: unknown): value is ProductList =>
   isNonNullObject(value) && Array.isArray(value.recommended_products);
 
 const PublicProductList = () => {
+  const formatMoney = useFormatMoney();
   const { username, listSlug } = useParams<{ username: string; listSlug: string }>();
   const location = useLocation();
   const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
@@ -155,8 +157,8 @@ const PublicProductList = () => {
                   {product.brand && (
                     <p className="text-[10px] text-[color:var(--category-muted,rgba(255,255,255,0.4))] truncate w-full mb-2">{product.brand}</p>
                   )}
-                  {product.price && (
-                    <p className="text-xs font-bold text-[color:var(--category-text,#34d399)] mt-auto">{formatPrice(product.price, product.currency)}</p>
+                  {product.price != null && (
+                    <p className="text-xs font-bold text-[color:var(--category-text,#34d399)] mt-auto">{formatMoney(product.price, product.currency)}</p>
                   )}
                 </button>
               ))

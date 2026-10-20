@@ -1,4 +1,5 @@
 import {z} from 'zod/v3';
+import {amountPrecisionProblem,decimalScale,isKnownCurrency,minorUnitsOf} from './currency';
 // Ticket 4.4. Products has two halves that must not be confused:
 //
 //  - productEntityDetails are catalog facts about the thing, shared by everyone who
@@ -21,22 +22,25 @@ export const productTitleSchema=text(1000).refine(v=>v.length>0&&Array.from(v).l
 export const safeProductUrlSchema=z.string().max(2048).url().refine(v=>{try{const u=new URL(v);return ['http:','https:'].includes(u.protocol)&&!u.username&&!u.password&&!u.port;}catch{return false;}},'Invalid URL');
 
 /**
- * The supported currencies and their ISO 4217 minor units.
- *
- * This is the set the product actually offers - AddProductPage's ALLOWED_CURRENCIES - not
- * all of ISO 4217, and it is pinned here rather than derived from Intl. Intl's currency
- * data varies with the host's ICU build, so a validation gate built on it would accept or
- * reject differently on different machines; an owner's saved price is not something to
- * leave to the runtime's locale data. An unknown three-letter code is rejected at the API
- * boundary, which a default-to-two-digits rule could not do.
- *
- * The version string exists so that adding a currency is a visible, dated change.
+ * Currencies are defined once, in ./currency: every active ISO 4217 code and its minor
+ * units, pinned in the repository rather than derived from Intl so that the same price is
+ * accepted or refused identically on every host. An unknown three-letter code is rejected
+ * at the API boundary, which a default-to-two-digits rule could not do.
  */
-export const CURRENCY_METADATA_VERSION='iso-4217/product-supported-v1' as const;
-export const SUPPORTED_CURRENCIES={USD:2,EUR:2,GBP:2,INR:2,JPY:0,AUD:2,CAD:2,SGD:2} as const;
-export type SupportedCurrency=keyof typeof SUPPORTED_CURRENCIES;
-export const currencyCodeSchema=z.enum(Object.keys(SUPPORTED_CURRENCIES) as [SupportedCurrency,...SupportedCurrency[]]);
-export const currencyMinorUnits=(code:SupportedCurrency)=>SUPPORTED_CURRENCIES[code];
+export {CURRENCY_METADATA_VERSION,CURRENCY_MINOR_UNITS as SUPPORTED_CURRENCIES} from './currency';
+export type SupportedCurrency=string;
+/** A code a write may use: an ISO 4217 code this table knows. */
+export const currencyCodeSchema=z.string().refine(isKnownCurrency,'Unsupported currency code');
+/**
+ * What a stored row may hold. The column's CHECK is three capital letters, and a price saved
+ * in a code that ISO has since withdrawn is still a price, so a read must not fail on it.
+ */
+const storedCurrencyCodeSchema=z.string().regex(/^[A-Z]{3}$/,'Invalid currency code');
+export const currencyMinorUnits=(code:string):number=>{
+ const units=minorUnitsOf(code);
+ if(units===undefined)throw new Error(`Unknown currency ${code}`);
+ return units;
+};
 
 /**
  * An exact decimal amount as a string. Bounded to fit numeric(20,6): at most fourteen
@@ -45,7 +49,7 @@ export const currencyMinorUnits=(code:SupportedCurrency)=>SUPPORTED_CURRENCIES[c
  * because the stored scale is the owner's and the ticket asserts exact round-trips.
  */
 export const productAmountSchema=z.string().regex(/^(?:0|[1-9][0-9]{0,13})(?:\.[0-9]{1,6})?$/,'Invalid amount');
-export const amountScale=(amount:string)=>{const at=amount.indexOf('.');return at<0?0:amount.length-at-1;};
+export const amountScale=decimalScale;
 
 /**
  * One canonical wire form for a stored amount, used by the repository and asserted by the
@@ -56,37 +60,55 @@ export const amountScale=(amount:string)=>{const at=amount.indexOf('.');return a
  * values on the wire, so the padding has to be resolved somewhere explicit.
  *
  * The rule: drop the fraction's trailing zeros, then - if the currency is known - pad back
- * to exactly that currency's minor units. So "19.900000" is "19.90" in USD and "20" is
- * "20.00"; a JPY amount keeps no fraction at all. With an unknown currency there is no
- * minor-unit authority to pad to, so the minimal exact form is returned.
+ * to exactly that currency's minor units. So "19.900000" is "19.90" in USD, "1.250000" is
+ * "1.250" in KWD and "20" is "20.00"; a JPY amount keeps no fraction at all. With an
+ * unknown currency there is no minor-unit authority to pad to, so the minimal exact form
+ * is returned.
  *
  * This never changes the value, only how many trailing zeros are written, and zero stays
  * zero: "0.000000" is "0.00" in USD and "0" with no currency - never null.
  */
-export function canonicalAmount(amount:string,currencyCode:SupportedCurrency|null):string{
+export function canonicalAmount(amount:string,currencyCode:string|null):string{
  const parsed=productAmountSchema.safeParse(amount);
  if(!parsed.success)throw new Error('Invalid stored amount');
  const [whole,fraction='']=amount.split('.');
  const trimmed=fraction.replace(/0+$/,'');
- if(currencyCode===null)return trimmed?`${whole}.${trimmed}`:whole;
- const units=currencyMinorUnits(currencyCode);
+ const units=currencyCode===null?undefined:minorUnitsOf(currencyCode);
+ if(units===undefined)return trimmed?`${whole}.${trimmed}`:whole;
  if(trimmed.length>units)throw new Error(`Stored amount exceeds ${currencyCode} minor units`);
  return units===0?whole:`${whole}.${trimmed.padEnd(units,'0')}`;
 }
 
-const offerFields={
+const precision=(value:{price:string|null;currencyCode:string|null},ctx:z.RefinementCtx)=>{
+ const problem=value.price!==null&&value.currencyCode!==null?amountPrecisionProblem(value.price,value.currencyCode):null;
+ if(problem)ctx.addIssue({code:z.ZodIssueCode.custom,path:['price'],message:problem});
+};
+
+/**
+ * The stored offer, as read. A price with no currency is legitimate here: rows saved before
+ * a currency was required hold exactly that, and they must stay readable (and are shown as
+ * a bare amount - there is no implicit USD). A known currency still constrains the amount's
+ * precision: JPY has no minor unit, so "100.50" is not a yen price.
+ */
+export const productOfferSchema=z.object({
+ price:productAmountSchema.nullable(),
+ currencyCode:storedCurrencyCodeSchema.nullable(),
+ buyUrl:safeProductUrlSchema.nullable(),
+}).strict().superRefine(precision);
+
+/**
+ * The offer as an owner may now save it. Stricter than what is read: the currency must be
+ * an ISO 4217 code, and price and currency come together - a price with no currency
+ * is an amount nobody can read, and a currency with no price names nothing.
+ */
+export const productOfferWriteSchema=z.object({
  price:productAmountSchema.nullable(),
  currencyCode:currencyCodeSchema.nullable(),
  buyUrl:safeProductUrlSchema.nullable(),
-};
-/**
- * A currency may be unknown while an amount is known - there is no implicit USD - but a
- * known currency constrains the amount's precision: JPY has no minor unit, so "100.50"
- * is not a yen price and is refused rather than silently rounded.
- */
-export const productOfferSchema=z.object(offerFields).strict().superRefine((value,ctx)=>{
- if(value.price!==null&&value.currencyCode!==null&&amountScale(value.price)>currencyMinorUnits(value.currencyCode))
-  ctx.addIssue({code:z.ZodIssueCode.custom,path:['price'],message:`Amount exceeds ${value.currencyCode} minor units`});
+}).strict().superRefine((value,ctx)=>{
+ if(value.price!==null&&value.currencyCode===null)ctx.addIssue({code:z.ZodIssueCode.custom,path:['currencyCode'],message:'Choose a currency for the price'});
+ if(value.price===null&&value.currencyCode!==null)ctx.addIssue({code:z.ZodIssueCode.custom,path:['price'],message:'Enter a price for the currency, or clear the currency'});
+ precision(value,ctx);
 });
 
 // Specifications are an ORDERED list of bounded text pairs, in the order the owner arranged
@@ -125,6 +147,7 @@ export const resolveManualProductSchema=z.object({kind:z.literal('manual'),categ
 export type ProductEntityDetails=z.infer<typeof productEntityDetailsSchema>;
 export type ProductEntityDto=z.infer<typeof productEntityDtoSchema>;
 export type ProductOffer=z.infer<typeof productOfferSchema>;
+export type ProductOfferWrite=z.infer<typeof productOfferWriteSchema>;
 export type ProductSpecifications=z.infer<typeof productSpecificationsSchema>;
 
 // productUrl has no empty value, so an absent product has no representable details row,

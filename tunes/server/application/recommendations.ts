@@ -13,7 +13,12 @@ import {gameMembershipCommandSchema,gameMembershipResultSchema} from '../../shar
 
 export function parseContent<T>(schema:z.ZodType<T,any,any>,input:unknown):T {
   const parsed=schema.safeParse(input);
-  if(!parsed.success) throw new RecommendationFailure(422,'Invalid content fields');
+  if(!parsed.success) {
+    // A price the owner can fix says what is wrong with it; every other field keeps the
+    // generic message so nothing else about the schema leaks.
+    const money=parsed.error.issues.find(issue=>issue.path.includes('productOffer')&&issue.code==='custom');
+    throw new RecommendationFailure(422,money?money.message:'Invalid content fields');
+  }
   return parsed.data;
 }
 /** Shared application boundary for HTTP and future trusted adapters. */

@@ -2,7 +2,7 @@ import type {Pool, PoolClient} from 'pg';
 import {contentIdSchema, type RequestContext} from '../../shared/explorersContract';
 import {
  GUIDE_SECTION_PAGE_LIMIT, attachGuideCoverSchema, createGuideSectionSchema, guideAggregateDtoSchema,
- guideEmptySectionBlocks, reorderGuideSectionsSchema, writeGuideDetailsSchema, writeGuideSectionSchema,
+ guideEmptySectionBlocks, guideRevisionSchema, reorderGuideSectionsSchema, writeGuideDetailsSchema, writeGuideSectionSchema,
 } from '../../shared/explorersGuideContract';
 import {
  attachGuideCover, countGuideSections, createGuideSection, deleteGuideSection, readGuideCoverMediaId,
@@ -158,7 +158,7 @@ export class GuideService {
  async removeSection(actor:Actor,collectionId:string,sectionId:string,input:unknown,_context:RequestContext) {
   return this.authorized(actor,'collections:write',async()=>{
    parseContent(contentIdSchema,collectionId);parseContent(contentIdSchema,sectionId);
-   const {revision}=parseContent(writeGuideDetailsSchema.pick({revision:true}),input);
+   const {revision}=parseContent(guideRevisionSchema,input);
    await this.transaction((client)=>deleteGuideSection(client,collectionId,actor.accountId,revision,sectionId));
    return this.getAggregate(actor,collectionId);
   });
