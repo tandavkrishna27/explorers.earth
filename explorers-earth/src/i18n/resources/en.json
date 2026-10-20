@@ -529,6 +529,14 @@
     }
   },
   "common": {
+    "reorder": {
+      "moveEarlier": "Move {{item}} up",
+      "moveLater": "Move {{item}} down",
+      "drag": "Drag {{item}} to reorder",
+      "moved": "{{item}} moved to position {{position}} of {{total}}.",
+      "instructions": "Use the move up and move down buttons to change the order, or drag the grip.",
+      "listLabel": "{{noun}} order"
+    },
     "cancel": "Cancel",
     "error": "An error occurred. Please try again later.",
     "free": "Free",

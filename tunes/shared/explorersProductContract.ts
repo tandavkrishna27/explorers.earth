@@ -111,10 +111,18 @@ export const productOfferWriteSchema=z.object({
  precision(value,ctx);
 });
 
-// Specifications are a bounded string->string map, not an arbitrary metadata bag: 0044
-// rejects a non-string value at the database as well.
-export const productSpecificationsSchema=z.record(text(200).refine(v=>v.length>0,'Invalid key'),text(2000).refine(v=>v.length>0,'Invalid value'))
- .refine(v=>Object.keys(v).length<=200,'Too many specifications');
+// Specifications are an ORDERED list of bounded text pairs, in the order the owner arranged
+// them: 0061 stores an array because a jsonb object does not keep key order. The earlier
+// string->string object is still read (existing rows and overrides hold it) and becomes the
+// same list, in the order it was stored in; it is never written back as an object.
+// Keys are unique so a pair can be addressed by its key, and the list is bounded at 200.
+const specificationEntry=z.object({key:text(200).refine(v=>v.length>0,'Invalid key'),value:text(2000).refine(v=>v.length>0,'Invalid value')}).strict();
+const orderedSpecifications=z.array(specificationEntry).max(200,'Too many specifications')
+ .refine(v=>new Set(v.map(entry=>entry.key)).size===v.length,'Duplicate specification key');
+export const productSpecificationsSchema=z.preprocess(value=>
+ value!==null&&typeof value==='object'&&!Array.isArray(value)
+  ?Object.entries(value as Record<string,unknown>).map(([key,entry])=>({key,value:entry}))
+  :value,orderedSpecifications) as z.ZodType<z.infer<typeof orderedSpecifications>,z.ZodTypeDef,unknown>;
 
 const fields={
  productUrl:safeProductUrlSchema,

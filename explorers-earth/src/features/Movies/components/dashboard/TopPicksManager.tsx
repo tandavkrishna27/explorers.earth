@@ -1,3 +1,4 @@
+import { useMoveAnnouncer } from "../../../../components/reorder/useMoveAnnouncer";
 import { useState, useRef } from "react";
 import { motion, Reorder } from "framer-motion";
 import { explorersApiClient } from "../../../../lib/explorersApiClient";
@@ -24,6 +25,7 @@ const TopPicksManager = ({
   onRefetch,
   // listId kept in interface for future drag-and-drop reorder API call
 }: TopPicksManagerProps) => {
+  const { announce, region } = useMoveAnnouncer();
   const [pinnedMovies, setPinnedMovies] = useState<RecommendedMovie[]>(
     [...movies].sort((a, b) => (a.pin_order ?? 999) - (b.pin_order ?? 999))
   );
@@ -90,6 +92,7 @@ const TopPicksManager = ({
         </div>
 
         <div className="px-5 py-4 max-h-[65vh] overflow-y-auto space-y-5">
+          {region}
           {/* Pinned section */}
           <div>
             <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Pinned (shown in top picks)</p>
@@ -108,18 +111,20 @@ const TopPicksManager = ({
                   >
                     <div className="flex flex-col items-center gap-1 flex-shrink-0">
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleMoveUp(i); }}
+                        onClick={(e) => { e.stopPropagation(); handleMoveUp(i); announce(movie.title, i, pinnedMovies.length); }}
+                        aria-label={`Move ${movie.title} up`}
                         disabled={saving || i === 0}
-                        className="text-white/20 hover:text-white disabled:opacity-0 transition-colors p-0.5"
+                        className="text-white/20 hover:text-white disabled:opacity-30 transition-colors p-2 -my-1.5"
                       >
-                        <ChevronUp size={12} />
+                        <ChevronUp size={16} aria-hidden="true" />
                       </button>
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleMoveDown(i); }}
+                        onClick={(e) => { e.stopPropagation(); handleMoveDown(i); announce(movie.title, i + 2, pinnedMovies.length); }}
+                        aria-label={`Move ${movie.title} down`}
                         disabled={saving || i === pinnedMovies.length - 1}
-                        className="text-white/20 hover:text-white disabled:opacity-0 transition-colors p-0.5"
+                        className="text-white/20 hover:text-white disabled:opacity-30 transition-colors p-2 -my-1.5"
                       >
-                        <ChevronDown size={12} />
+                        <ChevronDown size={16} aria-hidden="true" />
                       </button>
                     </div>
                     <span className="text-xs text-white/30 w-4 text-center">{i + 1}</span>
@@ -148,12 +153,14 @@ const TopPicksManager = ({
           {unpinnedMovies.length > 0 && (
             <div>
               <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Available to pin</p>
+              {pinnedMovies.length >= 15 && <p role="status" className="text-xs text-amber-300 mb-2">Top Picks are full (15). Unpin one to pin another.</p>}
               <div className="space-y-1">
                 {unpinnedMovies.map((movie) => (
                   <button
                     key={movie.documentId}
                     onClick={() => handlePin(movie)}
                     disabled={pinnedMovies.length >= 15}
+                    title={pinnedMovies.length >= 15 ? "Top Picks are full (15). Unpin one to pin another." : undefined}
                     className="flex items-center gap-2 py-2 border-b border-white/5 last:border-0 w-full text-left hover:bg-white/3 rounded transition-colors disabled:opacity-40"
                   >
                     <div className="w-8 h-12 flex-shrink-0 rounded overflow-hidden bg-white/5">

@@ -4,7 +4,7 @@ import {insertMovieDetails,readMovieEntity,writeMovieContext,readMovieContext,ch
 import {movieDisplayFieldsSchema,movieDetailsSchema,emptyMovieDetails,resolveManualMovieSchema,type MovieContext} from '../../shared/explorersMovieContract';
 import { createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
-import type { CollectionCoreDto, RecommendationCoreDto, TopPickCategory, CategoryTopPicksInput, CategoryTopPicksResult,DisplayOverrides } from '../../shared/explorersContract';
+import type { CollectionCoreDto, RecommendationCoreDto, TopPickCategory, CategoryTopPicksInput, CategoryTopPicksResult,DisplayOverrides,ReorderCategoryListsInput,CategoryListsOrderResult } from '../../shared/explorersContract';
 import {createCollectionResultSchema,type CreateCollectionResult} from '../../shared/explorersContract';
 import { lockContentCategories } from '../db/explorers-content-lock';
 import type { RichNote } from '../../shared/explorersRichNoteContract';
@@ -338,6 +338,35 @@ export class ExplorersRecommendationRepository {
       for(let position=0;position<ids.length;position++) await db.query('UPDATE collection_items SET display_order=$3 WHERE collection_id=$1 AND recommendation_id=$2',[id,ids[position],position]);
       const result=await db.query('UPDATE collections SET revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *',[id]);
       return this.collectionRecord(db,result.rows[0]);
+    });
+  }
+  /**
+   * Orders an owner's lists within one category.
+   *
+   * One transaction under the account and category locks every command takes, so two reorders
+   * (or a reorder and an edit) serialize. The positions are written as 0..n-1 in a single
+   * statement from the named order, which is what keeps them dense and unique however the
+   * previous values looked. The category revision the caller read must still be current, and
+   * the named lists must be exactly the owner's active lists (display) or exactly the
+   * currently pinned ones (pinned): another owner's id, an archived list, an omission or a
+   * list added since all fail the same way, with a conflict that reveals nothing about
+   * lists that are not the caller's.
+   */
+  async reorderCategoryLists(accountId:string,category:ContentCategory,input:ReorderCategoryListsInput,key:string):Promise<CategoryListsOrderResult> {
+    return this.command(accountId,'reorderCategoryLists',{category,...input},key,async db=>{
+      const revision=String((await db.query("SELECT coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category=$2),'0') revision",[accountId,category])).rows[0].revision);
+      if(revision!==input.expectedCategoryRevision) throw new RecommendationFailure(409,'Stale category revision');
+      const pinned=input.scope==='pinned';
+      const current=(await db.query(`SELECT id::text AS id FROM collections WHERE account_id=$1 AND category=$2 AND archived_at IS NULL${pinned?' AND pin_order IS NOT NULL':''}
+        ORDER BY ${pinned?'pin_order':'display_order'},id FOR UPDATE`,[accountId,category])).rows.map(row=>row.id as string);
+      if(current.length!==input.orderedCollectionIds.length||input.orderedCollectionIds.some(id=>!current.includes(id)))
+        throw new RecommendationFailure(409,'Lists changed; reload and retry');
+      const column=pinned?'pin_order':'display_order';
+      await db.query(`UPDATE collections c SET ${column}=ordered.ordinal-1,revision=c.revision+1,updated_at=now()
+        FROM unnest($3::uuid[]) WITH ORDINALITY AS ordered(id,ordinal)
+        WHERE c.id=ordered.id AND c.account_id=$1 AND c.category=$2 AND coalesce(c.${column},-1)<>ordered.ordinal-1`,[accountId,category,input.orderedCollectionIds]);
+      const after=String((await db.query("SELECT coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category=$2),'0') revision",[accountId,category])).rows[0].revision);
+      return {category,scope:input.scope,categoryRevision:after,lists:input.orderedCollectionIds.map((id,position)=>({id,position}))};
     });
   }
   async archiveCollection(accountId:string,id:string,expectedRevision:number,key:string):Promise<{id:string;archived:true}> {

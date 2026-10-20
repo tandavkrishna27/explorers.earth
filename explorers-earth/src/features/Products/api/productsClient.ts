@@ -11,7 +11,7 @@ import useAuthStore from '../../../store/store';
 export type CompleteProductsOwnerContent=CompleteMyCategoryContent&{readonly category:'products'};
 export type ManualProductDraft={
  title:string;productUrl:string;brand:string|null;logoUrl:string|null;description:string|null;
- specifications:Record<string,string>;imageUrls:string[];
+ specifications:{key:string;value:string}[];imageUrls:string[];
  offer:ProductOffer;note:RichNote|null;userRating:number|null;mediaIds:string[];
 };
 export type ManualProductIntent=Readonly<{entityKey:string;recommendationKey:string;parent:CollectionObservation;draft:Readonly<ManualProductDraft>}>;
@@ -65,7 +65,7 @@ export const ProductsClient={
  async createManual(intent:ManualProductIntent,signal?:AbortSignal){
   const scope=intents.get(intent);if(!scope)fail();current(scope,signal);collection(intent.parent);
   const {title,productUrl,brand,logoUrl,description,specifications,imageUrls}=intent.draft;
-  const entity=await explorersApiClient.resolveProductEntity({kind:'manual',category:'products',details:{title,productUrl,brand,logoUrl,description,specifications:{...specifications},imageUrls:[...imageUrls]}},intent.entityKey,signal);
+  const entity=await explorersApiClient.resolveProductEntity({kind:'manual',category:'products',details:{title,productUrl,brand,logoUrl,description,specifications:specifications.map(entry=>({key:entry.key,value:entry.value})),imageUrls:[...imageUrls]}},intent.entityKey,signal);
   current(scope,signal);collection(intent.parent);
   const result=await explorersApiClient.createMyRecommendation(intent.parent,{entityId:entity.id,note:intent.draft.note,userRating:intent.draft.userRating,mediaIds:[...intent.draft.mediaIds],publicationState:'draft',productOffer:intent.draft.offer},intent.recommendationKey,signal);
   current(scope,signal);return result;

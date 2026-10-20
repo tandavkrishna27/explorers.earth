@@ -63,7 +63,7 @@ services:
       MUSIC_RUNTIME_DATABASE_PASSWORD_FILE: /run/secrets/music-db-runtime
       MUSIC_IMAGE_DIGEST: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
       MUSIC_IMAGE_COMMIT: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-      MUSIC_MIGRATION_MARKER: 0060_explorers_guide_budget_tier
+      MUSIC_MIGRATION_MARKER: 0061_explorers_product_spec_order_budget_scale
       MUSIC_GATE_ATTESTATION_KEY: fixture-migration-gate-key-at-least-32-characters
       MUSIC_GATE_ATTESTATION_PATH: /deployment-gates/fixture.json
     depends_on:
@@ -154,7 +154,7 @@ services:
       MUSIC_FEATURE_COHORT_SALT: fixture-owner-workspace
       MUSIC_FEATURE_COHORT_VERSION: fixture-owner-workspace-v1
       MUSIC_FEATURE_OWNER_WORKSPACE_PERCENT: "100"
-      MUSIC_EXPECTED_MIGRATION_ID: 0060_explorers_guide_budget_tier
+      MUSIC_EXPECTED_MIGRATION_ID: 0061_explorers_product_spec_order_budget_scale
       # Media configuration the CANONICAL app accepts, not `local`.
       #
       # This service runs NODE_ENV=production (set by tunes/Dockerfile:44), and

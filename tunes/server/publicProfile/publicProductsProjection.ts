@@ -57,7 +57,8 @@ async function richProduct(db:PoolClient,row:any){
  price:offer.price===null?null:Number(offer.price),
  currency:offer.currencyCode,buy_url:offer.buyUrl,
  logo_url:facts.logoUrl,description:facts.description,
- specifications:Object.keys(facts.specifications).length?facts.specifications:null,
+ specifications:facts.specifications.length?Object.fromEntries(facts.specifications.map(entry=>[entry.key,entry.value])):null,
+ specification_list:facts.specifications.length?facts.specifications.map(entry=>({key:entry.key,value:entry.value})):null,
  user_recommendation_note:normalizeRichNote(row.note)?.html??'',user_rating:row.user_rating,
  is_pinned:row.pin_order!==null,pin_order:row.pin_order,display_order:row.display_order,
  // Owner uploads first: the card and the hero both take images[0], and the owner's own

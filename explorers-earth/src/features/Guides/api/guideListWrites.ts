@@ -14,6 +14,14 @@ import {explorersApiClient, type CollectionObservation} from '../../../lib/explo
 const key = () => crypto.randomUUID();
 
 /**
+ * How many guides can be Top Picks. The hero on the owner's profile shows this many, and
+ * every place that counts or describes pins reads this one number so the counter, the
+ * copy and the refusal cannot disagree. The server stores any pin position; this bound is
+ * a product rule, enforced where the owner pins.
+ */
+export const GUIDE_PIN_LIMIT = 5;
+
+/**
  * Publishes or unpublishes a guide.
  *
  * It does NOT clear the pin, even though unpublishing must unpin. The server does that in

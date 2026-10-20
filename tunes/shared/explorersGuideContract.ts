@@ -1,5 +1,5 @@
 import {z} from 'zod/v3';
-import {amountPrecisionProblem,decimalScale,isKnownCurrency} from './currency';
+import {amountPrecisionProblem,isKnownCurrency} from './currency';
 // Ticket 5.3. Guides are account-owned collections with *ordered sections*, and a section
 // is a structured block, not a recommendation of an entity.
 //
@@ -41,19 +41,16 @@ const coordinate=(max:number)=>z.number().refine(Number.isFinite,'Invalid coordi
 // Three fraction digits because KWD, BHD and the other three-digit currencies need them;
 // the currency's own minor units (./currency) bound the amount, not this pattern.
 const money=z.string().regex(/^(0|[1-9][0-9]{0,11})(\.[0-9]{1,3})?$/,'Invalid amount');
+// A guide's estimated budget is numeric(14,3) since 0061: up to eleven integer digits and three
+// decimals, so KWD, BHD and OMR amounts are stored exactly. The currency's own minor units
+// (amountPrecisionProblem) narrow that further per currency.
+const estimatedBudgetAmount=z.string().regex(/^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$/,'Invalid amount');
 // Reading accepts any stored three-letter code (see the write schemas below for what a new
 // write may use): a guide saved with a code outside today's table must still open.
 const currency=z.string().regex(/^[A-Z]{3}$/,'Invalid currency');
-// guide_collection_details.estimated_budget is numeric(14,2). A currency with a third digit
-// can be priced in the per-place budgets (jsonb) but not in that column, so the estimate
-// is refused with a message rather than rounded.
-const ESTIMATE_SCALE=2;
-const moneyProblem=(amount:string|null,code:string|null,maxScale=3):string|null=>{
- if(amount===null||code===null)return null;
- const problem=amountPrecisionProblem(amount,code);
- if(problem)return problem;
- return decimalScale(amount)>maxScale?`A guide's estimated budget allows at most ${maxScale} decimal places.`:null;
-};
+// The regexes above cap the scale at three; the currency's own minor units are the real bound.
+const moneyProblem=(amount:string|null,code:string|null):string|null=>
+ amount===null||code===null?null:amountPrecisionProblem(amount,code);
 // ISO 4217 is three uppercase letters; the provider id is Google's opaque place id.
 const providerPlaceId=z.string().trim().min(1).max(512).regex(/^[A-Za-z0-9_\-]+$/,'Invalid place id');
 
@@ -265,7 +262,7 @@ export const guideCollectionDetailsSchema=z.object({
  guideType:guideTypeSchema.nullable(),
  multiCity:z.boolean(),
  numberOfDays:z.number().int().min(1).max(365).nullable(),
- estimatedBudget:money.nullable(),
+ estimatedBudget:estimatedBudgetAmount.nullable(),
  budgetCurrency:currency.nullable(),
  budgetType:guideBudgetTypeSchema.nullable(),
  // Optional in the wizard. Defaults to null so a writer that predates the tier still parses.
@@ -281,7 +278,7 @@ export const guideCollectionDetailsSchema=z.object({
  locationEntityId:z.string().uuid().nullable(),
 }).strict().superRefine((v,ctx)=>{
  if((v.estimatedBudget===null)!==(v.budgetCurrency===null))ctx.addIssue({code:'custom',message:'A budget needs its currency',path:['budgetCurrency']});
- const estimateProblem=moneyProblem(v.estimatedBudget,v.budgetCurrency,ESTIMATE_SCALE);
+ const estimateProblem=moneyProblem(v.estimatedBudget,v.budgetCurrency);
  if(estimateProblem)ctx.addIssue({code:'custom',message:estimateProblem,path:['estimatedBudget']});
  if(v.estimatedBudget===null&&v.budgetType!==null)ctx.addIssue({code:'custom',message:'A budget type needs a budget',path:['budgetType']});
  if(new TextEncoder().encode(JSON.stringify(v)).length>65536)ctx.addIssue({code:'custom',message:'Guide details too large',path:['tipsNotes']});

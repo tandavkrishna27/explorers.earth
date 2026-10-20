@@ -94,6 +94,7 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
   routes.post('/api/explorers/v1/entities/resolve',mutation((a,_id,b,c)=>catalog.resolveEntity(a,b,c),'entity'));
   routes.put('/api/explorers/v1/categories/:category/top-picks',async(req,res)=>mutation((a,_id,b,c)=>service.setCategoryTopPicks(a,String(req.params.category),b,c),'topPicks')(req,res));
   routes.patch('/api/explorers/v1/categories/:category/top-picks/order',async(req,res)=>mutation((a,_id,b,c)=>service.upsertCategoryTopPickOrder(a,String(req.params.category),b,c),'topPicks')(req,res));
+  routes.patch('/api/explorers/v1/categories/:category/lists/order',async(req,res)=>mutation((a,_id,b,c)=>service.reorderCategoryLists(a,String(req.params.category),b,c),'lists')(req,res));
   routes.post('/api/explorers/v1/collections',mutation((a,_id,b,c)=>service.createCollection(a,b,c),'collection',201));
   routes.patch('/api/explorers/v1/collections/:id',mutation((a,id,b,c)=>service.updateCollection(a,id,b,c),'collection'));
   routes.patch('/api/explorers/v1/collections/:id/order',mutation((a,id,b,c)=>service.reorderCollection(a,id,b,c),'collection'));
@@ -128,5 +129,6 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
   routes.all('/api/explorers/v1/categories/:category/memberships',unsupported);
   routes.all('/api/explorers/v1/categories/:category/top-picks',unsupported);
   routes.all('/api/explorers/v1/categories/:category/top-picks/order',unsupported);
+  routes.all('/api/explorers/v1/categories/:category/lists/order',unsupported);
   app.use(routes);
 }

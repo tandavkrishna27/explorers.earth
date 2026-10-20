@@ -1,3 +1,4 @@
+import CategoryListsOrder from "../../../../components/reorder/CategoryListsOrder";
 import { NavigationStatus } from "../../../navigation/NavigationStatus";
 import { useCategoryNavigation } from "../../../navigation/CategoryNavigationProvider";
 import { useState, useMemo, useEffect } from "react";
@@ -308,7 +309,7 @@ const MoviesHome = () => {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  const { data, loading, error, refetch } = useMoviesOwner();
+  const { data, loading, error, refetch } = useMoviesOwner(undefined, true, undefined, true);
 
   useEffect(() => {
     if (!loading) {
@@ -514,6 +515,10 @@ const MoviesHome = () => {
               </div>
             )
           )}
+
+          {/* The order set here is the order of these lists on your public page. */}
+
+          <CategoryListsOrder category="movies" lists={lists.map((list: any) => ({ id: list.documentId, title: list.List_Name ?? list.title ?? "" }))} onChanged={() => { void refetch(); }} />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           {lists.map(list => (
