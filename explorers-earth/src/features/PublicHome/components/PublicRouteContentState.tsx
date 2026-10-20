@@ -20,6 +20,12 @@ export function isPublicProfileNotFound(error: unknown): boolean {
   return error instanceof Error && error.message === "PUBLIC_PROFILE_404";
 }
 
+/** A 404 from the public gateway means the thing does not exist (or is not public): retrying cannot help. */
+export function isPublicNotFoundError(error: unknown): boolean {
+  if (isPublicProfileNotFound(error)) return true;
+  return isNonNullObject(error) && (error.status === 404 || error.statusCode === 404);
+}
+
 export async function settlePublicRouteRetries(...retries: PublicRouteRetry[]) {
   await Promise.allSettled(
     retries
@@ -35,7 +41,19 @@ export function PublicRouteErrorState({
   backAction,
 }: PublicRouteErrorStateProps) {
   const categoryStyles = usePublicCategoryThemeStyles();
-  void error;
+  if (isPublicNotFoundError(error)) {
+    return (
+      <div className="flex min-h-[55vh] items-center justify-center px-6 py-16 text-center">
+        <div className="max-w-md">
+          <h2 className="text-xl font-semibold text-current">Not found</h2>
+          <p className="mt-2 text-sm text-current opacity-70">
+            This page does not exist or is not public.
+          </p>
+          {backAction && <div className="mt-5 flex flex-wrap items-center justify-center gap-3">{backAction}</div>}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="flex min-h-[55vh] items-center justify-center px-6 py-16 text-center">
       <div className="max-w-md">

@@ -75,6 +75,30 @@ describe("canonical profile", () => {
     expect(reserved.status).toBe(422);
   });
 
+  it("saves a postal code from onboarding and refuses an implausible one", async () => {
+    const owner = await persona();
+    const saved = await request(composed.app).patch("/api/explorers/v1/account").set("cookie", owner.cookie)
+      .set("origin", config.baseURL).send({ expectedRevision: 1, additionalAddresses: [{ city: "Leeds", postalCode: " LS1 4AP " }] });
+    expect(saved.status).toBe(200);
+    expect(saved.body.account.additionalAddresses[0]).toMatchObject({ city: "Leeds", postalCode: "LS1 4AP" });
+    const refused = await request(composed.app).patch("/api/explorers/v1/account").set("cookie", owner.cookie)
+      .set("origin", config.baseURL).send({ expectedRevision: 2, additionalAddresses: [{ postalCode: "<script>" }] });
+    expect(refused.status).toBe(422);
+    expect((await request(composed.app).get("/api/explorers/v1/me").set("cookie", owner.cookie)).body.account.additionalAddresses[0].postalCode).toBe("LS1 4AP");
+  });
+
+  it("does not fail an unrelated save over an unchanged legacy postal code, but refuses changing to a bad one", async () => {
+    const owner = await persona();
+    // A legacy value that predates the format rule, written straight to the row.
+    await pool.query("UPDATE creator_accounts SET additional_addresses='[{\"postalCode\":\"12.34\"}]'::jsonb WHERE id=$1", [owner.accountId]);
+    const unrelated = await request(composed.app).patch("/api/explorers/v1/account").set("cookie", owner.cookie)
+      .set("origin", config.baseURL).send({ expectedRevision: 1, bioPlain: "Hi", additionalAddresses: [{ postalCode: "12.34", city: "X" }] });
+    expect(unrelated.status).toBe(200);
+    const changed = await request(composed.app).patch("/api/explorers/v1/account").set("cookie", owner.cookie)
+      .set("origin", config.baseURL).send({ expectedRevision: 2, additionalAddresses: [{ postalCode: "12.35" }] });
+    expect(changed.status).toBe(422);
+  });
+
   it("preserves blank optional fields and serializes two concurrent saves", async () => {
     const owner = await persona();
     const attempts = await Promise.all(["First", "Second"].map((displayName) =>

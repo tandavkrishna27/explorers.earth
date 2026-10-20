@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import type { ThemeSettings } from "../../Profile/types/themeTypes";
 import PublicProfileFooter from "./PublicProfileFooter";
 import { IMAGE_CONFIG } from "../../../config";
+import { HERO_TEXT_SCRIM_ALPHA, WALLPAPER_IMAGE_OPACITY } from "../../Profile/constants/profileReadability";
 import Location from "../../../assets/icons/Location";
 import { toast } from "sonner";
 import { PublicBrandIcon, PublicHeaderShareIcon, publicHeaderActionClassName, publicHeaderClassName } from "./PublicBranding";
@@ -71,11 +72,11 @@ export function PublicProfileFixedHeader({ shareUrl, profileName, onTrackClick }
 
 export function PublicProfileHeroBackdrop({ account, theme }: { account?: Account; theme: ThemeSettings }) {
   if (theme.wallpaperMode !== "banner-top") return null;
-  return <div data-profile-hero-backdrop className="pointer-events-none absolute inset-x-0 top-0 h-[380px] md:h-[420px] overflow-hidden z-0 rounded-b-[2rem] md:rounded-none"><img src={account?.bg_picture?.url || IMAGE_CONFIG.defaultImages.background} alt="Cover" className="w-full h-full object-cover object-[center_32%] scale-105" loading="eager" /><div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/55 to-black/90 z-0" /><div className="absolute inset-x-0 bottom-0 h-[70%] backdrop-blur-md bg-black/10 z-0" style={{ WebkitMaskImage: "linear-gradient(to top, black 30%, transparent 100%)", maskImage: "linear-gradient(to top, black 30%, transparent 100%)" }} /><div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black via-black/40 to-transparent z-0" /></div>;
+  return <div data-profile-hero-backdrop className="pointer-events-none absolute inset-x-0 top-0 h-[380px] md:h-[420px] overflow-hidden z-0 rounded-b-[2rem] md:rounded-none"><img src={account?.bg_picture?.url || IMAGE_CONFIG.defaultImages.background} alt="Cover" className="w-full h-full object-cover object-[center_32%] scale-105" loading="eager" /><div className="absolute inset-0 z-0" style={{ backgroundImage: `linear-gradient(to bottom, rgba(0, 0, 0, ${HERO_TEXT_SCRIM_ALPHA}), rgba(0, 0, 0, ${HERO_TEXT_SCRIM_ALPHA}) 55%, rgba(0, 0, 0, 0.9))` }} /><div className="absolute inset-x-0 bottom-0 h-[70%] backdrop-blur-md bg-black/10 z-0" style={{ WebkitMaskImage: "linear-gradient(to top, black 30%, transparent 100%)", maskImage: "linear-gradient(to top, black 30%, transparent 100%)" }} /><div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black via-black/40 to-transparent z-0" /></div>;
 }
 
 export function PublicProfileWallpaper({ account, theme }: { account?: Account; theme: ThemeSettings }) {
-  if (theme.wallpaperMode === "full-wallpaper-image") return <div data-profile-wallpaper className="fixed inset-0 z-0 overflow-hidden pointer-events-none"><img src={account?.bg_picture?.url || IMAGE_CONFIG.defaultImages.background} alt="Full Wallpaper" className="h-full w-full scale-105 object-cover opacity-25 blur-[3px]" /><div className="absolute inset-0 bg-black/65 backdrop-blur-sm" /></div>;
+  if (theme.wallpaperMode === "full-wallpaper-image") return <div data-profile-wallpaper className="fixed inset-0 z-0 overflow-hidden pointer-events-none"><img src={account?.bg_picture?.url || IMAGE_CONFIG.defaultImages.background} alt="Full Wallpaper" className="h-full w-full scale-105 object-cover blur-[3px]" style={{ opacity: WALLPAPER_IMAGE_OPACITY }} /><div className="absolute inset-0 backdrop-blur-sm" style={{ background: "var(--profile-wallpaper-scrim, rgba(0, 0, 0, 0.65))" }} /></div>;
   if (theme.wallpaperMode === "ambient-gradient") return <div data-profile-wallpaper className="fixed inset-0 z-0 pointer-events-none opacity-15" style={{ background: "radial-gradient(circle at 50% 20%, var(--accent-color) 0%, transparent 60%), radial-gradient(circle at 80% 80%, var(--accent-color) 0%, transparent 50%)" }} />;
   return null;
 }

@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '../features/LandingPage/components/ui/landingButton';
 import { motion } from 'framer-motion';
+import { safeInternalPath } from '../utils/safeInternalPath';
 import Footer from '../features/LandingPage/components/Footer';
 
 interface StaticPageLayoutProps {
@@ -15,11 +16,7 @@ export default function StaticPageLayout({ children, title }: StaticPageLayoutPr
   // ?return=/register), send the back button there instead of the landing page.
   // Only allow internal paths to avoid open-redirects.
   const [searchParams] = useSearchParams();
-  const rawReturn = searchParams.get('return');
-  const returnTo =
-    rawReturn && rawReturn.startsWith('/') && !rawReturn.startsWith('//')
-      ? rawReturn
-      : null;
+  const returnTo = safeInternalPath(searchParams.get('return'));
 
   return (
     <div className="min-h-screen bg-gray-50">

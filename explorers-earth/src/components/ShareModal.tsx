@@ -9,6 +9,7 @@ import QRCode from "./ui/QRCode";
 import { useCityStore } from "../store/useCityStore";
 import { toast } from "sonner";
 import { appendUtmParams, UTMParameters, createUtmParams } from "../utils/urlHelpers";
+import { buildQrUrl, type ListQrCategory } from "../utils/listShareUrls";
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ interface ShareModalProps {
   utmParams?: UTMParameters; // Optional UTM parameters for tracking
   backgroundImage?: string; // Optional background image for QR sticker
   hideQRTab?: boolean; // Optional flag to hide QR tab
+  qrCategory?: ListQrCategory | "profile"; // Which tagline the QR card shows
 }
 
 const ShareModal: React.FC<ShareModalProps> = ({
@@ -33,6 +35,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
   utmParams,
   backgroundImage,
   hideQRTab = false,
+  qrCategory = "profile",
 }) => {
   const categoryStyles = usePublicCategoryThemeStyles();
   const { t } = useTranslation();
@@ -44,6 +47,8 @@ const ShareModal: React.FC<ShareModalProps> = ({
 
   // Apply UTM parameters to the URL if provided
   const finalUrl = utmParams ? appendUtmParams(url, utmParams) : url;
+  // The QR always carries the QR tags (not the share tags) so scans count as QR Code traffic
+  const qrUrl = buildQrUrl(url);
 
   // Create platform-specific UTM parameters for social media sharing
   const createSocialMediaUrl = (platform: string) => {
@@ -323,7 +328,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
                     {/* QR Code - Same styling as QRSticker */}
                     <div className="p-2 bg-white rounded-lg shadow-md">
                       <QRCode
-                        value={finalUrl}
+                        value={qrUrl}
                         size="medium"
                         className="qr-code-canvas"
                         style={{ height: "100px", width: "100px" }}
@@ -332,7 +337,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
 
                     {/* Travel Badge - Same styling as QRSticker */}
                     <p className="bg-gray-200 text-black mt-2 px-4 py-1 font-poppins rounded-full text-xs">
-                      Travel like a local
+                      {t(`qrCard.tagline.${qrCategory}`)}
                     </p>
                   </div>
                 </div>

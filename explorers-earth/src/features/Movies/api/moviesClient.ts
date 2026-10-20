@@ -4,6 +4,7 @@ import { explorersApiClient, assertCompleteMyCategoryContent, ExplorersApiError,
 import { movieViewModel, collectionViewModel } from './moviesViewModel';
 import type { MovieList } from '../types';
 import useAuthStore from '../../../store/store';
+import {recordViewedContent} from '../../../lib/viewedRevisions';
 
 export type MoviesOwnerContent={observation:CompleteMyCategoryContent;lists:MovieList[];details:ReadonlyMap<string,RecommendationObservation>};
 export const moviesCommandKey=()=>crypto.randomUUID();
@@ -63,6 +64,7 @@ async function readMoviesOwnerContentOnce(signal?:AbortSignal,observer?:MoviesOw
       return movieViewModel(detail.detail,member,final.topPicks?.find(pin=>pin.recommendationId===member.recommendationId));
     }),username));
   boundary('complete');
+  recordViewedContent(final,details.values());
   return {observation:final,lists,details};
  }catch(error){return fail(error);}finally{signal?.removeEventListener('abort',forwardAbort);}
 }

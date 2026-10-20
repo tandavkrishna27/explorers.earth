@@ -314,6 +314,38 @@ describe("private local media", () => {
     expect((await request(composed.app).get(url).set("cookie", owner.cookie)).status).toBe(404);
   });
 
+  it("removes the profile photo and the cover image for their owner only, and the public profile shows none", async () => {
+    const owner = await persona();
+    const other = await persona();
+    const patch = (who: { cookie: string; revision: number }, revision: number, body: Record<string, unknown>) =>
+      request(composed.app).patch("/api/explorers/v1/account").set("cookie", who.cookie).set("origin", config.baseURL).send({ expectedRevision: revision, ...body });
+    const handle = () => `m${randomUUID().replaceAll("-", "").slice(0, 12)}`;
+    const mine = { photo: await upload(owner.cookie), cover: await upload(owner.cookie, png, "image/png", "background") };
+    const theirs = await upload(other.cookie);
+    expect([mine.photo.status, mine.cover.status, theirs.status]).toEqual([201, 201, 201]);
+    const ownerHandle = handle();
+    const attached = await patch(owner, owner.revision, { handle: ownerHandle, displayName: "Owner", accountType: "Creator", onboardingStatus: "complete", publicProfile: true,
+      profileImageId: mine.photo.body.media.id, backgroundImageId: mine.cover.body.media.id });
+    expect(attached.status).toBe(200);
+    expect((await patch(other, other.revision, { profileImageId: theirs.body.media.id })).status).toBe(200);
+    const shown = (await request(composed.app).get(`/api/explorers/v1/profiles/${ownerHandle}`)).body;
+    expect(shown.profile_picture).not.toBeNull();expect(shown.bg_picture).not.toBeNull();
+
+    // A stale revision cannot remove anything.
+    expect((await patch(owner, attached.body.account.revision - 1, { profileImageId: null })).status).toBe(409);
+    const removed = await patch(owner, attached.body.account.revision, { profileImageId: null, backgroundImageId: null });
+    expect(removed.status).toBe(200);
+    expect(removed.body.account.profileImage).toBeUndefined();expect(removed.body.account.backgroundImage).toBeUndefined();
+    const defaults = (await request(composed.app).get(`/api/explorers/v1/profiles/${ownerHandle}`)).body;
+    expect(defaults.profile_picture).toBeNull();expect(defaults.bg_picture).toBeNull();
+    expect((await request(composed.app).get(mine.photo.body.media.url)).status).toBe(404);
+    // The other account's photo is untouched by the owner's removal.
+    const untouched = await request(composed.app).get("/api/explorers/v1/me").set("cookie", other.cookie);
+    expect(untouched.body.account.profileImage?.id).toBe(theirs.body.media.id);
+    // Removing something that is not set is a no-op, not an error.
+    expect((await patch(owner, removed.body.account.revision, { profileImageId: null })).status).toBe(200);
+  });
+
   it("rejects wrong-owner attachment and deletion", async () => {
     const owner = await persona();
     const other = await persona();

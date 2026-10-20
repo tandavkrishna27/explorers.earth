@@ -497,7 +497,28 @@
         "willBeConvertedLowercase": "سيتم تحويل اسم المستخدم إلى أحرف صغيرة",
         "willConvertToLowercase": "سيتم تحويل اسم المستخدم إلى أحرف صغيرة"
       }
-    }
+    },
+    "brand": {
+      "tagline": "كل مكان يربطنا"
+    },
+    "loginPage": {
+      "title2": "مرحبًا بعودتك أيها المستكشف.",
+      "sub2": "خريطتك في المكان الذي تركتها فيه.",
+      "googleUnavailable": "تسجيل الدخول عبر Google غير متاح. يرجى المحاولة مرة أخرى.",
+      "signOutUnavailable": "تسجيل الخروج من الخادم ما زال غير متاح. يرجى إعادة المحاولة.",
+      "seoDescription": "سجّل الدخول إلى حساب explorers عبر Google.",
+      "signOutIncomplete": "تسجيل الخروج من الخادم غير مكتمل. أعد تسجيل الخروج قبل استخدام هذا الحساب.",
+      "cancelled": "تم إلغاء تسجيل الدخول عبر Google أو تعذّر إكماله. يرجى المحاولة مرة أخرى.",
+      "retrySignOut": "إعادة محاولة تسجيل الخروج",
+      "recoverPrompt": "هل تحتاج إلى استعادة حساب معطّل؟",
+      "recoverCta": "الاستعادة عبر Google"
+    },
+    "terms": {
+      "prefix": "بالمتابعة فإنك توافق على",
+      "terms": "الشروط",
+      "privacy": "سياسة الخصوصية"
+    },
+    "secureSignIn": "تسجيل دخول آمن"
   },
   "common": {
     "cancel": "إلغاء",
@@ -510,7 +531,8 @@
     "showPassword": "إظهار كلمة المرور",
     "signInWithGoogle": "تسجيل الدخول باستخدام Google",
     "signUpWithGoogle": "التسجيل باستخدام Google",
-    "submit": "إرسال"
+    "submit": "إرسال",
+    "and": "و"
   },
   "contact": {
     "closingMessage": "نحن فريق صغير برؤية كبيرة — أفكارك مهمة لنا. تواصل معنا ودعنا نبني شيئاً محلياً وعالمياً معاً.",
@@ -1292,7 +1314,12 @@
       "signUp": "إنشاء حساب",
       "claimFreePage": "المطالبة بصفحة مجانية",
       "claimFree": "المطالبة مجانا"
-    }
+    },
+    "profileImageAlt": "صورة الملف الشخصي",
+    "user": "مستخدم",
+    "accountSettings": "إعدادات الحساب",
+    "login": "تسجيل الدخول",
+    "register": "إنشاء حساب"
   },
   "hero": {
     "headline": "كل ما تبذلونه من التوصيات - رابط واحد، QR واحد",
@@ -1301,14 +1328,14 @@
     "inputPlaceholder": "اسمك",
     "ctaButton": "قم بالمطالبة بصفحة Explorer الخاصة بك",
     "signupPrompt": "قم بالتسجيل لتحصل على منتجك الآن",
-    "headlinePrefix": "كل ما تبذلونه من",
+    "headlinePrefix": "جميع",
     "rotatingWords": [
-      "توصيات",
-      "علاجات",
-      "مجموعات",
-      "المفضلة"
+      "توصياتك",
+      "مختاراتك",
+      "مجموعاتك",
+      "مفضلاتك"
     ],
-    "headlineSuffix": "في رابط واحد وQR.",
+    "headlineSuffix": "في رابط واحد ورمز QR.",
     "badge": "مجانا إلى الأبد",
     "globalStrip": "تشارك Explorers التوصيات حول العالم",
     "preview": {
@@ -1384,7 +1411,9 @@
       "profileLabel": "الملف الشخصي:",
       "title": "تأكيد تغيير اسم المستخدم",
       "warning": "لن تعمل أي رموز QR أو روابط تحتوي على اسم المستخدم القديم بعد الآن — ستحتاج إلى تحديثها ومشاركتها مرة أخرى."
-    }
+    },
+    "dialog": "مربع حوار",
+    "close": "إغلاق مربع الحوار"
   },
   "reactivateAccount": {
     "backToLogin": "Back to Login",
@@ -1886,11 +1915,15 @@
       "deleteAccount": {
         "button": "حذف الحساب",
         "description": "احذف حسابك وجميع البيانات نهائياً",
+        "pending": {
+          "scheduled": "سيتم حذف حسابك نهائيًا في {{date}}. سجّل الدخول باستخدام Google قبل ذلك التاريخ لإلغاء الحذف."
+        },
         "step1": {
           "continueButton": "متابعة الحذف",
           "deactivateInsteadButton": "إلغاء التفعيل بدلاً من ذلك",
           "modalDescription": "هل أنت متأكد من أنك تريد حذف حسابك؟ لا يمكن التراجع عن هذا الإجراء.",
           "modalDescription2": "إذا كنت تريد الاحتفاظ ببياناتك، يمكنك إلغاء تفعيل حسابك بدلاً من ذلك.",
+          "modalDescriptionGrace": "سيتم إخفاء حسابك فورًا وحذفه نهائيًا بعد 30 يومًا. يمكنك استعادته قبل ذلك بتسجيل الدخول باستخدام Google.",
           "modalTitle": "حذف حسابك؟"
         },
         "step2": {
@@ -1906,7 +1939,8 @@
         "step3": {
           "continueButton": "متابعة",
           "modalTitle": "لماذا تغادر؟",
-          "reasonPlaceholder": "يرجى إخبارنا بسبب مغادرتك..."
+          "reasonPlaceholder": "يرجى إخبارنا بسبب مغادرتك...",
+          "reasonTooLong": "السبب طويل جدًا. يُرجى ألا يتجاوز 2000 حرف."
         },
         "step4": {
           "confirmationRequired": "يرجى كتابة 'CONFIRM DELETE' للتأكيد.",
@@ -1920,6 +1954,7 @@
         },
         "text": "حذف حسابك؟"
       },
+      "handleMismatch": "المعرّف الذي كتبته لا يطابق معرّف حسابك.",
       "heading": "الحساب",
       "security": {
         "title": "الحساب والأمان"
@@ -1951,7 +1986,10 @@
     "places": "Places",
     "profile": "الملف الشخصي",
     "recommendations": "التوصيات",
-    "settings": "الإعدادات"
+    "settings": "الإعدادات",
+    "accountImageAlt": "الحساب",
+    "account": "الحساب",
+    "viewPublicProfile": "عرض الملف الشخصي العام"
   },
   "toast": {
     "error": {
@@ -2397,7 +2435,17 @@
       "regionLabel": "Recommendations",
       "retry": "Try again",
       "retrying": "Retrying…"
-    }
+    },
+    "unavailable": "الملف الشخصي غير متاح",
+    "notFound": "الملف الشخصي غير موجود",
+    "notFoundText": "ملف هذا المستخدم غير متاح.",
+    "partialData": "بعض بيانات الملف الشخصي غير متاحة.",
+    "sections": "أقسام الملف الشخصي",
+    "gallery": "المعرض",
+    "businessDetails": "تفاصيل النشاط التجاري",
+    "noPhotosTitle": "لا توجد صور بعد",
+    "noPhotosText": "لم يشارك هذا المستخدم أي صور بعد. عاود الزيارة لاحقًا!",
+    "visitWebsite": "زيارة الموقع"
   },
   "useCases": {
     "cta": {
@@ -2476,5 +2524,21 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "recovery": {
+    "pendingDeletion": {
+      "cancelButton": "إلغاء الحذف",
+      "scheduled": "تم تحديد موعد حذف حسابك في {{date}}. ألغِ الحذف لاستعادة الوصول.",
+      "scheduledUnknown": "تم تحديد موعد لحذف حسابك. ألغِ الحذف لاستعادة الوصول.",
+      "title": "إلغاء حذف الحساب"
+    },
+    "scheduledForDeletion": "تم تحديد موعد حذف حسابك في {{date}}. تابع باستخدام Google لإلغاء الحذف."
+  },
+  "home": {
+    "shareProfile": "مشاركة الملف الشخصي"
+  },
+  "imageCropper": {
+    "success": "تم اقتصاص الصورة بنجاح",
+    "error": "حدث خطأ أثناء اقتصاص الصورة"
   }
 }

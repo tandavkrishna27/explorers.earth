@@ -1,6 +1,7 @@
 import { usePublicCategoryThemeStyles } from "../../../PublicHome/components/PublicCategoryThemeContext";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ModalPortal from "../../../../components/ui/ModalPortal";
 import { X, Star, Gamepad2, Calendar, Share2, ChevronLeft, ChevronRight, Trophy } from "lucide-react";
 import type { RecommendedGame } from "../../types";
 import { buildCoverUrl, extractNoteText } from "../../utils/gameHelpers";
@@ -112,6 +113,7 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
   };
 
   return (
+    <ModalPortal>
     <AnimatePresence>
       {open && (
         <>
@@ -322,6 +324,7 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
         </>
       )}
     </AnimatePresence>
+    </ModalPortal>
   );
 };
 

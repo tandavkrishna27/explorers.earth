@@ -433,6 +433,8 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/ProtectedRoute.tsx
 !explorers-earth/src/components/PublicNav.tsx
 !explorers-earth/src/components/QrCardTagline.tsx
+!explorers-earth/src/components/RevisionConflictHost.tsx
+!explorers-earth/src/components/RouteFallback.tsx
 !explorers-earth/src/components/RouteLoader.tsx
 !explorers-earth/src/components/SEO.tsx
 !explorers-earth/src/components/ScrollToTop.tsx
@@ -475,6 +477,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/ui/MediaPreviewGrid.tsx
 !explorers-earth/src/components/ui/MediaViewer.tsx
 !explorers-earth/src/components/ui/Modal.tsx
+!explorers-earth/src/components/ui/ModalPortal.tsx
 !explorers-earth/src/components/ui/NavButton.tsx
 !explorers-earth/src/components/ui/NoImagePlaceCard.tsx
 !explorers-earth/src/components/ui/OnboardingUsernameInput.tsx
@@ -826,19 +829,23 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Profile/components/PreviewModal.tsx
 !explorers-earth/src/features/Profile/components/ProfileForm.tsx
 !explorers-earth/src/features/Profile/components/RecommendationsPresentationControls.tsx
+!explorers-earth/src/features/Profile/components/RemoveMediaButton.tsx
 !explorers-earth/src/features/Profile/components/ThemeAppearanceSection.tsx
 !explorers-earth/src/features/Profile/config/profileFormSections.tsx
 !explorers-earth/src/features/Profile/config/profileInitialValues.ts
 !explorers-earth/src/features/Profile/config/socialVisibility.ts
+!explorers-earth/src/features/Profile/constants/profileReadability.ts
 !explorers-earth/src/features/Profile/constants/recommendationsPresentation.ts
 !explorers-earth/src/features/Profile/constants/themeOptions.ts
 !explorers-earth/src/features/Profile/constants/themePresets.ts
 !explorers-earth/src/features/Profile/data.ts
+!explorers-earth/src/features/Profile/handleCooldown.ts
 !explorers-earth/src/features/Profile/hooks/useBusinessLocationImages.ts
 !explorers-earth/src/features/Profile/hooks/useGeocoding.ts
 !explorers-earth/src/features/Profile/hooks/useReorderTransaction.ts
 !explorers-earth/src/features/Profile/hooks/useReverseGeocoding.ts
 !explorers-earth/src/features/Profile/hooks/useUpdateProfile.ts
+!explorers-earth/src/features/Profile/profileSaveError.ts
 !explorers-earth/src/features/Profile/types/profileSave.ts
 !explorers-earth/src/features/Profile/types/profileWorkspaces.ts
 !explorers-earth/src/features/Profile/types/themeTypes.ts
@@ -881,6 +888,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/PublicHome/components/PublicGuideViews/PublicGuideTipsView.tsx
 !explorers-earth/src/features/PublicHome/components/PublicGuideViews/PublicGuideTransportView.tsx
 !explorers-earth/src/features/PublicHome/components/PublicGuides.tsx
+!explorers-earth/src/features/PublicHome/components/PublicHandleRedirect.tsx
 !explorers-earth/src/features/PublicHome/components/PublicHeaderDescriptorContext.tsx
 !explorers-earth/src/features/PublicHome/components/PublicHome.tsx
 !explorers-earth/src/features/PublicHome/components/PublicPlaceCard.tsx
@@ -914,6 +922,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/navigation/categoryNavigationApi.ts
 !explorers-earth/src/features/navigation/categoryNavigationPolicy.ts
 !explorers-earth/src/hooks/useDeviceDetection.tsx
+!explorers-earth/src/hooks/useDialogA11y.ts
 !explorers-earth/src/hooks/useDistanceValidation.ts
 !explorers-earth/src/hooks/useFileUpload.ts
 !explorers-earth/src/hooks/useLogout.ts
@@ -975,11 +984,10 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/i18n/resources/vi.json
 !explorers-earth/src/i18n/resources/zh.json
 !explorers-earth/src/index.css
-!explorers-earth/src/layouts/DashboardLayout.tsx
-!explorers-earth/src/layouts/MobileLayout.tsx
 !explorers-earth/src/layouts/PublicColdEntryBoundary.tsx
 !explorers-earth/src/layouts/PublicLayout.tsx
 !explorers-earth/src/layouts/PublicRouteErrorBoundary.tsx
+!explorers-earth/src/layouts/ResponsiveLayout.tsx
 !explorers-earth/src/layouts/publicRouteReadiness.ts
 !explorers-earth/src/layouts/publicShellReadiness.ts
 !explorers-earth/src/lib/accountLocale.ts
@@ -987,6 +995,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/lib/authClient.ts
 !explorers-earth/src/lib/browserPlacesProvider.ts
 !explorers-earth/src/lib/canonicalMedia.ts
+!explorers-earth/src/lib/conflictToast.ts
 !explorers-earth/src/lib/currencyOptions.ts
 !explorers-earth/src/lib/explorerAccountSelection.ts
 !explorers-earth/src/lib/explorersApiClient.ts
@@ -997,9 +1006,11 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/lib/queryClient.ts
 !explorers-earth/src/lib/reorderCategoryLists.ts
 !explorers-earth/src/lib/reorderListItems.ts
+!explorers-earth/src/lib/revisionConflict.ts
 !explorers-earth/src/lib/sessionBootstrap.ts
 !explorers-earth/src/lib/sharedOwnerRead.ts
 !explorers-earth/src/lib/utils.ts
+!explorers-earth/src/lib/viewedRevisions.ts
 !explorers-earth/src/main.tsx
 !explorers-earth/src/pages/About.tsx
 !explorers-earth/src/pages/Analytics.tsx
@@ -1022,6 +1033,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/pages/UseCases.tsx
 !explorers-earth/src/pages/onboardingAccountDecision.ts
 !explorers-earth/src/pages/onboardingFinalizeLock.ts
+!explorers-earth/src/pages/onboardingPayload.ts
 !explorers-earth/src/pages/public/PublicHomePage.tsx
 !explorers-earth/src/pages/public/PublicProfilePage.tsx
 !explorers-earth/src/routes/AppRoutes.tsx
@@ -1029,6 +1041,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/routes/ProtectedRoutes.tsx
 !explorers-earth/src/routes/PublicRoutes.tsx
 !explorers-earth/src/routes/StatePreservingRedirect.tsx
+!explorers-earth/src/routes/lazy.ts
 !explorers-earth/src/routes/validators/DashboardRouteValidator.tsx
 !explorers-earth/src/routes/validators/TabVisibilityGuard.tsx
 !explorers-earth/src/routes/validators/UsernameRootRedirect.tsx
@@ -1054,6 +1067,8 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/utils/fileTypeDetection.ts
 !explorers-earth/src/utils/fileValidation.ts
 !explorers-earth/src/utils/formatAddress.ts
+!explorers-earth/src/utils/formatLifecycleDate.ts
+!explorers-earth/src/utils/friendlyError.ts
 !explorers-earth/src/utils/geoHelpers.ts
 !explorers-earth/src/utils/getCroppedImage.ts
 !explorers-earth/src/utils/getCurrentDomain.ts
@@ -1061,6 +1076,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/utils/googleMapsDirections.ts
 !explorers-earth/src/utils/guideDescriptionText.ts
 !explorers-earth/src/utils/imageFileValidation.ts
+!explorers-earth/src/utils/listShareUrls.ts
 !explorers-earth/src/utils/mapAddress.ts
 !explorers-earth/src/utils/navPinning.ts
 !explorers-earth/src/utils/notePreviewText.ts
@@ -1070,8 +1086,10 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/utils/placesFilter.ts
 !explorers-earth/src/utils/publicGuideSlug.ts
 !explorers-earth/src/utils/qrCodeService.ts
+!explorers-earth/src/utils/qrDownload.ts
 !explorers-earth/src/utils/rating.ts
 !explorers-earth/src/utils/resizeMediaToAspectRatio.ts
+!explorers-earth/src/utils/safeInternalPath.ts
 !explorers-earth/src/utils/setupStatusCalculations.ts
 !explorers-earth/src/utils/strapiBlocksConverter.ts
 !explorers-earth/src/utils/transformGooglePlace.ts

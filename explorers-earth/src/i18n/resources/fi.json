@@ -1301,14 +1301,14 @@
     "inputPlaceholder": "sinun nimesi",
     "ctaButton": "Lunasta Explorer-sivusi",
     "signupPrompt": "Rekisteröidy saadaksesi omasi nyt",
-    "headlinePrefix": "Kaikki sinun",
+    "headlinePrefix": "Kaikki",
     "rotatingWords": [
-      "suosituksia",
-      "kuratioita",
-      "kokoelmat",
-      "suosikkeja"
+      "suosituksesi",
+      "valintasi",
+      "kokoelmasi",
+      "suosikkisi"
     ],
-    "headlineSuffix": "yhdessä linkissä ja QR.",
+    "headlineSuffix": "yhdessä linkissä ja QR-koodissa.",
     "badge": "Ilmainen ikuisesti",
     "globalStrip": "Explorers jakaa suosituksia ympäri maailmaa",
     "preview": {

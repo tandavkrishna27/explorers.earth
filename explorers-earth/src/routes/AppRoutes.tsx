@@ -1,5 +1,6 @@
+import { Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
-import useDeviceDetection from "../hooks/useDeviceDetection";
+import RouteFallback from "../components/RouteFallback";
 import usePageTracking from "../hooks/usePageTracking";
 import StatePreservingRedirect from "./StatePreservingRedirect";
 
@@ -13,10 +14,10 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import NotFound from "../pages/NotFound";
 
 const AppRoutes = () => {
-  const { isDesktop } = useDeviceDetection();
   usePageTracking();
 
   return (
+    <Suspense fallback={<RouteFallback />}>
     <Routes>
       {/* Legacy Redirect Routes (handled before PublicRoutes :username/* matching).
           StatePreservingRedirect forwards location.state to the target page.
@@ -29,8 +30,8 @@ const AppRoutes = () => {
       {/* Auth Routes */}
       {AuthRoutes}
 
-      {/* Protected Routes - these receive the isDesktop prop */}
-      {ProtectedRoutes({ isDesktop })}
+      {/* Protected Routes */}
+      {ProtectedRoutes()}
       
       {/* Test: Subscription Plans route directly in AppRoutes */}
       <Route element={<ProtectedRoute />}>
@@ -45,6 +46,7 @@ const AppRoutes = () => {
       {/* Catch-all Not Found Route - this will handle any unmatched routes */}
       <Route path="*" element={<NotFound />} />
     </Routes>
+    </Suspense>
   );
 };
 

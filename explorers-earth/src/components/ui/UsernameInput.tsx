@@ -323,7 +323,15 @@ const UsernameInput: React.FC<UsernameInputProps> = ({
         </p>
       )}
 
-      {/* Validation Messages */}
+      {/* Validation Messages. The area keeps one line of height even when it has nothing to
+          say: when the input blurs and the availability line goes away, everything below
+          (the Save & Publish button) used to jump up ~28px and the first click landed on
+          the gap. */}
+      <div
+        data-testid="username-messages"
+        aria-live="polite"
+        className={checkAvailability ? "min-h-[1.75rem]" : undefined}
+      >
       {hasBeenTouched && formatMessages && (
         <div className="space-y-1">
           {/* Errors */}
@@ -399,6 +407,7 @@ const UsernameInput: React.FC<UsernameInputProps> = ({
           )}
         </div>
       )}
+      </div>
     </div>
   );
 };

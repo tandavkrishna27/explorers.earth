@@ -185,9 +185,10 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 320, height: 900
   test(`Task 6 repair rejected Retry is contained ${viewport.width}x${viewport.height}`, async ({ browser, baseURL }) => {
     const state = fixtureState({ pinned_nav_tabs: ['public_profile', 'public_apps'] });
     seedTask6App(state);
-    // Identical concurrent reads now share one request, and whether a strict-effect replay joins
-    // the in-flight read or starts its own is a timing detail. So the fault script is re-armed
-    // for each phase instead of counting requests: every read of a phase fails the same way.
+    // Identical concurrent reads share one request, and whether a strict-effect replay joins the
+    // in-flight read or starts its own is a timing detail. Counting requests per phase therefore
+    // leaves a scripted failure behind for the next phase; the script is re-armed per phase instead,
+    // so every read of a phase fails the same way.
     const failEveryRead = (kind: 'error' | 'offline') => state.faults.set('PublicAppData', Array.from({ length: 8 }, () => ({ kind })));
     failEveryRead('error');
     const visitor = await openFixture(browser, baseURL!, state, { ...viewport, touch: viewport.width === 320 });

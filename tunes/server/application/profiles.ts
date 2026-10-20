@@ -1,5 +1,5 @@
 import type { Pool } from "pg";
-import { accountDtoSchema, updateAccountRequestSchema, type AccountDto, type RequestContext,
+import { newInvalidPostalCodes, accountDtoSchema, updateAccountRequestSchema, type AccountDto, type RequestContext,
   type RevisionInput, type UpdateAccountInput } from "../../shared/explorersContract";
 import { handleViolationsOnSave } from "../../shared/explorersReservedHandles";
 import type { Actor } from "./actor";
@@ -27,6 +27,10 @@ export class ProfileService {
       // Only a changed handle is held to the rules; an existing holder keeps saving (see handleViolationsOnSave).
       const current = (await this.repository.get(actor.accountId)).handle;
       if (handleViolationsOnSave(current, normalized.handle).length > 0) throw new ProfileInputError("Handle is unavailable");
+    }
+    if (normalized.primaryAddress?.postalCode !== undefined || normalized.additionalAddresses?.some((a) => a.postalCode !== undefined)) {
+      const stored = await this.repository.get(actor.accountId);
+      if (newInvalidPostalCodes(normalized, stored).length > 0) throw new ProfileInputError("Invalid postal code");
     }
     const { expectedRevision, ...editable } = normalized;
     try { return accountDtoSchema.parse(await this.repository.update(actor.accountId, editable, expectedRevision)); }

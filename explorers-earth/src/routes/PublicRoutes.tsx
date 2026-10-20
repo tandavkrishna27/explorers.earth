@@ -1,26 +1,37 @@
+import { lazy } from "react";
+import { lazyNamed } from "./lazy";
 import { Route } from "react-router-dom";
-
-// Import components
-import PublicProfile from "../features/PublicHome/components/PublicProfile";
-import PublicHomePage from "../pages/public/PublicHomePage";
-import MapView from "../features/PublicHome/components/MapView";
-import PlaceMapView from "../features/PublicHome/components/PlaceMapView";
-import PublicGuides from "../features/PublicHome/components/PublicGuides";
-import PublicGuideDetailPage from "../features/PublicHome/components/PublicGuideDetailPage";
 import { UsernameValidator } from "./validators";
 import TabVisibilityGuard from "./validators/TabVisibilityGuard";
 import UsernameRootRedirect from "./validators/UsernameRootRedirect";
-import { PublicMovies, PublicMovieList, PublicMovieGenre } from "../features/Movies";
-import { PublicBooks, PublicBookList, PublicBookSubject } from "../features/Books";
-import { PublicGames, PublicGamesList, PublicGamesGenre } from "../features/Games";
-import { PublicApps, PublicAppList } from "../features/AppsAndTools";
-import { PublicProducts, PublicProductList } from "../features/Products";
-import { PublicPeople, PublicPersonList, PublicPersonSector } from "../features/People";
 import { PublicAccountIdentityProvider } from "../features/PublicHome/api/PublicAccountIdentityProvider";
-
-// Import layout
-import PublicLayout from "../layouts/PublicLayout";
+import PublicHandleRedirect from "../features/PublicHome/components/PublicHandleRedirect";
 import { PublicColdEntryBoundary } from "../layouts/PublicColdEntryBoundary";
+
+const PublicLayout = lazy(() => import("../layouts/PublicLayout"));
+
+const PublicProfile = lazy(() => import("../features/PublicHome/components/PublicProfile"));
+const PublicHomePage = lazy(() => import("../pages/public/PublicHomePage"));
+const MapView = lazy(() => import("../features/PublicHome/components/MapView"));
+const PlaceMapView = lazy(() => import("../features/PublicHome/components/PlaceMapView"));
+const PublicGuides = lazy(() => import("../features/PublicHome/components/PublicGuides"));
+const PublicGuideDetailPage = lazy(() => import("../features/PublicHome/components/PublicGuideDetailPage"));
+const PublicMovies = lazyNamed(() => import("../features/Movies"), "PublicMovies");
+const PublicMovieList = lazyNamed(() => import("../features/Movies"), "PublicMovieList");
+const PublicMovieGenre = lazyNamed(() => import("../features/Movies"), "PublicMovieGenre");
+const PublicBooks = lazyNamed(() => import("../features/Books"), "PublicBooks");
+const PublicBookList = lazyNamed(() => import("../features/Books"), "PublicBookList");
+const PublicBookSubject = lazyNamed(() => import("../features/Books"), "PublicBookSubject");
+const PublicGames = lazyNamed(() => import("../features/Games"), "PublicGames");
+const PublicGamesList = lazyNamed(() => import("../features/Games"), "PublicGamesList");
+const PublicGamesGenre = lazyNamed(() => import("../features/Games"), "PublicGamesGenre");
+const PublicApps = lazyNamed(() => import("../features/AppsAndTools"), "PublicApps");
+const PublicAppList = lazyNamed(() => import("../features/AppsAndTools"), "PublicAppList");
+const PublicProducts = lazyNamed(() => import("../features/Products"), "PublicProducts");
+const PublicProductList = lazyNamed(() => import("../features/Products"), "PublicProductList");
+const PublicPeople = lazyNamed(() => import("../features/People"), "PublicPeople");
+const PublicPersonList = lazyNamed(() => import("../features/People"), "PublicPersonList");
+const PublicPersonSector = lazyNamed(() => import("../features/People"), "PublicPersonSector");
 
 const PublicRoutes = [
   <Route
@@ -29,9 +40,11 @@ const PublicRoutes = [
     element={
       <PublicColdEntryBoundary>
         <PublicAccountIdentityProvider>
-          <UsernameValidator>
-            <PublicLayout />
-          </UsernameValidator>
+          <PublicHandleRedirect>
+            <UsernameValidator>
+              <PublicLayout />
+            </UsernameValidator>
+          </PublicHandleRedirect>
         </PublicAccountIdentityProvider>
       </PublicColdEntryBoundary>
     }

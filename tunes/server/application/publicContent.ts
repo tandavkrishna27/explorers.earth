@@ -74,7 +74,9 @@ export class PublicContentService {
    // creator through the whole onboarding to a 422 at the end (P5-2).
    if(handleRuleViolations(parsed.data.handle).length>0)return {available:false};
    const found=await this.pool.query<{taken:boolean}>(
-    'SELECT EXISTS(SELECT 1 FROM creator_accounts WHERE handle_key=lower($1)) AS taken',
+    // A handle an account just left is still held for it, so it is not free either.
+    `SELECT EXISTS(SELECT 1 FROM creator_accounts WHERE handle_key=lower($1))
+       OR EXISTS(SELECT 1 FROM account_handle_holds WHERE handle_key=lower($1) AND held_until>now()) AS taken`,
     [parsed.data.handle]);
    return {available:!found.rows[0]?.taken};
   }

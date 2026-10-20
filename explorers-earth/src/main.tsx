@@ -17,6 +17,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { ThemeProvider } from "./components/theme-provider";
 import { initAnalytics } from "./utils/analytics";
+import RevisionConflictHost from "./components/RevisionConflictHost";
 
 // Retained Strapi GraphQL calls are public or gated by their own legacy adapter.
 // A canonical Better Auth cookie or persisted JWT is never forwarded here.
@@ -52,6 +53,7 @@ createRoot(document.getElementById("root")!).render(
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
             <Toaster />
+            <RevisionConflictHost />
             <App />
           </ThemeProvider>
         </QueryClientProvider>

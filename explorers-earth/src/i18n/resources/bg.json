@@ -1301,10 +1301,10 @@
     "inputPlaceholder": "вашето име",
     "ctaButton": "Заявете своята страница Explorer",
     "signupPrompt": "Регистрирайте се, за да получите своя сега",
-    "headlinePrefix": "Всичко твое",
+    "headlinePrefix": "Всички твои",
     "rotatingWords": [
       "препоръки",
-      "курации",
+      "селекции",
       "колекции",
       "любими"
     ],

@@ -6,6 +6,7 @@ import { requireActor, sendActorError } from "../middleware/explorersPrincipal";
 import { AccountLifecycleFailure, AccountLifecycleService } from "../application/accountLifecycle";
 import { recoverAccount, requireRecoveryObservation, requireRecoveryPrincipal } from "../auth/accountRecovery";
 import { recoveryProofCookie, recoveryProofCookieOptions } from "../auth/recoveryCallback";
+import { scheduledDeletionAtSql } from "../application/accountDeletionGrace";
 import { classifyLifecycleObservation } from "../../shared/explorersLifecycleObservation";
 
 export function setupExplorersLifecycleRoutes(app: Express, pool: Pool, auth: ExplorersAuth, config: ExplorersAuthConfig) {
@@ -59,9 +60,11 @@ export function setupExplorersLifecycleRoutes(app: Express, pool: Pool, auth: Ex
       // requireRecoveryObservation. /recovery/complete below keeps the stricter gate.
       const principal = await requireRecoveryObservation(request, pool);
       const account = await pool.query<{ revision: string; status: string; operation_id: string | null;
-        operation_kind: string | null; operation_state: string | null; failure_code: string | null }>(
+        operation_kind: string | null; operation_state: string | null; failure_code: string | null;
+        scheduled_deletion_at: Date | null }>(
         `SELECT a.revision::text,a.status,o.id AS operation_id,o.kind AS operation_kind,
-           o.state AS operation_state,o.failure_code
+           o.state AS operation_state,o.failure_code,
+           CASE WHEN a.status='pending_deletion' THEN ${scheduledDeletionAtSql("a")} END AS scheduled_deletion_at
          FROM creator_accounts a
          LEFT JOIN LATERAL (SELECT id,kind,state,failure_code FROM account_lifecycle_operations
            WHERE account_id=a.id ORDER BY created_at DESC,id DESC LIMIT 1) o ON true
@@ -75,6 +78,7 @@ export function setupExplorersLifecycleRoutes(app: Express, pool: Pool, auth: Ex
           accountId: principal.accountId,
           status: row?.status ?? null,
           revision: row ? Number(row.revision) : null,
+          scheduledDeletionAt: row?.scheduled_deletion_at ? row.scheduled_deletion_at.toISOString() : null,
           operation: row?.operation_id
             ? { id: row.operation_id, kind: row.operation_kind ?? "", state: row.operation_state ?? "",
               failureCode: row.failure_code }

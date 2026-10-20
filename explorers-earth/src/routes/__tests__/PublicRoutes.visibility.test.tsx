@@ -17,6 +17,8 @@ vi.mock("../../layouts/PublicColdEntryBoundary", () => ({
 
 vi.mock("../../features/PublicHome/api/PublicAccountIdentityProvider", () => ({
   PublicAccountIdentityProvider: ({ children }: { children: React.ReactNode }) => children,
+  // Read by the old-handle redirect; no shell means no redirect in these visibility checks.
+  usePublicAccountShell: () => undefined,
 }));
 
 vi.mock("../validators/TabVisibilityGuard", () => ({
@@ -124,20 +126,20 @@ describe("PublicRoutes category visibility boundaries", () => {
   beforeEach(() => { mapRender.throws = false; });
   it.each(cases)(
     "guards %s with %s before rendering %s",
-    (path, visibilityField, leafText) => {
+    async (path, visibilityField, leafText) => {
       render(
         <MemoryRouter initialEntries={[path]}>
           <Routes>{PublicRoutes}</Routes>
         </MemoryRouter>,
       );
 
-      expect(screen.getByText(leafText)).toBeInTheDocument();
+      // Route components are code-split (React.lazy), so the leaf arrives asynchronously.
+      const leaf = await screen.findByText(leafText);
+      expect(leaf).toBeInTheDocument();
       expect(
         screen.getByTestId(`visibility-${visibilityField}`),
-      ).toContainElement(screen.getByText(leafText));
-      expect(screen.getByTestId("public-cold-entry-boundary")).toContainElement(
-        screen.getByText(leafText),
-      );
+      ).toContainElement(leaf);
+      expect(screen.getByTestId("public-cold-entry-boundary")).toContainElement(leaf);
     },
   );
 
@@ -156,12 +158,12 @@ describe("PublicRoutes category visibility boundaries", () => {
     "/tk2727/places/map",
     "/tk2727/places/paris/map",
     "/tk2727/places/paris/placesmap",
-  ])("lets fatal map render failures reach the shell fallback without redirecting from %s", (path) => {
+  ])("lets fatal map render failures reach the shell fallback without redirecting from %s", async (path) => {
     mapRender.throws = true;
     const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
     render(<MemoryRouter initialEntries={[path]}><Routes>{PublicRoutes}</Routes></MemoryRouter>);
 
-    expect(screen.getByRole("heading", { name: "This section could not be displayed" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "This section could not be displayed" })).toBeInTheDocument();
     expect(screen.queryByText("public-profile")).not.toBeInTheDocument();
     mapRender.throws = false;
     errors.mockRestore();

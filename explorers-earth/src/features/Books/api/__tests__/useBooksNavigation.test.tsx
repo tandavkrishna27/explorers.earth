@@ -8,14 +8,15 @@ vi.mock('../../../PublicHome/api/publicProfileInvalidation',()=>({publishPublicP
 const profile=(revision=1)=>({id:'owner',revision,handle:'reader',categories:[{category:'books',isPublic:false,pinnedOrder:0},{category:'games',isPublic:true,pinnedOrder:1}],navigationOrderMode:'auto'});
 describe('canonical Books navigation',()=>{
  beforeEach(()=>{vi.clearAllMocks();useAuthStore.setState({generation:2,accountId:'owner'});vi.mocked(explorersApiClient.getMyProfile).mockResolvedValue(profile() as never);vi.mocked(explorersApiClient.updateAccount).mockImplementation(async input=>({...profile(input.expectedRevision+1),categories:input.categories}) as never);vi.mocked(explorersApiClient.getCompleteMyCategoryTopPicks).mockResolvedValue({collections:[{visibility:'public',publicationState:'published'}]} as never);});
- it('uses a fresh revision on consecutive saves and preserves other categories',async()=>{
+ it('bases each save on the revision the view loaded, then on the one it saved, and preserves other categories',async()=>{
   const {result}=renderHook(()=>useBooksNavigation());await waitFor(()=>expect(result.current.authority).toBeTruthy());
+  // Another tab saved meanwhile: a re-read would now say 3, but this view was showing 1, so the save must say 1
+  // and let the server's optimistic lock reject it instead of overwriting the other tab's change.
   vi.mocked(explorersApiClient.getMyProfile).mockResolvedValue(profile(3) as never);
   await act(()=>result.current.request({category:'public_books',action:'publish'},result.current.authority));
-  expect(explorersApiClient.updateAccount).toHaveBeenLastCalledWith({expectedRevision:3,categories:[{category:'books',isPublic:true,pinnedOrder:0},{category:'games',isPublic:true,pinnedOrder:1}]});
-  vi.mocked(explorersApiClient.getMyProfile).mockResolvedValue(profile(4) as never);
+  expect(explorersApiClient.updateAccount).toHaveBeenLastCalledWith({expectedRevision:1,categories:[{category:'books',isPublic:true,pinnedOrder:0},{category:'games',isPublic:true,pinnedOrder:1}]});
   await act(()=>result.current.request({category:'public_books',action:'unpublish'},result.current.authority));
-  expect(explorersApiClient.updateAccount).toHaveBeenLastCalledWith({expectedRevision:4,categories:[{category:'books',isPublic:false,pinnedOrder:null},{category:'games',isPublic:true,pinnedOrder:1}]});
+  expect(explorersApiClient.updateAccount).toHaveBeenLastCalledWith({expectedRevision:2,categories:[{category:'books',isPublic:false,pinnedOrder:null},{category:'games',isPublic:true,pinnedOrder:1}]});
  });
  it('rejects publishing without an eligible list and rejects prior authority',async()=>{
   vi.mocked(explorersApiClient.getCompleteMyCategoryTopPicks).mockResolvedValue({collections:[{visibility:'private',publicationState:'published'}]} as never);

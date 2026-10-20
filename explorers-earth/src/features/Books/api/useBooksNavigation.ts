@@ -2,6 +2,7 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import type {AccountDto} from '../../../../../tunes/shared/explorersContract';
 import useAuthStore from '../../../store/store';
 import {explorersApiClient} from '../../../lib/explorersApiClient';
+import {recordViewedAccount} from '../../../lib/viewedRevisions';
 import {publishPublicProfileInvalidation} from '../../PublicHome/api/publicProfileInvalidation';
 
 export function useBooksNavigation(){
@@ -9,12 +10,14 @@ export function useBooksNavigation(){
  const [account,setAccount]=useState<AccountDto>(),[busy,setBusy]=useState(false),[error,setError]=useState<string>();
  const sequence=useRef(0),mounted=useRef(true);
  const current=useCallback(()=>mounted.current&&useAuthStore.getState().generation===generation&&useAuthStore.getState().accountId===accountId,[generation,accountId]);
- const refresh=useCallback(async()=>{const n=++sequence.current;try{const value=await explorersApiClient.getMyProfile();if(current()&&n===sequence.current){if(value.id!==accountId)throw new Error('Account changed. Reopen Books.');setAccount(value);setError(undefined);}}catch(e){if(current()&&n===sequence.current)setError(e instanceof Error?e.message:'Could not load category settings');}},[current,accountId]);
+ const refresh=useCallback(async()=>{const n=++sequence.current;try{const value=await explorersApiClient.getMyProfile();if(current()&&n===sequence.current){recordViewedAccount(value.revision);if(value.id!==accountId)throw new Error('Account changed. Reopen Books.');setAccount(value);setError(undefined);}}catch(e){if(current()&&n===sequence.current)setError(e instanceof Error?e.message:'Could not load category settings');}},[current,accountId]);
  useEffect(()=>{mounted.current=true;setAccount(undefined);setBusy(false);void refresh();return()=>{mounted.current=false;++sequence.current;};},[refresh]);
  const request=async(intent:{category:'public_books';action:'publish'|'unpublish'},origin:unknown)=>{
   if(busy||!origin||!current()||(origin as {generation:number;accountDocumentId:string}).generation!==generation||(origin as {accountDocumentId:string}).accountDocumentId!==accountId)return;setBusy(true);setError(undefined);
   try{
-   const profile=await explorersApiClient.getMyProfile();if(!current()||profile.id!==accountId)return;
+   // The settings are composed against the account this view loaded, so a change made
+   // elsewhere since is a conflict rather than being silently overwritten.
+   const profile=account&&account.id===accountId?account:await explorersApiClient.getMyProfile();if(!current()||profile.id!==accountId)return;
    if(intent.action==='publish'){
     const content=await explorersApiClient.getCompleteMyCategoryTopPicks({category:'books',status:'active'});
     if(!content.collections.some(c=>c.publicationState==='published'&&c.visibility==='public')){if(current())setError('no-content');return;}

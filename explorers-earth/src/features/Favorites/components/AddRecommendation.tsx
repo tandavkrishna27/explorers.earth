@@ -30,6 +30,7 @@ import { useTranslation } from "react-i18next";
 import { PlacesClient } from "../api/placesClient";
 import type { CompleteTaxonomyCatalog, RecommendationObservation } from "../../../lib/explorersApiClient";
 import { useLocation } from "react-router-dom";
+import {recordViewedObservation} from '../../../lib/viewedRevisions';
 
 // Add new type for Custom Search API response
 type CustomSearchImage = {
@@ -722,7 +723,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
             if(!placeId || !editHydration)return;
             const captured=catalogScope;
             reviewController.current?.abort();const controller=new AbortController();reviewController.current=controller;
-            try{const observation=await PlacesClient.observeRecommendation(placeId,controller.signal);if(controller.signal.aborted||editHydrationScope.current!==captured)return;setHydration(previous=>previous&&previous.scope===captured?{...previous,observation}:previous);clearEditConflict();setReviewMessage('Current revision loaded. Review your draft, then save again.');setReviewVersion(n=>n+1);}catch(error){if(!controller.signal.aborted)toast.error(error instanceof Error?error.message:'Refresh failed');}
+            try{const observation=await PlacesClient.observeRecommendation(placeId,controller.signal);if(controller.signal.aborted||editHydrationScope.current!==captured)return;recordViewedObservation(observation);setHydration(previous=>previous&&previous.scope===captured?{...previous,observation}:previous);clearEditConflict();setReviewMessage('Current revision loaded. Review your draft, then save again.');setReviewVersion(n=>n+1);}catch(error){if(!controller.signal.aborted)toast.error(error instanceof Error?error.message:'Refresh failed');}
           }}>Refresh and review</button></div>}
           {reviewMessage && <div>
             <p role="status">{reviewMessage}</p>

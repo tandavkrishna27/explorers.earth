@@ -1,3 +1,7 @@
+import { handleCooldownMessage, handleCooldownFor, nextAllowedAtFrom } from "../../Profile/handleCooldown";
+import { HANDLE_CHANGE_COOLDOWN_DAYS } from "../../../../../tunes/shared/explorersContract";
+import { isRevisionConflict } from "../../../lib/revisionConflict";
+import { showRevisionConflictToast } from "../../../lib/conflictToast";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useCanonicalAccount } from "../../Profile/api/useCanonicalAccount";
 import { toProfileViewModel } from "../../Profile/api/profileClient";
@@ -34,7 +38,6 @@ interface ProfileAccountSettingsProps {
   ) => void;
 }
 
-const USERNAME_COOLDOWN_MINUTES = 1;
 
 const ProfileAccountSettings = ({
   section,
@@ -142,31 +145,10 @@ const ProfileAccountSettings = ({
     }
   };
 
-  const lastUsernameChange = (() => {
-    const raw =
-      data?.usersPermissionsUser?.updatedAt ||
-      data?.usersPermissionsUser?.createdAt;
-    if (!raw) return null;
-    const parsed = new Date(raw);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  })();
-  const minutesSinceUsernameChange = lastUsernameChange
-    ? Math.floor((Date.now() - lastUsernameChange.getTime()) / 60000)
-    : USERNAME_COOLDOWN_MINUTES;
-  const usernameDisabled =
-    minutesSinceUsernameChange < USERNAME_COOLDOWN_MINUTES;
-  const usernameCooldownMessage = usernameDisabled
-    ? translate("toast.warning.usernameCooldownMinutes", {
-        minutes: Math.max(
-          0,
-          USERNAME_COOLDOWN_MINUTES - minutesSinceUsernameChange,
-        ),
-        time: new Date(
-          (lastUsernameChange?.getTime() || Date.now()) +
-            USERNAME_COOLDOWN_MINUTES * 60000,
-        ).toLocaleTimeString(),
-      })
-    : translate("toast.warning.usernameCooldownReady");
+  // One change per HANDLE_CHANGE_COOLDOWN_DAYS, enforced by the server, which also says when the next is allowed.
+  const handleCooldown = handleCooldownFor(accountQuery.data?.handleChangeAllowedAt);
+  const usernameDisabled = handleCooldown.locked;
+  const usernameCooldownMessage = handleCooldownMessage(translate, handleCooldown.allowedAt);
 
   const performSave = async (
     values: KeyValuePair,
@@ -178,6 +160,16 @@ const ProfileAccountSettings = ({
       );
       return { status: "saved", committedRevision: saved.revision };
     } catch (saveError) {
+      if (isRevisionConflict(saveError)) {
+        showRevisionConflictToast(translate("conflict.changedElsewhere"), translate("conflict.reload"), () => window.location.reload());
+        return { status: "failed" };
+      }
+      const nextAllowedAt = nextAllowedAtFrom(saveError);
+      if (nextAllowedAt) {
+        // The server's date wins over what this page thought: another device may have changed it.
+        toast.error(handleCooldownMessage(translate, nextAllowedAt));
+        return { status: "failed" };
+      }
       const message =
         saveError instanceof Error ? saveError.message : "Unexpected error";
       toast.error(
@@ -289,7 +281,7 @@ const ProfileAccountSettings = ({
         onClose={cancelUsernameChange}
         onConfirm={confirmUsernameChange}
         newUsername={pendingUsername}
-        cooldownDays={USERNAME_COOLDOWN_MINUTES / 1440}
+        cooldownDays={HANDLE_CHANGE_COOLDOWN_DAYS}
       />
     </div>
   );

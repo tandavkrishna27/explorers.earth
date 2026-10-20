@@ -1,4 +1,5 @@
 import { useEffect, useRef, type KeyboardEvent } from "react";
+import { useTranslation } from "react-i18next";
 
 type UnpublishCategoryDialogProps = {
   open: boolean;
@@ -17,6 +18,7 @@ export function UnpublishCategoryDialog({
   onCancel,
   onConfirm,
 }: UnpublishCategoryDialogProps) {
+  const { t } = useTranslation();
   const cancelRef = useRef<HTMLButtonElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
   const dialogRef = useRef<HTMLElement>(null);
@@ -67,17 +69,19 @@ export function UnpublishCategoryDialog({
         onMouseDown={(event) => event.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
-        <h2 id="unpublish-category-title" className="text-lg font-bold text-dashboard">Unpublish {categoryName}</h2>
+        <h2 id="unpublish-category-title" className="text-lg font-bold text-dashboard">{t("settings.ui.unpublishTitle", { defaultValue: "Unpublish {{categoryName}}", categoryName, interpolation: { escapeValue: false } })}</h2>
         <p className="mt-2 text-sm text-dashboard-light">
-          This removes {categoryName} from your public profile and it will be removed from your public navigation. Your recommendations stay saved.
+          {t("settings.ui.unpublishBody", { defaultValue: "This removes {{categoryName}} from your public profile and it will be removed from your public navigation. Your recommendations stay saved.", categoryName, interpolation: { escapeValue: false } })}
         </p>
         {error && <p role="alert" className="mt-3 text-sm text-red-400">{error}</p>}
         <div className="mt-6 flex justify-end gap-3">
           <button ref={cancelRef} type="button" disabled={pending} onClick={cancel} className="rounded-lg px-4 py-2 text-sm font-medium text-dashboard-muted disabled:opacity-60">
-            Cancel
+            {t("common.cancel", "Cancel")}
           </button>
           <button type="button" disabled={pending} onClick={onConfirm} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
-            {pending ? `Unpublishing ${categoryName}` : `Unpublish ${categoryName}`}
+            {pending
+              ? t("settings.ui.unpublishing", { defaultValue: "Unpublishing {{categoryName}}", categoryName, interpolation: { escapeValue: false } })
+              : t("settings.ui.unpublishTitle", { defaultValue: "Unpublish {{categoryName}}", categoryName, interpolation: { escapeValue: false } })}
           </button>
         </div>
       </section>

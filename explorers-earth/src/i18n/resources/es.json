@@ -420,7 +420,8 @@
         "primaryAddressRequired": "La dirección principal es requerida",
         "profileImageAlt": "Profile",
         "resetLinkSentSuccess": "¡Enlace de restablecimiento enviado exitosamente!",
-        "stateRequired": "El estado es requerido"
+        "stateRequired": "El estado es requerido",
+        "postalCodeInvalid": "Introduce un código postal válido (de 2 a 10 letras, números, espacios o guiones)"
       },
       "password": {
         "considerLonger": "Considera usar una contraseña más larga con más variedad para mejor seguridad",
@@ -497,20 +498,42 @@
         "willBeConvertedLowercase": "El nombre de usuario se convertirá a minúsculas",
         "willConvertToLowercase": "El nombre de usuario se convertirá a minúsculas"
       }
-    }
+    },
+    "brand": {
+      "tagline": "Cada lugar nos conecta"
+    },
+    "loginPage": {
+      "title2": "Te damos la bienvenida de nuevo, explorador.",
+      "sub2": "Tu mapa está justo donde lo dejaste.",
+      "googleUnavailable": "El inicio de sesión con Google no está disponible. Inténtalo de nuevo.",
+      "signOutUnavailable": "El cierre de sesión en el servidor sigue sin estar disponible. Vuelve a intentarlo.",
+      "seoDescription": "Inicia sesión en tu cuenta de explorers con Google.",
+      "signOutIncomplete": "El cierre de sesión en el servidor está incompleto. Vuelve a cerrar sesión antes de usar esta cuenta.",
+      "cancelled": "El inicio de sesión con Google se canceló o no pudo completarse. Inténtalo de nuevo.",
+      "retrySignOut": "Reintentar cierre de sesión",
+      "recoverPrompt": "¿Necesitas restaurar una cuenta desactivada?",
+      "recoverCta": "Recuperar con Google"
+    },
+    "terms": {
+      "prefix": "Al continuar aceptas nuestros",
+      "terms": "Términos",
+      "privacy": "Política de privacidad"
+    },
+    "secureSignIn": "Inicio de sesión seguro"
   },
   "common": {
-    "cancel": "Cancel",
+    "cancel": "Cancelar",
     "error": "Ocurrió un error. Por favor, inténtalo de nuevo más tarde.",
+    "hidePassword": "Ocultar contraseña",
     "free": "Gratis",
-    "hidePassword": "Hide password",
     "loading": "Cargando...",
     "noResults": "No se encontraron resultados",
     "retry": "Intentar de nuevo",
-    "showPassword": "Show password",
+    "showPassword": "Mostrar contraseña",
     "signInWithGoogle": "Iniciar sesión con Google",
     "signUpWithGoogle": "Registrarse con Google",
-    "submit": "Enviar"
+    "submit": "Enviar",
+    "and": "y"
   },
   "contact": {
     "closingMessage": "Somos un equipo pequeño con una gran visión — tus pensamientos nos importan. Ponte en contacto y construyamos algo local y global juntos.",
@@ -893,7 +916,9 @@
         "video": "Video",
         "viewPublicProfile": "Navigate to Public Profile",
         "visible": "Visible",
-        "whatsappNumber": "Número de WhatsApp"
+        "whatsappNumber": "Número de WhatsApp",
+        "removeProfileImage": "Quitar la foto de perfil",
+        "removeCoverImage": "Quitar la imagen de portada"
       },
       "publicProfile": {
         "accountTypes": {
@@ -1228,7 +1253,7 @@
     "shareModal": {
       "copied": "¡Copiado!",
       "copyLink": "Copiar enlace",
-      "linkCopiedToast": "¡¡Enlace copiado!!"
+      "linkCopiedToast": "¡Enlace copiado!"
     }
   },
   "emailVerification": {
@@ -1292,7 +1317,12 @@
       "signUp": "Registrarse",
       "claimFreePage": "Reclamar página gratuita",
       "claimFree": "Reclama gratis"
-    }
+    },
+    "profileImageAlt": "Foto de perfil",
+    "user": "Usuario",
+    "accountSettings": "Ajustes de la cuenta",
+    "login": "Iniciar sesión",
+    "register": "Registrarse"
   },
   "hero": {
     "headline": "Todas sus recomendaciones: un enlace, un QR",
@@ -1301,12 +1331,12 @@
     "inputPlaceholder": "Su nombre",
     "ctaButton": "Reclama tu página Explorer",
     "signupPrompt": "Regístrate para obtener el tuyo ahora",
-    "headlinePrefix": "Todo tu",
+    "headlinePrefix": "Todas tus",
     "rotatingWords": [
       "recomendaciones",
-      "curaciones",
+      "selecciones",
       "colecciones",
-      "favoritos"
+      "favoritas"
     ],
     "headlineSuffix": "en un enlace y QR.",
     "badge": "Gratis para siempre",
@@ -1384,7 +1414,9 @@
       "profileLabel": "Perfil:",
       "title": "Confirmación de cambio de nombre de usuario",
       "warning": "Cualquier código QR o enlace con tu nombre de usuario anterior ya no funcionará: necesitarás actualizarlos y volver a compartirlos."
-    }
+    },
+    "dialog": "Diálogo",
+    "close": "Cerrar diálogo"
   },
   "reactivateAccount": {
     "backToLogin": "Back to Login",
@@ -1886,11 +1918,15 @@
       "deleteAccount": {
         "button": "Eliminar cuenta",
         "description": "Elimine permanentemente su cuenta y todos los datos",
+        "pending": {
+          "scheduled": "Tu cuenta se eliminará de forma permanente el {{date}}. Inicia sesión con Google antes de esa fecha para cancelar la eliminación."
+        },
         "step1": {
           "continueButton": "Continuar con la eliminación",
           "deactivateInsteadButton": "Desactivar cuenta en su lugar",
           "modalDescription": "¿Está seguro de que desea eliminar su cuenta? Esta acción no se puede deshacer.",
           "modalDescription2": "Si desea conservar sus datos, puede desactivar su cuenta en su lugar.",
+          "modalDescriptionGrace": "Tu cuenta se ocultará de inmediato y se eliminará de forma permanente después de 30 días. Puedes recuperarla antes iniciando sesión con Google.",
           "modalTitle": "¿Eliminar su cuenta?"
         },
         "step2": {
@@ -1906,7 +1942,8 @@
         "step3": {
           "continueButton": "Continuar",
           "modalTitle": "¿Por qué se va?",
-          "reasonPlaceholder": "Por favor, díganos el motivo de su partida..."
+          "reasonPlaceholder": "Por favor, díganos el motivo de su partida...",
+          "reasonTooLong": "Tu motivo es demasiado largo. Usa como máximo 2000 caracteres."
         },
         "step4": {
           "confirmationRequired": "Por favor, escriba 'CONFIRM DELETE' para confirmar.",
@@ -1920,6 +1957,7 @@
         },
         "text": "¿Eliminar su cuenta?"
       },
+      "handleMismatch": "El identificador que escribiste no coincide con el de tu cuenta.",
       "heading": "Cuenta",
       "security": {
         "title": "Cuenta y Seguridad"
@@ -1937,7 +1975,50 @@
     },
     "subtitle": "Administre la configuración y preferencias de su cuenta",
     "title": "Configuración",
-    "dangerZone": "Zona de peligro"
+    "dangerZone": "Zona de peligro",
+    "ui": {
+      "categoryUnpublishedUnpinned": "Categoría despublicada y eliminada de la navegación.",
+      "categoryUnpublished": "Categoría despublicada.",
+      "categoryPublic": "La categoría es pública.",
+      "addToNavigation": "Añadir a la navegación",
+      "couldNotVerify": "No se pudo verificar este cambio.",
+      "retry": "Reintentar",
+      "navNeedsRepair": "La visibilidad cambió, pero la navegación necesita repararse.",
+      "refreshSettings": "Actualizar ajustes",
+      "accountUnavailable": "Los datos de la cuenta no están disponibles. Vuelve a intentarlo tras actualizar.",
+      "deactivationFailed": "No se pudo desactivar la cuenta.",
+      "feedbackUnavailable": "Los comentarios o los datos de la cuenta no están disponibles.",
+      "lifecycleUnavailable": "El estado de la cuenta no está disponible.",
+      "searchPlaceholder": "Buscar en ajustes...",
+      "quickAccess": "Acceso rápido",
+      "publicVisibility": "Visibilidad pública",
+      "publicVisibilityHint": "Perfil · Controla qué pestañas aparecen en tu perfil público",
+      "publicVisibilityRegion": "Ajustes de visibilidad pública",
+      "autoPinned": "Fijada automáticamente",
+      "visibilityOff": "Visibilidad desactivada",
+      "noContent": "Sin contenido",
+      "unavailableRefresh": "No disponible: actualiza para verificar",
+      "savingVerifying": "Guardando y verificando…",
+      "pinTab": "Fijar {{label}}",
+      "tab": {
+        "public_profile": "Pestaña Perfil",
+        "public_recommendations": "Pestaña Lugares",
+        "public_guides": "Pestaña Guías",
+        "public_movie": "Pestaña Películas y series",
+        "public_books": "Pestaña Libros",
+        "public_games": "Pestaña Juegos",
+        "public_apps": "Pestaña Apps y herramientas",
+        "public_products": "Pestaña Productos",
+        "public_people": "Pestaña Personas"
+      },
+      "unpublishTitle": "Despublicar {{categoryName}}",
+      "unpublishing": "Despublicando {{categoryName}}",
+      "unpublishBody": "Esto quita {{categoryName}} de tu perfil público y de tu navegación pública. Tus recomendaciones siguen guardadas.",
+      "deletionComplete": "La eliminación de la cuenta ha finalizado. Continúa para iniciar sesión si quieres usar otra cuenta.",
+      "deletionPending": "La eliminación de la cuenta está pendiente. El acceso está en pausa.",
+      "cancelDeletionGoogle": "Cancelar la eliminación con Google",
+      "checkDeletionStatus": "Comprobar el estado de la eliminación"
+    }
   },
   "sidebar": {
     "analytics": "Analíticas",
@@ -1951,7 +2032,10 @@
     "places": "Places",
     "profile": "Perfil",
     "recommendations": "Recomendaciones",
-    "settings": "Configuración"
+    "settings": "Configuración",
+    "accountImageAlt": "Cuenta",
+    "account": "Cuenta",
+    "viewPublicProfile": "Ver perfil público"
   },
   "toast": {
     "error": {
@@ -2172,7 +2256,9 @@
       "usernameTooShort": "El nombre de usuario es demasiado corto. Por favor, elija un nombre de usuario más largo.",
       "usernameUpdateFailed": "Error al actualizar nombre de usuario. Por favor, inténtelo de nuevo.",
       "validationError": "Error de validación. Por favor, verifique su entrada.",
-      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!"
+      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!",
+      "profileImageRemoveFailed": "No se pudo quitar la foto de perfil. Inténtalo de nuevo.",
+      "backgroundImageRemoveFailed": "No se pudo quitar la imagen de portada. Inténtalo de nuevo."
     },
     "info": {
       "aborting": "Abortando...",
@@ -2304,7 +2390,9 @@
       "uploadingImagesToFeed": "Uploading selected images to your feed...",
       "usernameChanged": "¡Nombre de usuario cambiado exitosamente!",
       "usernameUpdated": "¡Nombre de usuario actualizado exitosamente!",
-      "welcomeMessage": "¡Bienvenido a explorers!"
+      "welcomeMessage": "¡Bienvenido a explorers!",
+      "profileImageRemoved": "Foto de perfil quitada.",
+      "backgroundImageRemoved": "Imagen de portada quitada."
     },
     "warning": {
       "accountExpiring": "La cuenta está expirando. Por favor, actualiza tu cuenta",
@@ -2355,7 +2443,8 @@
       "usernameCooldownUnknown": "Puedes cambiar tu nombre de usuario ahora",
       "usernameExpiring": "El nombre de usuario está expirando. Por favor, actualiza tu nombre de usuario",
       "usernameNotChanged": "El nombre de usuario no está cambiado. Por favor, cambia tu nombre de usuario",
-      "validationPending": "La validación está pendiente. Por favor, espera"
+      "validationPending": "La validación está pendiente. Por favor, espera",
+      "usernameCooldownUntil": "Podrás volver a cambiar tu nombre de usuario el {{date}}."
     }
   },
   "usernameClaim": {
@@ -2397,7 +2486,17 @@
       "regionLabel": "Recommendations",
       "retry": "Try again",
       "retrying": "Retrying…"
-    }
+    },
+    "unavailable": "Perfil no disponible",
+    "notFound": "Perfil no encontrado",
+    "notFoundText": "Este perfil de usuario no está disponible.",
+    "partialData": "Algunos datos del perfil no están disponibles.",
+    "sections": "Secciones del perfil",
+    "gallery": "Galería",
+    "businessDetails": "Datos del negocio",
+    "noPhotosTitle": "Aún no hay fotos",
+    "noPhotosText": "Este usuario todavía no ha compartido fotos. ¡Vuelve más tarde!",
+    "visitWebsite": "Visitar sitio web"
   },
   "useCases": {
     "cta": {
@@ -2476,5 +2575,42 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "conflict": {
+    "changedElsewhere": "Esto se cambió en otra pestaña o dispositivo. Recarga para ver la versión más reciente.",
+    "reload": "Recargar"
+  },
+  "recovery": {
+    "pendingDeletion": {
+      "cancelButton": "Cancelar eliminación",
+      "scheduled": "Tu cuenta está programada para eliminarse el {{date}}. Cancela la eliminación para recuperar el acceso.",
+      "scheduledUnknown": "Tu cuenta está programada para eliminarse. Cancela la eliminación para recuperar el acceso.",
+      "title": "Cancelar la eliminación de la cuenta"
+    },
+    "scheduledForDeletion": "Tu cuenta está programada para eliminarse el {{date}}. Continúa con Google para cancelar la eliminación."
+  },
+  "qrCard": {
+    "tagline": {
+      "apps": "Descubre mis aplicaciones favoritas",
+      "products": "Descubre mis productos favoritos",
+      "people": "Conecta con creadores",
+      "movies": "Mira mis favoritas",
+      "books": "Lee mis favoritos",
+      "games": "Juega mis favoritos",
+      "places": "Viaja como un local",
+      "profile": "Explora mis selecciones"
+    }
+  },
+  "validation": {
+    "urlRule": "Introduce una dirección web que empiece por http:// o https://. No se permiten puertos (como :8443) ni nombres de usuario o contraseñas en la dirección.",
+    "checkField": "Revisa el campo {{field}}.",
+    "generic": "Revisa los campos marcados e inténtalo de nuevo."
+  },
+  "home": {
+    "shareProfile": "Compartir perfil"
+  },
+  "imageCropper": {
+    "success": "Imagen recortada correctamente",
+    "error": "Error al recortar la imagen"
   }
 }

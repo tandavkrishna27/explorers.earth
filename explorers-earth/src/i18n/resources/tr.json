@@ -1301,14 +1301,14 @@
     "inputPlaceholder": "Adınız",
     "ctaButton": "Explorer sayfanızı talep edin",
     "signupPrompt": "Şimdi sizinkini almak için kaydolun",
-    "headlinePrefix": "Hepsi senin",
+    "headlinePrefix": "Tüm",
     "rotatingWords": [
-      "öneriler",
-      "kürasyonlar",
-      "koleksiyonlar",
-      "favoriler"
+      "önerilerin",
+      "seçkilerin",
+      "koleksiyonların",
+      "favorilerin"
     ],
-    "headlineSuffix": "tek bir bağlantıda ve QR.",
+    "headlineSuffix": "tek bir bağlantıda ve QR'da.",
     "badge": "Sonsuza kadar özgür",
     "globalStrip": "Explorer'lar dünya çapında önerileri paylaşıyor",
     "preview": {
@@ -1886,11 +1886,15 @@
       "deleteAccount": {
         "button": "Hesabı Sil",
         "description": "Hesabınızı ve tüm verileri kalıcı olarak silin",
+        "pending": {
+          "scheduled": "Hesabınız {{date}} tarihinde kalıcı olarak silinecek. Silmeyi iptal etmek için bu tarihten önce Google ile giriş yapın."
+        },
         "step1": {
           "continueButton": "Silme işlemiyle devam et",
           "deactivateInsteadButton": "Bunun yerine hesabı devre dışı bırak",
           "modalDescription": "Hesabınızı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
           "modalDescription2": "Verilerinizi saklamak istiyorsanız, bunun yerine hesabınızı devre dışı bırakabilirsiniz.",
+          "modalDescriptionGrace": "Hesabınız hemen gizlenecek ve 30 gün sonra kalıcı olarak silinecek. Bu süre dolmadan Google ile giriş yaparak hesabınızı geri alabilirsiniz.",
           "modalTitle": "Hesabınızı silin?"
         },
         "step2": {
@@ -1906,7 +1910,8 @@
         "step3": {
           "continueButton": "Devam Et",
           "modalTitle": "Neden ayrılıyorsunuz?",
-          "reasonPlaceholder": "Lütfen ayrılma nedeninizi bize bildirin..."
+          "reasonPlaceholder": "Lütfen ayrılma nedeninizi bize bildirin...",
+          "reasonTooLong": "Nedeniniz çok uzun. Lütfen en fazla 2.000 karakter kullanın."
         },
         "step4": {
           "confirmationRequired": "Lütfen onaylamak için 'CONFIRM DELETE' yazın.",
@@ -1920,6 +1925,7 @@
         },
         "text": "Hesabınızı silin?"
       },
+      "handleMismatch": "Yazdığınız kullanıcı adı hesabınızın kullanıcı adıyla eşleşmiyor.",
       "heading": "Hesap",
       "security": {
         "title": "Hesap ve Güvenlik"
@@ -2476,5 +2482,14 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "recovery": {
+    "pendingDeletion": {
+      "cancelButton": "Silmeyi iptal et",
+      "scheduled": "Hesabınızın {{date}} tarihinde silinmesi planlandı. Erişimi geri almak için silmeyi iptal edin.",
+      "scheduledUnknown": "Hesabınızın silinmesi planlandı. Erişimi geri almak için silmeyi iptal edin.",
+      "title": "Hesap silmeyi iptal et"
+    },
+    "scheduledForDeletion": "Hesabınızın {{date}} tarihinde silinmesi planlandı. Silmeyi iptal etmek için Google ile devam edin."
   }
 }

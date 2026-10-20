@@ -422,7 +422,8 @@
         "primaryAddressRequired": "प्राथमिक पता आवश्यक है",
         "profileImageAlt": "Profile",
         "resetLinkSentSuccess": "रीसेट लिंक सफलतापूर्वक भेजा गया!",
-        "stateRequired": "राज्य आवश्यक है"
+        "stateRequired": "राज्य आवश्यक है",
+        "postalCodeInvalid": "मान्य पिन/पोस्टल कोड दर्ज करें (2-10 अक्षर, अंक, स्पेस या हाइफ़न)"
       },
       "password": {
         "considerLonger": "बेहतर सुरक्षा के लिए अधिक विविधता के साथ लंबे पासवर्ड का उपयोग करने पर विचार करें",
@@ -499,7 +500,28 @@
         "willBeConvertedLowercase": "उपयोगकर्ता नाम को छोटे अक्षरों में बदल दिया जाएगा",
         "willConvertToLowercase": "उपयोगकर्ता नाम को छोटे अक्षरों में बदल दिया जाएगा"
       }
-    }
+    },
+    "brand": {
+      "tagline": "हर जगह हमें जोड़ती है"
+    },
+    "loginPage": {
+      "title2": "वापसी पर स्वागत है, एक्सप्लोरर।",
+      "sub2": "आपका मैप वहीं है जहाँ आपने उसे छोड़ा था।",
+      "googleUnavailable": "Google साइन-इन उपलब्ध नहीं है। कृपया फिर से कोशिश करें।",
+      "signOutUnavailable": "सर्वर साइन-आउट अभी भी उपलब्ध नहीं है। कृपया फिर से कोशिश करें।",
+      "seoDescription": "Google से अपने explorers खाते में साइन इन करें।",
+      "signOutIncomplete": "सर्वर साइन-आउट अधूरा है। इस खाते का उपयोग करने से पहले फिर से साइन आउट करें।",
+      "cancelled": "Google साइन-इन रद्द हो गया या पूरा नहीं हो सका। कृपया फिर से कोशिश करें।",
+      "retrySignOut": "साइन-आउट फिर से आज़माएँ",
+      "recoverPrompt": "क्या निष्क्रिय खाता बहाल करना है?",
+      "recoverCta": "Google से पुनर्प्राप्त करें"
+    },
+    "terms": {
+      "prefix": "जारी रखकर आप हमारी इन बातों से सहमत होते हैं:",
+      "terms": "शर्तें",
+      "privacy": "गोपनीयता नीति"
+    },
+    "secureSignIn": "सुरक्षित साइन-इन"
   },
   "common": {
     "cancel": "रद्द करें",
@@ -512,7 +534,8 @@
     "showPassword": "पासवर्ड दिखाएं",
     "signInWithGoogle": "Google से साइन इन करें",
     "signUpWithGoogle": "Google से साइन अप करें",
-    "submit": "जमा करें"
+    "submit": "जमा करें",
+    "and": "और"
   },
   "contact": {
     "closingMessage": "हम एक बड़ी दृष्टि के साथ एक छोटी टीम हैं — आपके विचार हमारे लिए महत्वपूर्ण हैं। संपर्क करें और आइए मिलकर कुछ स्थानिक और वैश्विक बनाएं।",
@@ -895,7 +918,9 @@
         "video": "वीडियो",
         "viewPublicProfile": "Navigate to Public Profile",
         "visible": "दृश्यमान",
-        "whatsappNumber": "WhatsApp नंबर"
+        "whatsappNumber": "WhatsApp नंबर",
+        "removeProfileImage": "प्रोफ़ाइल फ़ोटो हटाएँ",
+        "removeCoverImage": "कवर इमेज हटाएँ"
       },
       "publicProfile": {
         "accountTypes": {
@@ -1294,7 +1319,12 @@
       "signUp": "साइन अप करें",
       "claimFreePage": "मुफ़्त पेज का दावा करें",
       "claimFree": "निःशुल्क दावा करें"
-    }
+    },
+    "profileImageAlt": "प्रोफ़ाइल फ़ोटो",
+    "user": "उपयोगकर्ता",
+    "accountSettings": "खाता सेटिंग",
+    "login": "लॉगिन",
+    "register": "रजिस्टर करें"
   },
   "hero": {
     "headline": "आपकी सभी सिफ़ारिशें - एक लिंक, एक QR",
@@ -1303,14 +1333,14 @@
     "inputPlaceholder": "आपका नाम",
     "ctaButton": "अपने Explorer पेज पर दावा करें",
     "signupPrompt": "अपनी सूचियाँ पाने के लिए अभी साइन अप करें",
-    "headlinePrefix": "सब आपका हैं",
+    "headlinePrefix": "आपके सभी",
     "rotatingWords": [
-      "सिफारिशों",
-      "क्यूरेशन",
+      "सुझाव",
+      "चयन",
       "संग्रह",
       "पसंदीदा"
     ],
-    "headlineSuffix": "एक लिंक में और QR.",
+    "headlineSuffix": "एक लिंक और QR में।",
     "badge": "हमेशा के लिए मुफ़्त",
     "globalStrip": "Explorers दुनिया भर में अनुशंसाएँ साझा करते हैं",
     "preview": {
@@ -1386,7 +1416,9 @@
       "profileLabel": "प्रोफ़ाइल:",
       "title": "उपयोगकर्ता नाम परिवर्तन की पुष्टि",
       "warning": "आपके पुराने उपयोगकर्ता नाम वाले किसी भी QR कोड या लिंक अब काम नहीं करेंगे — आपको उन्हें अपडेट करना होगा और फिर से साझा करना होगा।"
-    }
+    },
+    "dialog": "संवाद",
+    "close": "संवाद बंद करें"
   },
   "reactivateAccount": {
     "backToLogin": "Back to Login",
@@ -1888,11 +1920,15 @@
       "deleteAccount": {
         "button": "खाता हटाएं",
         "description": "अपने खाते और सभी डेटा को स्थायी रूप से हटाएं",
+        "pending": {
+          "scheduled": "आपका खाता {{date}} को स्थायी रूप से हटा दिया जाएगा। हटाना रद्द करने के लिए उससे पहले Google से साइन इन करें।"
+        },
         "step1": {
           "continueButton": "हटाना जारी रखें",
           "deactivateInsteadButton": "इसके बजाय खाता निष्क्रिय करें",
           "modalDescription": "क्या आप वाकई अपना खाता हटाना चाहते हैं? यह कार्रवाई पूर्ववत नहीं की जा सकती।",
           "modalDescription2": "यदि आप अपना डेटा रखना चाहते हैं, तो आप इसके बजाय अपना खाता निष्क्रिय कर सकते हैं।",
+          "modalDescriptionGrace": "आपका खाता तुरंत छिपा दिया जाएगा और 30 दिनों के बाद स्थायी रूप से हटा दिया जाएगा। उससे पहले आप Google से साइन इन करके इसे वापस पा सकते हैं।",
           "modalTitle": "अपना खाता हटाएं?"
         },
         "step2": {
@@ -1908,7 +1944,8 @@
         "step3": {
           "continueButton": "जारी रखें",
           "modalTitle": "आप क्यों जा रहे हैं?",
-          "reasonPlaceholder": "कृपया हमें अपने जाने का कारण बताएं..."
+          "reasonPlaceholder": "कृपया हमें अपने जाने का कारण बताएं...",
+          "reasonTooLong": "आपका कारण बहुत लंबा है। कृपया अधिकतम 2,000 वर्ण लिखें।"
         },
         "step4": {
           "confirmationRequired": "कृपया पुष्टि के लिए 'CONFIRM DELETE' टाइप करें।",
@@ -1922,6 +1959,7 @@
         },
         "text": "अपना खाता हटाएं?"
       },
+      "handleMismatch": "आपने जो हैंडल लिखा है वह आपके खाते के हैंडल से मेल नहीं खाता।",
       "heading": "खाता",
       "security": {
         "title": "खाता और सुरक्षा"
@@ -1953,7 +1991,10 @@
     "places": "Places",
     "profile": "प्रोफ़ाइल",
     "recommendations": "सुझाव",
-    "settings": "सेटिंग्स"
+    "settings": "सेटिंग्स",
+    "accountImageAlt": "खाता",
+    "account": "खाता",
+    "viewPublicProfile": "सार्वजनिक प्रोफ़ाइल देखें"
   },
   "toast": {
     "error": {
@@ -2174,7 +2215,9 @@
       "usernameTooShort": "उपयोगकर्ता नाम बहुत छोटा है। कृपया एक लंबा उपयोगकर्ता नाम चुनें।",
       "usernameUpdateFailed": "उपयोगकर्ता नाम अपडेट असफल। कृपया पुनः प्रयास करें।",
       "validationError": "सत्यापन त्रुटि। कृपया अपना इनपुट जांचें।",
-      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!"
+      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!",
+      "profileImageRemoveFailed": "प्रोफ़ाइल फ़ोटो नहीं हटाई जा सकी। कृपया फिर कोशिश करें।",
+      "backgroundImageRemoveFailed": "कवर इमेज नहीं हटाई जा सकी। कृपया फिर कोशिश करें।"
     },
     "info": {
       "aborting": "रोक रहा है...",
@@ -2306,7 +2349,9 @@
       "uploadingImagesToFeed": "चयनित छवियां आपकी फीड में अपलोड की जा रही हैं...",
       "usernameChanged": "उपयोगकर्ता नाम सफलतापूर्वक बदला!",
       "usernameUpdated": "उपयोगकर्ता नाम सफलतापूर्वक अपडेट!",
-      "welcomeMessage": "explorers में आपका स्वागत है!"
+      "welcomeMessage": "explorers में आपका स्वागत है!",
+      "profileImageRemoved": "प्रोफ़ाइल फ़ोटो हटा दी गई।",
+      "backgroundImageRemoved": "कवर इमेज हटा दी गई।"
     },
     "warning": {
       "accountExpiring": "खाता समाप्त हो रहा है। कृपया अपना खाता अपडेट करें",
@@ -2357,7 +2402,8 @@
       "usernameCooldownUnknown": "You can change your username now",
       "usernameExpiring": "उपयोगकर्ता नाम समाप्त हो रहा है। कृपया अपना उपयोगकर्ता नाम अपडेट करें",
       "usernameNotChanged": "उपयोगकर्ता नाम नहीं बदला गया है। कृपया अपना उपयोगकर्ता नाम बदलें",
-      "validationPending": "सत्यापन लंबित है। कृपया प्रतीक्षा करें"
+      "validationPending": "सत्यापन लंबित है। कृपया प्रतीक्षा करें",
+      "usernameCooldownUntil": "आप अपना उपयोगकर्ता नाम {{date}} को फिर से बदल सकते हैं।"
     }
   },
   "usernameClaim": {
@@ -2399,7 +2445,17 @@
       "regionLabel": "Recommendations",
       "retry": "Try again",
       "retrying": "Retrying…"
-    }
+    },
+    "unavailable": "प्रोफ़ाइल उपलब्ध नहीं है",
+    "notFound": "प्रोफ़ाइल नहीं मिली",
+    "notFoundText": "यह उपयोगकर्ता प्रोफ़ाइल उपलब्ध नहीं है।",
+    "partialData": "प्रोफ़ाइल का कुछ डेटा उपलब्ध नहीं है।",
+    "sections": "प्रोफ़ाइल अनुभाग",
+    "gallery": "गैलरी",
+    "businessDetails": "व्यवसाय विवरण",
+    "noPhotosTitle": "अभी तक कोई फ़ोटो नहीं",
+    "noPhotosText": "इस उपयोगकर्ता ने अभी तक कोई फ़ोटो साझा नहीं की है। बाद में फिर देखें!",
+    "visitWebsite": "वेबसाइट देखें"
   },
   "useCases": {
     "cta": {
@@ -2478,5 +2534,25 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "conflict": {
+    "changedElsewhere": "इसे किसी दूसरे टैब या डिवाइस में बदला गया है। नवीनतम संस्करण देखने के लिए रीलोड करें।",
+    "reload": "रीलोड करें"
+  },
+  "recovery": {
+    "pendingDeletion": {
+      "cancelButton": "हटाना रद्द करें",
+      "scheduled": "आपका खाता {{date}} को हटाए जाने के लिए निर्धारित है। पहुँच वापस पाने के लिए हटाना रद्द करें।",
+      "scheduledUnknown": "आपका खाता हटाए जाने के लिए निर्धारित है। पहुँच वापस पाने के लिए हटाना रद्द करें।",
+      "title": "खाता हटाना रद्द करें"
+    },
+    "scheduledForDeletion": "आपका खाता {{date}} को हटाए जाने के लिए निर्धारित है। हटाना रद्द करने के लिए Google के साथ जारी रखें।"
+  },
+  "home": {
+    "shareProfile": "प्रोफ़ाइल शेयर करें"
+  },
+  "imageCropper": {
+    "success": "छवि सफलतापूर्वक क्रॉप हुई",
+    "error": "छवि क्रॉप करने में त्रुटि"
   }
 }

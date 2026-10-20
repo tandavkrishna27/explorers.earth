@@ -1886,11 +1886,15 @@
       "deleteAccount": {
         "button": "Hapus akun",
         "description": "Hapus permanen akun Anda dan semua data",
+        "pending": {
+          "scheduled": "Akun Anda akan dihapus permanen pada {{date}}. Masuk dengan Google sebelum tanggal itu untuk membatalkan penghapusan."
+        },
         "step1": {
           "continueButton": "Lanjutkan penghapusan",
           "deactivateInsteadButton": "Nonaktifkan akun sebagai gantinya",
           "modalDescription": "Apakah Anda yakin ingin menghapus akun Anda? Tindakan ini tidak dapat dibatalkan.",
           "modalDescription2": "Jika Anda ingin menyimpan data Anda, Anda dapat menonaktifkan akun Anda sebagai gantinya.",
+          "modalDescriptionGrace": "Akun Anda akan langsung disembunyikan dan dihapus permanen setelah 30 hari. Anda dapat memulihkannya sebelum itu dengan masuk menggunakan Google.",
           "modalTitle": "Hapus akun Anda?"
         },
         "step2": {
@@ -1906,7 +1910,8 @@
         "step3": {
           "continueButton": "Lanjutkan",
           "modalTitle": "Mengapa Anda pergi?",
-          "reasonPlaceholder": "Silakan beri tahu kami alasan Anda pergi..."
+          "reasonPlaceholder": "Silakan beri tahu kami alasan Anda pergi...",
+          "reasonTooLong": "Alasan Anda terlalu panjang. Gunakan maksimal 2.000 karakter."
         },
         "step4": {
           "confirmationRequired": "Silakan ketik 'CONFIRM DELETE' untuk konfirmasi.",
@@ -1920,6 +1925,7 @@
         },
         "text": "Hapus akun Anda?"
       },
+      "handleMismatch": "Handle yang Anda ketik tidak cocok dengan handle akun Anda.",
       "heading": "Akun",
       "security": {
         "title": "Akun dan Keamanan"
@@ -2476,5 +2482,14 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "recovery": {
+    "pendingDeletion": {
+      "cancelButton": "Batalkan penghapusan",
+      "scheduled": "Akun Anda dijadwalkan untuk dihapus pada {{date}}. Batalkan penghapusan untuk memulihkan akses.",
+      "scheduledUnknown": "Akun Anda dijadwalkan untuk dihapus. Batalkan penghapusan untuk memulihkan akses.",
+      "title": "Batalkan penghapusan akun"
+    },
+    "scheduledForDeletion": "Akun Anda dijadwalkan untuk dihapus pada {{date}}. Lanjutkan dengan Google untuk membatalkan penghapusan."
   }
 }

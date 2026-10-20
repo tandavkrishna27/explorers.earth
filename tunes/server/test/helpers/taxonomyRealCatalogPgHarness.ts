@@ -180,6 +180,7 @@ export function createTaxonomyRealCatalogPgHarness(input: TaxonomyRealCatalogPgI
         verify();
         const fixture = await seedOwner(true), service = new AccountLifecycleService(input.runtime), state = await service.getAccountLifecycle(fixture.actor), feedback = await service.recordDeletionFeedback(fixture.actor, { reason: 'Synthetic taxonomy lock-order qualification' }, { requestId: randomUUID(), idempotencyKey: randomUUID() });
         await service.requestAccountDeletion(fixture.actor, { expectedRevision: state.revision, feedbackId: feedback.id }, { requestId: randomUUID(), idempotencyKey: randomUUID() });
+        await input.migrator.query("UPDATE creator_accounts SET deletion_requested_at=clock_timestamp()-interval '31 days' WHERE id=$1 AND status='pending_deletion'", [fixture.actor.accountId]);
         const operations: Promise<unknown>[] = [];
         let releaseGate!: () => void, heldResolve!: () => void, heldReject!: (error: unknown) => void;
         const gate = new Promise<void>(resolve => {

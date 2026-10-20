@@ -110,8 +110,12 @@ describe("public shell gateway cache integration", () => {
         : Response.json({ guides: [{ documentId: "foreign-guide", Title: "Foreign account guide", slug: "weekend", guide_sections: null }] });
     });
     renderPage("/alice/guides/weekend");
-    if (kind === "unmatched") expect(await screen.findByRole("heading", { name: "Guide unavailable" })).toBeInTheDocument();
-    else {
+    if (kind === "unmatched") {
+      // A 404 means the guide does not exist or is not public: not-found, nothing to retry.
+      expect(await screen.findByRole("heading", { name: "Not found" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Back to Guides" })).toBeInTheDocument();
+    } else {
       expect(await screen.findByRole("heading", { name: "Guide unavailable" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Back to Guides" })).toBeInTheDocument();

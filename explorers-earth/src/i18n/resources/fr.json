@@ -420,7 +420,8 @@
         "primaryAddressRequired": "L'adresse principale est requise",
         "profileImageAlt": "Profile",
         "resetLinkSentSuccess": "Lien de réinitialisation envoyé avec succès!",
-        "stateRequired": "L'état est requis"
+        "stateRequired": "L'état est requis",
+        "postalCodeInvalid": "Saisissez un code postal valide (2 à 10 lettres, chiffres, espaces ou traits d'union)"
       },
       "password": {
         "considerLonger": "Considérez utiliser un mot de passe plus long avec plus de variété pour une meilleure sécurité",
@@ -497,7 +498,28 @@
         "willBeConvertedLowercase": "Le nom d'utilisateur sera converti en minuscules",
         "willConvertToLowercase": "Le nom d'utilisateur sera converti en minuscules"
       }
-    }
+    },
+    "brand": {
+      "tagline": "Chaque lieu nous relie"
+    },
+    "loginPage": {
+      "title2": "Content de vous revoir, explorateur.",
+      "sub2": "Votre carte est exactement là où vous l'avez laissée.",
+      "googleUnavailable": "La connexion avec Google est indisponible. Veuillez réessayer.",
+      "signOutUnavailable": "La déconnexion du serveur est toujours indisponible. Veuillez réessayer.",
+      "seoDescription": "Connectez-vous à votre compte explorers avec Google.",
+      "signOutIncomplete": "La déconnexion du serveur est incomplète. Réessayez de vous déconnecter avant d'utiliser ce compte.",
+      "cancelled": "La connexion avec Google a été annulée ou n'a pas pu aboutir. Veuillez réessayer.",
+      "retrySignOut": "Réessayer la déconnexion",
+      "recoverPrompt": "Besoin de restaurer un compte désactivé ?",
+      "recoverCta": "Récupérer avec Google"
+    },
+    "terms": {
+      "prefix": "En continuant, vous acceptez nos",
+      "terms": "Conditions",
+      "privacy": "Politique de confidentialité"
+    },
+    "secureSignIn": "Connexion sécurisée"
   },
   "common": {
     "cancel": "Annuler",
@@ -510,7 +532,8 @@
     "showPassword": "Afficher le mot de passe",
     "signInWithGoogle": "Se connecter avec Google",
     "signUpWithGoogle": "S'inscrire avec Google",
-    "submit": "Soumettre"
+    "submit": "Soumettre",
+    "and": "et"
   },
   "contact": {
     "closingMessage": "Nous sommes une petite équipe avec une grande vision — vos pensées nous importent. Contactez-nous et construisons quelque chose de local et global ensemble.",
@@ -893,7 +916,9 @@
         "video": "Vidéo",
         "viewPublicProfile": "Navigate to Public Profile",
         "visible": "Visible",
-        "whatsappNumber": "Numéro WhatsApp"
+        "whatsappNumber": "Numéro WhatsApp",
+        "removeProfileImage": "Supprimer la photo de profil",
+        "removeCoverImage": "Supprimer l'image de couverture"
       },
       "publicProfile": {
         "accountTypes": {
@@ -1292,7 +1317,12 @@
       "signUp": "S'inscrire",
       "claimFreePage": "Réclamez une page gratuite",
       "claimFree": "Réclamation gratuite"
-    }
+    },
+    "profileImageAlt": "Photo de profil",
+    "user": "Utilisateur",
+    "accountSettings": "Paramètres du compte",
+    "login": "Connexion",
+    "register": "S'inscrire"
   },
   "hero": {
     "headline": "Toutes vos recommandations - un lien, un QR",
@@ -1301,12 +1331,12 @@
     "inputPlaceholder": "votre nom",
     "ctaButton": "Réclamez votre page Explorer",
     "signupPrompt": "Inscrivez-vous pour obtenir le vôtre maintenant",
-    "headlinePrefix": "Tout votre",
+    "headlinePrefix": "Toutes vos",
     "rotatingWords": [
       "recommandations",
-      "curations",
+      "sélections",
       "collections",
-      "favoris"
+      "favorites"
     ],
     "headlineSuffix": "en un seul lien et QR.",
     "badge": "Libre pour toujours",
@@ -1384,7 +1414,9 @@
       "profileLabel": "Profil :",
       "title": "Confirmation de changement de nom d'utilisateur",
       "warning": "Tous les codes QR ou liens avec votre ancien nom d'utilisateur ne fonctionneront plus — vous devrez les mettre à jour et les partager à nouveau."
-    }
+    },
+    "dialog": "Boîte de dialogue",
+    "close": "Fermer la boîte de dialogue"
   },
   "reactivateAccount": {
     "backToLogin": "Back to Login",
@@ -1886,11 +1918,15 @@
       "deleteAccount": {
         "button": "Supprimer le compte",
         "description": "Supprimez définitivement votre compte et toutes les données",
+        "pending": {
+          "scheduled": "Votre compte sera définitivement supprimé le {{date}}. Connectez-vous avec Google avant cette date pour annuler la suppression."
+        },
         "step1": {
           "continueButton": "Continuer la suppression",
           "deactivateInsteadButton": "Désactiver le compte à la place",
           "modalDescription": "Êtes-vous sûr de vouloir supprimer votre compte ? Cette action ne peut pas être annulée.",
           "modalDescription2": "Si vous souhaitez conserver vos données, vous pouvez plutôt désactiver votre compte.",
+          "modalDescriptionGrace": "Votre compte sera masqué immédiatement et définitivement supprimé après 30 jours. Vous pouvez le récupérer avant en vous connectant avec Google.",
           "modalTitle": "Supprimer votre compte ?"
         },
         "step2": {
@@ -1906,7 +1942,8 @@
         "step3": {
           "continueButton": "Continuer",
           "modalTitle": "Pourquoi partez-vous ?",
-          "reasonPlaceholder": "Veuillez nous faire savoir la raison de votre départ..."
+          "reasonPlaceholder": "Veuillez nous faire savoir la raison de votre départ...",
+          "reasonTooLong": "Votre motif est trop long. Veuillez utiliser 2 000 caractères au maximum."
         },
         "step4": {
           "confirmationRequired": "Veuillez taper 'CONFIRM DELETE' pour confirmer.",
@@ -1920,6 +1957,7 @@
         },
         "text": "Supprimer votre compte ?"
       },
+      "handleMismatch": "L'identifiant saisi ne correspond pas à celui de votre compte.",
       "heading": "Compte",
       "security": {
         "title": "Account & Security"
@@ -1951,7 +1989,10 @@
     "places": "Places",
     "profile": "Profil",
     "recommendations": "Recommandations",
-    "settings": "Paramètres"
+    "settings": "Paramètres",
+    "accountImageAlt": "Compte",
+    "account": "Compte",
+    "viewPublicProfile": "Voir le profil public"
   },
   "toast": {
     "error": {
@@ -2172,7 +2213,9 @@
       "usernameTooShort": "Le nom d'utilisateur est trop court. Veuillez choisir un nom d'utilisateur plus long.",
       "usernameUpdateFailed": "Échec de la mise à jour du nom d'utilisateur. Veuillez réessayer.",
       "validationError": "Erreur de validation. Veuillez vérifier votre saisie.",
-      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!"
+      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!",
+      "profileImageRemoveFailed": "Impossible de supprimer la photo de profil. Veuillez réessayer.",
+      "backgroundImageRemoveFailed": "Impossible de supprimer l'image de couverture. Veuillez réessayer."
     },
     "info": {
       "aborting": "Abandon...",
@@ -2304,7 +2347,9 @@
       "uploadingImagesToFeed": "Uploading selected images to your feed...",
       "usernameChanged": "Nom d'utilisateur modifié avec succès!",
       "usernameUpdated": "Nom d'utilisateur mis à jour avec succès!",
-      "welcomeMessage": "Bienvenue sur explorers!"
+      "welcomeMessage": "Bienvenue sur explorers!",
+      "profileImageRemoved": "Photo de profil supprimée.",
+      "backgroundImageRemoved": "Image de couverture supprimée."
     },
     "warning": {
       "accountExpiring": "Le compte expire. Veuillez mettre à jour votre compte",
@@ -2355,7 +2400,8 @@
       "usernameCooldownUnknown": "You can change your username now",
       "usernameExpiring": "Le nom d'utilisateur expire. Veuillez mettre à jour votre nom d'utilisateur",
       "usernameNotChanged": "Le nom d'utilisateur n'est pas changé. Veuillez changer votre nom d'utilisateur",
-      "validationPending": "La validation est en attente. Veuillez patienter"
+      "validationPending": "La validation est en attente. Veuillez patienter",
+      "usernameCooldownUntil": "Vous pourrez modifier à nouveau votre nom d'utilisateur le {{date}}."
     }
   },
   "usernameClaim": {
@@ -2397,7 +2443,17 @@
       "regionLabel": "Recommendations",
       "retry": "Try again",
       "retrying": "Retrying…"
-    }
+    },
+    "unavailable": "Profil indisponible",
+    "notFound": "Profil introuvable",
+    "notFoundText": "Ce profil utilisateur n'est pas disponible.",
+    "partialData": "Certaines données du profil sont indisponibles.",
+    "sections": "Sections du profil",
+    "gallery": "Galerie",
+    "businessDetails": "Informations professionnelles",
+    "noPhotosTitle": "Aucune photo pour le moment",
+    "noPhotosText": "Cet utilisateur n'a pas encore partagé de photos. Revenez plus tard !",
+    "visitWebsite": "Visiter le site web"
   },
   "useCases": {
     "cta": {
@@ -2476,5 +2532,25 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "conflict": {
+    "changedElsewhere": "Cet élément a été modifié dans un autre onglet ou sur un autre appareil. Rechargez pour voir la dernière version.",
+    "reload": "Recharger"
+  },
+  "recovery": {
+    "pendingDeletion": {
+      "cancelButton": "Annuler la suppression",
+      "scheduled": "La suppression de votre compte est prévue le {{date}}. Annulez la suppression pour retrouver l'accès.",
+      "scheduledUnknown": "La suppression de votre compte est programmée. Annulez la suppression pour retrouver l'accès.",
+      "title": "Annuler la suppression du compte"
+    },
+    "scheduledForDeletion": "La suppression de votre compte est prévue le {{date}}. Continuez avec Google pour annuler la suppression."
+  },
+  "home": {
+    "shareProfile": "Partager le profil"
+  },
+  "imageCropper": {
+    "success": "Image recadrée avec succès",
+    "error": "Erreur lors du recadrage de l'image"
   }
 }

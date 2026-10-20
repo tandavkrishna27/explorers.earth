@@ -1,5 +1,6 @@
 import useAuthStore from "../store/store";
-import { adoptAccountLocale } from "./accountLocale";
+import i18n from "i18next";
+import { adoptAccountLocale, persistAccountLocale } from "./accountLocale";
 
 type AuthSession = { user?: { id?: string; email?: string }; session?: { id?: string } } | null;
 type CanonicalAccount = { id: string; handle: string | null; onboardingStatus: "incomplete" | "complete"; revision: number; locale?: string };
@@ -27,7 +28,14 @@ export const authClient = {
       }
       const accountResponse = await fetch("/api/explorers/v1/me", { credentials: "include", cache: "no-store" });
       if (accountResponse.status === 401) { useAuthStore.getState().verificationFailed(generation, "signed-out"); return; }
-      if (accountResponse.status === 403) { useAuthStore.getState().verificationFailed(generation, "terminal"); return; }
+      if (accountResponse.status === 403) {
+        // A pending deletion's own session is told when it becomes final, so recovery can say so.
+        const refusal = await jsonOrNull(accountResponse) as { lifecycle?: { status?: string; scheduledDeletionAt?: unknown } } | null;
+        const scheduled = refusal?.lifecycle?.status === "pending_deletion" && typeof refusal.lifecycle.scheduledDeletionAt === "string"
+          ? refusal.lifecycle.scheduledDeletionAt : null;
+        useAuthStore.getState().verificationFailed(generation, "terminal", scheduled);
+        return;
+      }
       if (!accountResponse.ok) throw new Error("Account service is unavailable");
       const body = await jsonOrNull(accountResponse) as { account?: CanonicalAccount } | null;
       if (useAuthStore.getState().generation !== generation) return;
@@ -37,7 +45,10 @@ export const authClient = {
         id: account.id, userId: session.user.id, username: account.handle ?? "", email: session.user.email ?? "",
         onboardingStatus: account.onboardingStatus, revision: account.revision,
       });
-      void adoptAccountLocale(account.locale).catch(() => undefined);
+      // A never-onboarded account has only the column default, so it keeps the language the
+      // visitor signed up in (and saves it); an onboarded account applies its saved locale.
+      if (account.onboardingStatus === "incomplete") void persistAccountLocale(i18n.language).catch(() => undefined);
+      else void adoptAccountLocale(account.locale).catch(() => undefined);
     } catch { useAuthStore.getState().verificationFailed(generation, "error"); }
   },
   async startGoogleSignIn(recovery = false): Promise<void> {

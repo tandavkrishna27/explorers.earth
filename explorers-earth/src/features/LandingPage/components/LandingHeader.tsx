@@ -7,6 +7,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../../store/store';
 import LanguageModal from '../../../components/LanguageModal';
 import useMarketingHashNavigation from '../hooks/useMarketingHashNavigation';
+import { rememberSignedOutLocale } from '../../../lib/accountLocale';
 
 export default function LandingHeader() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -114,6 +115,7 @@ export default function LandingHeader() {
   // Handle language change
   const handleLanguageChange = (languageCode: string) => {
     i18n.changeLanguage(languageCode);
+    rememberSignedOutLocale(languageCode);
   };
 
   const hasSolidHeader = isScrolled || isNonHomePage || isMobileMenuOpen;

@@ -53,7 +53,7 @@
         "MUSIC_RUNTIME_DATABASE_PASSWORD_FILE": "/run/secrets/runtime",
         "MUSIC_IMAGE_DIGEST": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "MUSIC_IMAGE_COMMIT": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-        "MUSIC_MIGRATION_MARKER": "0061_explorers_product_spec_order_budget_scale",
+        "MUSIC_MIGRATION_MARKER": "0062_explorers_handle_holds",
         "MUSIC_GATE_ATTESTATION_KEY": "synthetic-only-not-a-release-key-123456789",
         "MUSIC_GATE_ATTESTATION_PATH": "/deployment-gates/gate.json"
       },

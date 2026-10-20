@@ -1886,11 +1886,15 @@
       "deleteAccount": {
         "button": "删除账户",
         "description": "永久删除您的账户和所有数据",
+        "pending": {
+          "scheduled": "你的账户将于 {{date}} 被永久删除。请在此之前使用 Google 登录以取消删除。"
+        },
         "step1": {
           "continueButton": "继续删除",
           "deactivateInsteadButton": "选择停用账户",
           "modalDescription": "您确定要删除您的账户吗？此操作无法撤销。",
           "modalDescription2": "如果您想保留数据，可以选择停用账户。",
+          "modalDescriptionGrace": "你的账户将立即被隐藏，并在 30 天后被永久删除。在此之前，你可以使用 Google 登录来恢复账户。",
           "modalTitle": "删除您的账户？"
         },
         "step2": {
@@ -1906,7 +1910,8 @@
         "step3": {
           "continueButton": "继续",
           "modalTitle": "您为什么要离开？",
-          "reasonPlaceholder": "请告诉我们您离开的原因..."
+          "reasonPlaceholder": "请告诉我们您离开的原因...",
+          "reasonTooLong": "原因过长，请不要超过 2,000 个字符。"
         },
         "step4": {
           "confirmationRequired": "请输入 'CONFIRM DELETE' 以确认。",
@@ -1920,6 +1925,7 @@
         },
         "text": "删除您的账户？"
       },
+      "handleMismatch": "你输入的用户名与账户的用户名不一致。",
       "heading": "账户",
       "security": {
         "title": "账户和安全"
@@ -2476,5 +2482,14 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "recovery": {
+    "pendingDeletion": {
+      "cancelButton": "取消删除",
+      "scheduled": "你的账户计划于 {{date}} 删除。取消删除即可恢复访问。",
+      "scheduledUnknown": "你的账户已计划删除。取消删除即可恢复访问。",
+      "title": "取消账户删除"
+    },
+    "scheduledForDeletion": "你的账户计划于 {{date}} 删除。请使用 Google 继续以取消删除。"
   }
 }

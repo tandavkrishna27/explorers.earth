@@ -1,3 +1,5 @@
+import { buildOnboardingAccountUpdate } from "./onboardingPayload";
+import { isValidPostalCode } from "../../../tunes/shared/explorersContract";
 import { mapsBrowserKey } from "../lib/publicRuntimeConfig";
 import AuthForm from "../features/Authentication/components/AuthForm";
 import {
@@ -7,7 +9,7 @@ import {
 import useAuthStore from "../store/store";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { lazy, Suspense, useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import Button from "../components/ui/Button";
 import * as Yup from "yup";
@@ -31,7 +33,7 @@ import { useUserForOnboarding } from "../features/Authentication/hooks/useCurren
 import { EarthLoader } from "../components/EarthLoader";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { LogOut, ArrowLeft } from "lucide-react";
-import GlobeCanvas from "../components/auth/GlobeCanvas";
+const GlobeCanvas = lazy(() => import("../components/auth/GlobeCanvas"));
 import OnboardingProgress from "../components/onboarding/OnboardingProgress";
 import {
   createFinalizeLock,
@@ -227,7 +229,8 @@ const contactValidationSchema = (t: any) =>
       ),
   });
 
-const addressValidationSchema = (t: any) =>
+// An untouched stored postal code is never re-judged against the format (only a new value is).
+const addressValidationSchema = (t: any, storedPostalCode?: string) =>
   Yup.object({
     address: Yup.string().required(
       t("auth.validations.onboarding.addressRequired")
@@ -243,9 +246,10 @@ const addressValidationSchema = (t: any) =>
     state: Yup.string().required(
       t("auth.validations.onboarding.stateRequired")
     ),
-    postalCode: Yup.string().required(
-      t("auth.validations.onboarding.postalCodeRequired")
-    ),
+    postalCode: Yup.string()
+      .trim()
+      .required(t("auth.validations.onboarding.postalCodeRequired"))
+      .test("postal-code-format", t("auth.validations.onboarding.postalCodeInvalid"), (value) => isValidPostalCode(value) || (!!storedPostalCode && (value ?? "").trim() === storedPostalCode.trim())),
   });
 
 /**
@@ -703,19 +707,8 @@ const OnBoarding = () => {
         if (profile) uploaded.push(profile.id);
         const background = tempBackgroundImage ? await explorersApiClient.createMedia(tempBackgroundImage, "background") : null;
         if (background) uploaded.push(background.id);
-        const type = String(currentFormData.accountType).toLowerCase();
-        await explorersApiClient.updateAccount({ expectedRevision: current.revision,
-          handle: currentFormData.username.trim().toLowerCase(), displayName: currentFormData.accountName.trim(),
-          accountType: type.includes("business") ? "Business" : type.includes("creator") ? "Creator" : "Personal",
-          bioPlain: currentFormData.bio?.trim() || null,
-          mobileNumber: currentFormData.mobile_number?.trim() || null,
-          primaryAddress: currentFormData.primaryAddress ? { address: currentFormData.primaryAddress } : null,
-          additionalAddresses: [{ address: currentFormData.address || "", city: currentFormData.city || "",
-            country: currentFormData.country || "", state: currentFormData.state || "", streetName: currentFormData.streetName || "" }],
-          ...(profile ? { profileImageId: profile.id } : {}),
-          ...(background ? { backgroundImageId: background.id } : {}),
-          onboardingStatus: "complete",
-        });
+        await explorersApiClient.updateAccount(buildOnboardingAccountUpdate(currentFormData, current.revision, {
+          profileImageId: profile?.id, backgroundImageId: background?.id }));
         await refetch();
         const onboardingKey = `onboarding_${current.id}`;
         localStorage.setItem(onboardingKey, JSON.stringify({ status: "completed", timestamp: Date.now() }));
@@ -740,7 +733,7 @@ const OnBoarding = () => {
   const handleFinalizeAddress = async () => {
     if (isSubmitting || hasSubmitted || isFinalizing) return;
     try {
-      await addressValidationSchema(t).validate(formData, { abortEarly: false });
+      await addressValidationSchema(t, canonicalAccount.data?.additionalAddresses?.[0]?.postalCode).validate(formData, { abortEarly: false });
       await saveOnboardingAccount(formData);
     } catch (error) {
       if (error instanceof Yup.ValidationError) {
@@ -770,7 +763,7 @@ const OnBoarding = () => {
         title: t('auth.onboarding.addressDetails.title'),
         fields: getAddressFields(t),
         description: t('auth.onboarding.addressDetails.description'),
-        validationSchema: addressValidationSchema(t),
+        validationSchema: addressValidationSchema(t, canonicalAccount.data?.additionalAddresses?.[0]?.postalCode),
       },
     ];
 
@@ -1011,7 +1004,7 @@ const OnBoarding = () => {
   return (
     <div className="ob-scene dashboard-theme dashboard-theme-dark">
       {/* Earthrise scene — shared with the auth screens for a continuous journey */}
-      <GlobeCanvas />
+      <Suspense fallback={null}><GlobeCanvas /></Suspense>
       <div className="ob-vignette" />
       <div className="ob-card ob-frame relative w-full max-w-md sm:max-w-md md:max-w-lg lg:max-w-2xl flex flex-col">
         {/* Header (fixed) — controls row (back / log out) + slim progress.

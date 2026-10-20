@@ -23,11 +23,11 @@ describe('manual Games public presentation', () => {
   expect(screen.getByTestId('root-hero')).toHaveTextContent('Manual game:selected-list');
  });
  it('renders native uploaded snapshots and note without a fabricated IGDB URL or identity', () => {
-  const view = render(<GameDetailModal game={game('selected-list')} open onClose={vi.fn()} />);
+  render(<GameDetailModal game={game('selected-list')} open onClose={vi.fn()} />);
   expect(screen.getAllByText('Retained note').length).toBeGreaterThan(0);
-  expect([...view.container.querySelectorAll('img')].some(image => image.getAttribute('src') === '/api/explorers/v1/media/33333333-3333-4333-8333-333333333333/content')).toBe(true);
-  expect(view.container.innerHTML).not.toContain('images.igdb.com');
-  expect(view.container.innerHTML).not.toContain('IGDB');
+  expect([...document.body.querySelectorAll('img')].some(image => image.getAttribute('src') === '/api/explorers/v1/media/33333333-3333-4333-8333-333333333333/content')).toBe(true);
+  expect(document.body.innerHTML).not.toContain('images.igdb.com');
+  expect(document.body.innerHTML).not.toContain('IGDB');
  });
  it('keeps a clickable titled fallback after an admitted media image fails', () => {
   const clicked = vi.fn(); render(<GameCoverCard title="Unavailable snapshot" coverUrl="/api/explorers/v1/media/11111111-1111-4111-8111-111111111111/content" onClick={clicked} />);
