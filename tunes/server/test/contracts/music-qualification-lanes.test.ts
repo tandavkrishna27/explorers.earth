@@ -288,6 +288,44 @@ describe("exact container absence proof", () => {
   ("rejects %s", (_name, result, id) => {
     expect(() => requireAbsence(result, id)).toThrow(id === "short-id" ? "exact container ID required" : "container absence not proven");
   });
+
+  const inspected = (state: { Status: string; Running: boolean }, autoRemove = true, id = containerId): AbsenceResult => ({
+    status: 0,
+    signal: null,
+    stdout: JSON.stringify([{ Id: id, State: state, HostConfig: { AutoRemove: autoRemove } }]),
+    stderr: "",
+  });
+  const notFound: AbsenceResult = { status: 1, signal: null, stdout: "[]", stderr: `Error: No such container: ${containerId}` };
+  const sequence = (...results: AbsenceResult[]) => {
+    let calls = 0;
+    const inspect = () => results[Math.min(calls++, results.length - 1)];
+    return { inspect, calls: () => calls };
+  };
+
+  it("waits for Docker to finish removing a stopped --rm container", async () => {
+    const removing = inspected({ Status: "removing", Running: false });
+    const docker = sequence(removing, removing, notFound);
+    await expect(musicQualification.awaitExactContainerAbsent(docker.inspect, containerId, { intervalMs: 1 })).resolves.toBeUndefined();
+    expect(docker.calls()).toBe(3);
+  });
+
+  it("fails when an --rm container is still being removed at the deadline", async () => {
+    const docker = sequence(inspected({ Status: "removing", Running: false }));
+    await expect(musicQualification.awaitExactContainerAbsent(docker.inspect, containerId, { timeoutMs: 20, intervalMs: 1 }))
+      .rejects.toThrow("container absence not proven");
+  });
+
+  it.each([
+    ["a running container", inspected({ Status: "running", Running: true })],
+    ["a stopped container without AutoRemove", inspected({ Status: "exited", Running: false }, false)],
+    ["a removing container with another ID", inspected({ Status: "removing", Running: false }, true, otherContainerId)],
+    ["a Docker error", { status: 1, signal: null, stdout: "", stderr: "permission denied while trying to connect to the Docker daemon socket" }],
+  ] satisfies Array<[string, AbsenceResult]>)("does not wait for %s", async (_name, result) => {
+    const docker = sequence(result, notFound);
+    await expect(musicQualification.awaitExactContainerAbsent(docker.inspect, containerId, { intervalMs: 1 }))
+      .rejects.toThrow("container absence not proven");
+    expect(docker.calls()).toBe(1);
+  });
 });
 
 describe("portable Music qualification lanes", () => {

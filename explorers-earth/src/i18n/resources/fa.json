@@ -502,6 +502,7 @@
   "common": {
     "cancel": "لغو",
     "error": "An error occurred. Please try again later.",
+    "free": "رایگان",
     "hidePassword": "Hide password",
     "loading": "Loading...",
     "noResults": "No results found",

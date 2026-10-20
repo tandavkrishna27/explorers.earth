@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePlacesOwner } from '../../../Favorites/hooks/usePlacesOwner';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { PublicPageAnalyticsData } from '../../api/queries';
 import { useResponsiveChart } from '../../../../hooks/useResponsiveChart';
 import EmptyState from '../EmptyState';
+import { buildListNameMap } from '../../utils/listNames';
 
 interface RecommendedPlacesChartProps {
   rawAnalyticsData: PublicPageAnalyticsData[];
@@ -42,6 +44,7 @@ const RecommendedPlacesChart: React.FC<RecommendedPlacesChartProps> = ({ rawAnal
   // Ticket 5.1. recommendationLists is the Places category, and usePlacesOwner already
   // returns exactly that key - the same swap Home needed.
   const { data: recommendationListsData } = usePlacesOwner();
+  const { t } = useTranslation();
 
   // Create a map of Location_Id to List_Name for quick lookup
   const locationIdToNameMap = useMemo(() => {
@@ -69,6 +72,12 @@ const RecommendedPlacesChart: React.FC<RecommendedPlacesChartProps> = ({ rawAnal
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Names for list ids: Places lists from the owner read, any other category from click events.
+  const listNames = useMemo(
+    () => buildListNameMap(rawAnalyticsData, locationIdToNameMap),
+    [rawAnalyticsData, locationIdToNameMap],
+  );
 
   // Process recommendation data from raw analytics data
   const recommendationData = useMemo(() => {
@@ -98,10 +107,10 @@ const RecommendedPlacesChart: React.FC<RecommendedPlacesChartProps> = ({ rawAnal
         const category = event.metadata?.category || 'Unknown Category';
         
         // Extract location name with improved logic
-        let locationName = 'Unknown Location';
+        let locationName = '';
         
         // 1. First try to get from database lookup using Location_Id
-        const dbLocationName = locationIdToNameMap.get(analyticsRecord.Location_Id);
+        const dbLocationName = listNames.get(analyticsRecord.Location_Id);
         if (dbLocationName) {
           locationName = dbLocationName;
         }
@@ -117,6 +126,8 @@ const RecommendedPlacesChart: React.FC<RecommendedPlacesChartProps> = ({ rawAnal
           }
         }
         
+        if (!locationName) locationName = t('analytics.dashboard.untitledList');
+
         const existing = recommendationMap.get(recommendationId);
         if (existing) {
           existing.clickCount += 1;
@@ -134,7 +145,7 @@ const RecommendedPlacesChart: React.FC<RecommendedPlacesChartProps> = ({ rawAnal
     });
 
     return Array.from(recommendationMap.values());
-  }, [rawAnalyticsData, locationIdToNameMap]);
+  }, [rawAnalyticsData, listNames, t]);
 
   // Get unique locations with recommendation counts
   const locationData = useMemo(() => {

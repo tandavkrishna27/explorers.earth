@@ -523,6 +523,7 @@
   "common": {
     "cancel": "Cancelar",
     "error": "Ocorreu um erro. Por favor, tente novamente mais tarde.",
+    "free": "Grátis",
     "hidePassword": "Ocultar senha",
     "loading": "Carregando...",
     "noResults": "Nenhum resultado encontrado",

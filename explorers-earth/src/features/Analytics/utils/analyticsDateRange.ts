@@ -79,3 +79,22 @@ export function getAnalyticsDateRange(
   startDate.setDate(startDate.getDate() - daysBack);
   return toRange(startDate, today);
 }
+
+export type CustomRangeIssue = 'incomplete' | 'endBeforeStart' | 'tooLong';
+
+/**
+ * Why a custom range cannot be queried, or null when it can (or the filter is not custom).
+ * Kept apart from getAnalyticsDateRange so the UI can say the right thing: an inverted
+ * range is not a "too long" range.
+ */
+export function getCustomRangeIssue(filter: AnalyticsTimeFilter): CustomRangeIssue | null {
+  if (filter.type !== 'custom') return null;
+  if (!filter.startDate || !filter.endDate) return 'incomplete';
+  const startDate = parseLocalDateInput(filter.startDate);
+  const endDate = parseLocalDateInput(filter.endDate);
+  if (!startDate || !endDate) return 'incomplete';
+  const inclusiveDays = inclusiveCalendarDays(startDate, endDate);
+  if (inclusiveDays < 1) return 'endBeforeStart';
+  if (inclusiveDays > MAX_ANALYTICS_CALENDAR_DAYS) return 'tooLong';
+  return null;
+}

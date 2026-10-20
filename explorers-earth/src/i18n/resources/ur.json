@@ -502,6 +502,7 @@
   "common": {
     "cancel": "منسوخ کریں",
     "error": "An error occurred. Please try again later.",
+    "free": "مفت",
     "hidePassword": "Hide password",
     "loading": "Loading...",
     "noResults": "No results found",

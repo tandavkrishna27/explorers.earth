@@ -502,6 +502,7 @@
   "common": {
     "cancel": "Откажи",
     "error": "An error occurred. Please try again later.",
+    "free": "Бесплатно",
     "hidePassword": "Hide password",
     "loading": "Loading...",
     "noResults": "No results found",

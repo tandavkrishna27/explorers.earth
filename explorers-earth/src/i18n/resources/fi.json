@@ -502,6 +502,7 @@
   "common": {
     "cancel": "Peruuta",
     "error": "Tapahtui virhe. Yritä myöhemmin uudelleen.",
+    "free": "Ilmainen",
     "hidePassword": "Piilota salasana",
     "loading": "Ladataan...",
     "noResults": "Tuloksia ei löytynyt",

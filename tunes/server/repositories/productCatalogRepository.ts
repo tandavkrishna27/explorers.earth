@@ -1,5 +1,5 @@
 import type {Pool,PoolClient} from 'pg';
-import {productEntityDtoSchema,productEntityDetailsSchema,productOfferSchema,canonicalAmount,currencyCodeSchema,
+import {productEntityDtoSchema,productEntityDetailsSchema,productOfferSchema,productOfferWriteSchema,canonicalAmount,
  emptyProductOffer,type ProductEntityDetails,type ProductOffer} from '../../shared/explorersProductContract';
 import {RecommendationFailure} from './explorersRecommendationRepository';
 
@@ -41,7 +41,7 @@ export async function readProductOffer(db:Pick<Pool,'query'>,recommendationId:st
   'SELECT price::text AS price,currency_code,buy_url FROM product_recommendation_context WHERE recommendation_id=$1 AND account_id=$2',
   [recommendationId,accountId])).rows[0];
  if(!row)return emptyProductOffer();
- const currencyCode=row.currency_code===null?null:currencyCodeSchema.parse(row.currency_code);
+ const currencyCode=row.currency_code;
  return productOfferSchema.parse({
   // Zero survives as zero: only null means unknown, and "0.000000" is not null.
   price:row.price===null?null:canonicalAmount(row.price,currencyCode),
@@ -55,8 +55,8 @@ export async function readProductOffer(db:Pick<Pool,'query'>,recommendationId:st
  * only ever affect the one recommendation named.
  */
 export async function writeProductOffer(db:PoolClient,recommendationId:string,accountId:string,offer:ProductOffer){
- const parsed=productOfferSchema.safeParse(offer);
- if(!parsed.success)throw new RecommendationFailure(422,'Invalid product offer');
+ const parsed=productOfferWriteSchema.safeParse(offer);
+ if(!parsed.success)throw new RecommendationFailure(422,parsed.error.issues[0]?.message??'Invalid product offer');
  const value=parsed.data;
  await db.query(`INSERT INTO product_recommendation_context(recommendation_id,account_id,price,currency_code,buy_url)
    VALUES($1,$2,$3::numeric,$4,$5)

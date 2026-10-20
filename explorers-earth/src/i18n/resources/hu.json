@@ -502,6 +502,7 @@
   "common": {
     "cancel": "Mégse",
     "error": "An error occurred. Please try again later.",
+    "free": "Ingyenes",
     "hidePassword": "Hide password",
     "loading": "Loading...",
     "noResults": "No results found",

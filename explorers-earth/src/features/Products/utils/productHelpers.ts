@@ -30,24 +30,6 @@ export function slugToCategoryName(slug: string): string {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Format price with currency
-// ─────────────────────────────────────────────────────────────
-export function formatPrice(price: number | null | undefined, currency: string | null | undefined): string {
-  if (price === null || price === undefined) return "";
-  const curr = currency || "USD";
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: curr,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    }).format(price);
-  } catch {
-    return `${curr} ${price.toFixed(2)}`;
-  }
-}
-
-// ─────────────────────────────────────────────────────────────
 // Format rating (1-10 integer)
 // ─────────────────────────────────────────────────────────────
 export function formatRating(rating: number | null | undefined): string {

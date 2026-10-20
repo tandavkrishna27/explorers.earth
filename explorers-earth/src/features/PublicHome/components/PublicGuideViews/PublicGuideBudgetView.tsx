@@ -2,6 +2,19 @@ import { memo, useMemo, useState } from "react";
 import { parseBudget } from "../../../Guides/utils/guideDataParser";
 import { getBudgetDisplayText } from "../../../Guides/utils/priceLevelUtils";
 import BudgetIcon from "../../../../assets/icons/BudgetIcon";
+import { useFormatMoney } from "../../../../lib/money";
+import { isKnownCurrency } from "../../../../../../tunes/shared/currency";
+
+// Free text a guide author typed ("500 INR", "EUR 20-30"). Only an ISO code names a
+// currency; a bare symbol does not ("$" and "¥" each stand for several), so a symbol-only
+// amount is left without a currency instead of being guessed.
+const SYMBOL_CURRENCY: Record<string, string> = { "₹": "INR", "€": "EUR", "£": "GBP" };
+const sniffCurrency = (text: string): string | null => {
+  const code = (text.toUpperCase().match(/\b[A-Z]{3}\b/g) ?? []).find(isKnownCurrency);
+  if (code) return code;
+  const symbol = text.match(/[₹€£]/);
+  return symbol ? SYMBOL_CURRENCY[symbol[0]] : null;
+};
 
 interface PublicGuideBudgetViewProps {
   guide: any;
@@ -10,6 +23,7 @@ interface PublicGuideBudgetViewProps {
 }
 
 const PublicGuideBudgetView = memo(({ guide, sections, selectedDay: externalSelectedDay }: PublicGuideBudgetViewProps) => {
+  const formatMoney = useFormatMoney();
   const [internalSelectedDay] = useState<string>("overview");
   const selectedDay = externalSelectedDay !== undefined ? externalSelectedDay : internalSelectedDay;
 
@@ -28,7 +42,7 @@ const PublicGuideBudgetView = memo(({ guide, sections, selectedDay: externalSele
     // Helper function to extract numeric amount from budget place
     const extractNumericAmount = (place: any): { amount: number | null; currency: string | null } => {
       // Priority 1: budgetAmount (new format with currency)
-      if (place.budgetAmount !== undefined && place.budgetAmount > 0 && place.budgetCurrency) {
+      if (place.budgetAmount !== undefined && place.budgetCurrency) {
         return { amount: place.budgetAmount, currency: place.budgetCurrency };
       }
 
@@ -38,10 +52,7 @@ const PublicGuideBudgetView = memo(({ guide, sections, selectedDay: externalSele
         const match = place.customBudget.match(/(\d+(?:\.\d+)?)/);
         if (match) {
           const amount = parseFloat(match[1]);
-          // Try to extract currency symbol or code
-          const currencyMatch = place.customBudget.match(/[₹$€£¥]|(?:USD|EUR|INR|GBP|JPY|CAD|AUD)/i);
-          const currency = currencyMatch ? currencyMatch[0].toUpperCase() : null;
-          return { amount, currency };
+          return { amount, currency: sniffCurrency(place.customBudget) };
         }
       }
 
@@ -55,10 +66,7 @@ const PublicGuideBudgetView = memo(({ guide, sections, selectedDay: externalSele
           const amount = amounts.length > 1 
             ? (amounts[0] + amounts[amounts.length - 1]) / 2 
             : amounts[0];
-          // Try to extract currency
-          const currencyMatch = place.priceRange.match(/[₹$€£¥]|(?:USD|EUR|INR|GBP|JPY|CAD|AUD)/i);
-          const currency = currencyMatch ? currencyMatch[0].toUpperCase() : null;
-          return { amount, currency };
+          return { amount, currency: sniffCurrency(place.priceRange) };
         }
       }
 
@@ -122,7 +130,7 @@ const PublicGuideBudgetView = memo(({ guide, sections, selectedDay: externalSele
       // - priceLevel only (which returns vague terms like "Expensive")
       // - customBudget with vague text only (no numbers)
       // - priceRange with no numbers
-      if (item.numericAmount === null || item.numericAmount <= 0) {
+      if (item.numericAmount === null || item.numericAmount < 0) {
         return false;
       }
 
@@ -131,7 +139,8 @@ const PublicGuideBudgetView = memo(({ guide, sections, selectedDay: externalSele
       const priceDisplay = item.priceDisplay || "";
       const hasNumbers = /\d/.test(priceDisplay);
       
-      if (!hasNumbers) {
+      // A zero amount is shown as the word Free, which has no digits.
+      if (!hasNumbers && item.numericAmount !== 0) {
         return false;
       }
 
@@ -150,7 +159,7 @@ const PublicGuideBudgetView = memo(({ guide, sections, selectedDay: externalSele
     const amountsByCurrency = new Map<string, number>();
 
     displayedItems.forEach((item) => {
-      if (item.numericAmount !== null && item.numericAmount > 0) {
+      if (item.numericAmount !== null && item.numericAmount >= 0) {
         const currency = item.currency || "UNKNOWN";
         const current = amountsByCurrency.get(currency) || 0;
         amountsByCurrency.set(currency, current + item.numericAmount);
@@ -184,17 +193,16 @@ const PublicGuideBudgetView = memo(({ guide, sections, selectedDay: externalSele
   return (
     <div className="space-y-6 sm:space-y-8">
       {/* Estimated Budget Banner */}
-      {guide.Estimated_Budget &&
-        (guide.Estimated_Budget.currency || guide.Estimated_Budget.amount) && (
-          <div className="bg-green-500/10 px-3 sm:px-4 py-2 sm:py-3 rounded-lg border border-green-400/30">
-            <p className="text-[10px] sm:text-xs text-green-400/70 font-poppins font-medium mb-0.5 sm:mb-1">
-              Estimated Budget
-            </p>
-            <p className="text-sm sm:text-base md:text-lg text-green-400 font-poppins font-bold">
-              {guide.Estimated_Budget.currency} {guide.Estimated_Budget.amount}
-            </p>
-          </div>
-        )}
+      {guide.Estimated_Budget != null && (
+        <div className="bg-green-500/10 px-3 sm:px-4 py-2 sm:py-3 rounded-lg border border-green-400/30">
+          <p className="text-[10px] sm:text-xs text-green-400/70 font-poppins font-medium mb-0.5 sm:mb-1">
+            Estimated Budget
+          </p>
+          <p className="text-sm sm:text-base md:text-lg text-green-400 font-poppins font-bold">
+            {formatMoney(guide.Estimated_Budget, guide.Estimated_Budget_Currency)}
+          </p>
+        </div>
+      )}
 
       {/* Budget Table */}
       <div className="bg-[var(--category-card,#111827)] rounded-lg border border-[var(--category-control-border,#374151)] overflow-hidden">
@@ -286,38 +294,9 @@ const PublicGuideBudgetView = memo(({ guide, sections, selectedDay: externalSele
                     <div className="text-right">
                       <div className="flex flex-col items-end gap-1">
                         {totalBudget.map((total, idx) => {
-                          // Format amount with currency
-                          let formattedAmount: string;
-                          if (total.currency && total.currency !== "UNKNOWN") {
-                            try {
-                              // Try to format with Intl.NumberFormat if currency code is valid
-                              const currencyCode = total.currency.length === 3 ? total.currency : null;
-                              if (currencyCode) {
-                                formattedAmount = new Intl.NumberFormat("en-US", {
-                                  style: "currency",
-                                  currency: currencyCode,
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                }).format(total.amount);
-                              } else {
-                                // Use currency symbol directly
-                                formattedAmount = `${total.currency}${total.amount.toLocaleString("en-US", {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })}`;
-                              }
-                            } catch {
-                              formattedAmount = `${total.currency}${total.amount.toLocaleString("en-US", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}`;
-                            }
-                          } else {
-                            formattedAmount = total.amount.toLocaleString("en-US", {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            });
-                          }
+                          // Locale, symbol and the currency's own digits come from the shared
+                          // formatter; an unknown currency shows the bare amount.
+                          const formattedAmount = formatMoney(total.amount, total.currency === "UNKNOWN" ? null : total.currency);
 
                           return (
                             <span

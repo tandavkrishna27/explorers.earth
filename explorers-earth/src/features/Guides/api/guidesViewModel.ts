@@ -8,6 +8,7 @@ import type {
  TransportSegment, TravelMode,
 } from '../types/guideSectionTypes';
 import type {Guide, GuideSection, PlaceDetails} from '../types';
+import {minorUnitsOf} from '../../../../../tunes/shared/currency';
 
 // Ticket 5.3. Pure mapping from the canonical guide aggregate to the shapes the existing
 // Guides components read. No fetching and no state, so every rule here is testable on its
@@ -202,6 +203,7 @@ export function toGuide(collection: OwnerCollectionDto, aggregate: GuideAggregat
   ...(details.guideType === null ? {} : {Guide_Type: GUIDE_TYPE_LABELS[details.guideType]}),
   Visibility: collection.visibility === 'public',
   ...(details.estimatedBudget === null ? {} : {Estimated_Budget: toNumber(details.estimatedBudget)}),
+  ...(details.estimatedBudget === null || details.budgetCurrency === null ? {} : {Estimated_Budget_Currency: details.budgetCurrency}),
   // The guide surfaces show and filter on the tier under its legacy name.
   Budget_Type: details.budgetTier === null ? null : GUIDE_BUDGET_TIER_LABELS[details.budgetTier],
   is_Multicity: details.multiCity,
@@ -238,8 +240,11 @@ export function toGuide(collection: OwnerCollectionDto, aggregate: GuideAggregat
 // as "450.5" is the same amount, so the round trip normalises rather than preserving the
 // trailing zero - that is a deliberate, stated loss of formatting, not of value.
 
-const money = (value: number | undefined): string | null =>
- value === undefined || value === null || !Number.isFinite(value) ? null : value.toFixed(2);
+// An exact decimal at the currency's own precision: 100 JPY is "100", 1.25 KWD is "1.250".
+// A fixed two places would make every yen amount fail the contract's precision check and
+// round every dinar one. A currency this table does not know keeps the legacy two places.
+const money = (value: number | undefined, currency?: string | null): string | null =>
+ value === undefined || value === null || !Number.isFinite(value) ? null : value.toFixed((currency ? minorUnitsOf(currency) : undefined) ?? 2);
 const text = (value: string | undefined | null): string | null =>
  value === undefined || value === null || value === '' ? null : value;
 
@@ -265,7 +270,7 @@ export function toCanonicalDayPlace(place: DayPlace): GuideDayPlace {
   priceLevel: place.priceLevel ?? null,
   priceRange: text(place.priceRange),
   customBudget: text(place.customBudget),
-  budgetAmount: money(place.budgetAmount),
+  budgetAmount: money(place.budgetAmount, place.budgetCurrency),
   budgetCurrency: place.budgetAmount === undefined ? null : text(place.budgetCurrency),
   source: place.source ?? 'manual',
   // An AI suggestion that was never confirmed cannot claim verification, which the
@@ -281,7 +286,7 @@ export const toCanonicalBudgetPlace = (place: BudgetPlace): GuideBudgetPlace => 
  priceLevel: place.priceLevel ?? null,
  priceRange: text(place.priceRange),
  customBudget: text(place.customBudget),
- budgetAmount: money(place.budgetAmount),
+ budgetAmount: money(place.budgetAmount, place.budgetCurrency),
  budgetCurrency: place.budgetAmount === undefined ? null : text(place.budgetCurrency),
 });
 

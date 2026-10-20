@@ -502,6 +502,7 @@
   "common": {
     "cancel": "Annuleren",
     "error": "Er is een fout opgetreden. Probeer het later opnieuw.",
+    "free": "Gratis",
     "hidePassword": "Wachtwoord verbergen",
     "loading": "Laden...",
     "noResults": "Geen resultaten gevonden",

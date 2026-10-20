@@ -502,6 +502,7 @@
   "common": {
     "cancel": "Odustani",
     "error": "An error occurred. Please try again later.",
+    "free": "Besplatno",
     "hidePassword": "Hide password",
     "loading": "Loading...",
     "noResults": "No results found",

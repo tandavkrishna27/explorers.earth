@@ -13,7 +13,8 @@ import useAuthStore from "../../../../store/store";
 import { useProductsCommands } from "../../api/query";
 import { useProductsOwner } from "../../hooks/useProductsOwner";
 import type { ProductList, RecommendedProduct } from "../../types";
-import { deduplicateProducts, buildImageUrl, generateSlug, formatPrice } from "../../utils/productHelpers";
+import { deduplicateProducts, buildImageUrl, generateSlug } from "../../utils/productHelpers";
+import { useFormatMoney } from "../../../../lib/money";
 import { getCurrentDomain } from "../../../../utils/getCurrentDomain";
 import Switch from "../../../../components/ui/Switch";
 import SwitchButton from "../../../../components/ui/SwitchButton";
@@ -160,6 +161,7 @@ export const ProductListCard = ({
   onToggleVisibility: (id: string, current: boolean) => void;
   togglingId: string | null;
 }) => {
+  const formatMoney = useFormatMoney();
   const uniqueProducts = deduplicateProducts(list.recommended_products);
   const productCount = uniqueProducts.length;
   const pinnedCount = uniqueProducts.filter((p) => p.is_pinned).length;
@@ -211,9 +213,9 @@ export const ProductListCard = ({
             </div>
           )}
           {/* Price of first product */}
-          {previewProducts[0]?.price && (
+          {previewProducts[0]?.price != null && (
             <span className="ml-1 self-center text-[10px] font-semibold text-emerald-400/80">
-              {formatPrice(previewProducts[0].price, previewProducts[0].currency)}
+              {formatMoney(previewProducts[0].price, previewProducts[0].currency)}
             </span>
           )}
         </div>
