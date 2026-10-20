@@ -5,6 +5,7 @@ import Profile from "../assets/icons/Profile";
 import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 import { Film, BookOpen, Gamepad2, Smartphone, ShoppingBag, Users } from "lucide-react";
 import { useLocation, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { computePinnedNavTabIds } from "../utils/navPinning";
 import { usePublicAccountIdentity } from "../features/PublicHome/api/PublicAccountIdentityProvider";
 import { usePublicRecommendationCategory } from "../features/PublicHome/api/usePublicRecommendationCategory";
@@ -17,6 +18,7 @@ function navigationCount(account: Record<string, unknown> | null | undefined, ta
 }
 
 const PublicNav = memo(() => {
+  const { t } = useTranslation();
   const location = useLocation();
   const { username } = useParams();
 
@@ -193,7 +195,7 @@ const PublicNav = memo(() => {
       icon: isPlacesPath(activePathname)
         ? <DirectionBoard fill="white" />
         : <DirectionBoard outline strokeColor="rgba(255,255,255,0.5)" />,
-      text: "Places",
+      text: t("publicProfile.nav.places", "Places"),
       path: `/${username}/places`,
     }] : []),
     // Only add guides tab if visibility is enabled
@@ -202,7 +204,7 @@ const PublicNav = memo(() => {
       icon: isGuidesPath(activePathname)
         ? <TravelGuideIcon fill="white" />
         : <TravelGuideIcon outline strokeColor="rgba(255,255,255,0.5)" />,
-      text: "Guides",
+      text: t("publicProfile.nav.guides", "Guides"),
       path: `/${username}/guides`,
     }] : []),
     // Only add profile tab if visibility is enabled
@@ -211,7 +213,7 @@ const PublicNav = memo(() => {
       icon: isPathMatch(activePathname, `/${username}`)
         ? <Profile fill="white" />
         : <Profile outline strokeColor="rgba(255,255,255,0.5)" />,
-      text: "Profile",
+      text: t("publicProfile.nav.profile", "Profile"),
       path: `/${username}`,
     }] : []),
     // Only add movies tab if visibility is enabled
@@ -220,7 +222,7 @@ const PublicNav = memo(() => {
       icon: isMoviesPath(activePathname)
         ? <Film size={18} color="white" strokeWidth={2.5} />
         : <Film size={18} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />,
-      text: "Movies",
+      text: t("publicProfile.nav.movies", "Movies"),
       path: `/${username}/movies`,
     }] : []),
     // Only add books tab if visibility is enabled
@@ -229,7 +231,7 @@ const PublicNav = memo(() => {
       icon: isBooksPath(activePathname)
         ? <BookOpen size={18} color="white" strokeWidth={2.5} />
         : <BookOpen size={18} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />,
-      text: "Books",
+      text: t("publicProfile.nav.books", "Books"),
       path: `/${username}/books`,
     }] : []),
     // Only add games tab if visibility is enabled
@@ -238,7 +240,7 @@ const PublicNav = memo(() => {
       icon: isGamesPath(activePathname)
         ? <Gamepad2 size={18} color="white" strokeWidth={2.5} />
         : <Gamepad2 size={18} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />,
-      text: "Games",
+      text: t("publicProfile.nav.games", "Games"),
       path: `/${username}/games`,
     }] : []),
     // Only add apps tab if visibility is enabled
@@ -247,7 +249,7 @@ const PublicNav = memo(() => {
       icon: isAppsPath(activePathname)
         ? <Smartphone size={18} color="white" strokeWidth={2.5} />
         : <Smartphone size={18} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />,
-      text: "Apps",
+      text: t("publicProfile.nav.apps", "Apps"),
       path: `/${username}/apps`,
     }] : []),
     // Only add products tab if visibility is enabled
@@ -256,7 +258,7 @@ const PublicNav = memo(() => {
       icon: isProductsPath(activePathname)
         ? <ShoppingBag size={18} color="white" strokeWidth={2.5} />
         : <ShoppingBag size={18} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />,
-      text: "Products",
+      text: t("publicProfile.nav.products", "Products"),
       path: `/${username}/products`,
     }] : []),
     // Only add people tab if visibility is enabled
@@ -265,7 +267,7 @@ const PublicNav = memo(() => {
       icon: isPeoplePath(activePathname)
         ? <Users size={18} color="white" strokeWidth={2.5} />
         : <Users size={18} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />,
-      text: "People",
+      text: t("publicProfile.nav.people", "People"),
       path: `/${username}/people`,
     }] : []),
   ];

@@ -533,7 +533,8 @@
     "signInWithGoogle": "Iniciar sesión con Google",
     "signUpWithGoogle": "Registrarse con Google",
     "submit": "Enviar",
-    "and": "y"
+    "and": "y",
+    "confirm": "Confirmar"
   },
   "contact": {
     "closingMessage": "Somos un equipo pequeño con una gran visión — tus pensamientos nos importan. Ponte en contacto y construyamos algo local y global juntos.",
@@ -808,7 +809,7 @@
         "ariaLabel": "{{label}}: {{value}}",
         "loading": "Loading",
         "unavailable": "Unavailable",
-        "viewsLast90Days": "Views · last 90 days"
+        "viewsLast90Days": "Visitas · últimos 90 días"
       },
       "draft": "Borrador",
       "error": {
@@ -850,7 +851,98 @@
       },
       "startCurating": "¡Comienza a curar tus recomendaciones y compártelas con el mundo!",
       "viewPublicProfileTooltip": "Ver tu perfil público como lo ven los demás",
-      "welcomeBack": "Bienvenido de vuelta"
+      "welcomeBack": "Bienvenido de vuelta",
+      "tabs": {
+        "places": "Lugares",
+        "movies": "Películas",
+        "books": "Libros",
+        "games": "Juegos",
+        "guides": "Guías",
+        "apps": "Apps y herramientas",
+        "products": "Productos",
+        "people": "Personas"
+      },
+      "search": {
+        "places": "Buscar lugares, listas…",
+        "movies": "Buscar películas, listas…",
+        "books": "Buscar libros, listas…",
+        "games": "Buscar juegos, listas…",
+        "guides": "Buscar guías, listas…",
+        "apps": "Buscar apps y herramientas, listas…",
+        "products": "Buscar productos, listas…",
+        "people": "Buscar personas, listas…"
+      },
+      "add": {
+        "places": "Añadir lugares",
+        "movies": "Añadir películas",
+        "books": "Añadir libros",
+        "games": "Añadir juegos",
+        "guides": "Añadir guías",
+        "apps": "Añadir apps",
+        "products": "Añadir productos",
+        "people": "Añadir personas"
+      },
+      "emptyState": {
+        "places": {
+          "tag": "Aún no hay lugares",
+          "tagline": "Dibuja tu mundo",
+          "sub": "Marca los lugares que te marcaron. Crea listas de destinos, rincones y joyas ocultas que te encantan.",
+          "add": "+ Añadir lista de lugares"
+        },
+        "movies": {
+          "tag": "Aún no hay películas",
+          "tagline": "Tu cine personal",
+          "sub": "Reúne las películas que te emocionaron. Comparte tus pendientes, favoritas y placeres culpables con el mundo.",
+          "add": "+ Añadir lista de películas"
+        },
+        "books": {
+          "tag": "Aún no hay libros",
+          "tagline": "Crea tu biblioteca",
+          "sub": "Reúne las lecturas que cambiaron tu forma de pensar. Comparte listas por género o temática.",
+          "add": "+ Añadir lista de libros"
+        },
+        "games": {
+          "tag": "Aún no hay juegos",
+          "tagline": "Sube de nivel tus listas",
+          "sub": "De joyas indie a grandes superproducciones: reúne tus recomendaciones de juegos y compártelas con otros jugadores.",
+          "add": "+ Añadir lista de juegos"
+        },
+        "music": {
+          "tag": "Aún no hay música",
+          "tagline": "Pon la banda sonora",
+          "sub": "Comparte las canciones, álbumes y artistas que definen tu gusto. Crea listas para cada estado de ánimo.",
+          "add": "+ Añadir lista de música"
+        },
+        "guides": {
+          "tag": "Aún no hay guías",
+          "tagline": "Escribe el itinerario",
+          "sub": "Crea guías de viaje e itinerarios día a día. Ayuda a otros a explorar el mundo como tú lo hiciste.",
+          "add": "+ Añadir guía"
+        },
+        "apps": {
+          "tag": "Aún no hay apps",
+          "tagline": "Tu stack, seleccionado",
+          "sub": "Comparte las apps y herramientas que realmente usas. Crea tu caja de herramientas digital para que otros la descubran.",
+          "add": "+ Añadir lista de apps y herramientas"
+        },
+        "products": {
+          "tag": "Aún no hay productos",
+          "tagline": "Presenta tus elegidos",
+          "sub": "Recomienda los productos que valen la pena. Del equipo a los gadgets: crea listas que tus seguidores van a querer.",
+          "add": "+ Añadir lista de productos"
+        },
+        "people": {
+          "tag": "Aún no hay personas",
+          "tagline": "Celebra las grandes mentes",
+          "sub": "Reúne listas de pensadores, creadores y líderes que vale la pena seguir. Comparte tus fuentes de inspiración.",
+          "add": "+ Añadir lista de personas"
+        }
+      },
+      "stats": {
+        "activeLists": "Listas activas",
+        "recommendations": "Recomendaciones"
+      },
+      "shareRecommendationsLink": "Compartir enlace de recomendaciones"
     },
     "profile": {
       "account": {
@@ -1295,7 +1387,7 @@
       "cookies": "Política de cookies",
       "product": "Producto",
       "shareAnywhere": "Comparte en cualquier lugar",
-      "useCases": "Use Cases"
+      "useCases": "Casos de uso"
     },
     "copyright": "© 2025 exploradores. Reservados todos los derechos.",
     "madeWithLove": "Hecho con amor en la tierra",
@@ -1312,7 +1404,7 @@
       "share": "Compartir",
       "openMenu": "Abrir menú de navegación",
       "closeMenu": "Cerrar menú de navegación",
-      "useCases": "Use Cases"
+      "useCases": "Casos de uso"
     },
     "auth": {
       "login": "Iniciar Sesión",
@@ -2498,7 +2590,24 @@
     "businessDetails": "Datos del negocio",
     "noPhotosTitle": "Aún no hay fotos",
     "noPhotosText": "Este usuario todavía no ha compartido fotos. ¡Vuelve más tarde!",
-    "visitWebsite": "Visitar sitio web"
+    "visitWebsite": "Visitar sitio web",
+    "footer": {
+      "poweredBy": "Desarrollado por",
+      "createProfile": "Crea tu perfil",
+      "report": "Denunciar",
+      "privacy": "Privacidad"
+    },
+    "nav": {
+      "places": "Lugares",
+      "guides": "Guías",
+      "profile": "Perfil",
+      "movies": "Películas",
+      "books": "Libros",
+      "games": "Juegos",
+      "apps": "Apps",
+      "products": "Productos",
+      "people": "Personas"
+    }
   },
   "useCases": {
     "cta": {

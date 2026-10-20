@@ -858,7 +858,7 @@ const Home = memo(() => {
                           {totalActiveListsCount}
                         </p>
                         <p className="text-dashboard-muted font-poppins text-xs sm:text-xs truncate">
-                          Active Lists
+                          {t("dashboard.home.stats.activeLists")}
                         </p>
                       </div>
                     </div>
@@ -868,7 +868,7 @@ const Home = memo(() => {
                           {totalRecommendationsCount}
                         </p>
                         <p className="text-dashboard-muted font-poppins text-xs sm:text-xs truncate">
-                          Recommendations
+                          {t("dashboard.home.stats.recommendations")}
                         </p>
                       </div>
                     </div>
@@ -923,14 +923,14 @@ const Home = memo(() => {
                 <div ref={tabBarRef} className="home-tab-container bg-[var(--dash-tab-bg)] rounded-[28px] p-[3px] flex gap-1 mb-4 overflow-x-auto scrollbar-hide">
                   {(
                     [
-                      { id: "places", label: "Places", icon: "📍" },
-                      { id: "movies", label: "Movies", icon: "🎬" },
-                      { id: "books", label: "Books", icon: "📚" },
-                      { id: "games", label: "Games", icon: "🎮" },
-                      { id: "guides", label: "Guides", icon: "📖" },
-                      { id: "apps", label: "Apps & Tools", icon: "🛠️" },
-                      { id: "products", label: "Products", icon: "🛍️" },
-                      { id: "people", label: "Persons", icon: "👥" },
+                      { id: "places", label: t("dashboard.home.tabs.places"), icon: "📍" },
+                      { id: "movies", label: t("dashboard.home.tabs.movies"), icon: "🎬" },
+                      { id: "books", label: t("dashboard.home.tabs.books"), icon: "📚" },
+                      { id: "games", label: t("dashboard.home.tabs.games"), icon: "🎮" },
+                      { id: "guides", label: t("dashboard.home.tabs.guides"), icon: "📖" },
+                      { id: "apps", label: t("dashboard.home.tabs.apps"), icon: "🛠️" },
+                      { id: "products", label: t("dashboard.home.tabs.products"), icon: "🛍️" },
+                      { id: "people", label: t("dashboard.home.tabs.people"), icon: "👥" },
                     ] as const
                   ).map((cat) => {
                     const isActive = activeTab === cat.id;
@@ -960,15 +960,7 @@ const Home = memo(() => {
                     </svg>
                     <input
                       type="text"
-                      placeholder={`Search ${
-                        activeTab === "places"
-                          ? "places"
-                          : activeTab === "apps"
-                          ? "apps & tools"
-                          : activeTab === "people"
-                          ? "persons"
-                          : activeTab
-                      }, lists…`}
+                      placeholder={t(`dashboard.home.search.${activeTab}`)}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="flex-1 bg-transparent text-dashboard text-[11px] sm:text-xs font-poppins outline-none border-none p-0 min-w-0"
@@ -979,19 +971,11 @@ const Home = memo(() => {
                     style={getAddButtonStyles(activeTab)}
                     className="flex-shrink-0 flex items-center justify-center gap-1 h-10 px-3 sm:px-4 rounded-xl text-[11px] sm:text-xs font-bold font-poppins transition-all duration-200 hover:brightness-110 whitespace-nowrap"
                   >
-                    <span>+</span> Add {
-                      activeTab === "apps"
-                        ? "Apps"
-                        : activeTab === "products"
-                        ? "Products"
-                        : activeTab === "people"
-                        ? "Persons"
-                        : activeTab.charAt(0).toUpperCase() + activeTab.slice(1)
-                    }
+                    <span>+</span> {t(`dashboard.home.add.${activeTab}`)}
                   </button>
                   {<button
                     onClick={() => setShowCategoryShareModal(true)}
-                    title="Share recommendations link"
+                    title={t("dashboard.home.shareRecommendationsLink")}
                     className="w-10 h-10 rounded-xl bg-[var(--dash-search-bg)] border border-dashboard flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-dashboard-muted flex-shrink-0 text-dashboard-muted hover:text-dashboard"
                   >
                     <ShareIcon size={14} />

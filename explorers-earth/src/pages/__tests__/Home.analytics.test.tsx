@@ -22,6 +22,14 @@ const { accountScope, translate } = vi.hoisted(() => ({
       "dashboard.home.analytics.loading": "Loading",
       "dashboard.home.analytics.unavailable": "Unavailable",
       "dashboard.home.analytics.ariaLabel": `${options?.label}: ${options?.value}`,
+      "dashboard.home.tabs.places": "Places",
+      "dashboard.home.tabs.movies": "Movies",
+      "dashboard.home.tabs.books": "Books",
+      "dashboard.home.tabs.games": "Games",
+      "dashboard.home.tabs.guides": "Guides",
+      "dashboard.home.tabs.apps": "Apps & Tools",
+      "dashboard.home.tabs.products": "Products",
+      "dashboard.home.tabs.people": "Persons",
     };
     return messages[key] ?? key;
   }),

@@ -1,5 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import Button from "./ui/Button";
 
 interface CategoryEmptyStateProps {
@@ -909,8 +910,12 @@ export const CategoryEmptyState: React.FC<CategoryEmptyStateProps> = ({
   category,
   onAddClick,
 }) => {
-  const meta  = CATEGORY_META[category]  || CATEGORY_META.places;
+  const { t } = useTranslation();
+  const metaKey = CATEGORY_META[category] ? category : "places";
+  const meta  = CATEGORY_META[metaKey];
   const theme = THEMES[category]         || THEMES.places;
+  const text = (field: "tag" | "tagline" | "sub" | "add", fallback: string) =>
+    t(`dashboard.home.emptyState.${metaKey}.${field}`, fallback);
 
   return (
     <motion.div
@@ -931,22 +936,22 @@ export const CategoryEmptyState: React.FC<CategoryEmptyStateProps> = ({
           className="text-[10px] font-bold uppercase tracking-[0.15em] px-3 py-1 rounded-full border font-poppins"
           style={{ color: theme.tagColor, borderColor: `${theme.tagColor}33`, background: `${theme.tagColor}10` }}
         >
-          {theme.tag}
+          {text("tag", theme.tag)}
         </span>
 
         {/* Headline */}
         <div className="space-y-1.5">
           <h3 className="text-lg font-bold text-dashboard font-poppins leading-snug tracking-tight">
-            {meta.tagline}
+            {text("tagline", meta.tagline)}
           </h3>
           <p className="text-xs text-dashboard-muted font-poppins leading-relaxed max-w-xs mx-auto">
-            {meta.sub}
+            {text("sub", meta.sub)}
           </p>
         </div>
 
         {/* CTA */}
         <Button
-          btnText={meta.addLabel}
+          btnText={text("add", meta.addLabel)}
           variant="primary"
           size="small"
           onClickHandler={onAddClick}
