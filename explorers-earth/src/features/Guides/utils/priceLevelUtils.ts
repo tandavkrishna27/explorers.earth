@@ -3,6 +3,8 @@
  * Centralized functions for handling Google Places price levels and custom budgets
  */
 
+import { formatMoney } from "../../../lib/money";
+
 /**
  * Price level labels mapping
  * Based on Google Places API price levels (0-4)
@@ -37,23 +39,10 @@ export const getBudgetDisplayText = (place: {
   priceRange?: string;
   priceLevel?: number;
 }): string | null => {
-  // 1. New currency format has highest priority
-  if (place.budgetAmount !== undefined && place.budgetAmount > 0 && place.budgetCurrency) {
-    try {
-      return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: place.budgetCurrency,
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(place.budgetAmount);
-    } catch (error) {
-      // Fallback if currency code is invalid
-      const symbol = place.budgetCurrency || "";
-      return `${symbol}${place.budgetAmount.toLocaleString("en-US", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}`;
-    }
+  // 1. New currency format has highest priority. Zero is a real budget and shows as Free.
+  if (place.budgetAmount !== undefined) {
+    const formatted = formatMoney(place.budgetAmount, place.budgetCurrency);
+    if (formatted) return formatted;
   }
 
   // 2. Legacy custom budget

@@ -3,7 +3,6 @@ import {
   generateSlug,
   categoryToSlug,
   slugToCategoryName,
-  formatPrice,
   formatRating,
   extractNoteText,
   deduplicateProducts,
@@ -19,12 +18,6 @@ describe('productHelpers unit tests', () => {
   it('should map category names to slugs and back', () => {
     expect(categoryToSlug('Home & Kitchen')).toBe('home-kitchen');
     expect(slugToCategoryName('home-kitchen')).toBe('Home Kitchen');
-  });
-
-  it('should format price string with default USD currency', () => {
-    // minimumFractionDigits is 0, so it avoids trailing zeros
-    expect(formatPrice(45.5, 'USD')).toBe('$45.5');
-    expect(formatPrice(100, undefined)).toBe('$100');
   });
 
   it('should format rating string', () => {

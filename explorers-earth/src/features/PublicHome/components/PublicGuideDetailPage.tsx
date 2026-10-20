@@ -31,6 +31,7 @@ import { usePublicProfileDetail } from "../api/usePublicProfileDetail";
 import { useTrackAnalytics } from "../../../services/analyticsService";
 import { PublicScrollContinuation } from "./PublicScrollContinuation";
 import { usePublicCategoryThemeStyles } from "./PublicCategoryThemeContext";
+import { useFormatMoney } from "../../../lib/money";
 
 const hasNonEmptyString = (value: unknown): value is string => (
   typeof value === "string" && value.trim().length > 0
@@ -85,6 +86,7 @@ const normalizeRenderableGuide = (value: unknown) => {
 };
 
 const PublicGuideDetailPage = memo(() => {
+  const formatMoney = useFormatMoney();
   const { username, guideSlug } = useParams<{ username: string; guideSlug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -933,14 +935,11 @@ const PublicGuideDetailPage = memo(() => {
                 )}
 
                 {/* Budget */}
-                {guide.Estimated_Budget &&
-                  (guide.Estimated_Budget.currency ||
-                    guide.Estimated_Budget.amount) && (
-                    <p className="text-sm sm:text-base md:text-lg mt-2 font-semibold font-poppins">
-                      Budget: {guide.Estimated_Budget.currency}{" "}
-                      {guide.Estimated_Budget.amount}
-                    </p>
-                  )}
+                {guide.Estimated_Budget != null && (
+                  <p className="text-sm sm:text-base md:text-lg mt-2 font-semibold font-poppins">
+                    Budget: {formatMoney(guide.Estimated_Budget, guide.Estimated_Budget_Currency)}
+                  </p>
+                )}
               </div>
             </div>
           </div>

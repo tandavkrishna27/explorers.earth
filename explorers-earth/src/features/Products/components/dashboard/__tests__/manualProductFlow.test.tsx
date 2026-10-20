@@ -1,11 +1,13 @@
-import {act, cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
-import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
+import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from 'vitest';
 import {MemoryRouter, Route, Routes} from 'react-router-dom';
 import {MockedProvider} from '@apollo/client/testing';
 import AddProductPage from '../AddProductPage';
 import ProductListView from '../ProductListView';
 import {ProductsClient} from '../../../api/productsClient';
 import useAuthStore from '../../../../../store/store';
+import '../../../../../i18n';
+import {CURRENCY_CODES} from '../../../../../../../tunes/shared/currency';
 
 // Replaces scrape-flow.integration.test.tsx and scrapePriceGuard.test.tsx. Both drove
 // /api/products/scrape-link, which the server does not have, so they asserted the
@@ -18,6 +20,15 @@ vi.mock('../../../hooks/useProductsOwner', () => ({useProductsOwner: () => ({con
 vi.mock('../../../api/productsClient', () => ({ProductsClient: {observeCollection: vi.fn(), prepareManualIntent: vi.fn(), createManual: vi.fn(), upload: vi.fn(), updateRecommendation: vi.fn(), observeRecommendation: vi.fn(), updateCollection: vi.fn(), archiveCollection: vi.fn(), archiveRecommendation: vi.fn(), createCollection: vi.fn(), readCompleteOwner: vi.fn(), setTopPicks: vi.fn(), prepareMembershipIntent: vi.fn(), saveMembership: vi.fn()}}));
 vi.mock('../../../../Favorites/components/TiptapEditor', () => ({default: ({value, onChange}: {value: string; onChange: (value: string) => void}) => <textarea aria-label="Note" value={value} onChange={event => onChange(event.target.value)} />}));
 vi.mock('sonner', () => ({toast: {success: vi.fn(), error: vi.fn(), loading: vi.fn()}}));
+
+// react-select's portalled menu needs a constructible ResizeObserver; the shared mock is not.
+beforeAll(() => { globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver; });
+// The currency picker is a searchable combobox: type to filter, Enter to choose.
+const pickCurrency = (code: string) => {
+ const box = screen.getByRole('combobox', {name: 'Currency'});
+ fireEvent.focus(box); fireEvent.change(box, {target: {value: code}}); fireEvent.keyDown(box, {key: 'Enter', code: 'Enter'});
+};
+const noRegion = () => vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en']);
 
 function mount() { return render(<MockedProvider><MemoryRouter initialEntries={['/products/list-1/add']}><Routes><Route path="/products/:listId/add" element={<AddProductPage />} /><Route path="/recommendations/products/:listId" element={<p>Saved list</p>} /></Routes></MemoryRouter></MockedProvider>); }
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(r => { resolve = r; }); return {promise, resolve}; }
@@ -32,13 +43,13 @@ describe('native manual Products', () => {
   vi.mocked(ProductsClient.prepareManualIntent).mockImplementation((parent, d) => ({parent, draft: d, entityKey: 'entity-key', recommendationKey: 'recommendation-key'}) as never);
   vi.mocked(ProductsClient.createManual).mockResolvedValue({id: 'product-1'} as never);
  });
- afterEach(() => { cleanup(); useAuthStore.getState().logout(); });
+ afterEach(() => { cleanup(); useAuthStore.getState().logout(); vi.restoreAllMocks(); });
 
  it('sends the amount exactly as typed, with its currency', async () => {
   mount();
   fill('Title', 'Keyboard'); fill('Product URL', 'https://example.com/kb');
   fill('Brand', 'Keychron'); fill('Buy / Affiliate URL', 'https://example.com/buy');
-  fill('Price', '19.90'); fill('Currency', 'USD');
+  fill('Price', '19.90'); pickCurrency('USD');
   fill('Note', '<p>Types nicely</p>');
   fireEvent.click(screen.getByRole('button', {name: 'Save product'}));
   await screen.findByText('Saved list');
@@ -56,18 +67,34 @@ describe('native manual Products', () => {
 
  it('sends a zero price as zero, which is a price and not unknown', async () => {
   mount(); fill('Title', 'Free thing'); fill('Product URL', 'https://example.com/free');
-  fill('Price', '0.00'); fill('Currency', 'USD');
+  fill('Price', '0.00'); pickCurrency('USD');
   fireEvent.click(screen.getByRole('button', {name: 'Save product'}));
   await screen.findByText('Saved list');
   expect(draft()).toMatchObject({offer: {price: '0.00', currencyCode: 'USD'}});
  });
 
- it('keeps an amount with no currency rather than defaulting to USD', async () => {
+ it('requires a currency for a price, and never fills in USD on the owner\'s behalf', async () => {
+  noRegion();
   mount(); fill('Title', 'No currency'); fill('Product URL', 'https://example.com/nocur');
+  expect(screen.getByText('Search by code or name')).toBeInTheDocument();
   fill('Price', '19.90');
+  expect(await screen.findByRole('alert')).toHaveTextContent('Choose a currency for the price.');
+  expect(screen.getByRole('button', {name: 'Save product'})).toBeDisabled();
+  pickCurrency('EUR');
+  await waitFor(() => expect(screen.getByRole('button', {name: 'Save product'})).toBeEnabled());
   fireEvent.click(screen.getByRole('button', {name: 'Save product'}));
   await screen.findByText('Saved list');
-  expect(draft()).toMatchObject({offer: {price: '19.90', currencyCode: null}});
+  expect(draft()).toMatchObject({offer: {price: '19.90', currencyCode: 'EUR'}});
+ });
+
+ it('starts on the currency of the browser\'s region, visibly, and drops it when there is no price', async () => {
+  vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['de-AT', 'en']);
+  mount(); fill('Title', 'Unpriced'); fill('Product URL', 'https://example.com/unpriced');
+  expect(screen.getByText('EUR \u2013 Euro')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', {name: 'Save product'}));
+  await screen.findByText('Saved list');
+  // A currency with no price names nothing, so the suggestion is not sent on its own.
+  expect(draft()).toMatchObject({offer: {price: null, currencyCode: null}});
  });
 
  // The substance of the retired scraped-price guard: an impossible amount is reported
@@ -85,10 +112,10 @@ describe('native manual Products', () => {
 
  it('refuses a precision the chosen currency does not have, and recovers when it changes', async () => {
   mount(); fill('Title', 'Yen'); fill('Product URL', 'https://example.com/yen');
-  fill('Price', '100.50'); fill('Currency', 'JPY');
-  expect(await screen.findByRole('alert')).toHaveTextContent('JPY does not have that many decimal places');
+  fill('Price', '100.50'); pickCurrency('JPY');
+  expect(await screen.findByRole('alert')).toHaveTextContent('JPY has no decimal places; enter a whole amount.');
   expect(screen.getByRole('button', {name: 'Save product'})).toBeDisabled();
-  fill('Currency', 'USD');
+  pickCurrency('USD');
   await waitFor(() => expect(screen.getByRole('button', {name: 'Save product'})).toBeEnabled());
   fireEvent.click(screen.getByRole('button', {name: 'Save product'}));
   await screen.findByText('Saved list');
@@ -104,12 +131,21 @@ describe('native manual Products', () => {
   expect(price.value).toBe('19.90');
  });
 
- it('offers only supported currencies, with unknown as the default', () => {
+ it('offers every active currency, with none chosen when the browser names no region', () => {
+  noRegion();
   mount();
-  const options = [...(screen.getByLabelText('Currency') as HTMLSelectElement).options].map(option => option.value);
-  expect(options[0]).toBe('');
-  expect(options.slice(1)).toEqual(['USD', 'EUR', 'GBP', 'INR', 'JPY', 'AUD', 'CAD', 'SGD']);
-  expect(screen.getByLabelText('Currency')).toHaveValue('');
+  fireEvent.keyDown(screen.getByRole('combobox', {name: 'Currency'}), {key: 'ArrowDown', code: 'ArrowDown'});
+  expect(within(screen.getByRole('listbox')).getAllByRole('option')).toHaveLength(CURRENCY_CODES.length);
+  expect(screen.getByRole('option', {name: 'KWD \u2013 Kuwaiti Dinar'})).toBeInTheDocument();
+ });
+
+ it('accepts three decimals for a three-decimal currency', async () => {
+  mount(); fill('Title', 'Dinar'); fill('Product URL', 'https://example.com/dinar');
+  fill('Price', '1.250'); pickCurrency('KWD');
+  await waitFor(() => expect(screen.getByRole('button', {name: 'Save product'})).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', {name: 'Save product'}));
+  await screen.findByText('Saved list');
+  expect(draft()).toMatchObject({offer: {price: '1.250', currencyCode: 'KWD'}});
  });
 
  it('round-trips the specification map the owner entered', async () => {
@@ -146,7 +182,7 @@ describe('native manual Products', () => {
 
  it('preserves every typed field when the save fails and retries the same intent', async () => {
   vi.mocked(ProductsClient.createManual).mockRejectedValueOnce(new Error('Temporarily unavailable')).mockResolvedValueOnce({id: 'product-1'} as never);
-  mount(); fill('Title', 'Retained'); fill('Product URL', 'https://example.com/retained'); fill('Price', '5.00'); fill('Currency', 'EUR');
+  mount(); fill('Title', 'Retained'); fill('Product URL', 'https://example.com/retained'); fill('Price', '5.00'); pickCurrency('EUR');
   fireEvent.click(screen.getByRole('button', {name: 'Save product'}));
   await screen.findByRole('alert');
   expect(screen.getByLabelText('Title')).toHaveValue('Retained');
@@ -213,7 +249,7 @@ describe('manual Products edit', () => {
   expect(await screen.findByLabelText('Title')).toHaveValue('Original title');
   // 19.90 from the observation, not 19.9 from the display conversion.
   expect(screen.getByLabelText('Price')).toHaveValue('19.90');
-  expect(screen.getByLabelText('Currency')).toHaveValue('USD');
+  expect(screen.getByText('USD \u2013 US Dollar')).toBeInTheDocument();
   expect(screen.getByLabelText('Product URL')).toHaveValue('https://example.com/original');
   expect(screen.getByLabelText('Product URL')).toBeDisabled();
   expect(screen.getByLabelText('Specification key 1')).toHaveValue('Weight');
@@ -242,6 +278,25 @@ describe('manual Products edit', () => {
   expect(patch.displayOverrides).not.toHaveProperty('productUrl');
   expect(patch.displayOverrides.title).toBe('Renamed');
   expect(patch.productOffer).toEqual({price: '19.90', currencyCode: 'USD', buyUrl: null});
+ });
+
+ // Rows saved before a currency was required hold a price and no currency. They stay
+ // readable; saving one asks for the missing currency instead of guessing it.
+ it('asks for the currency of a legacy price before it can be saved, and does not guess one', async () => {
+  noRegion();
+  loaded();
+  fixture.content.details.set('product-a', {detail: {id: 'product-a', revision: 1, category: 'products', mediaIds: [], productOffer: {price: '19.90', currencyCode: null, buyUrl: null}}});
+  vi.mocked(ProductsClient.updateRecommendation).mockResolvedValue({} as never);
+  render(editElement());
+  expect(await screen.findByLabelText('Price')).toHaveValue('19.90');
+  expect(screen.getByText('Search by code or name')).toBeInTheDocument();
+  expect(await screen.findByRole('alert')).toHaveTextContent('Choose a currency for the price.');
+  expect(screen.getByRole('button', {name: 'Save product'})).toBeDisabled();
+  pickCurrency('GBP');
+  await waitFor(() => expect(screen.getByRole('button', {name: 'Save product'})).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', {name: 'Save product'}));
+  await waitFor(() => expect(ProductsClient.updateRecommendation).toHaveBeenCalledTimes(1));
+  expect((vi.mocked(ProductsClient.updateRecommendation).mock.calls[0][1] as {productOffer: unknown}).productOffer).toEqual({price: '19.90', currencyCode: 'GBP', buyUrl: null});
  });
 
  it('waits for owner hydration instead of exposing blank editable controls', async () => {

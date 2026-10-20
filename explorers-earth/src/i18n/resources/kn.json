@@ -502,6 +502,7 @@
   "common": {
     "cancel": "ರದ್ದುಮಾಡಿ",
     "error": "An error occurred. Please try again later.",
+    "free": "ಉಚಿತ",
     "hidePassword": "Hide password",
     "loading": "Loading...",
     "noResults": "No results found",

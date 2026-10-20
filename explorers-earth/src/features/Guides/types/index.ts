@@ -22,6 +22,8 @@ export interface Guide {
   Guide_Type?: string;
   Visibility?: boolean;
   Estimated_Budget?: number;
+  /** ISO 4217 code of Estimated_Budget; absent when none was recorded. */
+  Estimated_Budget_Currency?: string | null;
   Budget_Type?: string | null;
   is_Multicity?: boolean | null;
   slug?: string;

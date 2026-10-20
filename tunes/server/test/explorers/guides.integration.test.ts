@@ -455,6 +455,8 @@ describePg("C6 guide aggregate", () => {
       const served = result!.guides[0];
       expect(served).toMatchObject({Title: "Kerala in five days", Visibility: true, is_Multicity: true, Number_Of_Days: 5});
       expect(served.Estimated_Budget).toBe(42000.5);
+      // The amount travels with its currency, so no surface has to assume one.
+      expect(served.Estimated_Budget_Currency).toBe("INR");
       // No tier was chosen, so none is shown; the type is shown by its wizard label.
       expect(served.Budget_Type).toBeNull();
       expect(served.Guide_Type).toBe("Itinerary");
