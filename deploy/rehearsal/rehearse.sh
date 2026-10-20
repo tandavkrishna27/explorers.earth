@@ -19,9 +19,16 @@
 #                    host will; nothing else resolves that name to it
 #   tunes.yml        `docker build` of tunes/ with the same tag and build args,
 #                    then `docker push` (publish-image) to get the registry digest
-#   explorers.yml    the same scripts it ships: assemble-release.sh,
-#                    render-site.sh, explorers-deploy.sh stage/activate and
+#   explorers.yml    the same scripts it ships: render-production-env.sh (with
+#                    validate-production-env.sh), assemble-release.sh,
+#                    render-site.sh, explorers-deploy.sh backup/stage/activate and
 #                    api-acceptance.sh, copied in with `docker cp` instead of scp
+#   the explorers-production GitHub environment
+#                    $OUT/github-environment.env (0600): random secrets and dummy
+#                    third-party keys under their GitHub names, sourced into the
+#                    renderer's environment exactly as the workflow step's env:
+#                    block does. Nothing writes production.env on the stand-in;
+#                    every deploy uploads it and explorers-deploy.sh installs it
 #   S3 (backups)     never contacted. The deploy's own backup phase runs while
 #                    the host has no migrated database (it reports 'fresh' without
 #                    S3); after that the same pre-deploy backup is taken in
@@ -134,45 +141,76 @@ stage_up() {
 # P2 Task 9 on the stand-in. Step 1 (backup) has nothing to back up on a fresh
 # host; Step 1a (handle holds) was dropped with the no-real-users decision.
 stage_bootstrap() {
-  step "copy the bootstrap script and the env example to the host" bash -c "
+  step "copy the bootstrap script and the shared validator to the host" bash -c "
     docker exec -i $HOST install -d -m 0700 /root/deploy &&
     docker cp '$(hp "$repo/deploy/host/explorers-bootstrap.sh")' $HOST:/root/deploy/explorers-bootstrap.sh &&
-    docker cp '$(hp "$repo/deploy/production.env.example")' $HOST:/root/deploy/production.env.example"
-  # Step 2 + 3: the first run installs the example and stops.
-  expect_fail "bootstrap init (installs production.env from the example, then stops)" \
-    on_host bash /root/deploy/explorers-bootstrap.sh init "$SERVER_NAME" /root/deploy/production.env.example
-  expect_fail "bootstrap check with the example values still in place" \
-    on_host bash /root/deploy/explorers-bootstrap.sh check "$SERVER_NAME"
+    docker cp '$(hp "$repo/deploy/host/validate-production-env.sh")' $HOST:/root/deploy/validate-production-env.sh"
+  # Steps 2 + 3: directories and the database password files. There is no
+  # production.env yet, and that is fine: the first deploy writes it.
+  step "bootstrap init (no production.env before the first deploy)" \
+    on_host bash /root/deploy/explorers-bootstrap.sh init "$SERVER_NAME"
+  step "no production.env on the host yet" host_bash "test ! -e /opt/explorers/production.env && ls -l /opt/explorers/secrets"
   # Step 6: the certbot stand-in.
   step "install the site certificate (stands in for certbot)" host_bash "
     install -d -m 0755 $TLS_DIR && install -m 0644 /rehearsal-certs/site.pem $TLS_DIR/fullchain.pem &&
     install -m 0600 /rehearsal-certs/site.key $TLS_DIR/privkey.pem && ls -l $TLS_DIR"
-  # Step 7: fill production.env. Random secrets; dummy third-party keys.
-  step "fill production.env (Task 9 Step 7)" host_bash "
-    set -e; f=/opt/explorers/production.env
-    set_value() { sed -i \"s|^\$1=.*|\$1=\$2|\" \$f; }
-    set_value MUSIC_GATE_ATTESTATION_KEY \$(openssl rand -hex 32)
-    set_value EXPLORERS_AUTH_SECRET \$(openssl rand -hex 32)
-    set_value EXPLORERS_PUBLIC_ORIGIN $ORIGIN
-    set_value GOOGLE_CLIENT_ID $GOOGLE_CLIENT_ID
-    set_value GOOGLE_CLIENT_SECRET rehearsal-google-secret-\$(openssl rand -hex 8)
-    # Task 9 Step 9 says to find this after the stack is up; compose needs a value
-    # before. The 'verify' stage measures the real one.
-    set_value EXPLORERS_TRUSTED_PROXY_IP 172.18.0.1
-    set_value EXPLORERS_MEDIA_S3_BUCKET rehearsal-media-bucket
-    set_value AWS_ACCESS_KEY_ID REHEARSALACCESSKEY00
-    set_value AWS_SECRET_ACCESS_KEY rehearsal-secret-\$(openssl rand -hex 8)
-    set_value GOOGLE_BOOKS_API_KEY rehearsal-books-key
-    set_value TMDB_ACCESS_TOKEN rehearsal-tmdb-token
-    grep -c = \$f"
   # The owner's age identity. In production it is generated on the owner's machine
-  # and only the public key reaches the host; here it is a throwaway, and the
+  # and only the public key reaches GitHub; here it is a throwaway, and the
   # backup stage's drill reads the private half from $OUT.
   docker cp "$(hp "$repo/tunes/deployment/platform-backup.mjs")" "$HOST:/root/deploy/platform-backup.mjs"
   docker cp "$(hp "$here/standin-host/make-age-identity.sh")" "$HOST:/root/deploy/make-age-identity.sh"
-  step "generate the backup age identity; put its public key in production.env" on_host bash /root/deploy/make-age-identity.sh
+  step "generate the backup age identity" on_host bash /root/deploy/make-age-identity.sh
   on_host cat /root/rehearsal-keys/identity.age > "$OUT/age-identity.txt"
-  step "bootstrap check (Task 9 Steps 2-4, 9)" on_host bash /root/deploy/explorers-bootstrap.sh check "$SERVER_NAME"
+  # Task 9 Step 7, as the owner now does it: the explorers-production environment.
+  step "set the stand-in explorers-production environment (secrets and variables)" write_github_environment
+  step "bootstrap check before the first deploy (Task 9 Steps 2-4)" on_host bash /root/deploy/explorers-bootstrap.sh check "$SERVER_NAME"
+}
+
+# The stand-in for the explorers-production environment: one NAME=value line per
+# GitHub secret or variable, 0600, never printed. EXPLORERS_TRUSTED_PROXY_IP is
+# left unset, as on cutover day; fix_trusted_proxy sets it.
+random_hex() { node -e "process.stdout.write(require('crypto').randomBytes($1).toString('hex'))"; }
+write_github_environment() {
+  local recipient
+  recipient="$(sed -n 's/^# public key: //p' "$OUT/age-identity.txt")"
+  [[ "$recipient" =~ ^age1[0-9a-z]{58}$ ]] || { echo "no age public key in $OUT/age-identity.txt" >&2; return 1; }
+  (
+    umask 077
+    {
+      printf 'EXPLORERS_SERVER_NAME=%s\n' "$SERVER_NAME"
+      printf 'EXPLORERS_AUTH_SECRET=%s\n' "$(random_hex 32)"
+      printf 'MUSIC_GATE_ATTESTATION_KEY=%s\n' "$(random_hex 32)"
+      printf 'GOOGLE_CLIENT_ID=%s\n' "$GOOGLE_CLIENT_ID"
+      printf 'GOOGLE_CLIENT_SECRET=rehearsal-google-secret-%s\n' "$(random_hex 8)"
+      printf 'GOOGLE_BOOKS_API_KEY=rehearsal-books-key\n'
+      printf 'TMDB_ACCESS_TOKEN=rehearsal-tmdb-token\n'
+      printf 'EXPLORERS_S3_ACCESS_KEY_ID=REHEARSALACCESSKEY00\n'
+      printf 'EXPLORERS_S3_SECRET_ACCESS_KEY=rehearsal-secret-%s\n' "$(random_hex 8)"
+      printf 'EXPLORERS_MEDIA_S3_BUCKET=rehearsal-media-bucket\n'
+      printf 'EXPLORERS_MEDIA_S3_REGION=ap-south-1\n'
+      printf 'EXPLORERS_BACKUP_AGE_RECIPIENT=%s\n' "$recipient"
+    } > "$OUT/github-environment.env"
+  )
+  sed 's/=.*/=<set>/' "$OUT/github-environment.env"
+}
+# gh variable set --env explorers-production <name>, on the stand-in.
+set_github_variable() { # <name> <value>
+  local rest
+  rest="$(grep -v "^$1=" "$OUT/github-environment.env" || true)"
+  (umask 077; { [[ -z "$rest" ]] || printf '%s\n' "$rest"; printf '%s=%s\n' "$1" "$2"; } > "$OUT/github-environment.env")
+}
+# explorers.yml's "Render and validate production.env" step: the same script,
+# with the environment's values in its environment and nowhere else.
+render_env() { # <stage-dir>
+  (
+    # shellcheck source=/dev/null
+    set -a; . "$OUT/github-environment.env"; set +a
+    umask 077
+    bash "$repo/deploy/render-production-env.sh" "$1/production.env"
+  )
+  # Rehearsal only: local-mode backups (the rehearsal never contacts S3). The
+  # validator ignores names it does not know; platform-backup.mjs reads these.
+  printf 'EXPLORERS_BACKUP_LOCAL_DESTINATION=/var/backups/explorers\nEXPLORERS_MEDIA_LOCAL_ROOT=/var/lib/explorers-media\n' >> "$1/production.env"
 }
 
 # ---------------------------------------------------------------------------
@@ -228,6 +266,7 @@ stage_release() { # <commit> <site-path> <compose-file>
     cd '$repo/explorers-earth' && npm run landing:check && npx tsc -b &&
     npx vite build --config vite.platform.config.ts --mode platform && node scripts/check-music-production-bundle.mjs"
   rm -rf "$stage" "$OUT/release/$commit"; mkdir -p "$stage" "$OUT/release"
+  step "render and validate production.env (explorers.yml's render step)" render_env "$stage"
   step "assemble the release" sh "$repo/deploy/assemble-release.sh" "$OUT/public.json" "$repo/explorers-earth/dist" "$OUT/release/$commit"
   step "pack the release and render the nginx site" bash -c "
     set -e
@@ -290,7 +329,7 @@ stage_first_deploy() {
     "docker compose -f /tmp/explorers-deploy-$v1/production.compose.yml --env-file /opt/explorers/production.env up -d --wait postgres"
   deploy_backup "$v1"
   deploy_stage "$v1"
-  fix_trusted_proxy
+  fix_trusted_proxy "$v1"
   deploy_accept
   expect_fail "activate with EXPLORERS_NGINX_SITE_PATH not the live site file" deploy_activate "$v1"
   step "the legacy site still serves after the refused activate" host_bash \
@@ -299,6 +338,13 @@ stage_first_deploy() {
   # sites-enabled/explorers-legacy is a symlink; point at its target.
   deploy "$v1" /etc/nginx/sites-available/explorers-legacy "$repo/deploy/production.compose.yml"
   step "migration journal after the first deploy" journal
+  step "production.env came from the upload: root 0600, previous kept, staged copy gone" host_bash "
+    set -e
+    stat -c '%n %U %a' /opt/explorers/production.env /opt/explorers/production.env.previous
+    test \"\$(stat -c '%u %a' /opt/explorers/production.env)\" = '0 600'
+    test \"\$(stat -c '%u %a' /opt/explorers/production.env.previous)\" = '0 600'
+    test ! -e /tmp/explorers-deploy-$v1/production.env
+    grep -q '^# Rendered by deploy/render-production-env.sh' /opt/explorers/production.env"
 }
 
 stage_taxonomy() {
@@ -321,16 +367,20 @@ stage_verify() {
 }
 # Task 9 Step 9. The first deploy runs with a guessed EXPLORERS_TRUSTED_PROXY_IP
 # (compose needs a value before Docker has created the network) and stage warns.
-# Measure the shared bucket, set the value stage printed, recreate the api.
-fix_trusted_proxy() {
+# Measure the shared bucket, set the GitHub variable to the address stage
+# printed, and redeploy the API: stage now refuses a mismatch, so a passing
+# stage proves the variable reached the host through the rendered file.
+fix_trusted_proxy() { # <commit>
   expect_fail "trusted proxy as first deployed (the guessed address)" trusted_proxy direct
-  step "set EXPLORERS_TRUSTED_PROXY_IP to the egress gateway and recreate the api" host_bash "
-    set -e
-    c=\$(docker ps -qf label=com.docker.compose.service=api)
-    g=\$(docker inspect -f '{{with index .NetworkSettings.Networks \"explorers-canonical_egress\"}}{{.Gateway}}{{end}}' \$c)
-    sed -i \"s|^EXPLORERS_TRUSTED_PROXY_IP=.*|EXPLORERS_TRUSTED_PROXY_IP=\$g|\" /opt/explorers/production.env
-    docker compose -f /opt/explorers/production.compose.yml --env-file /opt/explorers/production.env --env-file /opt/explorers/image.env up -d --wait api"
-  step "trusted proxy after the fix" trusted_proxy direct
+  local gateway
+  gateway="$(host_bash 'docker inspect -f "{{with index .NetworkSettings.Networks \"explorers-canonical_egress\"}}{{.Gateway}}{{end}}" $(docker ps -qf label=com.docker.compose.service=api)')"
+  [[ "$gateway" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || { log "no egress gateway: '$gateway'"; return 1; }
+  log "### [$stage_name] gh variable set --env explorers-production EXPLORERS_TRUSTED_PROXY_IP ($gateway)"
+  set_github_variable EXPLORERS_TRUSTED_PROXY_IP "$gateway"
+  stage_release "$1" /etc/nginx/conf.d/explorers.conf "$repo/deploy/production.compose.yml"
+  deploy_backup "$1"
+  deploy_stage "$1"
+  step "trusted proxy after the redeploy" trusted_proxy direct
 }
 # Exits non-zero unless the API trusts exactly the address nginx reaches it from.
 # trusted_proxy direct|nginx: 'nginx' also checks spoofing through the live site,

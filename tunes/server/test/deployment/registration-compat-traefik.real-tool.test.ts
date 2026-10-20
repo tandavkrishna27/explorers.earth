@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { requireExactContainerAbsent } from "../../../scripts/music-qualification";
+import { awaitExactContainerAbsent } from "../../../scripts/music-qualification";
 
 const yaml = require("js-yaml") as { load(source: string): any; dump(value: unknown): string };
 const repoRoot = resolve(import.meta.dirname, "../../../..");
@@ -372,20 +372,24 @@ describe("production registration compatibility route through Traefik", () => {
           failures.push(error);
         }
       }
-      const absent = spawnSync("docker", ["inspect", "--type", "container", containerId], {
-        encoding: "utf8",
-        timeout: 10_000,
-        windowsHide: true,
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-      try {
-        requireExactContainerAbsent({
+      const exactId = containerId;
+      const inspectAbsence = () => {
+        const absent = spawnSync("docker", ["inspect", "--type", "container", exactId], {
+          encoding: "utf8",
+          timeout: 10_000,
+          windowsHide: true,
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+        return {
           error: absent.error,
           status: absent.status,
           signal: absent.signal,
           stdout: absent.stdout,
           stderr: absent.stderr,
-        }, containerId);
+        };
+      };
+      try {
+        await awaitExactContainerAbsent(inspectAbsence, exactId);
         containerCleanupVerified = true;
       } catch (error) {
         failures.push(error);

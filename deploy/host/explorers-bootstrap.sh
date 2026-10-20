@@ -3,17 +3,24 @@
 # checks for 6-9). Run as root on the explorers host, from a copy of the repo's
 # deploy/ directory:
 #
-#   sudo bash explorers-bootstrap.sh init  <server-name> <path/to/production.env.example>
+#   sudo bash explorers-bootstrap.sh init  <server-name>
 #   sudo bash explorers-bootstrap.sh check <server-name>
+#
+# production.env is never written by hand: every deploy renders it from the
+# explorers-production GitHub environment and installs it root-owned 0600
+# (docs/operations/explorers-github-configuration.md). Before the first deploy
+# there is none, and that is fine.
 #
 # init:  checks the tools and headroom; creates /opt/explorers (0700) and
 #        /srv/explorers; generates the two database password files if they do not
-#        exist (never overwrites one); installs production.env from the example if
-#        there is none, then stops and tells you to fill it in.
-# check: everything init checks, plus production.env itself: ownership and mode,
-#        every required variable present, no example value left, the secret-shape
-#        rules the API and the gate enforce at boot, and which nginx file serves
-#        <server-name> today (that file is EXPLORERS_NGINX_SITE_PATH).
+#        exist (never overwrites one; they never leave the host); then runs check.
+# check: everything init checks, plus production.env when it exists: a regular
+#        file, ownership and mode, and the rules in validate-production-env.sh
+#        (the same file the deploy workflow validates with) - every required
+#        variable present, no example value left, the secret-shape rules the API
+#        and the gate enforce at boot; then the password files it names, and
+#        which nginx file serves <server-name> today (that file is
+#        EXPLORERS_NGINX_SITE_PATH).
 #
 # Idempotent. Prints every problem it finds, then exits non-zero if there was one.
 # It never prints a secret value.
@@ -22,6 +29,8 @@ set -Eeuo pipefail
 readonly OPT=/opt/explorers
 readonly SECRETS="$OPT/secrets"
 readonly ENV_FILE="$OPT/production.env"
+VALIDATOR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/validate-production-env.sh"
+readonly VALIDATOR
 readonly SRV=/srv/explorers
 readonly MIN_DISK_GB=10
 readonly MIN_MEMORY_MB=1800
@@ -31,11 +40,11 @@ problem() { echo "FAIL: $*" >&2; problems=$((problems + 1)); }
 ok() { echo "ok:   $*"; }
 note() { echo "note: $*"; }
 
-usage() { echo "usage: explorers-bootstrap.sh init <server-name> <production.env.example> | check <server-name>" >&2; exit 2; }
-[[ "$#" -ge 2 ]] || usage
+usage() { echo "usage: explorers-bootstrap.sh init|check <server-name>" >&2; exit 2; }
+[[ "$#" -eq 2 ]] || usage
 mode="$1"
 server_name="$2"
-[[ "$mode" == init && "$#" -eq 3 ]] || [[ "$mode" == check && "$#" -eq 2 ]] || usage
+[[ "$mode" == init || "$mode" == check ]] || usage
 [[ "$server_name" =~ ^[A-Za-z0-9.-]+$ ]] || { echo "server name '$server_name' is malformed" >&2; exit 2; }
 [[ "$(id -u)" -eq 0 ]] || { echo "run as root (sudo)" >&2; exit 2; }
 
@@ -101,49 +110,29 @@ directories() {
 }
 
 # --- production.env -------------------------------------------------------------
-# The image identity is supplied by explorers-deploy.sh on every deploy (and
-# recorded in $OPT/image.env), so it is not required here.
-readonly REQUIRED=(DB_NAME DB_MIGRATOR_USER DB_RUNTIME_USER DB_MIGRATOR_PASSWORD_FILE_HOST
-  DB_RUNTIME_PASSWORD_FILE_HOST MUSIC_GATE_ATTESTATION_KEY EXPLORERS_PUBLIC_ORIGIN EXPLORERS_AUTH_SECRET
-  GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET EXPLORERS_TRUSTED_PROXY_IP EXPLORERS_MEDIA_S3_BUCKET
-  EXPLORERS_MEDIA_S3_REGION AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY GOOGLE_BOOKS_API_KEY TMDB_ACCESS_TOKEN
-  EXPLORERS_BACKUP_AGE_RECIPIENT)
-
+# Written by every deploy from the explorers-production GitHub environment. The
+# content rules live in validate-production-env.sh, shared with the workflow;
+# this adds what only the host can check: the file itself and the password files.
 env_value() { sed -n "s/^$1=//p" "$ENV_FILE" | tail -n 1; }
 
 check_env() {
-  [[ -f "$ENV_FILE" && ! -L "$ENV_FILE" ]] || { problem "$ENV_FILE is missing"; return; }
+  if [[ -L "$ENV_FILE" ]]; then problem "$ENV_FILE is a symlink; it must be a regular file"; return; fi
+  if [[ ! -e "$ENV_FILE" ]]; then
+    ok "$ENV_FILE does not exist yet: the first deploy writes it from the explorers-production GitHub environment"
+    return
+  fi
+  [[ -f "$ENV_FILE" ]] || { problem "$ENV_FILE is not a regular file"; return; }
+  local before=$problems
   [[ "$(stat -c '%u %a' "$ENV_FILE")" == "0 600" ]] || problem "$ENV_FILE must be root-owned mode 0600"
-  local name value
-  for name in "${REQUIRED[@]}"; do
-    value="$(env_value "$name")"
-    if [[ -z "$value" ]]; then problem "production.env: $name is empty or missing"; continue; fi
-    # Every dummy in production.env.example says example/EXAMPLE or is all zeros.
-    if [[ "$value" =~ [Ee][Xx][Aa][Mm][Pp][Ll][Ee] || "$value" =~ ^[0.:]+$ ]]; then
-      problem "production.env: $name still holds the example value"
-    fi
-  done
-  local origin
-  origin="$(env_value EXPLORERS_PUBLIC_ORIGIN)"
-  [[ "$origin" == "https://$server_name" ]] || problem "production.env: EXPLORERS_PUBLIC_ORIGIN must be exactly https://$server_name (no path, no trailing slash)"
-  for name in EXPLORERS_AUTH_SECRET MUSIC_GATE_ATTESTATION_KEY; do
-    value="$(env_value "$name")"
-    (( ${#value} >= 32 )) || problem "production.env: $name must be at least 32 characters"
-  done
-  local migrator runtime
-  migrator="$(env_value DB_MIGRATOR_USER)"; runtime="$(env_value DB_RUNTIME_USER)"
-  [[ "$migrator" != "$runtime" ]] || problem "production.env: DB_MIGRATOR_USER and DB_RUNTIME_USER must differ"
-  for name in "$migrator" "$runtime"; do
-    [[ "$name" =~ ^[a-z_][a-z0-9_]{0,62}$ ]] || problem "production.env: database user '$name' is not a plain lowercase identifier"
-    [[ "$name" != postgres && "$name" != music_runtime ]] || problem "production.env: database user may not be '$name'"
-  done
-  # platform-backup.mjs's assertAgeRecipient: a public key, never an identity.
-  [[ "$(env_value EXPLORERS_BACKUP_AGE_RECIPIENT)" =~ ^age1[0-9a-z]{58}$ ]] || problem "production.env: EXPLORERS_BACKUP_AGE_RECIPIENT must be the age PUBLIC key (age1 + 58 characters); every deploy after the first refuses without it"
-  [[ "$(env_value EXPLORERS_TRUSTED_PROXY_IP)" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || problem "production.env: EXPLORERS_TRUSTED_PROXY_IP must be one IPv4 address"
+  if [[ ! -f "$VALIDATOR" ]]; then
+    problem "$VALIDATOR is missing; copy the whole deploy/ directory to the host"
+  elif ! bash "$VALIDATOR" "$ENV_FILE" "$server_name" >/dev/null; then
+    problem "$ENV_FILE fails validate-production-env.sh (each rule above); fix the value in the explorers-production environment and redeploy"
+  fi
   [[ "$(env_value DB_MIGRATOR_PASSWORD_FILE_HOST)" == "$SECRETS/db-migrator" ]] || note "DB_MIGRATOR_PASSWORD_FILE_HOST is not $SECRETS/db-migrator; checking it where it points"
   check_secret_file "$(env_value DB_MIGRATOR_PASSWORD_FILE_HOST)"
   check_secret_file "$(env_value DB_RUNTIME_PASSWORD_FILE_HOST)"
-  (( problems > 0 )) || ok "$ENV_FILE is complete"
+  (( problems > before )) || ok "$ENV_FILE is complete"
 }
 
 # --- Step 6 and the nginx site file ------------------------------------------------
@@ -167,14 +156,6 @@ nginx_site() {
 
 tools
 directories
-if [[ "$mode" == init ]]; then
-  if [[ ! -e "$ENV_FILE" ]]; then
-    install -m 0600 -o root -g root "$3" "$ENV_FILE"
-    note "installed $ENV_FILE from the example. Fill in every value, then run: sudo bash $0 check $server_name"
-    exit 1
-  fi
-  note "$ENV_FILE already exists; left as it is"
-fi
 check_env
 nginx_site
 if (( problems > 0 )); then echo "$problems problem(s); not ready" >&2; exit 1; fi

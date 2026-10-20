@@ -20,9 +20,24 @@ const dateOnlySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) =>
   return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
 }, "must be a canonical calendar date");
 
-const ianaTimeZones = new Set(Intl.supportedValuesOf("timeZone"));
+// Intl.supportedValuesOf("timeZone") lists only canonical names, so it rejects zones the
+// runtime resolves and real clients send (Asia/Kolkata, Europe/Kyiv,
+// America/Argentina/Buenos_Aires). Ask the runtime instead: a zone is accepted when it is
+// UTC or an Area/Location name of safe characters that Intl can actually construct.
+// Slashless legacy abbreviations such as "EST" stay rejected.
+const timeZoneNamePattern = /^[A-Za-z][A-Za-z0-9_+-]*(?:\/[A-Za-z0-9_+-]+){1,2}$/;
+const isUsableTimeZone = (value: string) => {
+  if (value === "UTC") return true;
+  if (!timeZoneNamePattern.test(value)) return false;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+};
 const timeZoneSchema = z.string().trim().min(1).max(128).refine(
-  (value) => value === "UTC" || ianaTimeZones.has(value),
+  isUsableTimeZone,
   "must be a valid IANA timezone",
 );
 

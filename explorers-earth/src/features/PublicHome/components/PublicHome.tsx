@@ -56,6 +56,7 @@ import { usePublicRecommendationCategory } from "../api/usePublicRecommendationC
 import { usePublicProfileDetail } from "../api/usePublicProfileDetail";
 import { PublicScrollContinuation } from "./PublicScrollContinuation";
 import PublicBlockingOverlay from "./PublicBlockingOverlay";
+import { useFormatMoney } from "../../../lib/money";
 
 type CardDataItem = {
   Media?: {
@@ -266,6 +267,7 @@ const MapPreviewFallback = ({ placeCount, compact = false }: { placeCount: numbe
 );
 
 const PublicHome = memo(() => {
+  const formatMoney = useFormatMoney();
   const categoryStyles = usePublicCategoryThemeStyles();
   const mapsApiLoaded = useMapsUsable();
   // Map previews are decorative hero slides. Keeping them static avoids loading
@@ -1785,7 +1787,7 @@ const PublicHome = memo(() => {
                                   <p className="font-semibold text-sm text-[var(--category-text,#FFFFFF)] truncate">{product.title}</p>
                                   {product.brand && <p className="text-xs text-[var(--category-muted,#9CA3AF)] truncate">{product.brand}</p>}
                                   {product.price != null && (
-                                    <p className="text-xs text-[var(--category-accent,#60A5FA)] font-semibold mt-1">{product.currency || ""} {product.price}</p>
+                                    <p className="text-xs text-[var(--category-accent,#60A5FA)] font-semibold mt-1">{formatMoney(product.price, product.currency)}</p>
                                   )}
                                   <p className="text-[10px] text-[var(--category-muted,#6B7280)] mt-1">List: {product._listName}</p>
                                 </div>
