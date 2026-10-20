@@ -391,4 +391,45 @@ describe("useAddRecommendation ten-photo refusal", () => {
     expect(mocks.upload).toHaveBeenCalledTimes(1);
     expect(toast.error).toHaveBeenCalledWith("toast.error.placePhotoLimit");
   });
+
+  // Place photos could only be appended: the saved gallery order could not be changed, and
+  // neither could the order of photos chosen in the form.
+  it("saves existing photos in the order the owner arranged them", async () => {
+    const observation = { detail: { category: "places", placePhotos: { photoMediaIds: ["p-a", "p-b", "p-c"] } } };
+    const { result } = renderHook(() => useAddRecommendation({ ...defaultProps([]), type: "edit", placeId: "place-1", editObservation: observation } as never));
+    expect(result.current.savedPhotoIds).toEqual(["p-a", "p-b", "p-c"]);
+    act(() => { result.current.setSavedPhotoIds(["p-c", "p-a", "p-b"]); });
+    expect(result.current.savedPhotoIds).toEqual(["p-c", "p-a", "p-b"]);
+    await act(async () => { await result.current.handleUpdatePlaceDetails(values as never); });
+    expect(mocks.updatePlace).toHaveBeenCalledWith("place-1", expect.objectContaining({
+      placePhotos: { photoMediaIds: ["p-c", "p-a", "p-b"] },
+    }), expect.anything());
+  });
+
+  it("does not replay a stale save after the saved photos are rearranged", async () => {
+    const observation = { detail: { category: "places", placePhotos: { photoMediaIds: ["p-a", "p-b"] } } };
+    mocks.updatePlace.mockRejectedValueOnce(new Error("offline"));
+    const { result } = renderHook(() => useAddRecommendation({ ...defaultProps([]), type: "edit", placeId: "place-1", editObservation: observation } as never));
+    await act(async () => { await result.current.handleUpdatePlaceDetails(values as never).catch(() => {}); });
+    act(() => { result.current.setSavedPhotoIds(["p-b", "p-a"]); });
+    await act(async () => { await result.current.handleUpdatePlaceDetails(values as never); });
+    expect(mocks.updatePlace).toHaveBeenLastCalledWith("place-1", expect.objectContaining({ placePhotos: { photoMediaIds: ["p-b", "p-a"] } }), expect.anything());
+  });
+
+  it("uploads photos chosen in the form in the order the owner arranged them", async () => {
+    const observation = { detail: { category: "places", placePhotos: { photoMediaIds: ["old"] } } };
+    const setPreviewUrl = vi.fn();
+    const { result } = renderHook(() => useAddRecommendation({ ...defaultProps([]), setPreviewUrl, type: "edit", placeId: "place-1", editObservation: observation } as never));
+    const sized = (name: string, size: number) => new File(["x".repeat(size)], name, { type: "image/jpeg" });
+    const [a, b, c] = [sized("a.jpg", 1), sized("b.jpg", 2), sized("c.jpg", 3)];
+    await act(async () => { await result.current.addExternalMedia([a, b, c]); });
+    act(() => { result.current.reorderUserMedia([c, a, b]); });
+    await act(async () => { await result.current.handleUpdatePlaceDetails(values as never); });
+    expect(mocks.upload.mock.calls.map(call => (call[0] as File).size)).toEqual([3, 1, 2]);
+    expect(mocks.upload).toHaveBeenCalledTimes(3);
+    expect(mocks.updatePlace).toHaveBeenCalledWith("place-1", expect.objectContaining({ placePhotos: { photoMediaIds: ["old", "media-0", "media-1", "media-2"] } }), expect.anything());
+    // the preview list is reordered with the same file order
+    const sorter = setPreviewUrl.mock.calls.map(call => call[0]).filter((arg: unknown) => typeof arg === "function").at(-1) as (prev: Array<{ file: File }>) => Array<{ file: File }>;
+    expect(sorter([{ file: a }, { file: b }, { file: c }]).map(item => item.file.name)).toEqual(["c.jpg", "a.jpg", "b.jpg"]);
+  });
 });

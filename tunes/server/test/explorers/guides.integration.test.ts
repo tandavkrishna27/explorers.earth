@@ -123,6 +123,15 @@ describePg("C6 guide aggregate", () => {
     expect(await readGuideDetails(pool, collection.id, accountId)).toEqual(written);
   });
 
+  // 0061 widened estimated_budget to numeric(14,3) so three-decimal currencies fit exactly.
+  it.each([["42000.50", "INR"], ["12.345", "KWD"], ["0.001", "BHD"], ["99999999999.999", "OMR"], ["7.00", "USD"]])("stores an estimated budget of %s %s exactly", async (amount, code) => {
+    const accountId = await account();
+    const collection = await guide(accountId);
+    const written = details({estimatedBudget: amount, budgetCurrency: code});
+    await tx(async (client) => writeGuideDetails(client, collection.id, accountId, await categoryRevision(accountId), written));
+    expect(await readGuideDetails(pool, collection.id, accountId)).toEqual(written);
+  });
+
   it("stores the optional budget tier, keeps an unset tier null, and refuses an unknown one", async () => {
     const accountId = await account();
     const collection = await guide(accountId);

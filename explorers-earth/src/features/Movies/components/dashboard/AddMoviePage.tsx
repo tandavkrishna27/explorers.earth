@@ -1,3 +1,5 @@
+import ReorderableMediaStrip from '../../../../components/reorder/ReorderableMediaStrip';
+import ReorderableFileStrip from '../../../../components/reorder/ReorderableFileStrip';
 import { explorersApiClient } from '../../../../lib/explorersApiClient';
 import { useMoviesOwner, useMovieGenres, invalidateMovies } from '../../api/explorersAdapter';
 import { moviesCommandKey } from '../../api/moviesClient';
@@ -543,41 +545,11 @@ const AddMoviePage = () => {
                   <label className="text-sm font-semibold text-dashboard">Manual Snapshots from {mediaType === "tv" ? "Show" : "Movie"} (Optional)</label>
                 </div>
                 <div className="flex flex-col gap-3">
-                  {/* Existing Snapshots */}
-                  {existingSnapshots.length > 0 && (
-                    <div className="flex flex-wrap gap-3 mb-2">
-                      {existingSnapshots.map((snap) => (
-                        <div key={snap.id} className="relative w-24 h-24 rounded-xl overflow-hidden shadow-sm group">
-                          <img src={snap.url} className="w-full h-full object-cover" alt="Snapshot" />
-                          <button
-                            type="button"
-                            onClick={() => setExistingSnapshots(prev => prev.filter(s => s.id !== snap.id))}
-                            className="absolute top-1 right-1 bg-black/60 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  {/* Existing Snapshots: this order is the saved and public order. */}
+                  <ReorderableMediaStrip items={existingSnapshots} onChange={setExistingSnapshots} noun="Snapshot" alt="Snapshot" removeLabel="Remove snapshot" disabled={saving} />
 
-                  {/* New Snapshots Preview */}
-                  {newSnapshots.length > 0 && (
-                    <div className="flex flex-wrap gap-3 mb-2">
-                      {snapshotPreviews.map((preview, i) => (
-                        <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden shadow-sm group border border-white/10">
-                          <img src={preview.url} className="w-full h-full object-cover" alt="New Snapshot preview" />
-                          <button
-                            type="button"
-                            onClick={() => setNewSnapshots(prev => prev.filter((_, idx) => idx !== i))}
-                            className="absolute top-1 right-1 bg-black/60 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  {/* New snapshots upload after the saved ones, in this order, when saved. */}
+                  <ReorderableFileStrip files={newSnapshots} previews={snapshotPreviews.map(preview => preview.url)} onChange={setNewSnapshots} noun="New snapshot" alt="New Snapshot preview" removeLabel="Remove new snapshot" disabled={saving} />
 
                   {/* Upload Button */}
                   <label className="w-full md:w-auto self-start cursor-pointer flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 border-dashed rounded-xl px-5 py-3 text-sm text-white/70 transition-colors">

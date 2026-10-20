@@ -22,7 +22,7 @@ WHERE p.price <> round(p.price, u.digits) GROUP BY 1
 UNION ALL
 SELECT currency_code, count(*) FROM product_recommendation_context WHERE currency_code IS NOT NULL AND price <> round(price,2)
   AND currency_code NOT IN ('JPY','KRW','VND','ISK','CLP','UGX','XOF','XAF','XPF','BIF','DJF','GNF','KMF','PYG','RWF','VUV','BYR','KWD','BHD','OMR','JOD','TND','LYD','IQD') GROUP BY 1;
--- Guide estimates (column numeric(14,2)).
+-- Guide estimates (column numeric(14,3)).
 SELECT count(*) FILTER (WHERE estimated_budget IS NOT NULL)                        AS estimates,
        count(*) FILTER (WHERE estimated_budget = 0)                                AS zero_estimates,
        count(*) FILTER (WHERE budget_currency IN ('KWD','BHD','OMR','JOD','TND','LYD','IQD')) AS three_digit_currency_estimates,

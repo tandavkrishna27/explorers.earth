@@ -1,3 +1,4 @@
+import CategoryListsOrder from "../../../../components/reorder/CategoryListsOrder";
 import { NavigationStatus } from "../../../navigation/NavigationStatus";
 import type { IntentAuthority } from "../../../navigation/categoryNavigationPolicy";
 import { useCategoryNavigation } from "../../../navigation/CategoryNavigationProvider";
@@ -256,7 +257,7 @@ const PeopleHome = () => {
   const accountDocumentId = useAuthStore(state => state.accountId), ownerGeneration = useAuthStore(state => state.generation);
   useEffect(() => { setShowCreateModal(false); setShowManageTopPicks(false); setSelectedPerson(null); setDropdownOpen(false); }, [accountDocumentId, ownerGeneration]);
 
-  const { data, loading, error, refetch } = usePeopleOwner();
+  const { data, loading, error, refetch } = usePeopleOwner(undefined, true, true);
 
   useEffect(() => {
     if (!loading) (window as any).__dashboardLoaded = true;
@@ -404,6 +405,10 @@ const PeopleHome = () => {
               </div>
             </div>
           )}
+
+          {/* The order set here is the order of these lists on your public page. */}
+
+          <CategoryListsOrder category="people" lists={lists.map((list: any) => ({ id: list.documentId, title: list.List_Name ?? list.title ?? "" }))} onChanged={() => { void refetch(); }} />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
             {lists.map((list) => (
