@@ -253,6 +253,7 @@ const LinksAndQR: FC<LinksAndQRProps> = memo(
                   onClose={() => setShowShareModal(false)}
                   url={qrCodeUrl}
                   utmParams={qrUtmParams}
+                  qrCategory="places"
                   backgroundImage={selectedCity?.List_Name_Details?.thumbnail}
                 />
               </div>

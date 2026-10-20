@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { friendlyErrorMessage, urlFieldError } from "../../../../utils/friendlyError";
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
@@ -95,7 +96,7 @@ export default function AddAppPage() {
  const attachExisting = async () => {
   const captured = scope;
   try { await commands.membership(existingId, listId!, true); if (valid(captured)) navigate(`/recommendations/apps/${listId}`); }
-  catch (failure) { if (valid(captured)) setError(failure instanceof Error ? failure.message : 'App could not be added'); }
+  catch (failure) { if (valid(captured)) setError(friendlyErrorMessage(failure, 'App could not be added')); }
  };
 
  const upload = async (files: File[]) => {
@@ -106,13 +107,15 @@ export default function AddAppPage() {
    // than uploading bytes the save would then reject.
    if (screenshots.length >= 10) { if (valid(captured)) { setError('Up to ten screenshots.'); setPending(value => value - 1); } continue; }
    try { const result = await AppsClient.upload(file, crypto.randomUUID()); if (!valid(captured)) return; setScreenshots(value => [...value, { id: result.id, url: `/api/explorers/v1/media/${result.id}/content` }]); }
-   catch (failure) { if (valid(captured)) setError(failure instanceof Error ? failure.message : 'Upload failed'); }
+   catch (failure) { if (valid(captured)) setError(friendlyErrorMessage(failure, 'Upload failed')); }
    finally { if (valid(captured)) setPending(value => value - 1); }
   }
  };
 
+ const urlErrors = { appUrl: urlFieldError(appUrl), logoUrl: urlFieldError(logoUrl), downloadUrl: urlFieldError(downloadUrl) };
+ const hasUrlError = Object.values(urlErrors).some(Boolean);
  const save = async () => {
-  if (!listId || pending || saving || enrichmentBusy || !title.trim() || !appUrl.trim() || (appId && initialized.current !== scope)) return;
+  if (hasUrlError || !listId || pending || saving || enrichmentBusy || !title.trim() || !appUrl.trim() || (appId && initialized.current !== scope)) return;
   const captured = scope, operation = ++active.current; controller.current?.abort(); controller.current = new AbortController(); const signal = controller.current.signal;
   setSaving(true); setError('');
   try {
@@ -137,7 +140,7 @@ export default function AddAppPage() {
     assertCurrent(captured, operation); await AppsClient.createManual(intent.current.value, signal); assertCurrent(captured, operation);
    }
    invalidateApps(); toast.success('App saved'); navigate(`/recommendations/apps/${listId}`, { state: { justAddedRecommendation: true } });
-  } catch (failure) { if (valid(captured, operation)) setError(failure instanceof Error ? failure.message : 'App could not be saved'); }
+  } catch (failure) { if (valid(captured, operation)) setError(friendlyErrorMessage(failure, 'App could not be saved')); }
   finally { if (valid(captured, operation)) setSaving(false); }
  };
 
@@ -178,6 +181,7 @@ export default function AddAppPage() {
     <label className="block"><span className="after:content-['_*'] after:text-red-500">App URL</span>
      <input value={appUrl} onChange={event => setAppUrl(event.target.value)} disabled={saving || Boolean(appId)} required aria-required="true" aria-describedby={appId ? undefined : 'app-url-required'} placeholder="https://example.com/app" className="block w-full bg-dashboard-muted rounded-xl p-3" />
     </label>
+    {urlErrors.appUrl && <p role="alert" className="text-sm text-red-400">{urlErrors.appUrl}</p>}
     {!appId && <p id="app-url-required" className="text-xs text-dashboard-muted">Required: Save stays off until the app's link is added (its website or store page).</p>}
     {appId
      ? <p className="text-sm text-dashboard-muted">The app URL identifies the app itself and is shared with everyone who recommends it, so it cannot be changed here.</p>
@@ -185,7 +189,9 @@ export default function AddAppPage() {
 
     <label className="block">Developer<input value={developer} onChange={event => setDeveloper(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
     <label className="block">Logo URL<input value={logoUrl} onChange={event => setLogoUrl(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
+    {urlErrors.logoUrl && <p role="alert" className="text-sm text-red-400">{urlErrors.logoUrl}</p>}
     <label className="block">Download URL<input value={downloadUrl} onChange={event => setDownloadUrl(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
+    {urlErrors.downloadUrl && <p role="alert" className="text-sm text-red-400">{urlErrors.downloadUrl}</p>}
     <label className="block">Description<textarea value={description} onChange={event => setDescription(event.target.value)} disabled={saving} rows={3} className="block w-full bg-dashboard-muted rounded-xl p-3 resize-none" /></label>
 
     <fieldset><legend>Price</legend>
@@ -216,7 +222,7 @@ export default function AddAppPage() {
     <ReorderableMediaStrip items={screenshots} onChange={setScreenshots} noun="Screenshot" alt="App screenshot" removeLabel="Remove screenshot" disabled={saving} />
 
     {error && <p role="alert">{error}</p>}
-    <button onClick={save} disabled={saving || enrichmentBusy || pending > 0 || !title.trim() || !appUrl.trim() || Boolean(appId && initialized.current !== scope)} className="bg-dashboard-accent text-white rounded-xl px-5 py-3">
+    <button onClick={save} disabled={hasUrlError || saving || enrichmentBusy || pending > 0 || !title.trim() || !appUrl.trim() || Boolean(appId && initialized.current !== scope)} className="bg-dashboard-accent text-white rounded-xl px-5 py-3">
      {saving && <Loader2 className="inline animate-spin mr-2" size={16} />}Save app
     </button>
    </section>

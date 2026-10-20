@@ -1915,11 +1915,15 @@
       "deleteAccount": {
         "button": "حذف الحساب",
         "description": "احذف حسابك وجميع البيانات نهائياً",
+        "pending": {
+          "scheduled": "سيتم حذف حسابك نهائيًا في {{date}}. سجّل الدخول باستخدام Google قبل ذلك التاريخ لإلغاء الحذف."
+        },
         "step1": {
           "continueButton": "متابعة الحذف",
           "deactivateInsteadButton": "إلغاء التفعيل بدلاً من ذلك",
           "modalDescription": "هل أنت متأكد من أنك تريد حذف حسابك؟ لا يمكن التراجع عن هذا الإجراء.",
           "modalDescription2": "إذا كنت تريد الاحتفاظ ببياناتك، يمكنك إلغاء تفعيل حسابك بدلاً من ذلك.",
+          "modalDescriptionGrace": "سيتم إخفاء حسابك فورًا وحذفه نهائيًا بعد 30 يومًا. يمكنك استعادته قبل ذلك بتسجيل الدخول باستخدام Google.",
           "modalTitle": "حذف حسابك؟"
         },
         "step2": {
@@ -1935,7 +1939,8 @@
         "step3": {
           "continueButton": "متابعة",
           "modalTitle": "لماذا تغادر؟",
-          "reasonPlaceholder": "يرجى إخبارنا بسبب مغادرتك..."
+          "reasonPlaceholder": "يرجى إخبارنا بسبب مغادرتك...",
+          "reasonTooLong": "السبب طويل جدًا. يُرجى ألا يتجاوز 2000 حرف."
         },
         "step4": {
           "confirmationRequired": "يرجى كتابة 'CONFIRM DELETE' للتأكيد.",
@@ -1949,6 +1954,7 @@
         },
         "text": "حذف حسابك؟"
       },
+      "handleMismatch": "المعرّف الذي كتبته لا يطابق معرّف حسابك.",
       "heading": "الحساب",
       "security": {
         "title": "الحساب والأمان"
@@ -2518,6 +2524,15 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "recovery": {
+    "pendingDeletion": {
+      "cancelButton": "إلغاء الحذف",
+      "scheduled": "تم تحديد موعد حذف حسابك في {{date}}. ألغِ الحذف لاستعادة الوصول.",
+      "scheduledUnknown": "تم تحديد موعد لحذف حسابك. ألغِ الحذف لاستعادة الوصول.",
+      "title": "إلغاء حذف الحساب"
+    },
+    "scheduledForDeletion": "تم تحديد موعد حذف حسابك في {{date}}. تابع باستخدام Google لإلغاء الحذف."
   },
   "home": {
     "shareProfile": "مشاركة الملف الشخصي"

@@ -55,7 +55,7 @@ async function guard(context: BrowserContext) {
         violations.push(`socket ${u.origin}${u.pathname}`); socket.close(); });
 }
 async function settings(page: Page, owner = 0) { await session(page.context(), owners[owner]); await page.goto('/settings'); await expect(page.getByRole('button', { name: 'Delete your account? Permanently delete your account and all data', exact: true })).toBeVisible(); }
-async function deletionReason(page: Page) { await page.getByRole('button', { name: 'Delete your account? Permanently delete your account and all data', exact: true }).click(); await page.getByRole('button', { name: 'Continue with deletion', exact: true }).click(); await page.getByRole('button', { name: 'Continue', exact: true }).click(); await expect(page.getByPlaceholder('Please let us know the reason for leaving...')).toBeVisible(); }
+async function deletionReason(page: Page, owner = 0) { await page.getByRole('button', { name: 'Delete your account? Permanently delete your account and all data', exact: true }).click(); await page.getByRole('button', { name: 'Continue with deletion', exact: true }).click(); await page.getByPlaceholder('Enter your username').fill(owners[owner].handle); await page.getByRole('button', { name: 'Continue', exact: true }).click(); await expect(page.getByPlaceholder('Please let us know the reason for leaving...')).toBeVisible(); }
 async function deletion(page: Page) { await deletionReason(page); await page.getByPlaceholder('Please let us know the reason for leaving...').fill(' Leaving through real UI '); await page.getByRole('button', { name: 'Continue', exact: true }).click(); await page.getByPlaceholder("Type 'CONFIRM DELETE' to confirm").fill('CONFIRM DELETE'); const response = page.waitForResponse(r => new URL(r.url()).pathname === `${base}/account/deletion` && r.request().method() === 'POST'); await page.getByRole('button', { name: 'Delete My Account', exact: true }).click(); expect((await response).status()).toBe(200); await expect(page).toHaveURL(/\/login(?:\?.*)?$/); }
 async function deactivate(page: Page) { const state = await control('observe'); expect((await command(page, '/account/deactivation', { expectedRevision: state.account.revision })).status()).toBe(200); }
 async function recover(page: Page, wrongSubject = false) { await control('provider', 0, { wrongSubject }); await page.context().clearCookies(); await page.goto('/reactivate'); await page.getByRole('button', { name: 'Continue with Google', exact: true }).click(); await page.waitForURL(u => u.pathname === '/reactivate-confirm'); }
@@ -65,30 +65,35 @@ test(LIFECYCLE_CASES[0], async ({ page }) => {
     await settings(page);
     expect((await page.request.get(`${base}/account/lifecycle`)).status()).toBe(200);
     await deletionReason(page);
-    for (const reason of ['   ', 'x'.repeat(2001)]) {
-        await page.getByPlaceholder('Please let us know the reason for leaving...').fill(reason);
-        await page.getByRole('button', { name: 'Continue', exact: true }).click();
-        expect((await control('observe')).feedback).toEqual([]);
-        await expect(page.getByPlaceholder('Please let us know the reason for leaving...')).toBeVisible();
-    }
+    const reason = page.getByPlaceholder('Please let us know the reason for leaving...');
+    // A blank reason does not advance; an over-long paste is capped at the 2,000 characters the server accepts.
+    await reason.fill('   ');
+    await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await expect(reason).toBeVisible();
+    await reason.fill('x'.repeat(2001));
+    await expect(reason).toHaveValue('x'.repeat(2000));
+    await expect(page.getByText('2000 / 2000', { exact: true })).toBeVisible();
+    // Walking the wizard records nothing: feedback is part of the final, confirmed deletion.
+    await reason.fill('  Leaving  ');
+    await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await expect(page.getByPlaceholder("Type 'CONFIRM DELETE' to confirm")).toBeVisible();
+    expect((await control('observe')).feedback).toEqual([]);
     let attempts = 0;
     const keys: string[] = [];
-    let releaseDuplicate!: () => void;
-    const duplicateArrived = new Promise<void>(done => releaseDuplicate = done);
-    await page.route(`**${base}/account/deletion-feedback`, async (route) => { keys.push(route.request().headers()['idempotency-key']); const response = await route.fetch(); expect(response.status()).toBe(201); const attempt = ++attempts; if (attempt === 1)
-        return route.abort(); if (attempt === 2)
-        await duplicateArrived;
-    else
-        releaseDuplicate(); return route.fulfill({ response }); });
-    await page.getByPlaceholder('Please let us know the reason for leaving...').fill('  Leaving  ');
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await page.route(`**${base}/account/deletion-feedback`, async (route) => { keys.push(route.request().headers()['idempotency-key']); const response = await route.fetch(); expect(response.status()).toBe(201); if (++attempts === 1)
+        return route.abort(); return route.fulfill({ response }); });
+    await page.getByPlaceholder("Type 'CONFIRM DELETE' to confirm").fill('CONFIRM DELETE');
+    await page.getByRole('button', { name: 'Delete My Account', exact: true }).click();
     await expect(page.getByText('Account service is unavailable.', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Continue', exact: true }).dblclick();
-    await expect(page.getByPlaceholder("Type 'CONFIRM DELETE' to confirm")).toBeVisible();
-    expect(keys).toHaveLength(3);
+    // The failed feedback save stopped the deletion before it was requested.
+    expect((await control('observe')).account.status).toBe('active');
+    const response = page.waitForResponse(r => new URL(r.url()).pathname === `${base}/account/deletion` && r.request().method() === 'POST');
+    await page.getByRole('button', { name: 'Delete My Account', exact: true }).click();
+    expect((await response).status()).toBe(200);
+    expect(keys).toHaveLength(2);
     expect(new Set(keys).size).toBe(1);
     expect((await control('observe')).feedback).toMatchObject([{ reason: 'Leaving' }]);
-    expect((await control('observe')).account.status).toBe('active');
+    expect((await control('observe')).account.status).toBe('pending_deletion');
 });
 test(LIFECYCLE_CASES[1], async ({ page }) => {
     await settings(page);
@@ -116,6 +121,7 @@ test(LIFECYCLE_CASES[2], async ({ page, context }) => {
     await second.goto('/settings');
     await expect(second.getByRole('button', { name: 'Deactivate your account? Temporarily disable your account', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Deactivate your account? Temporarily disable your account', exact: true }).click();
+    await page.getByPlaceholder('Enter your username').fill(owners[0].handle);
     await page.getByRole('button', { name: 'Deactivate My Account', exact: true }).click();
     await expect(page).toHaveURL(/\/login(?:\?.*)?$/);
     await expect(second).toHaveURL(/\/login(?:\?.*)?$/);
@@ -158,15 +164,19 @@ test(LIFECYCLE_CASES[9], async ({ page }) => {
     await page.route(`**${base}/account/deletion-feedback`, async (route) => { const response = await route.fetch(); expect(response.status()).toBe(201); arrived(); await held; await route.fulfill({ response }); });
     await page.getByPlaceholder('Please let us know the reason for leaving...').fill('Old generation feedback');
     await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await page.getByPlaceholder("Type 'CONFIRM DELETE' to confirm").fill('CONFIRM DELETE');
+    await page.getByRole('button', { name: 'Delete My Account', exact: true }).click();
     await ready;
     await session(page.context(), owners[1]);
     await page.evaluate(async () => { const authModule = '/src/lib/authClient.ts'; const { authClient } = await import(authModule); await authClient.refresh(); });
     release();
-    await expect(page.getByPlaceholder("Type 'CONFIRM DELETE' to confirm")).toHaveCount(0);
     await expect(page).toHaveURL(/\/settings$/);
     expect((await (await page.request.get(`${base}/me`)).json()).account.id).toBe(owners[1].accountId);
     expect((await control('observe', 1)).feedback).toEqual([]);
     expect((await control('observe', 0)).feedback).toHaveLength(1);
+    // The old identity's feedback arrived, but its deletion was never requested.
+    expect((await control('observe', 0)).account.status).toBe('active');
+    expect((await control('observe', 0)).operations).toEqual([]);
 });
 
 // Read existing authority only; replacement authority always comes from real refresh requests.
@@ -225,6 +235,8 @@ for (const returningA of [false, true]) test(LIFECYCLE_CASES[returningA ? 11 : 1
     });
     await page.getByPlaceholder('Please let us know the reason for leaving...').fill('Held original A feedback');
     await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await page.getByPlaceholder("Type 'CONFIRM DELETE' to confirm").fill('CONFIRM DELETE');
+    await page.getByRole('button', { name: 'Delete My Account', exact: true }).click();
     await ready;
     const b = await verifyReplacement(page, 1);
     expect(b.sessionId).not.toBe(initialSessionId);
@@ -251,7 +263,6 @@ for (const returningA of [false, true]) test(LIFECYCLE_CASES[returningA ? 11 : 1
     // Let the fulfilled fetch continuation and React's resulting paint complete.
     await page.evaluate(() => new Promise<void>(done => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
     expect(await authority(page)).toEqual(current.authority);
-    await expect(page.getByPlaceholder("Type 'CONFIRM DELETE' to confirm")).toHaveCount(0);
     await expect(page).toHaveURL(/\/settings$/);
     expect(staleNavigations).toEqual([]);
     expect(staleRequests).toEqual([]);
@@ -286,7 +297,10 @@ for (const [offset, kind] of ['deletion', 'deactivation', 'recovery'].entries())
             await page.getByPlaceholder('Please let us know the reason for leaving...').fill('Held deletion completion');
             await page.getByRole('button', { name: 'Continue', exact: true }).click();
             await page.getByPlaceholder("Type 'CONFIRM DELETE' to confirm").fill('CONFIRM DELETE');
-        } else await page.getByRole('button', { name: 'Deactivate your account? Temporarily disable your account', exact: true }).click();
+        } else {
+            await page.getByRole('button', { name: 'Deactivate your account? Temporarily disable your account', exact: true }).click();
+            await page.getByPlaceholder('Enter your username').fill(owners[0].handle);
+        }
         const path = kind === 'recovery' ? `${base}/recovery/complete` : `${base}/account/${kind}`;
         let release!: () => void, arrived!: () => void;
         const held = new Promise<void>(done => release = done), ready = new Promise<void>(done => arrived = done);

@@ -599,7 +599,7 @@ const PublicGuides = memo(() => {
                           }
                           const rating = isDisplayableNumber(placeDetails?.Rating)
                             ? toDisplayNumber(placeDetails?.Rating)
-                            : 5.0;
+                            : null;
 
                           return (
                             <motion.div
@@ -607,8 +607,12 @@ const PublicGuides = memo(() => {
                               initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
                               className="flex items-center gap-3 text-sm md:text-base text-white/80 font-semibold"
                             >
-                              <span>★ {rating.toFixed(1)}</span>
-                              <span className="text-white/40">•</span>
+                              {rating !== null && (
+                                <>
+                                  <span>★ {rating.toFixed(1)}</span>
+                                  <span className="text-white/40">•</span>
+                                </>
+                              )}
                               <span>{guide.Number_Of_Days || 0} {guide.Number_Of_Days === 1 ? "Day" : "Days"}</span>
                               {guide.Guide_Type && (
                                 <>
@@ -714,7 +718,7 @@ const PublicGuides = memo(() => {
                       }
                       const rating = isDisplayableNumber(placeDetails?.Rating)
                         ? toDisplayNumber(placeDetails?.Rating)
-                        : 5.0;
+                        : null;
 
                       return (
                         <motion.div
@@ -759,8 +763,12 @@ const PublicGuides = memo(() => {
                             </h2>
 
                             <div className="flex flex-wrap items-center gap-2 text-xs text-white/80 font-semibold tracking-wide mt-1">
-                              <span>★ {rating.toFixed(1)}</span>
-                              <span className="text-white/40">•</span>
+                              {rating !== null && (
+                                <>
+                                  <span>★ {rating.toFixed(1)}</span>
+                                  <span className="text-white/40">•</span>
+                                </>
+                              )}
                               <span>{guide.Number_Of_Days || 0} {guide.Number_Of_Days === 1 ? "Day" : "Days"}</span>
                               {guide.Guide_Type && (
                                 <>

@@ -318,9 +318,11 @@ const PlaceOverview: FC<PlaceOverviewProps> = memo(
                 <span className="text-sm font-bold text-white font-poppins">
                   {googleRatingText}/10
                 </span>
-                <span className="text-[10px] text-white/60 font-poppins font-medium">
-                  ({fetchedPlace?.Place_Details?.Rating_Count ?? 0} reviews)
-                </span>
+                {fetchedPlace?.Place_Details?.Rating_Count != null && (
+                  <span className="text-[10px] text-white/60 font-poppins font-medium">
+                    ({fetchedPlace.Place_Details.Rating_Count} reviews)
+                  </span>
+                )}
               </div>
             )}
           </div>

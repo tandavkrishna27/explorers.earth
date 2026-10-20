@@ -37,7 +37,8 @@ export function sendActorError(request: Request, response: Response, error: unkn
   const requestId = requestIdFor(request);
   response.setHeader("X-Request-Id", requestId);
   if (error instanceof AuthorizationError) {
-    response.status(error.status).json({ error: { code: error.code, message: error.message, requestId } });
+    response.status(error.status).json({ error: { code: error.code, message: error.message, requestId },
+      ...(error.lifecycle ? { lifecycle: error.lifecycle } : {}) });
     return;
   }
   // Not an actor failure (for example a session lookup or database error). Callers map

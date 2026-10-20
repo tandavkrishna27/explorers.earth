@@ -21,6 +21,7 @@ import { createRecoveryIntent, recoveryCookieOptions, recoveryIntentCookie, reco
 import { revokeRecoveryProof } from "./recoveryProof";
 import { requireActor, sendActorError } from "../middleware/explorersPrincipal";
 import { AuthorizationError } from "../application/authorization";
+import { pendingDeletionScheduleFor } from "../application/accountDeletionGrace";
 import { ProfileService } from "../application/profiles";
 import { setupExplorersAccountRoutes } from "../routes/explorersAccountRoutes";
 import { setupExplorersPublicProfileRoutes } from "../routes/explorersPublicProfileRoutes";
@@ -146,12 +147,16 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
       const security = await pool.query<{ blocked_at: Date | null }>(
         "SELECT blocked_at FROM user_security_state WHERE user_id=$1", [userId],
       );
-      if (security.rows[0]?.blocked_at) return errorResponse(response, 403, "FORBIDDEN", "Account access is unavailable");
+      // The caller holds this account's own session, so a pending deletion's date is theirs to see.
+      const unavailable = async () => {
+        const scheduledDeletionAt = await pendingDeletionScheduleFor(pool, userId);
+        throw new AuthorizationError(403, "FORBIDDEN", "Account access is unavailable",
+          scheduledDeletionAt ? { status: "pending_deletion", scheduledDeletionAt } : undefined);
+      };
+      if (security.rows[0]?.blocked_at) return await unavailable();
       const existing = await pool.query<{ status: string }>(`SELECT a.status FROM initial_account_bindings b
         JOIN creator_accounts a ON a.id=b.account_id WHERE b.user_id=$1`, [userId]);
-      if (existing.rows[0] && existing.rows[0].status !== "active") {
-        return errorResponse(response, 403, "FORBIDDEN", "Account access is unavailable");
-      }
+      if (existing.rows[0] && existing.rows[0].status !== "active") return await unavailable();
       const { accountId } = await ensureInitialAccount(pool, userId);
       const actor = await requireActor(request, auth, pool);
       if (actor.accountId !== accountId) throw new AuthorizationError(404, "NOT_FOUND", "Account is unavailable");

@@ -600,6 +600,23 @@ const CreateGuidePage = ({
     );
   }
 
+  // Someone else's guide (or one that does not exist) is absent from the owner read: show the
+  // same state as the guide detail page rather than an empty wizard.
+  if (isEdit && !guideData?.guide) {
+    return (
+      <div className="dashboard-theme flex flex-col justify-center items-center min-h-screen bg-dashboard-bg gap-4">
+        <p className="text-dashboard font-poppins text-red-500">
+          Failed to load guide
+        </p>
+        <Button
+          variant="primary"
+          onClickHandler={() => navigate("/guides")}
+          btnText="Back to Guides"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className={isModal ? "dashboard-theme w-full" : "dashboard-theme bg-dashboard-bg min-h-screen px-4 pb-4 md:pt-10"}>
       <div className={isModal ? "flex relative flex-col max-w-full gap-4 w-full" : "flex relative flex-col mb-10 items-center justify-center min-h-[calc(100vh-8rem)] max-w-full gap-4"}>

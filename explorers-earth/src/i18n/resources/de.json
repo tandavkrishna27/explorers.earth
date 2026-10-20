@@ -1918,11 +1918,15 @@
       "deleteAccount": {
         "button": "Konto löschen",
         "description": "Löschen Sie Ihr Konto und alle Daten dauerhaft",
+        "pending": {
+          "scheduled": "Dein Konto wird am {{date}} endgültig gelöscht. Melde dich vorher mit Google an, um die Löschung abzubrechen."
+        },
         "step1": {
           "continueButton": "Mit Löschen fortfahren",
           "deactivateInsteadButton": "Konto stattdessen deaktivieren",
           "modalDescription": "Sind Sie sicher, dass Sie Ihr Konto löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
           "modalDescription2": "Wenn Sie Ihre Daten behalten möchten, können Sie Ihr Konto stattdessen deaktivieren.",
+          "modalDescriptionGrace": "Dein Konto wird sofort ausgeblendet und nach 30 Tagen endgültig gelöscht. Bis dahin kannst du es wiederherstellen, indem du dich mit Google anmeldest.",
           "modalTitle": "Ihr Konto löschen?"
         },
         "step2": {
@@ -1938,7 +1942,8 @@
         "step3": {
           "continueButton": "Fortfahren",
           "modalTitle": "Warum gehen Sie?",
-          "reasonPlaceholder": "Bitte teilen Sie uns den Grund für Ihr Verlassen mit..."
+          "reasonPlaceholder": "Bitte teilen Sie uns den Grund für Ihr Verlassen mit...",
+          "reasonTooLong": "Dein Grund ist zu lang. Bitte verwende höchstens 2.000 Zeichen."
         },
         "step4": {
           "confirmationRequired": "Bitte geben Sie 'CONFIRM DELETE' zur Bestätigung ein.",
@@ -1952,6 +1957,7 @@
         },
         "text": "Ihr Konto löschen?"
       },
+      "handleMismatch": "Das eingegebene Handle stimmt nicht mit dem Handle deines Kontos überein.",
       "heading": "Konto",
       "security": {
         "title": "Konto & Sicherheit"
@@ -2530,6 +2536,15 @@
   "conflict": {
     "changedElsewhere": "Dies wurde in einem anderen Tab oder auf einem anderen Gerät geändert. Lade neu, um die neueste Version zu sehen.",
     "reload": "Neu laden"
+  },
+  "recovery": {
+    "pendingDeletion": {
+      "cancelButton": "Löschung abbrechen",
+      "scheduled": "Dein Konto ist zur Löschung am {{date}} vorgesehen. Breche die Löschung ab, um den Zugriff wiederherzustellen.",
+      "scheduledUnknown": "Dein Konto ist zur Löschung vorgesehen. Breche die Löschung ab, um den Zugriff wiederherzustellen.",
+      "title": "Kontolöschung abbrechen"
+    },
+    "scheduledForDeletion": "Dein Konto ist zur Löschung am {{date}} vorgesehen. Fahre mit Google fort, um die Löschung abzubrechen."
   },
   "home": {
     "shareProfile": "Profil teilen"

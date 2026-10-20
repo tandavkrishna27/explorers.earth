@@ -5,6 +5,8 @@ export interface CanonicalAccountLifecycleDto {
   status: "active" | "suspended" | "pending_deletion" | "deleted";
   operationId: string | null;
   revision: number;
+  /** Present on a deletion request's response: when the deletion becomes final unless cancelled. */
+  scheduledDeletionAt?: string;
 }
 
 /** The canonical route derives identity from the Better Auth cookie, never request JSON. */

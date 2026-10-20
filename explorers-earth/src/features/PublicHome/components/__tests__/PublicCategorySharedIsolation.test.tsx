@@ -367,7 +367,7 @@ it('keeps circular places defaults and themes its ordinary panel only in categor
 });
 
 it('keeps ShareModal inline defaults and preserves its QR quiet zone under category styling', () => {
-  const modal = <ShareModal isOpen onClose={() => {}} url="https://example.test/share" shareButtons={[]} />;
+  const modal = <ShareModal isOpen onClose={() => {}} url="https://example.test/share" shareButtons={[]} qrCategory="places" />;
   const { rerender } = render(modal);
   expect(screen.getByRole('button', { name: 'Share', exact: true }).style.color).toBe('rgb(255, 255, 255)');
   rerender(<PublicCategoryThemeProvider styles={{ '--category-panel': '#FFFFFF', '--category-text': '#0F172A' }}>{modal}</PublicCategoryThemeProvider>);
@@ -375,7 +375,7 @@ it('keeps ShareModal inline defaults and preserves its QR quiet zone under categ
   fireEvent.click(screen.getByRole('button', { name: 'QR', exact: true }));
   expect(document.querySelector('#qr-sticker-container')).toHaveClass('bg-black', 'text-white');
   expect(document.querySelector('#qr-sticker-container .p-2')).toHaveClass('bg-white');
-  expect(screen.getByText('Travel like a local')).toHaveClass('text-black');
+  expect(screen.getByText('qrCard.tagline.places')).toHaveClass('text-black');
 });
 
 it('themes the QR modal panel while retaining its white quiet zone and default overlay ink', () => {

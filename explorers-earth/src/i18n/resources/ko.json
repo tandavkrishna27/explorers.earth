@@ -1886,11 +1886,15 @@
       "deleteAccount": {
         "button": "계정 삭제",
         "description": "계정과 모든 데이터를 영구적으로 삭제하세요",
+        "pending": {
+          "scheduled": "계정은 {{date}}에 영구적으로 삭제됩니다. 삭제를 취소하려면 그 전에 Google로 로그인하세요."
+        },
         "step1": {
           "continueButton": "삭제 계속",
           "deactivateInsteadButton": "대신 계정 비활성화",
           "modalDescription": "정말로 계정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
           "modalDescription2": "데이터를 보관하고 싶다면 대신 계정을 비활성화할 수 있습니다.",
+          "modalDescriptionGrace": "계정은 즉시 숨겨지며 30일 후에 영구적으로 삭제됩니다. 그 전에 Google로 로그인하면 복구할 수 있습니다.",
           "modalTitle": "계정을 삭제하시겠습니까?"
         },
         "step2": {
@@ -1906,7 +1910,8 @@
         "step3": {
           "continueButton": "계속",
           "modalTitle": "왜 떠나시나요?",
-          "reasonPlaceholder": "떠나는 이유를 알려주세요..."
+          "reasonPlaceholder": "떠나는 이유를 알려주세요...",
+          "reasonTooLong": "사유가 너무 깁니다. 2,000자 이내로 입력해 주세요."
         },
         "step4": {
           "confirmationRequired": "확인하려면 'CONFIRM DELETE'를 입력해주세요.",
@@ -1920,6 +1925,7 @@
         },
         "text": "계정을 삭제하시겠습니까?"
       },
+      "handleMismatch": "입력한 핸들이 계정의 핸들과 일치하지 않습니다.",
       "heading": "계정",
       "security": {
         "title": "계정 및 보안"
@@ -2476,5 +2482,14 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "recovery": {
+    "pendingDeletion": {
+      "cancelButton": "삭제 취소",
+      "scheduled": "계정이 {{date}}에 삭제될 예정입니다. 삭제를 취소하면 다시 이용할 수 있습니다.",
+      "scheduledUnknown": "계정이 삭제될 예정입니다. 삭제를 취소하면 다시 이용할 수 있습니다.",
+      "title": "계정 삭제 취소"
+    },
+    "scheduledForDeletion": "계정이 {{date}}에 삭제될 예정입니다. 삭제를 취소하려면 Google로 계속하세요."
   }
 }

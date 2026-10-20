@@ -51,6 +51,8 @@ const reloadSettings = (page: Page) => page.reload({ waitUntil: "domcontentloade
 
 /** The danger-zone row, which is hidden while lifecycle authority is unresolved. */
 const deleteEntryPoint = (page: Page) => page.getByRole("button", { name: /^Delete your account\?/ });
+/** The modal's handle field; the profile form behind it has an input with the same placeholder. */
+const handleField = (page: Page) => page.locator("input.dt-input").and(page.getByPlaceholder("Enter your username"));
 const deactivateEntryPoint = (page: Page) => page.getByRole("button", { name: /^Deactivate your account\?/ });
 
 async function mockSettings(
@@ -196,22 +198,25 @@ async function switchFixtureIdentity(page: Page) {
 }
 
 /**
- * Walks the delete modal from the danger zone to the final confirmation. The username
- * is readonly and prefilled from the signed-in account, and the password step is only
- * rendered for a non-Google provider, so neither is typed here.
+ * Walks the delete modal from the danger zone to the final confirmation. The handle is
+ * typed (never prefilled), and the password step is only rendered for a non-Google
+ * provider. Nothing reaches the server until the final confirmation is pressed.
  */
 async function openDeletionConfirmation(page: Page, reason = "  Leaving for now  ") {
   await deleteEntryPoint(page).click();
+  await expect(page.getByText(/permanently deleted after 30 days/)).toBeVisible();
   await page.getByRole("button", { name: "Continue with deletion" }).click();
+  await handleField(page).fill("testuser");
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByPlaceholder("Please let us know the reason for leaving...").fill(reason);
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByPlaceholder("Type 'CONFIRM DELETE' to confirm").fill("CONFIRM DELETE");
 }
 
-/** Deactivation confirms against the readonly prefilled username, so nothing is typed. */
+/** Deactivation confirms against the handle the user types; it is never prefilled. */
 async function confirmDeactivation(page: Page) {
   await deactivateEntryPoint(page).click();
+  await handleField(page).fill("testuser");
   await page.getByRole("button", { name: "Deactivate My Account" }).click();
 }
 
@@ -346,6 +351,19 @@ test("deletion records trimmed feedback once and then issues one durable deletio
   expect(commands[1]).toMatchObject({
     path: "deletion", body: { expectedRevision: ACCOUNT_REVISION, feedbackId: "canonical-feedback-1" },
   });
+});
+
+test("walking the deletion wizard to the last step and leaving records nothing", async ({ context, page }) => {
+  // Break caught: feedback is posted at the reason step, so a user who abandons before the
+  // final confirmation leaves a feedback row behind for an account that was never deleted.
+  const commands: LifecycleCommand[] = [];
+  await mockSettings(context, "active", commands);
+  await openSettings(page);
+
+  await openDeletionConfirmation(page);
+  await page.reload();
+
+  expect(commands).toEqual([]);
 });
 
 test("a lost deletion response keeps authority and the retry reuses the same durable key", async ({ context, page }) => {

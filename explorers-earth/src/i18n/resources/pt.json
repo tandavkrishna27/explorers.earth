@@ -1915,11 +1915,15 @@
       "deleteAccount": {
         "button": "Excluir Conta",
         "description": "Exclua permanentemente sua conta e todos os dados",
+        "pending": {
+          "scheduled": "Sua conta será excluída permanentemente em {{date}}. Entre com o Google antes dessa data para cancelar a exclusão."
+        },
         "step1": {
           "continueButton": "Continuar com exclusão",
           "deactivateInsteadButton": "Desativar conta em vez disso",
           "modalDescription": "Tem certeza de que deseja excluir sua conta? Esta ação não pode ser desfeita.",
           "modalDescription2": "Se quiser manter seus dados, você pode desativar sua conta em vez disso.",
+          "modalDescriptionGrace": "Sua conta será ocultada imediatamente e excluída permanentemente após 30 dias. Você pode recuperá-la antes disso entrando com o Google.",
           "modalTitle": "Excluir sua conta?"
         },
         "step2": {
@@ -1935,7 +1939,8 @@
         "step3": {
           "continueButton": "Continuar",
           "modalTitle": "Por que está saindo?",
-          "reasonPlaceholder": "Por favor, nos diga o motivo para sair..."
+          "reasonPlaceholder": "Por favor, nos diga o motivo para sair...",
+          "reasonTooLong": "Seu motivo é muito longo. Use no máximo 2.000 caracteres."
         },
         "step4": {
           "confirmationRequired": "Por favor, digite 'CONFIRM DELETE' para confirmar.",
@@ -1949,6 +1954,7 @@
         },
         "text": "Excluir sua conta?"
       },
+      "handleMismatch": "O identificador digitado não corresponde ao identificador da sua conta.",
       "heading": "Conta",
       "security": {
         "title": "Conta e Segurança"
@@ -2518,6 +2524,15 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "recovery": {
+    "pendingDeletion": {
+      "cancelButton": "Cancelar exclusão",
+      "scheduled": "Sua conta está programada para ser excluída em {{date}}. Cancele a exclusão para recuperar o acesso.",
+      "scheduledUnknown": "Sua conta está programada para ser excluída. Cancele a exclusão para recuperar o acesso.",
+      "title": "Cancelar a exclusão da conta"
+    },
+    "scheduledForDeletion": "Sua conta está programada para ser excluída em {{date}}. Continue com o Google para cancelar a exclusão."
   },
   "home": {
     "shareProfile": "Compartilhar perfil"

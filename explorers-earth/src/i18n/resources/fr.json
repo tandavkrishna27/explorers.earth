@@ -1918,11 +1918,15 @@
       "deleteAccount": {
         "button": "Supprimer le compte",
         "description": "Supprimez définitivement votre compte et toutes les données",
+        "pending": {
+          "scheduled": "Votre compte sera définitivement supprimé le {{date}}. Connectez-vous avec Google avant cette date pour annuler la suppression."
+        },
         "step1": {
           "continueButton": "Continuer la suppression",
           "deactivateInsteadButton": "Désactiver le compte à la place",
           "modalDescription": "Êtes-vous sûr de vouloir supprimer votre compte ? Cette action ne peut pas être annulée.",
           "modalDescription2": "Si vous souhaitez conserver vos données, vous pouvez plutôt désactiver votre compte.",
+          "modalDescriptionGrace": "Votre compte sera masqué immédiatement et définitivement supprimé après 30 jours. Vous pouvez le récupérer avant en vous connectant avec Google.",
           "modalTitle": "Supprimer votre compte ?"
         },
         "step2": {
@@ -1938,7 +1942,8 @@
         "step3": {
           "continueButton": "Continuer",
           "modalTitle": "Pourquoi partez-vous ?",
-          "reasonPlaceholder": "Veuillez nous faire savoir la raison de votre départ..."
+          "reasonPlaceholder": "Veuillez nous faire savoir la raison de votre départ...",
+          "reasonTooLong": "Votre motif est trop long. Veuillez utiliser 2 000 caractères au maximum."
         },
         "step4": {
           "confirmationRequired": "Veuillez taper 'CONFIRM DELETE' pour confirmer.",
@@ -1952,6 +1957,7 @@
         },
         "text": "Supprimer votre compte ?"
       },
+      "handleMismatch": "L'identifiant saisi ne correspond pas à celui de votre compte.",
       "heading": "Compte",
       "security": {
         "title": "Account & Security"
@@ -2530,6 +2536,15 @@
   "conflict": {
     "changedElsewhere": "Cet élément a été modifié dans un autre onglet ou sur un autre appareil. Rechargez pour voir la dernière version.",
     "reload": "Recharger"
+  },
+  "recovery": {
+    "pendingDeletion": {
+      "cancelButton": "Annuler la suppression",
+      "scheduled": "La suppression de votre compte est prévue le {{date}}. Annulez la suppression pour retrouver l'accès.",
+      "scheduledUnknown": "La suppression de votre compte est programmée. Annulez la suppression pour retrouver l'accès.",
+      "title": "Annuler la suppression du compte"
+    },
+    "scheduledForDeletion": "La suppression de votre compte est prévue le {{date}}. Continuez avec Google pour annuler la suppression."
   },
   "home": {
     "shareProfile": "Partager le profil"

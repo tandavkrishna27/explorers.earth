@@ -1,10 +1,12 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
 import { authClient } from "../lib/authClient";
 import useAuthStore from "../store/store";
 import { useSessionBootstrap } from "../lib/sessionBootstrap";
+import { formatLifecycleDate } from "../utils/formatLifecycleDate";
 import { lifecycleObservationSchema } from "../../../tunes/shared/explorersLifecycleObservation";
 
 /**
@@ -25,13 +27,15 @@ import { lifecycleObservationSchema } from "../../../tunes/shared/explorersLifec
  * `terminal` and `review` deliberately do NOT offer the retry affordance: an action that
  * cannot work is worse than no action, because the owner keeps taking it.
  */
-type State = { kind: "loading" } | { kind: "ready"; revision: number } | { kind: "submitting" } |
+type State = { kind: "loading" } |
+  { kind: "ready"; revision: number; pendingDeletion: boolean; scheduledDeletionAt: string | null } | { kind: "submitting" } |
   { kind: "success" } | { kind: "recovered" } |
   { kind: "terminal" } | { kind: "review"; operationId: string | null } |
   { kind: "error"; message: string } | { kind: "expired" };
 
 export default function ReactivateConfirm() {
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
   const [state, setState] = useState<State>({ kind: "loading" });
   // Recovery can begin signed out. Bind custody after initial verification
   // settles, or immediately if already settled, without requiring ordinary auth.
@@ -79,7 +83,8 @@ export default function ReactivateConfirm() {
         if (!parsed.success) throw new Error("Recovery status is unavailable. Please try again.");
         const recovery = parsed.data;
         if (!live || !isCurrent()) return;
-        if (recovery.outcome === "pending") return setState({ kind: "ready", revision: recovery.revision });
+        if (recovery.outcome === "pending") return setState({ kind: "ready", revision: recovery.revision,
+          pendingDeletion: recovery.status === "pending_deletion", scheduledDeletionAt: recovery.scheduledDeletionAt ?? null });
         if (recovery.outcome === "recovered") return setState({ kind: "recovered" });
         if (recovery.outcome === "terminal") return setState({ kind: "terminal" });
         if (recovery.outcome === "manual_review") return setState({ kind: "review", operationId: recovery.operationId });
@@ -109,7 +114,16 @@ export default function ReactivateConfirm() {
         <div className="backdrop-blur-sm bg-dashboard-sidebar border border-dashboard p-8 rounded-2xl shadow-dashboard-elevated text-center">
           {state.kind === "loading" && <p>Checking Google recovery...</p>}
           {state.kind === "expired" && <p>This recovery flow has expired because the session changed. Reopen recovery to continue.</p>}
-          {state.kind === "ready" && <>
+          {state.kind === "ready" && state.pendingDeletion && <>
+            <h1 className="text-xl sm:text-2xl font-bold mb-3">{t("recovery.pendingDeletion.title")}</h1>
+            <p className="text-sm text-gray-400 mb-6">
+              {formatLifecycleDate(state.scheduledDeletionAt, i18n?.language)
+                ? t("recovery.pendingDeletion.scheduled", { date: formatLifecycleDate(state.scheduledDeletionAt, i18n?.language) })
+                : t("recovery.pendingDeletion.scheduledUnknown")}
+            </p>
+            <button type="button" onClick={complete} className="w-full py-2.5 px-4 rounded-xl bg-dashboard-accent text-dashboard">{t("recovery.pendingDeletion.cancelButton")}</button>
+          </>}
+          {state.kind === "ready" && !state.pendingDeletion && <>
             <h1 className="text-xl sm:text-2xl font-bold mb-3">Restore your account</h1>
             <p className="text-sm text-gray-400 mb-6">Your Google identity was verified. Confirm to restore access or cancel pending deletion.</p>
             <button type="button" onClick={complete} className="w-full py-2.5 px-4 rounded-xl bg-dashboard-accent text-dashboard">Reactivate account</button>
