@@ -1168,6 +1168,12 @@
           "socialUrlInvalid": "Please enter a valid Instagram or LinkedIn URL",
           "socialUrlRequired": "Instagram or LinkedIn URL is required for person recommendations",
           "titleRequired": "Title is required"
+        },
+        "contactVisibility": {
+          "label": "Who can see the contact details",
+          "private": "Only me (private)",
+          "public": "Everyone on the public page",
+          "hint": "Contact name and number stay private unless you choose to share them."
         }
       },
       "cancel": "Cancel",
@@ -1263,7 +1269,8 @@
         "listVisibilityError": "Failed to update recommendation list visibility.",
         "qrDownloadError": "Failed to download QR code. Please try again.",
         "qrDownloadSuccess": "QR code downloaded successfully!",
-        "qrNotReady": "QR code not ready for download"
+        "qrNotReady": "QR code not ready for download",
+        "listUrlTaken": "That URL is already used by another list"
       },
       "travelLikeLocal": "Travel like a local",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
@@ -2244,7 +2251,7 @@
       "imageSizeInvalid": "Image size is invalid. Please choose another image",
       "imageSpamDetected": "Spam detected in image. Please choose another image",
       "imageTooBig": "Image is too big. Please choose a smaller image",
-      "imageTooLarge": "Image is too large. Please choose a smaller image",
+      "imageTooLarge": "{{name}} was not added: images must be {{max}} MB or smaller.",
       "imageTooSmall": "Image is too small. Please choose a larger image",
       "imageUploadFailed": "Image upload failed. Please try again",
       "imageVirusDetected": "Virus detected in image. Please choose another image",
@@ -2325,7 +2332,9 @@
       "usernameUpdateFailed": "Username update failed. Please try again.",
       "validationError": "Validation error. Please check your input.",
       "placePhotoLimit": "A place can hold up to {{limit}} photos. Remove {{count}} to continue.",
-      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!"
+      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!",
+      "imageTypeUnsupported": "{{name}} was not added: only PNG, JPEG, WebP or GIF images are supported.",
+      "imageEmpty": "{{name}} was not added: the file is empty."
     },
     "info": {
       "aborting": "Aborting...",

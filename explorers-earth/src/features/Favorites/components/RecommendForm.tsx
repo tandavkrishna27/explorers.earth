@@ -21,6 +21,7 @@ import StarIcon from "../../../assets/icons/StarIcon";
 import { AdvancedMarker, Map, MapCameraChangedEvent, Pin } from "@vis.gl/react-google-maps";
 import { withGoogleMapsProvider } from "../../../components/GoogleMapsProvider";
 import Modal from "../../../components/ui/Modal";
+import { submittedCoordinates } from "./recommendFormCoords";
 import { useTaggableFields } from "../hooks/useTaggableFields";
 import axios from "axios";
 import Down from "../../../assets/icons/Down";
@@ -33,6 +34,9 @@ import {
 } from "../../../config/locationValidationConfig";
 import { EarthLoader } from "../../../components/EarthLoader";
 import { useTranslation } from "react-i18next";
+
+// Picker map start only (India centre): never saved as a place's coordinates.
+const MAP_PICKER_START = { lat: 20.5937, lng: 78.9629 };
 
 function DraftChangeEffect({onChange,category,subcategory,reason}:{onChange?:()=>void;category:string;subcategory:string;reason:string}){
   const {values}=useFormikContext();const signature=JSON.stringify([values,category,subcategory,reason]);
@@ -431,17 +435,15 @@ const RecommendationForm = memo(
 
       // Local state for managing the updated coords
       const coordinatesEdited=useRef(false);
-      const [newCoords, setNewCoords] = useState<Geometry>({
-        lat: 20.5937,
-        lng: 78.9629,
-      });
+      // Coordinates are only ever ones the user or a provider supplied. Until then there are
+      // none, and nothing is saved; inventing a point would pin the place in the wrong country.
+      const [newCoords, setNewCoords] = useState<Geometry | null>(null);
 
 
       // Local state for the current coordinates
-      const [currentCoords, setCurrentCoords] = useState<Geometry>({
-        lat: 20.5937,
-        lng: 78.9629,
-      });
+      // Where the picker map starts when nothing is chosen. This is a view default only and is
+      // never submitted.
+      const [currentCoords, setCurrentCoords] = useState<Geometry>(MAP_PICKER_START);
 
       // State for map center (only updated programmatically, not by user interaction)
       const [mapCenter, setMapCenter] = useState<Geometry | null>(null);
@@ -607,6 +609,9 @@ const RecommendationForm = memo(
             setCurrentCoords(fallbackCoords);
             setNewCoords(fallbackCoords);
           }
+        } else if (!coordinatesEdited.current) {
+          // A cleared or coordinate-less provider place leaves no point behind.
+          setNewCoords(null);
         }
       }, [initialValues.lat, initialValues.lng, places]);
 
@@ -939,7 +944,7 @@ const RecommendationForm = memo(
                 address: addressForSubmission,
                 title: titleForSubmission,
                 recommendation,
-                geoCoords: recommendationType === "place" ? JSON.stringify(type==='edit' && !places && !coordinatesEdited.current ? {lat:initialValues.lat??null,lng:initialValues.lng??null}:newCoords) : JSON.stringify({ lat: null, lng: null }),
+                geoCoords: JSON.stringify(submittedCoordinates({ isPlace: recommendationType === "place", isEdit: type === "edit", hasProviderPlace: Boolean(places), userEdited: coordinatesEdited.current, initial: initialValues, chosen: newCoords })),
                 reason: recommendedReason || initialValues.reason,
                 ...(taxonomyChanged || type !== "edit" && selectedCategory ? {placesTaxonomy: {categoryTermId:selectedCategory || null,subcategoryTermId:selectedSubcategory || null}} : {}),
                 category: selectedCategory,
@@ -1302,6 +1307,34 @@ const RecommendationForm = memo(
                         />
                       )}
 
+                      {(field.name === "contactNumber" ||
+                        (field.name === "contactName" && !activeFields.includes("contactNumber"))) && (
+                        <div className="mt-2" data-testid="contact-visibility">
+                          <label
+                            htmlFor="contactVisibility"
+                            className="block text-xs font-poppins text-dashboard font-semibold mb-1"
+                          >
+                            {t("dashboard.recommendations.addRecommendationForm.contactVisibility.label")}
+                          </label>
+                          <Field
+                            as="select"
+                            id="contactVisibility"
+                            name="contactVisibility"
+                            className="w-full outline-none p-3 border border-dashboard bg-dashboard-muted text-dashboard font-poppins rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-dashboard-accent hover:border-dashboard-accent"
+                          >
+                            <option value="private">
+                              {t("dashboard.recommendations.addRecommendationForm.contactVisibility.private")}
+                            </option>
+                            <option value="public">
+                              {t("dashboard.recommendations.addRecommendationForm.contactVisibility.public")}
+                            </option>
+                          </Field>
+                          <p className="text-xs font-poppins text-dashboard-muted mt-1">
+                            {t("dashboard.recommendations.addRecommendationForm.contactVisibility.hint")}
+                          </p>
+                        </div>
+                      )}
+
                       {/* Show ErrorMessage for all fields except 'recommendation' and 'subcategory' (they have their own) */}
                       {field.name !== "recommendation" && field.name !== "subcategory" && (
                         <ErrorMessage
@@ -1370,6 +1403,9 @@ const RecommendationForm = memo(
                         // Update form fields with current coordinates
                         setFieldValue("lat", currentCoords.lat.toString());
                         setFieldValue("lng", currentCoords.lng.toString());
+                        // Choosing "Set Location" is the user's explicit coordinate choice.
+                        coordinatesEdited.current = true;
+                        setNewCoords(currentCoords);
                         // Close the modal
                         setIsMapModalOpen(false);
                       }}

@@ -252,8 +252,8 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
                         <User size={13} /> {movie.director}
                       </span>
                     )}
-                    {movie.season_count && (
-                      <span className="text-[color:var(--category-muted,rgba(255,255,255,0.5))]">{movie.season_count} season{movie.season_count > 1 ? "s" : ""}</span>
+                    {(movie.season_count ?? 0) > 0 && (
+                      <span className="text-[color:var(--category-muted,rgba(255,255,255,0.5))]">{movie.season_count} season{(movie.season_count ?? 0) > 1 ? "s" : ""}</span>
                     )}
                   </div>
 

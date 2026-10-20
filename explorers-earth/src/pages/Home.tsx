@@ -286,7 +286,7 @@ const Home = memo(() => {
     }
   }, [loading]);
 
-  const { data: userLists, refetch: refetchUserLists } = usePlacesOwner(undefined, Boolean(user?.username));
+  const { data: userLists, refetch: refetchUserLists, loading: placesLoading, error: placesError } = usePlacesOwner(undefined, Boolean(user?.username));
 
   // One owner has one canonical account, so there is no list of accounts to pick a
   // completed one out of.
@@ -1002,7 +1002,11 @@ const Home = memo(() => {
                   {/* Category Lists Rendering */}
                   {activeTab === "places" && (
                     <>
-                      {listNames?.length === 0 ? (
+                      {!listNames && placesError ? (
+                        <div role="alert">Places could not be loaded. <button onClick={() => void refetchUserLists()}>Retry</button></div>
+                      ) : !listNames && placesLoading ? (
+                        <div role="status">Loading Places…</div>
+                      ) : listNames?.length === 0 ? (
                         <CategoryEmptyState
                           category="places"
                           onAddClick={handleAddNewItem}

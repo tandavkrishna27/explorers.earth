@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import RecommendationsHub from '../RecommendationsHub';
 import { loginSurface, ordinaryCategories, surfaceHarness, writtenPins, writtenVisibility } from '../../features/navigation/__tests__/surfaceHarness';
@@ -15,12 +15,15 @@ vi.mock('framer-motion', async original => {
 });
 describe('Hub navigation consent', () => {
   beforeEach(() => loginSurface()); afterEach(() => { cleanup(); useAuthStore.getState().logout(); });
+  // Disabling a public URL asks first (as Settings does); nothing is written until confirmed.
+  function confirmOff() { const dialog = screen.getByRole('dialog'); fireEvent.click(within(dialog).getByRole('button', { name: /^Unpublish / })); }
   async function openBooks() { fireEvent.click((await screen.findAllByTitle('Category options'))[2]); }
   async function openCategory(category: string) { fireEvent.click((await screen.findAllByTitle('Category options'))[ordinaryCategories.indexOf(category as any)]); }
   it.each(ordinaryCategories)('%s Off cleans only target and On never pins', async category => {
     const other = category === 'public_books' ? 'public_games' : 'public_books';
     const h = surfaceHarness(<RecommendationsHub />, { initial: { pinned_nav_tabs: ['public_profile', category, other] } }); await h.ready(); await openCategory(category);
     fireEvent.click(screen.getByRole('button', { name: /Disable Public/ }));
+    expect(h.writes).toHaveLength(0); confirmOff();
     await waitFor(() => expect(h.saved[category]).toBe('No')); await waitFor(() => expect(h.navigation.busy).toBe(false));
     await openCategory(category); fireEvent.click(screen.getByRole('button', { name: /Enable Public/ }));
     await waitFor(() => expect(h.saved[category]).toBe('Yes'));
@@ -40,9 +43,16 @@ describe('Hub navigation consent', () => {
     const h = surfaceHarness(<RecommendationsHub />, { initial: { public_books: 'No', pinned_nav_tabs: ['public_profile'] } }); await h.ready(); await openBooks();
     const pin = screen.getByRole('button', { name: /Pin to Public Nav/ }); expect(pin).toBeDisabled(); fireEvent.click(pin); expect(h.writes).toEqual([]);
   });
+  it('Disable Public URL writes nothing when the confirmation is cancelled', async () => {
+    const h = surfaceHarness(<RecommendationsHub />, {}); await h.ready(); await openBooks();
+    fireEvent.click(screen.getByRole('button', { name: /Disable Public/ }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).toBeNull(); expect(h.writes).toEqual([]);
+  });
   it('Off removes only its stored pin, preserving the other saved pins', async () => {
     const h = surfaceHarness(<RecommendationsHub />, { initial: { pinned_nav_tabs: ['public_profile', 'public_games', 'public_books'] } }); await h.ready(); await openBooks();
-    fireEvent.click(screen.getByRole('button', { name: /Disable Public/ })); await waitFor(() => expect(h.writes).toHaveLength(1));
+    fireEvent.click(screen.getByRole('button', { name: /Disable Public/ })); confirmOff(); await waitFor(() => expect(h.writes).toHaveLength(1));
     expect(writtenVisibility(h.writes[0].variables.input, 'public_books')).toBe(false);
     expect(writtenPins(h.writes[0].variables.input)).toEqual(['public_profile', 'public_games']);
   });
