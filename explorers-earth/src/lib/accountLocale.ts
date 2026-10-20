@@ -1,6 +1,7 @@
 import i18n from "i18next";
 import useAuthStore from "../store/store";
 import { explorersApiClient } from "./explorersApiClient";
+import { recordViewedAccount } from "./viewedRevisions";
 
 /**
  * The account's interface language, persisted server-side so a choice follows the owner
@@ -22,6 +23,9 @@ export async function persistAccountLocale(locale: string): Promise<void> {
   try {
     const current = await explorersApiClient.getMyProfile();
     if (current.locale === locale) return;
+    // A language choice is applied over the latest account; it is not an edit made from a
+    // stale view, so it must not be refused (or announced) as a lost update.
+    recordViewedAccount(current.revision);
     await explorersApiClient.updateAccount({ expectedRevision: current.revision, locale });
   } catch {
     // The next choice retries; the language already applies in this browser.

@@ -13,6 +13,8 @@ import { AddIcon } from "../../../../assets/icons/AddIcon";
 import Accordion from "../../../../components/ui/Accordian";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
+import { buildListPublicUrl, buildQrUrl } from "../../../../utils/listShareUrls";
+import { downloadQrSvgAsPng } from "../../../../utils/qrDownload";
 
 
 
@@ -31,7 +33,6 @@ import Switch from "../../../../components/ui/Switch";
 import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
 import QrCardTagline from "../../../../components/QrCardTagline";
 
-const VITE_BASE_URL = import.meta.env.VITE_BASE_URL || "https://explorers.earth";
 
 // Movie Row Component
 const MovieRow = ({
@@ -236,7 +237,7 @@ const MovieListView = () => {
   });
 
   // Public share URL
-  const shareUrl = list ? `${VITE_BASE_URL}/${list.account?.username || ""}/movies/${list.slug}` : "";
+  const shareUrl = list ? buildListPublicUrl(list.account?.username, "movies", list.slug) : "";
 
   const handleToggleVisibility = async () => {
     if (!list) return;
@@ -499,9 +500,9 @@ const MovieListView = () => {
                     <p className="text-sm tracking-wide font-medium z-10 text-center leading-snug">My Recommendations</p>
                     <div className="z-10 items-center flex flex-col pt-1">
                       <div className="p-2 bg-white rounded-lg shadow-md mb-3">
-                        <QRCodeSVG value={shareUrl} size={90} />
+                        <QRCodeSVG id="list-qr-movies" value={buildQrUrl(shareUrl)} size={90} />
                       </div>
-                      <QrCardTagline className="bg-gray-200 text-black px-4 py-1.5 font-poppins rounded-full text-[11px] font-semibold whitespace-nowrap" />
+                      <QrCardTagline category="movies" className="bg-gray-200 text-black px-4 py-1.5 font-poppins rounded-full text-[11px] font-semibold whitespace-nowrap" />
                     </div>
                   </div>
                 </div>
@@ -527,24 +528,7 @@ const MovieListView = () => {
                   </div>
                   <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => {
                      // trigger download
-                     const svg = document.querySelector('svg');
-                     if (svg) {
-                       const svgData = new XMLSerializer().serializeToString(svg);
-                       const canvas = document.createElement("canvas");
-                       const ctx = canvas.getContext("2d");
-                       const img = new Image();
-                       img.onload = () => {
-                         canvas.width = img.width;
-                         canvas.height = img.height;
-                         ctx?.drawImage(img, 0, 0);
-                         const pngFile = canvas.toDataURL("image/png");
-                         const a = document.createElement("a");
-                         a.download = `QR_${list?.List_Name || "List"}.png`;
-                         a.href = pngFile;
-                         a.click();
-                       };
-                       img.src = "data:image/svg+xml;base64," + btoa(svgData);
-                     }
+                     downloadQrSvgAsPng("list-qr-movies", `QR_${list?.List_Name || "List"}.png`);
                   }}>
                     <button className="p-0 bg-transparent rounded-full flex items-center justify-center">
                       <Download size={22} className="text-white" strokeWidth={1.5} />

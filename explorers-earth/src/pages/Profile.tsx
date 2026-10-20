@@ -1,3 +1,8 @@
+import { handleCooldownFor, handleCooldownMessage } from "../features/Profile/handleCooldown";
+import { HANDLE_CHANGE_COOLDOWN_DAYS } from "../../../tunes/shared/explorersContract";
+import RemoveMediaButton from "../features/Profile/components/RemoveMediaButton";
+import { isRevisionConflict } from "../lib/revisionConflict";
+import { reportProfileSaveError } from "../features/Profile/profileSaveError";
 import {
   memo,
   useState,
@@ -12,7 +17,7 @@ import ProfileForm, {
   type FormSection,
 } from "../features/Profile/components/ProfileForm";
 import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
-import { buildBusinessPublicAddress, toProfileViewModel } from "../features/Profile/api/profileClient";
+import { buildBusinessPublicAddress, removeProfileMedia, toProfileViewModel } from "../features/Profile/api/profileClient";
 import useAuthStore from "../store/store";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
@@ -238,6 +243,8 @@ const Profile = memo(() => {
   const [uploadedImage, setUploadedImage] = useState<string>("");
   // local state for handling background image uploading
   const [uploadedBackground, setUploadedBackground] = useState<string>("");
+  // Set once the owner removes the image; it must not be re-adopted from the not-yet-refreshed account.
+  const [removedMedia, setRemovedMedia] = useState({ profile: false, background: false });
   const [mediaRevisionAdvance, setMediaRevisionAdvance] = useState<{
     accountId: string; fromRevision: number; toRevision: number;
   } | null>(null);
@@ -337,14 +344,17 @@ const Profile = memo(() => {
   const stableAccountScope =
     resolvedAccountScope ?? activeAccountScopeRef.current;
 
+  const profileImageUrl = removedMedia.profile ? "" : uploadedImage || account?.profile_picture?.url || "";
+  const coverImageUrl = removedMedia.background ? "" : uploadedBackground || account?.bg_picture?.url || "";
+
   // Prepare profile data for walkthrough — memoized to prevent new object on every render
   const profileData = useMemo(() => ({
-    profilePicture: uploadedImage || account?.profile_picture?.url || "",
-    coverImage: uploadedBackground || account?.bg_picture?.url || "",
+    profilePicture: profileImageUrl,
+    coverImage: coverImageUrl,
     accountName: account?.Account_Name || "",
     bio: account?.Bio || "",
     socialMedia: account?.social_media || {},
-  }), [uploadedImage, uploadedBackground, account?.profile_picture?.url, account?.bg_picture?.url, account?.Account_Name, account?.Bio, account?.social_media]);
+  }), [profileImageUrl, coverImageUrl, account?.Account_Name, account?.Bio, account?.social_media]);
 
   // Initialize walkthrough hook
   const {
@@ -381,14 +391,14 @@ const Profile = memo(() => {
       const serverProfileUrl = account.profile_picture?.url;
 
       // Only set if we don't already have a local uploaded version
-      if (serverBackgroundUrl && !uploadedBackground) {
+      if (serverBackgroundUrl && !uploadedBackground && !removedMedia.background) {
         setUploadedBackground(serverBackgroundUrl);
       }
-      if (serverProfileUrl && !uploadedImage) {
+      if (serverProfileUrl && !uploadedImage && !removedMedia.profile) {
         setUploadedImage(serverProfileUrl);
       }
     }
-  }, [account, uploadedBackground, uploadedImage]);
+  }, [account, uploadedBackground, uploadedImage, removedMedia]);
 
   const { isProfileComplete, isRecommendationsComplete, setSetupStatus, bindAccount } = useSetupStore();
 
@@ -550,34 +560,7 @@ const Profile = memo(() => {
     return response;
   };
 
-  const showProfileSaveError = (error: unknown) => {
-    if (typeof error === "object" && error !== null) {
-      const saveError = error as {
-        graphQLErrors?: { message?: string }[];
-        networkError?: unknown;
-        message?: string;
-      };
-      if (saveError.graphQLErrors?.length) {
-        toast.error(
-          t("toast.error.updateFailedWithError", {
-            error:
-              saveError.graphQLErrors[0]?.message ||
-              t("toast.error.graphQLErrorOccurred"),
-          }),
-        );
-        return;
-      }
-      if (saveError.networkError) {
-        toast.error(t("dashboard.profile.common.networkError"));
-        return;
-      }
-      if (saveError.message?.includes("was not confirmed")) {
-        toast.error(t("dashboard.profile.common.saveAndPublishFailed"));
-        return;
-      }
-    }
-    toast.error(t("dashboard.profile.common.unexpectedError"));
-  };
+  const showProfileSaveError = (error: unknown) => reportProfileSaveError(error, t);
 
   const performProfileSave = async (
     values: any,
@@ -1370,58 +1353,13 @@ const Profile = memo(() => {
 
   // inital values for the form
 
-  // --- Username Cooldown Logic ---
-  // IMPORTANT: Only UsersPermissionsUser timestamps should determine cooldown.
-  // Updating Account fields (bio, address, etc.) changes account.updatedAt and must NOT influence username cooldown.
-  function parseDate(dateStr: string | undefined): Date | null {
-    return dateStr ? new Date(dateStr) : null;
-  }
-  const now = new Date();
-  const userCreatedAt = parseDate(data.usersPermissionsUser?.createdAt);
-  const userUpdatedAt = parseDate(data.usersPermissionsUser?.updatedAt);
-  // Use the latest user timestamp as a proxy for last username change.
-  const lastUsernameChange = userUpdatedAt || userCreatedAt;
-  const cooldownMinutes = 1; // fixed 1 minute for testing; adjust manually for production
-  let minutesSinceChange = cooldownMinutes;
-  if (
-    lastUsernameChange instanceof Date &&
-    !isNaN(lastUsernameChange.getTime())
-  ) {
-    minutesSinceChange = Math.floor(
-      (now.getTime() - lastUsernameChange.getTime()) / (1000 * 60)
-    );
-  }
-  let usernameDisabled = minutesSinceChange < cooldownMinutes;
-  let usernameCooldownMessage = "";
-  if (!lastUsernameChange) {
-    usernameDisabled = false;
-    usernameCooldownMessage = t("toast.warning.usernameCooldownUnknown");
-  } else if (usernameDisabled) {
-    const nextChangeDate = new Date(
-      (lastUsernameChange as Date).getTime() + cooldownMinutes * 60 * 1000
-    );
-    const remaining = Math.max(0, cooldownMinutes - minutesSinceChange);
-    if (cooldownMinutes >= 1440) {
-      const remainingDays = Math.ceil(remaining / 1440);
-      usernameCooldownMessage = t("toast.warning.usernameCooldownDays", {
-        date: nextChangeDate.toLocaleDateString(),
-        days: remainingDays,
-      });
-    } else if (cooldownMinutes >= 60) {
-      const remainingHours = Math.ceil(remaining / 60);
-      usernameCooldownMessage = t("toast.warning.usernameCooldownHours", {
-        time: nextChangeDate.toLocaleTimeString(),
-        hours: remainingHours,
-      });
-    } else {
-      usernameCooldownMessage = t("toast.warning.usernameCooldownMinutes", {
-        time: nextChangeDate.toLocaleTimeString(),
-        minutes: remaining,
-      });
-    }
-  } else {
-    usernameCooldownMessage = t("toast.warning.usernameCooldownReady");
-  }
+  // --- Handle cooldown ---
+  // The server enforces one change per HANDLE_CHANGE_COOLDOWN_DAYS and reports when the next
+  // is allowed; the page only shows that date (it used to guess from a timestamp the
+  // canonical account does not carry, so it never locked and promised a cooldown that did not exist).
+  const handleCooldown = handleCooldownFor(accountQuery.data?.handleChangeAllowedAt);
+  const usernameDisabled = handleCooldown.locked;
+  const usernameCooldownMessage = handleCooldownMessage((key, options) => String(t(key, options as never)), handleCooldown.allowedAt);
 
   const initialValues = {
     ...((typeof account?.documentId === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(account.documentId))
@@ -1680,7 +1618,8 @@ const Profile = memo(() => {
       if (accountQuery.data) {
         const media = await explorersApiClient.createMedia(file, "profile");
         try {
-          const current = await explorersApiClient.getMyProfile();
+          // Based on the account this page is showing, not on a re-read that would hide a newer save.
+          const current = accountQuery.data;
           const updated = await explorersApiClient.updateAccount({ expectedRevision: current.revision, profileImageId: media.id });
           setMediaRevisionAdvance({ accountId: current.id, fromRevision: current.revision, toRevision: updated.revision });
         } catch (error) {
@@ -1688,6 +1627,7 @@ const Profile = memo(() => {
           throw error;
         }
         setUploadedImage(media.url);
+        setRemovedMedia((value) => ({ ...value, profile: false }));
         await refetch();
         toast.success(t('toast.success.profileImageUpdated'));
         markProcessingComplete();
@@ -1709,6 +1649,27 @@ const Profile = memo(() => {
     }
   };
 
+  const handleRemoveMedia = async (slot: "profile" | "background") => {
+    const current = accountQuery.data;
+    if (!current) return;
+    setIsUploading(true);
+    try {
+      // Based on the account this page is showing, like every other save from it.
+      const updated = await removeProfileMedia(slot, current);
+      setMediaRevisionAdvance({ accountId: current.id, fromRevision: current.revision, toRevision: updated.revision });
+      setRemovedMedia((value) => ({ ...value, [slot]: true }));
+      if (slot === "profile") setUploadedImage("");
+      else setUploadedBackground("");
+      await refetch();
+      toast.success(t(slot === "profile" ? "toast.success.profileImageRemoved" : "toast.success.backgroundImageRemoved"));
+    } catch (error) {
+      if (isRevisionConflict(error)) reportProfileSaveError(error, t);
+      else toast.error(t(slot === "profile" ? "toast.error.profileImageRemoveFailed" : "toast.error.backgroundImageRemoveFailed"));
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleBackgroundUpload = async (file: File) => {
     // ✅ FIXED: Comprehensive background image upload flow
     // Same two-step process as profile image: upload file, then associate with account
@@ -1719,7 +1680,8 @@ const Profile = memo(() => {
       if (accountQuery.data) {
         const media = await explorersApiClient.createMedia(file, "background");
         try {
-          const current = await explorersApiClient.getMyProfile();
+          // Based on the account this page is showing, not on a re-read that would hide a newer save.
+          const current = accountQuery.data;
           const updated = await explorersApiClient.updateAccount({ expectedRevision: current.revision, backgroundImageId: media.id });
           setMediaRevisionAdvance({ accountId: current.id, fromRevision: current.revision, toRevision: updated.revision });
         } catch (error) {
@@ -1727,6 +1689,7 @@ const Profile = memo(() => {
           throw error;
         }
         setUploadedBackground(media.url);
+        setRemovedMedia((value) => ({ ...value, background: false }));
         await refetch();
         toast.success(t('toast.success.backgroundImageUpdated'));
         markProcessingComplete();
@@ -1781,11 +1744,7 @@ const Profile = memo(() => {
               <div 
                 className="absolute inset-0 h-full w-full overflow-hidden z-0"
                 style={{
-                  backgroundImage: uploadedBackground
-                    ? `url('${uploadedBackground}')`
-                    : account?.bg_picture?.url
-                      ? `url('${account.bg_picture.url}')`
-                      : `url('${IMAGE_CONFIG.defaultImages.background}')`,
+                  backgroundImage: `url('${coverImageUrl || IMAGE_CONFIG.defaultImages.background}')`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                 }}
@@ -1811,32 +1770,44 @@ const Profile = memo(() => {
                 <div className="relative w-28 h-28 md:w-36 md:h-36 mx-auto mb-4 group">
                   <div className="w-full h-full ring-4 ring-[hsl(var(--evergreen))] rounded-full overflow-hidden bg-black shadow-2xl">
                     <img
-                      src={
-                        uploadedImage ||
-                        account?.profile_picture?.url ||
-                        IMAGE_CONFIG.defaultImages.profile
-                      }
+                      src={profileImageUrl || IMAGE_CONFIG.defaultImages.profile}
                       alt={t('dashboard.profile.common.profile')}
                       className="w-full h-full object-cover"
                     />
                   </div>
                   
                   {/* Profile Picture Edit Button - Bottom Right */}
-                  <div className="absolute bottom-1 right-1 z-20" data-walkthrough="profile-picture">
+                  <div className="absolute bottom-1 right-1 z-20 flex flex-col items-center gap-2" data-walkthrough="profile-picture">
                     <ImageCropper
                       onFileUpload={handleImageUpload}
                       cropType="profileCrop"
                     />
+                    {profileImageUrl && (
+                      <RemoveMediaButton
+                        testId="remove-profile-image"
+                        label={t('dashboard.profile.common.removeProfileImage')}
+                        disabled={isUploading}
+                        onRemove={() => void handleRemoveMedia("profile")}
+                      />
+                    )}
                   </div>
                 </div>
 
                 {/* Background Edit Button - Bottom Right of the entire banner */}
-                <div className="absolute bottom-4 right-4 z-20" data-walkthrough="cover-image">
+                <div className="absolute bottom-4 right-4 z-20 flex flex-col items-center gap-2" data-walkthrough="cover-image">
                   <ImageCropper
                     onFileUpload={handleBackgroundUpload}
                     cropType="backgroundCrop"
                     buttonTitle={t('dashboard.profile.common.editImage')}
                   />
+                  {coverImageUrl && (
+                    <RemoveMediaButton
+                      testId="remove-cover-image"
+                      label={t('dashboard.profile.common.removeCoverImage')}
+                      disabled={isUploading}
+                      onRemove={() => void handleRemoveMedia("background")}
+                    />
+                  )}
                 </div>
 
                 {/* View Public Profile Navigation Button - Top Right */}
@@ -2027,8 +1998,8 @@ const Profile = memo(() => {
             <PreviewModal
               isOpen={showPreview}
               onClose={() => setShowPreview(false)}
-              uploadedBackground={uploadedBackground}
-              uploadedImage={uploadedImage}
+              uploadedBackground={coverImageUrl}
+              uploadedImage={profileImageUrl}
               userData={{
                 bgPicture: account?.bg_picture?.url,
                 profilePicture: account?.profile_picture?.url,
@@ -2049,11 +2020,7 @@ const Profile = memo(() => {
               onClose={handleCancelUsernameChange}
               onConfirm={handleConfirmUsernameChange}
               newUsername={pendingFormValues?.username || ""}
-              cooldownDays={
-                cooldownMinutes < 60
-                  ? cooldownMinutes / 1440
-                  : cooldownMinutes / (24 * 60)
-              } // Convert minutes to days for display
+              cooldownDays={HANDLE_CHANGE_COOLDOWN_DAYS}
             />
 
             {/* Unsaved Changes Modal */}

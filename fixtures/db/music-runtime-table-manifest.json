@@ -2,7 +2,7 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0061_explorers_product_spec_order_budget_scale",
+    "expectedId": "0062_explorers_handle_holds",
     "files": [
       "0001_runtime_baseline.sql",
       "0002_identity_lifecycle.sql",
@@ -64,7 +64,8 @@
       "0058_explorers_place_photo_backfill.sql",
       "0059_explorers_person_suppression_audit.sql",
       "0060_explorers_guide_budget_tier.sql",
-      "0061_explorers_product_spec_order_budget_scale.sql"
+      "0061_explorers_product_spec_order_budget_scale.sql",
+      "0062_explorers_handle_holds.sql"
     ],
     "controlTables": [
       "music_schema_migrations",
@@ -108,6 +109,12 @@
     {
       "name": "account_category_settings",
       "managedBy": "drizzle",
+      "family": "profile",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "account_handle_holds",
+      "managedBy": "unmanaged-raw-sql",
       "family": "profile",
       "lifecycle": "strip-on-deletion"
     },

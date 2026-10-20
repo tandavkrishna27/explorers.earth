@@ -1915,11 +1915,15 @@
       "deleteAccount": {
         "button": "Elimina account",
         "description": "Elimina permanentemente il tuo account e tutti i dati",
+        "pending": {
+          "scheduled": "Il tuo account verrà eliminato definitivamente il {{date}}. Accedi con Google prima di quella data per annullare l'eliminazione."
+        },
         "step1": {
           "continueButton": "Continua con l'eliminazione",
           "deactivateInsteadButton": "Disattiva account invece",
           "modalDescription": "Sei sicuro di voler eliminare il tuo account? Questa azione non può essere annullata.",
           "modalDescription2": "Se vuoi mantenere i tuoi dati, puoi invece disattivare il tuo account.",
+          "modalDescriptionGrace": "Il tuo account verrà nascosto subito e eliminato definitivamente dopo 30 giorni. Puoi recuperarlo prima accedendo con Google.",
           "modalTitle": "Eliminare il tuo account?"
         },
         "step2": {
@@ -1935,7 +1939,8 @@
         "step3": {
           "continueButton": "Continua",
           "modalTitle": "Perché te ne vai?",
-          "reasonPlaceholder": "Per favore, dicci il motivo della tua partenza..."
+          "reasonPlaceholder": "Per favore, dicci il motivo della tua partenza...",
+          "reasonTooLong": "Il motivo è troppo lungo. Usa al massimo 2.000 caratteri."
         },
         "step4": {
           "confirmationRequired": "Per favore, digita 'CONFIRM DELETE' per confermare.",
@@ -1949,6 +1954,7 @@
         },
         "text": "Eliminare il tuo account?"
       },
+      "handleMismatch": "L'handle inserito non corrisponde all'handle del tuo account.",
       "heading": "Account",
       "security": {
         "title": "Account e Sicurezza"
@@ -2518,6 +2524,15 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "recovery": {
+    "pendingDeletion": {
+      "cancelButton": "Annulla eliminazione",
+      "scheduled": "L'eliminazione del tuo account è prevista per il {{date}}. Annulla l'eliminazione per ripristinare l'accesso.",
+      "scheduledUnknown": "L'eliminazione del tuo account è programmata. Annulla l'eliminazione per ripristinare l'accesso.",
+      "title": "Annulla l'eliminazione dell'account"
+    },
+    "scheduledForDeletion": "L'eliminazione del tuo account è prevista per il {{date}}. Continua con Google per annullare l'eliminazione."
   },
   "home": {
     "shareProfile": "Condividi profilo"

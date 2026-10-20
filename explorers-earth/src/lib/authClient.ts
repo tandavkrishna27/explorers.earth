@@ -28,7 +28,14 @@ export const authClient = {
       }
       const accountResponse = await fetch("/api/explorers/v1/me", { credentials: "include", cache: "no-store" });
       if (accountResponse.status === 401) { useAuthStore.getState().verificationFailed(generation, "signed-out"); return; }
-      if (accountResponse.status === 403) { useAuthStore.getState().verificationFailed(generation, "terminal"); return; }
+      if (accountResponse.status === 403) {
+        // A pending deletion's own session is told when it becomes final, so recovery can say so.
+        const refusal = await jsonOrNull(accountResponse) as { lifecycle?: { status?: string; scheduledDeletionAt?: unknown } } | null;
+        const scheduled = refusal?.lifecycle?.status === "pending_deletion" && typeof refusal.lifecycle.scheduledDeletionAt === "string"
+          ? refusal.lifecycle.scheduledDeletionAt : null;
+        useAuthStore.getState().verificationFailed(generation, "terminal", scheduled);
+        return;
+      }
       if (!accountResponse.ok) throw new Error("Account service is unavailable");
       const body = await jsonOrNull(accountResponse) as { account?: CanonicalAccount } | null;
       if (useAuthStore.getState().generation !== generation) return;

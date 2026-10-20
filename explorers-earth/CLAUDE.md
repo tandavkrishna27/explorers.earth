@@ -103,6 +103,7 @@ src/
 
 - The Music product was removed from the SPA in P3-4; `docs/archive/music-v1/` and the git tag `music-v1-final` record it.
 - `AccountGenerationCacheReset.tsx` clears private React Query and Apollo caches whenever the auth generation changes, so nothing read for one account survives into the next.
+- **Account deletion grace period**: a deletion request hides the account at once but is finalised only after 30 days (`ACCOUNT_DELETION_GRACE_DAYS` in `tunes/server/application/accountDeletionGrace.ts`, the single definition used by every maintenance query). Signing in before then leads to `/reactivate`, where Google recovery cancels the deletion; the scheduled date is shown to the signed-in owner only.
 - **Account Reactivation Flow**: `ReactivateAccount.tsx` and `ReactivateConfirm.tsx` handle the separate Explorer account lifecycle endpoints.
 
 ## Common Tasks

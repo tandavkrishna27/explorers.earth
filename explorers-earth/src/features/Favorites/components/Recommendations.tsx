@@ -1073,8 +1073,8 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
                     {!isPersonType && (rating !== undefined || reviews !== undefined) && (
                       <div className="places-grid-card-meta flex items-center gap-1 text-[10px] md:text-xs text-white font-bold drop-shadow-[0_1px_3px_rgba(0,0,0,0.85)]">
                         <span className="text-dashboard-accent">★</span>
-                        <span>{rating?.toFixed(1) || "0.0"}</span>
-                        <span className="text-white/60 font-medium">({reviews || 0})</span>
+                        {rating !== undefined && <span>{rating.toFixed(1)}</span>}
+                        {reviews !== undefined && reviews !== null && <span className="text-white/60 font-medium">({reviews})</span>}
                       </div>
                     )}
                   </div>

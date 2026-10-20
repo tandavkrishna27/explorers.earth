@@ -394,7 +394,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 69
+      "line": 70
     },
     {
       "method": "USE",
@@ -404,7 +404,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 71
+      "line": 72
     },
     {
       "method": "ALL",
@@ -414,7 +414,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 78
+      "line": 79
     },
     {
       "method": "ALL",
@@ -424,7 +424,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 79
+      "line": 80
     },
     {
       "method": "GET",
@@ -434,7 +434,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 83
+      "line": 84
     },
     {
       "method": "GET",
@@ -444,7 +444,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 85
+      "line": 86
     },
     {
       "method": "POST",
@@ -454,7 +454,7 @@
       "policy": "trusted-origin+signed-short-lived-recovery-intent",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 116
+      "line": 117
     },
     {
       "method": "GET",
@@ -464,7 +464,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 134
+      "line": 135
     },
     {
       "method": "GET",
@@ -794,7 +794,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
-      "line": 25
+      "line": 26
     },
     {
       "method": "POST",
@@ -804,7 +804,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
-      "line": 29
+      "line": 30
     },
     {
       "method": "POST",
@@ -814,7 +814,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "block-or-deactivate",
       "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
-      "line": 35
+      "line": 36
     },
     {
       "method": "POST",
@@ -824,7 +824,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
-      "line": 41
+      "line": 42
     },
     {
       "method": "GET",
@@ -834,7 +834,7 @@
       "policy": "google-bound-five-minute-proof+origin-on-mutation",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
-      "line": 56
+      "line": 57
     },
     {
       "method": "POST",
@@ -844,7 +844,7 @@
       "policy": "google-bound-five-minute-proof+origin-on-mutation",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersLifecycleRoutes.ts",
-      "line": 86
+      "line": 90
     },
     {
       "method": "POST",
@@ -1044,7 +1044,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
-      "line": 45
+      "line": 46
     },
     {
       "method": "USE",
@@ -1054,7 +1054,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
-      "line": 52
+      "line": 53
     },
     {
       "method": "GET",
@@ -1064,7 +1064,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
-      "line": 56
+      "line": 57
     },
     {
       "method": "GET",
@@ -1074,7 +1074,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
-      "line": 70
+      "line": 73
     },
     {
       "method": "GET",
@@ -1084,7 +1084,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
-      "line": 92
+      "line": 98
     },
     {
       "method": "GET",
@@ -1094,7 +1094,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
-      "line": 97
+      "line": 103
     },
     {
       "method": "GET",
@@ -1104,7 +1104,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersPublicProfileRoutes.ts",
-      "line": 102
+      "line": 108
     },
     {
       "method": "GET",

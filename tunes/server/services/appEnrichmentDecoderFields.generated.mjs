@@ -4827,6 +4827,8 @@ var accountDtoSchema = external_exports.object({
   onboardingStatus: external_exports.enum(["incomplete", "complete"]),
   status: external_exports.enum(["active", "suspended", "pending_deletion", "deleted"]),
   revision: external_exports.number().int().positive().safe(),
+  /** When the handle may next be changed (ISO 8601); null when it may be changed now. */
+  handleChangeAllowedAt: external_exports.string().datetime().nullable().optional(),
   publicProfile: external_exports.boolean(),
   autoPinning: external_exports.boolean(),
   locale: external_exports.string(),

@@ -422,7 +422,8 @@
         "primaryAddressRequired": "प्राथमिक पता आवश्यक है",
         "profileImageAlt": "Profile",
         "resetLinkSentSuccess": "रीसेट लिंक सफलतापूर्वक भेजा गया!",
-        "stateRequired": "राज्य आवश्यक है"
+        "stateRequired": "राज्य आवश्यक है",
+        "postalCodeInvalid": "मान्य पिन/पोस्टल कोड दर्ज करें (2-10 अक्षर, अंक, स्पेस या हाइफ़न)"
       },
       "password": {
         "considerLonger": "बेहतर सुरक्षा के लिए अधिक विविधता के साथ लंबे पासवर्ड का उपयोग करने पर विचार करें",
@@ -917,7 +918,9 @@
         "video": "वीडियो",
         "viewPublicProfile": "Navigate to Public Profile",
         "visible": "दृश्यमान",
-        "whatsappNumber": "WhatsApp नंबर"
+        "whatsappNumber": "WhatsApp नंबर",
+        "removeProfileImage": "प्रोफ़ाइल फ़ोटो हटाएँ",
+        "removeCoverImage": "कवर इमेज हटाएँ"
       },
       "publicProfile": {
         "accountTypes": {
@@ -1917,11 +1920,15 @@
       "deleteAccount": {
         "button": "खाता हटाएं",
         "description": "अपने खाते और सभी डेटा को स्थायी रूप से हटाएं",
+        "pending": {
+          "scheduled": "आपका खाता {{date}} को स्थायी रूप से हटा दिया जाएगा। हटाना रद्द करने के लिए उससे पहले Google से साइन इन करें।"
+        },
         "step1": {
           "continueButton": "हटाना जारी रखें",
           "deactivateInsteadButton": "इसके बजाय खाता निष्क्रिय करें",
           "modalDescription": "क्या आप वाकई अपना खाता हटाना चाहते हैं? यह कार्रवाई पूर्ववत नहीं की जा सकती।",
           "modalDescription2": "यदि आप अपना डेटा रखना चाहते हैं, तो आप इसके बजाय अपना खाता निष्क्रिय कर सकते हैं।",
+          "modalDescriptionGrace": "आपका खाता तुरंत छिपा दिया जाएगा और 30 दिनों के बाद स्थायी रूप से हटा दिया जाएगा। उससे पहले आप Google से साइन इन करके इसे वापस पा सकते हैं।",
           "modalTitle": "अपना खाता हटाएं?"
         },
         "step2": {
@@ -1937,7 +1944,8 @@
         "step3": {
           "continueButton": "जारी रखें",
           "modalTitle": "आप क्यों जा रहे हैं?",
-          "reasonPlaceholder": "कृपया हमें अपने जाने का कारण बताएं..."
+          "reasonPlaceholder": "कृपया हमें अपने जाने का कारण बताएं...",
+          "reasonTooLong": "आपका कारण बहुत लंबा है। कृपया अधिकतम 2,000 वर्ण लिखें।"
         },
         "step4": {
           "confirmationRequired": "कृपया पुष्टि के लिए 'CONFIRM DELETE' टाइप करें।",
@@ -1951,6 +1959,7 @@
         },
         "text": "अपना खाता हटाएं?"
       },
+      "handleMismatch": "आपने जो हैंडल लिखा है वह आपके खाते के हैंडल से मेल नहीं खाता।",
       "heading": "खाता",
       "security": {
         "title": "खाता और सुरक्षा"
@@ -2206,7 +2215,9 @@
       "usernameTooShort": "उपयोगकर्ता नाम बहुत छोटा है। कृपया एक लंबा उपयोगकर्ता नाम चुनें।",
       "usernameUpdateFailed": "उपयोगकर्ता नाम अपडेट असफल। कृपया पुनः प्रयास करें।",
       "validationError": "सत्यापन त्रुटि। कृपया अपना इनपुट जांचें।",
-      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!"
+      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!",
+      "profileImageRemoveFailed": "प्रोफ़ाइल फ़ोटो नहीं हटाई जा सकी। कृपया फिर कोशिश करें।",
+      "backgroundImageRemoveFailed": "कवर इमेज नहीं हटाई जा सकी। कृपया फिर कोशिश करें।"
     },
     "info": {
       "aborting": "रोक रहा है...",
@@ -2338,7 +2349,9 @@
       "uploadingImagesToFeed": "चयनित छवियां आपकी फीड में अपलोड की जा रही हैं...",
       "usernameChanged": "उपयोगकर्ता नाम सफलतापूर्वक बदला!",
       "usernameUpdated": "उपयोगकर्ता नाम सफलतापूर्वक अपडेट!",
-      "welcomeMessage": "explorers में आपका स्वागत है!"
+      "welcomeMessage": "explorers में आपका स्वागत है!",
+      "profileImageRemoved": "प्रोफ़ाइल फ़ोटो हटा दी गई।",
+      "backgroundImageRemoved": "कवर इमेज हटा दी गई।"
     },
     "warning": {
       "accountExpiring": "खाता समाप्त हो रहा है। कृपया अपना खाता अपडेट करें",
@@ -2389,7 +2402,8 @@
       "usernameCooldownUnknown": "You can change your username now",
       "usernameExpiring": "उपयोगकर्ता नाम समाप्त हो रहा है। कृपया अपना उपयोगकर्ता नाम अपडेट करें",
       "usernameNotChanged": "उपयोगकर्ता नाम नहीं बदला गया है। कृपया अपना उपयोगकर्ता नाम बदलें",
-      "validationPending": "सत्यापन लंबित है। कृपया प्रतीक्षा करें"
+      "validationPending": "सत्यापन लंबित है। कृपया प्रतीक्षा करें",
+      "usernameCooldownUntil": "आप अपना उपयोगकर्ता नाम {{date}} को फिर से बदल सकते हैं।"
     }
   },
   "usernameClaim": {
@@ -2520,6 +2534,19 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "conflict": {
+    "changedElsewhere": "इसे किसी दूसरे टैब या डिवाइस में बदला गया है। नवीनतम संस्करण देखने के लिए रीलोड करें।",
+    "reload": "रीलोड करें"
+  },
+  "recovery": {
+    "pendingDeletion": {
+      "cancelButton": "हटाना रद्द करें",
+      "scheduled": "आपका खाता {{date}} को हटाए जाने के लिए निर्धारित है। पहुँच वापस पाने के लिए हटाना रद्द करें।",
+      "scheduledUnknown": "आपका खाता हटाए जाने के लिए निर्धारित है। पहुँच वापस पाने के लिए हटाना रद्द करें।",
+      "title": "खाता हटाना रद्द करें"
+    },
+    "scheduledForDeletion": "आपका खाता {{date}} को हटाए जाने के लिए निर्धारित है। हटाना रद्द करने के लिए Google के साथ जारी रखें।"
   },
   "home": {
     "shareProfile": "प्रोफ़ाइल शेयर करें"

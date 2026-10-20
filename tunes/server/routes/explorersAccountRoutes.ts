@@ -16,6 +16,11 @@ export function setupExplorersAccountRoutes(app: Express, pool: Pool, auth: Expl
       return response.status(200).json({ account });
     } catch (error) {
       if (error instanceof ProfileInputError) return response.status(422).json({ error: { code: "INVALID_INPUT", message: error.message, requestId: randomUUID() } });
+      if (error instanceof AccountConflict && error.kind === "handle_cooldown" && error.nextAllowedAt) {
+        // Not a stale revision and not a taken handle: say when the handle can change next.
+        const nextAllowedAt = error.nextAllowedAt.toISOString();
+        return response.status(409).json({ error: { code: "HANDLE_COOLDOWN", message: `The handle can be changed again on ${nextAllowedAt.slice(0, 10)}`, nextAllowedAt, requestId: randomUUID() } });
+      }
       if (error instanceof AccountConflict) return response.status(409).json({ error: { code: "CONFLICT", message: error.kind === "handle" ? "Handle is unavailable" : "Account changed", requestId: randomUUID() } });
       sendActorError(request, response, error);
     }

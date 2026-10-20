@@ -6,6 +6,8 @@ interface AuthState {
   status: "loading" | "signed-out" | "active-incomplete" | "active-complete" | "recovery-only" | "terminal" | "error";
   generation: number;
   accountId: string | null;
+  /** Set only while status is "terminal" for a pending deletion: when it becomes final unless cancelled. */
+  scheduledDeletionAt: string | null;
   logoutError: boolean;
   logoutAttemptId: string | null;
   isAuthenticated: boolean;
@@ -20,7 +22,8 @@ interface AuthState {
   beginVerification: () => number;
   acceptVerified: (generation: number, account: { id: string; userId: string; username: string; email: string;
     onboardingStatus: "incomplete" | "complete"; revision: number }) => void;
-  verificationFailed: (generation: number, status: "signed-out" | "recovery-only" | "terminal" | "error") => void;
+  verificationFailed: (generation: number, status: "signed-out" | "recovery-only" | "terminal" | "error",
+    scheduledDeletionAt?: string | null) => void;
   setLogoutError: (failed: boolean, attemptId?: string | null) => string | null;
   login: (data: {
     id: string;
@@ -57,6 +60,7 @@ const useAuthStore = create<AuthState>()(
       status: "loading",
       generation: 0,
       accountId: null,
+      scheduledDeletionAt: null,
       logoutError: initialLogoutAttempt !== null,
       logoutAttemptId: initialLogoutAttempt,
       token: null,
@@ -65,7 +69,7 @@ const useAuthStore = create<AuthState>()(
 
       beginVerification: () => {
         const generation = get().generation + 1;
-        set({ generation, status: "loading", isAuthenticated: false, accountId: null, token: null, user: null });
+        set({ generation, status: "loading", isAuthenticated: false, accountId: null, scheduledDeletionAt: null, token: null, user: null });
         return generation;
       },
       acceptVerified: (generation, account) => {
@@ -80,9 +84,10 @@ const useAuthStore = create<AuthState>()(
           user: { id: account.userId, documentId: account.userId, username: account.username,
             email: account.email, blocked: false } });
       },
-      verificationFailed: (generation, status) => {
+      verificationFailed: (generation, status, scheduledDeletionAt = null) => {
         if (get().generation !== generation) return;
-        set({ status, accountId: null, isAuthenticated: false, token: null, user: null });
+        set({ status, accountId: null, scheduledDeletionAt: status === "terminal" ? scheduledDeletionAt : null,
+          isAuthenticated: false, token: null, user: null });
       },
       setLogoutError: (failed, attemptId) => {
         const current = pendingServerLogout();
@@ -121,6 +126,7 @@ const useAuthStore = create<AuthState>()(
           generation: get().generation + 1,
           status: "signed-out",
           accountId: null,
+          scheduledDeletionAt: null,
           logoutError: pendingServerLogout() !== null,
           logoutAttemptId: pendingServerLogout(),
           isAuthenticated: false,

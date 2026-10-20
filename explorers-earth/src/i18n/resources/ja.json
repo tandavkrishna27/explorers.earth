@@ -1886,11 +1886,15 @@
       "deleteAccount": {
         "button": "アカウントを削除",
         "description": "アカウントとすべてのデータを永続的に削除する",
+        "pending": {
+          "scheduled": "アカウントは{{date}}に完全に削除されます。削除を取り消すには、それまでにGoogleでログインしてください。"
+        },
         "step1": {
           "continueButton": "削除を続行",
           "deactivateInsteadButton": "代わりにアカウントを無効にする",
           "modalDescription": "本当にアカウントを削除してもよろしいですか？この操作は元に戻すことができません。",
           "modalDescription2": "データを保持したい場合は、代わりにアカウントを無効にすることができます。",
+          "modalDescriptionGrace": "アカウントはすぐに非表示になり、30日後に完全に削除されます。それまでの間は、Googleでログインすれば復元できます。",
           "modalTitle": "アカウントを削除しますか？"
         },
         "step2": {
@@ -1906,7 +1910,8 @@
         "step3": {
           "continueButton": "続行",
           "modalTitle": "なぜ退会されるのですか？",
-          "reasonPlaceholder": "退会の理由をお聞かせください..."
+          "reasonPlaceholder": "退会の理由をお聞かせください...",
+          "reasonTooLong": "理由が長すぎます。2,000文字以内で入力してください。"
         },
         "step4": {
           "confirmationRequired": "確認のため'CONFIRM DELETE'と入力してください。",
@@ -1920,6 +1925,7 @@
         },
         "text": "アカウントを削除しますか？"
       },
+      "handleMismatch": "入力したハンドルがアカウントのハンドルと一致しません。",
       "heading": "アカウント",
       "security": {
         "title": "アカウントとセキュリティ"
@@ -2476,5 +2482,14 @@
       "purpose": "Help visitors recognize how explorers.earth can hold and share a personal, creative, or organizational point of view.",
       "title": "Use Cases | explorers.earth"
     }
+  },
+  "recovery": {
+    "pendingDeletion": {
+      "cancelButton": "削除を取り消す",
+      "scheduled": "アカウントは{{date}}に削除される予定です。削除を取り消すと、アクセスが復元されます。",
+      "scheduledUnknown": "アカウントは削除される予定です。削除を取り消すと、アクセスが復元されます。",
+      "title": "アカウント削除の取り消し"
+    },
+    "scheduledForDeletion": "アカウントは{{date}}に削除される予定です。削除を取り消すには、Googleで続行してください。"
   }
 }

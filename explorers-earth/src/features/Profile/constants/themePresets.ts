@@ -1,3 +1,4 @@
+import { resolveReadableProfileTheme } from './profileReadability';
 import {
   RECOMMENDATION_CATEGORY_IDS,
   ThemeTokenConfig,
@@ -136,15 +137,23 @@ export function getThemeTokenStyles(settings?: Partial<ThemeSettings>): Record<s
   const safeSettings = { ...DEFAULT_THEME_SETTINGS, ...settings };
   const presetConfig = THEME_PRESETS[safeSettings.preset] || THEME_PRESETS['cinematic-dark'];
   const accent = safeSettings.accentColor || presetConfig.defaultAccent;
-  const textPrimary = safeSettings.customTextColor || presetConfig.styles.textPrimary;
+  // Text colours are checked against what the layout puts behind them (see
+  // profileReadability), so a custom colour or a cover image can never leave text unreadable.
+  const readable = resolveReadableProfileTheme(presetConfig, {
+    wallpaperMode: safeSettings.wallpaperMode, accentColor: accent, customTextColor: safeSettings.customTextColor,
+  });
   const publicChrome = PUBLIC_CHROME_TOKENS[presetConfig.id];
 
   return {
     '--bg-page': presetConfig.styles.bgPage,
     '--bg-card': presetConfig.styles.bgCard,
     '--border-card': presetConfig.styles.borderCard,
-    '--text-primary': textPrimary,
-    '--text-secondary': presetConfig.styles.textSecondary,
+    '--text-primary': readable.primary,
+    '--text-secondary': readable.secondary,
+    '--profile-header-primary': readable.headerPrimary,
+    '--profile-header-secondary': readable.headerSecondary,
+    '--profile-bio-scrim': readable.bioScrim?.color ?? 'transparent',
+    '--profile-wallpaper-scrim': readable.wallpaperScrim?.color ?? 'transparent',
     '--accent-color': accent,
     '--nav-bg': presetConfig.styles.navBg,
     '--public-chrome-surface': publicChrome.surface,

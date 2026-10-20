@@ -3,6 +3,7 @@ import {PlacesClient,type CompletePlacesOwnerContent} from './placesClient';
 import {placesViewModel,type PlacesOwnerView} from './placesViewModel';
 import {ExplorersApiError,type RecommendationObservation,type CollectionObservation} from '../../../lib/explorersApiClient';
 import useAuthStore from '../../../store/store';
+import {recordViewedContent} from '../../../lib/viewedRevisions';
 
 // Ticket 5.1. Same orchestration contract as the Apps, Products, People, Movies and Games
 // adapters: two bracketing category reads, a bounded fan-out of detail reads, and no
@@ -37,6 +38,7 @@ async function readPlacesOwnerContentOnce(signal?:AbortSignal):Promise<PlacesOwn
   ...Array.from({length:Math.min(4,activeLists.length)},async()=>{try{while(listIndex<activeLists.length){checkTerminal();assertCurrent();const row=activeLists[listIndex++];let detail:CollectionObservation;try{detail=await PlacesClient.observeCollection(row.id,controller.signal);}catch(error){if(error instanceof ExplorersApiError&&error.status===404){unavailable.add(row.id);continue;}throw error;}checkTerminal();assertCurrent();if(detail.detail.revision!==row.revision||detail.detail.categoryRevision!==first.revision)throw new ExplorersApiError(409,'CONFLICT','Places lists changed while loading');budget(detail.detail);lists.set(row.id,detail);}}catch(error){fail(error);}}),
  ]);
  checkTerminal();const final=await PlacesClient.readCompleteOwner(controller.signal);checkTerminal();assertCurrent();if(first.revision!==final.revision||first.pinRevision!==final.pinRevision)throw new ExplorersApiError(409,'CONFLICT','Places changed while loading');
- return {observation:final,details,lists,view:placesViewModel.complete(final,lists,details,initial.user?.username??'',unavailable)};
+ recordViewedContent(final,details.values());
+  return {observation:final,details,lists,view:placesViewModel.complete(final,lists,details,initial.user?.username??'',unavailable)};
  }catch(error){return fail(error);}finally{signal?.removeEventListener('abort',forwardAbort);}
 }

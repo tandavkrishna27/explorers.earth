@@ -1,3 +1,4 @@
+import { recordViewedAccount } from '../../lib/viewedRevisions';
 import { readCanonicalNavigationContent } from './canonicalNavigationContent';
 import { gql, type ApolloClient } from '@apollo/client';
 import { explorersApiClient } from '../../lib/explorersApiClient';
@@ -52,7 +53,10 @@ export function createCategoryNavigationApi(dependencies: {
  const assertCurrent=(origin:IntentAuthority)=>{if(!dependencies.isCurrent(origin))throw new NavigationError('blocked','Account changed. Reopen this control and try again.');};
  async function readAccount(scope:Scope|string):Promise<NavigationSnapshot> {
   if(typeof scope==='string')throw new NavigationError('blocked','Canonical account scope required.');
-  return toNavigationSnapshot(await profile.getMyProfile(),scope);
+  // Navigation intents (show or pin a tab) are applied over the latest account on purpose,
+  // so what this module reads is the view it composes against.
+  const account=await profile.getMyProfile();recordViewedAccount(account.revision);
+  return toNavigationSnapshot(account,scope);
  }
  async function read(origin:IntentAuthority):Promise<NavigationSnapshot> {assertCurrent(origin);const snapshot=await readAccount(origin);assertCurrent(origin);return snapshot;}
  async function commit(origin:IntentAuthority,patch:NavigationPatch):Promise<NavigationSnapshot> {

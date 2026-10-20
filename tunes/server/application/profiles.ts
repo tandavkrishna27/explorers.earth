@@ -1,5 +1,5 @@
 import type { Pool } from "pg";
-import { accountDtoSchema, updateAccountRequestSchema, type AccountDto, type RequestContext,
+import { newInvalidPostalCodes, accountDtoSchema, updateAccountRequestSchema, type AccountDto, type RequestContext,
   type RevisionInput, type UpdateAccountInput } from "../../shared/explorersContract";
 import { isReservedHandle } from "../../shared/explorersReservedHandles";
 import type { Actor } from "./actor";
@@ -26,6 +26,10 @@ export class ProfileService {
       normalized.handle = normalized.handle.toLowerCase();
       if (!/^[a-z][a-z0-9-]{2,29}$/.test(normalized.handle) || normalized.handle.includes("--")
         || normalized.handle.endsWith("-") || isReservedHandle(normalized.handle)) throw new ProfileInputError("Handle is unavailable");
+    }
+    if (normalized.primaryAddress?.postalCode !== undefined || normalized.additionalAddresses?.some((a) => a.postalCode !== undefined)) {
+      const stored = await this.repository.get(actor.accountId);
+      if (newInvalidPostalCodes(normalized, stored).length > 0) throw new ProfileInputError("Invalid postal code");
     }
     const { expectedRevision, ...editable } = normalized;
     try { return accountDtoSchema.parse(await this.repository.update(actor.accountId, editable, expectedRevision)); }

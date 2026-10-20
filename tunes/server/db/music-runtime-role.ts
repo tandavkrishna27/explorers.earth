@@ -7,6 +7,7 @@ const expectedRuntimeTables = [
   "account_category_content_state",
   "account_category_pin_state",
   "account_category_settings",
+  "account_handle_holds",
   "account_lifecycle_operations",
   "account_memberships",
   "account_music_identity",

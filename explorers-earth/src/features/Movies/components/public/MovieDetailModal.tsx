@@ -1,6 +1,7 @@
 import { usePublicCategoryThemeStyles } from "../../../PublicHome/components/PublicCategoryThemeContext";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import ModalPortal from "../../../../components/ui/ModalPortal";
 import { X, Star, Clock, User, ExternalLink, Share2, Tv, ChevronLeft, ChevronRight } from "lucide-react";
 import type { RecommendedMovie, TMDBCastMember } from "../../types";
 import { buildPosterUrl, buildBackdropUrl, buildLogoUrl, formatRating, formatRuntime, getGenreNames, extractNoteText } from "../../utils/movieHelpers";
@@ -152,6 +153,7 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
   };
 
   return (
+    <ModalPortal>
     <AnimatePresence>
       {open && (
         <>
@@ -479,6 +481,7 @@ const MovieDetailModal = ({ movie, open, onClose }: MovieDetailModalProps) => {
         </>
       )}
     </AnimatePresence>
+    </ModalPortal>
   );
 };
 

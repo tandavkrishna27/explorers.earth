@@ -3,6 +3,7 @@ import { explorersApiClient, assertCompleteMyCategoryContent, ExplorersApiError,
 import { bookViewModel, collectionViewModel } from './booksViewModel';
 import type { BookList } from '../types';
 import useAuthStore from '../../../store/store';
+import {recordViewedContent} from '../../../lib/viewedRevisions';
 
 export type BooksOwnerContent={observation:CompleteMyCategoryContent;lists:BookList[];details:ReadonlyMap<string,RecommendationObservation>};
 export const booksCommandKey=()=>crypto.randomUUID();
@@ -44,6 +45,7 @@ async function readBooksOwnerContentOnce(signal?:AbortSignal):Promise<BooksOwner
       if(!detail)throw new ExplorersApiError(409,'CONFLICT','Missing editable Book detail');
       return bookViewModel(detail.detail,member,final.topPicks?.find(pin=>pin.recommendationId===member.recommendationId));
     }),username));
+  recordViewedContent(final,details.values());
   return {observation:final,lists,details};
  }catch(error){return fail(error);}finally{signal?.removeEventListener('abort',forwardAbort);}
 }

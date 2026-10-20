@@ -5,6 +5,7 @@ import { UsernameValidator } from "./validators";
 import TabVisibilityGuard from "./validators/TabVisibilityGuard";
 import UsernameRootRedirect from "./validators/UsernameRootRedirect";
 import { PublicAccountIdentityProvider } from "../features/PublicHome/api/PublicAccountIdentityProvider";
+import PublicHandleRedirect from "../features/PublicHome/components/PublicHandleRedirect";
 import { PublicColdEntryBoundary } from "../layouts/PublicColdEntryBoundary";
 
 const PublicLayout = lazy(() => import("../layouts/PublicLayout"));
@@ -39,9 +40,11 @@ const PublicRoutes = [
     element={
       <PublicColdEntryBoundary>
         <PublicAccountIdentityProvider>
-          <UsernameValidator>
-            <PublicLayout />
-          </UsernameValidator>
+          <PublicHandleRedirect>
+            <UsernameValidator>
+              <PublicLayout />
+            </UsernameValidator>
+          </PublicHandleRedirect>
         </PublicAccountIdentityProvider>
       </PublicColdEntryBoundary>
     }

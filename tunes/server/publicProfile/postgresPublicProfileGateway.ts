@@ -22,6 +22,16 @@ export class PostgresPublicProfileGateway implements PublicProfileGateway {
     return row?{documentId:row.id,public_profile:'Yes',public_games:'Yes'}:undefined;
   }
 
+  async resolveHandleRedirect(username: string): Promise<string | undefined> {
+    // Only while the hold lasts, and only to an account that is still publicly visible: a
+    // redirect must never reveal an account that the old handle itself would not have shown.
+    const row = (await this.db.query<{ handle: string }>(`SELECT a.handle FROM account_handle_holds h
+      JOIN creator_accounts a ON a.id=h.account_id
+      WHERE h.handle_key=lower($1) AND h.held_until>now() AND a.handle IS NOT NULL AND a.handle_key<>h.handle_key
+        AND a.status='active' AND a.onboarding_status='complete' AND a.public_profile=true`, [username])).rows[0];
+    return row?.handle;
+  }
+
   async resolveAccount(username: string): Promise<Record<string, unknown> | undefined> {
     const result = await this.db.query(`SELECT a.id,a.handle,a.display_name,a.account_type,a.bio_plain,a.bio_rich,
       a.public_address,a.profile_place_details,a.public_profile,a.auto_pinning,a.mobile_number,a.mobile_number_visible,

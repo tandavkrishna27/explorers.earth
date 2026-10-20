@@ -448,7 +448,8 @@
         "primaryAddressRequired": "Primary address is required",
         "profileImageAlt": "Profile",
         "resetLinkSentSuccess": "Reset link sent successfully!",
-        "stateRequired": "State is required"
+        "stateRequired": "State is required",
+        "postalCodeInvalid": "Enter a valid postal code (2-10 letters, numbers, spaces or hyphens)"
       },
       "password": {
         "considerLonger": "Consider using a longer password with more variety for better security",
@@ -951,7 +952,9 @@
         "video": "Video",
         "viewPublicProfile": "Navigate to Public Profile",
         "visible": "Visible",
-        "whatsappNumber": "WhatsApp Number"
+        "whatsappNumber": "WhatsApp Number",
+        "removeProfileImage": "Remove profile photo",
+        "removeCoverImage": "Remove cover image"
       },
       "publicProfile": {
         "accountTypes": {
@@ -1293,7 +1296,7 @@
     "shareModal": {
       "copied": "Copied!",
       "copyLink": "Copy Link",
-      "linkCopiedToast": "Link Copied!!"
+      "linkCopiedToast": "Link copied!"
     }
   },
   "emailVerification": {
@@ -2066,11 +2069,15 @@
       "deleteAccount": {
         "button": "Delete Account",
         "description": "Permanently delete your account and all data",
+        "pending": {
+          "scheduled": "Your account will be permanently deleted on {{date}}. Sign in with Google before then to cancel the deletion."
+        },
         "step1": {
           "continueButton": "Continue with deletion",
           "deactivateInsteadButton": "Deactivate account instead",
           "modalDescription": "Are you sure you want to delete your account? This action cannot be undone.",
           "modalDescription2": "If you want to keep your data, you can deactivate your account instead.",
+          "modalDescriptionGrace": "Your account will be hidden right away and permanently deleted after 30 days. You can recover it before then by signing in with Google.",
           "modalTitle": "Delete your account?"
         },
         "step2": {
@@ -2086,7 +2093,8 @@
         "step3": {
           "continueButton": "Continue",
           "modalTitle": "Why are you leaving?",
-          "reasonPlaceholder": "Please let us know the reason for leaving..."
+          "reasonPlaceholder": "Please let us know the reason for leaving...",
+          "reasonTooLong": "Your reason is too long. Please keep it to 2,000 characters or fewer."
         },
         "step4": {
           "confirmationRequired": "Please type 'CONFIRM DELETE' to confirm.",
@@ -2100,6 +2108,7 @@
         },
         "text": "Delete your account?"
       },
+      "handleMismatch": "The handle you typed doesn't match your account handle.",
       "heading": "Account",
       "security": {
         "title": "Account & Security"
@@ -2117,7 +2126,50 @@
     },
     "subtitle": "Manage your account settings and preferences",
     "title": "Settings",
-    "dangerZone": "Danger zone"
+    "dangerZone": "Danger zone",
+    "ui": {
+      "categoryUnpublishedUnpinned": "Category unpublished and removed from navigation.",
+      "categoryUnpublished": "Category unpublished.",
+      "categoryPublic": "Category is public.",
+      "addToNavigation": "Add to navigation",
+      "couldNotVerify": "Could not verify this change.",
+      "retry": "Retry",
+      "navNeedsRepair": "Visibility changed, but navigation needs repair.",
+      "refreshSettings": "Refresh settings",
+      "accountUnavailable": "Account details are unavailable. Retry after refreshing.",
+      "deactivationFailed": "Deactivation failed.",
+      "feedbackUnavailable": "Feedback or account details are unavailable.",
+      "lifecycleUnavailable": "Lifecycle status is unavailable.",
+      "searchPlaceholder": "Search settings...",
+      "quickAccess": "Quick Access",
+      "publicVisibility": "Public Visibility",
+      "publicVisibilityHint": "Profile · Control which tabs appear on your public profile",
+      "publicVisibilityRegion": "Public visibility settings",
+      "autoPinned": "Auto-pinned",
+      "visibilityOff": "Visibility off",
+      "noContent": "No content",
+      "unavailableRefresh": "Unavailable – refresh to verify",
+      "savingVerifying": "Saving and verifying…",
+      "pinTab": "Pin {{label}}",
+      "tab": {
+        "public_profile": "Profile Tab",
+        "public_recommendations": "Places Tab",
+        "public_guides": "Guides Tab",
+        "public_movie": "Movies & Shows Tab",
+        "public_books": "Books Tab",
+        "public_games": "Games Tab",
+        "public_apps": "Apps & Tools Tab",
+        "public_products": "Products Tab",
+        "public_people": "People Tab"
+      },
+      "unpublishTitle": "Unpublish {{categoryName}}",
+      "unpublishing": "Unpublishing {{categoryName}}",
+      "unpublishBody": "This removes {{categoryName}} from your public profile and it will be removed from your public navigation. Your recommendations stay saved.",
+      "deletionComplete": "Account deletion is complete. Continue to sign in if you want to use a different account.",
+      "deletionPending": "Account deletion is pending. Access is paused.",
+      "cancelDeletionGoogle": "Cancel deletion with Google",
+      "checkDeletionStatus": "Check deletion status"
+    }
   },
   "sidebar": {
     "analytics": "Analytics",
@@ -2357,6 +2409,8 @@
       "validationError": "Validation error. Please check your input.",
       "placePhotoLimit": "A place can hold up to {{limit}} photos. Remove {{count}} to continue.",
       "youCanOnlyUpload4Files": "You can only upload up to 4 files total!",
+      "profileImageRemoveFailed": "Couldn't remove the profile photo. Please try again.",
+      "backgroundImageRemoveFailed": "Couldn't remove the cover image. Please try again.",
       "imageTypeUnsupported": "{{name}} was not added: only PNG, JPEG, WebP or GIF images are supported.",
       "imageEmpty": "{{name}} was not added: the file is empty."
     },
@@ -2490,7 +2544,9 @@
       "uploadingImagesToFeed": "Uploading selected images to your feed...",
       "usernameChanged": "Username changed successfully!",
       "usernameUpdated": "Username updated successfully!",
-      "welcomeMessage": "Welcome to explorers!"
+      "welcomeMessage": "Welcome to explorers!",
+      "profileImageRemoved": "Profile photo removed.",
+      "backgroundImageRemoved": "Cover image removed."
     },
     "warning": {
       "accountExpiring": "Account is expiring. Please update your account",
@@ -2541,7 +2597,8 @@
       "usernameCooldownUnknown": "You can change your username now",
       "usernameExpiring": "Username is expiring. Please update your username",
       "usernameNotChanged": "Username is not changed. Please change your username",
-      "validationPending": "Validation is pending. Please wait"
+      "validationPending": "Validation is pending. Please wait",
+      "usernameCooldownUntil": "You can change your username again on {{date}}."
     }
   },
   "usernameClaim": {
@@ -2602,6 +2659,10 @@
     "success": "Image cropped successfully",
     "error": "Error cropping the image"
   },
+  "conflict": {
+    "changedElsewhere": "This was changed in another tab or device. Reload to see the latest version.",
+    "reload": "Reload"
+  },
   "currency": {
     "amountLabel": "Amount",
     "clear": "Clear currency",
@@ -2620,5 +2681,31 @@
     "retired": "retired",
     "suggested": "Suggested for your region",
     "unknown": "Not set"
+  },
+  "recovery": {
+    "pendingDeletion": {
+      "cancelButton": "Cancel deletion",
+      "scheduled": "Your account is scheduled for deletion on {{date}}. Cancel the deletion to restore access.",
+      "scheduledUnknown": "Your account is scheduled for deletion. Cancel the deletion to restore access.",
+      "title": "Cancel account deletion"
+    },
+    "scheduledForDeletion": "Your account is scheduled for deletion on {{date}}. Continue with Google to cancel the deletion."
+  },
+  "qrCard": {
+    "tagline": {
+      "apps": "Discover my favorite apps",
+      "products": "Discover my favorite products",
+      "people": "Connect with creators",
+      "movies": "Watch my favorites",
+      "books": "Read my favorites",
+      "games": "Play my favorites",
+      "places": "Travel like a local",
+      "profile": "Explore my picks"
+    }
+  },
+  "validation": {
+    "urlRule": "Enter a web address starting with http:// or https://. Ports (like :8443) and usernames or passwords in the address are not allowed.",
+    "checkField": "Please check the {{field}} field.",
+    "generic": "Please check the highlighted fields and try again."
   }
 }

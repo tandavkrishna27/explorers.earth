@@ -1,7 +1,7 @@
 import { notePreviewText } from "../../../../utils/notePreviewText";
 import ListItemOrder from "../../../../components/reorder/ListItemOrder";
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -11,6 +11,7 @@ import {
 import { AddIcon } from "../../../../assets/icons/AddIcon";
 import { toast } from "sonner";
 import { QRCodeSVG } from "qrcode.react";
+import { buildListPublicUrl, buildQrUrl } from "../../../../utils/listShareUrls";
 import Accordion from "../../../../components/ui/Accordian";
 import useAuthStore from "../../../../store/store";
 import { useGamesCommands, useGamesCallerCustody } from "../../api/query";
@@ -23,8 +24,6 @@ import Switch from "../../../../components/ui/Switch";
 import GameDetailModal from "../public/GameDetailModal";
 import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
 import QrCardTagline from "../../../../components/QrCardTagline";
-
-const VITE_BASE_URL = import.meta.env.VITE_BASE_URL || window.location.origin;
 
 interface GameRowProps {
   game: RecommendedGame;
@@ -135,7 +134,7 @@ const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () => void 
   const updateGameList = ({ variables }: { variables: { documentId: string; Visibility?: boolean; List_Name?: string; list_description?: string | null }; optimisticResponse?: unknown; refetchQueries?: unknown[] }) => commands.updateList(variables.documentId, { ...(variables.Visibility === undefined ? {} : { visibility: variables.Visibility ? 'public' : 'private', publicationState: variables.Visibility ? 'published' : 'draft' }), ...(variables.List_Name === undefined ? {} : { title: variables.List_Name }), ...(variables.list_description === undefined ? {} : { description: variables.list_description }) });
   const deleteGameList = ({ variables }: { variables: { documentId: string } }) => commands.archiveList(variables.documentId);
 
-  const shareUrl = `${VITE_BASE_URL}/${list.account?.username ?? "user"}/games/${list.slug}`;
+  const shareUrl = buildListPublicUrl(list.account?.username, "games", list.slug);
 
   const handleCopyUrl = async () => {
     const current = beginEffects();
@@ -287,9 +286,9 @@ const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () => void 
                 <p className="text-sm tracking-wide font-medium z-10 text-center leading-snug">My Games</p>
                 <div className="z-10 items-center flex flex-col pt-1">
                   <div className="p-2 bg-white rounded-lg shadow-md mb-3">
-                    <QRCodeSVG id="game-qr" value={shareUrl} size={90} />
+                    <QRCodeSVG id="list-qr-games" value={buildQrUrl(shareUrl)} size={90} />
                   </div>
-                  <QrCardTagline className="bg-amber-100 text-amber-900 px-4 py-1.5 font-poppins rounded-full text-[11px] font-semibold whitespace-nowrap" />
+                  <QrCardTagline category="games" className="bg-amber-100 text-amber-900 px-4 py-1.5 font-poppins rounded-full text-[11px] font-semibold whitespace-nowrap" />
                 </div>
               </div>
             </div>
@@ -466,6 +465,14 @@ const GameListView = () => {
         <div className="h-6 w-40 bg-white/5 animate-pulse rounded" />
         <div className="h-4 w-24 bg-white/5 animate-pulse rounded" />
         {[1,2,3,4].map(i => <div key={i} className="h-14 bg-white/5 animate-pulse rounded-lg" />)}
+      </div>
+    );
+  }
+
+  if (!list) {
+    return (
+      <div className="p-6">
+        <p className="text-red-400" role="alert">List not found. <Link to="/recommendations/games" className="text-blue-400 underline">Go back</Link></p>
       </div>
     );
   }
