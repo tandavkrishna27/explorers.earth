@@ -301,26 +301,20 @@ const UsernameInput: React.FC<UsernameInputProps> = ({
         )}
       </div>
 
-      {/* Focus-only hint (enabled state) */}
-      {isFocused && hintOnFocus && !disabled && (
-        <p
-          className={`text-xs font-poppins mt-1 ${
-            theme === "dark" ? "text-yellow-300" : "text-yellow-700"
-          }`}
-        >
-          {hintOnFocus}
-        </p>
-      )}
-
-      {/* Disabled-click hint (e.g., cooldown message) */}
-      {disabled && showDisabledHint && hintOnFocus && (
-        <p
-          className={`text-xs font-poppins mt-1 ${
-            theme === "dark" ? "text-yellow-300" : "text-yellow-700"
-          }`}
-        >
-          {hintOnFocus}
-        </p>
+      {/* Hint slot: always rendered (and sized) when a hint exists so showing/hiding it on
+          focus never shifts the controls below (PRF-X01). */}
+      {hintOnFocus && (
+        <div data-testid="username-hint" className="min-h-[1.25rem]">
+          {((isFocused && !disabled) || (disabled && showDisabledHint)) && (
+            <p
+              className={`text-xs font-poppins mt-1 ${
+                theme === "dark" ? "text-yellow-300" : "text-yellow-700"
+              }`}
+            >
+              {hintOnFocus}
+            </p>
+          )}
+        </div>
       )}
 
       {/* Validation Messages. The area keeps one line of height even when it has nothing to
@@ -330,7 +324,7 @@ const UsernameInput: React.FC<UsernameInputProps> = ({
       <div
         data-testid="username-messages"
         aria-live="polite"
-        className={checkAvailability ? "min-h-[1.75rem]" : undefined}
+        className="min-h-[1.75rem]"
       >
       {hasBeenTouched && formatMessages && (
         <div className="space-y-1">
