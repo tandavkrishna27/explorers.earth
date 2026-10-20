@@ -502,6 +502,7 @@
   "common": {
     "cancel": "Batal",
     "error": "An error occurred. Please try again later.",
+    "free": "Percuma",
     "hidePassword": "Hide password",
     "loading": "Loading...",
     "noResults": "No results found",
