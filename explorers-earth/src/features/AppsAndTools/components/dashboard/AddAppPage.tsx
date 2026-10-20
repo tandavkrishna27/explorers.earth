@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { friendlyErrorMessage, urlFieldError } from "../../../../utils/friendlyError";
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, Smartphone, X } from 'lucide-react';
+import { ArrowLeft, Loader2, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '../../../../store/store';
 import type { RecommendationObservation } from '../../../../lib/explorersApiClient';
@@ -11,6 +11,7 @@ import { invalidateApps, useAppsOwner } from '../../hooks/useAppsOwner';
 import { richNoteFromEditor } from '../../../../../../tunes/shared/explorersRichNoteContract';
 import TiptapEditor from '../../../Favorites/components/TiptapEditor';
 import AppEnrichmentPanel from './AppEnrichmentPanel';
+import ReorderableMediaStrip from '../../../../components/reorder/ReorderableMediaStrip';
 
 const PRICE_TIERS = ['Free', 'Freemium', 'Paid', 'Subscription'] as const;
 const ALL_PLATFORMS = ['iOS', 'iPadOS', 'macOS', 'Android', 'Windows', 'Web', 'Linux', 'Chrome Extension'];
@@ -217,10 +218,8 @@ export default function AddAppPage() {
 
     <label className="block">Screenshots<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple disabled={saving || pending > 0} onChange={event => { void upload(Array.from(event.target.files ?? [])); event.target.value = ''; }} /></label>
     {pending > 0 && <p role="status">Uploading screenshots…</p>}
-    <div className="flex flex-wrap gap-3">{screenshots.map(item => <div key={item.id}>
-     <img className="w-24 h-24 object-cover rounded" src={item.url} alt="App screenshot" />
-     <button aria-label="Remove screenshot" disabled={saving} onClick={() => setScreenshots(value => value.filter(row => row.id !== item.id))}><X size={16} /></button>
-    </div>)}</div>
+    {/* Order here is the saved order and the order the public page shows; the first is the lead screenshot. */}
+    <ReorderableMediaStrip items={screenshots} onChange={setScreenshots} noun="Screenshot" alt="App screenshot" removeLabel="Remove screenshot" disabled={saving} />
 
     {error && <p role="alert">{error}</p>}
     <button onClick={save} disabled={hasUrlError || saving || enrichmentBusy || pending > 0 || !title.trim() || !appUrl.trim() || Boolean(appId && initialized.current !== scope)} className="bg-dashboard-accent text-white rounded-xl px-5 py-3">

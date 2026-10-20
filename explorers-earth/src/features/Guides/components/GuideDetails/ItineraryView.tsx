@@ -25,6 +25,7 @@ import { parseTimeline } from "../../utils/guideDataParser";
 import { guideDescriptionText } from "../../../../utils/guideDescriptionText";
 import MultiCityJourneyDisplay from "./MultiCityJourneyDisplay";
 import type { Guide } from "../../types";
+import DayOrderPanel from "./DayOrderPanel";
 
 interface ItineraryViewProps {
   sections: any[];
@@ -41,6 +42,12 @@ interface ItineraryViewProps {
   onMenuToggle: (sectionId: string) => void;
   onGuideUpdate?: () => void;
   onPlaceClick?: (place: any) => void;
+  /** Reordering of the days; absent where the view is read-only. */
+  dayOrder?: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onReorder: (sectionIds: string[]) => Promise<void>;
+  };
 }
 
 const ItineraryView: React.FC<ItineraryViewProps> = ({
@@ -58,19 +65,22 @@ const ItineraryView: React.FC<ItineraryViewProps> = ({
   onMenuToggle,
   onGuideUpdate,
   onPlaceClick,
+  dayOrder,
 }) => {
   const sortedSections = [...sections].sort(
     (a: any, b: any) => (a.Sequence || 0) - (b.Sequence || 0)
   );
 
   // Helper function to remove redundant "Day X:" prefix from title
-  const cleanTitle = (title: string, dayNumber: number): string => {
+  // Any leading "Day N" is dropped, not only the current number: a reordered day keeps the text
+  // it was typed with, and the number beside it is its position.
+  const cleanTitle = (title: string, _dayNumber?: number): string => {
     if (!title) return title;
     // Remove patterns like "Day X: ", "Day X ", or "Day X" at the start
     const patterns = [
-      new RegExp(`^Day ${dayNumber}:\\s*`, 'i'),
-      new RegExp(`^Day ${dayNumber}\\s+`, 'i'),
-      new RegExp(`^Day ${dayNumber}$`, 'i'),
+      new RegExp(`^Day \\d+:\\s*`, 'i'),
+      new RegExp(`^Day \\d+\\s+`, 'i'),
+      new RegExp(`^Day \\d+$`, 'i'),
     ];
     let cleaned = title;
     for (const pattern of patterns) {
@@ -251,6 +261,15 @@ const ItineraryView: React.FC<ItineraryViewProps> = ({
           </div>
         </div>
       </div>
+
+      {dayOrder && (
+        <DayOrderPanel
+          sections={sortedSections}
+          open={dayOrder.open}
+          onOpenChange={dayOrder.onOpenChange}
+          onReorder={dayOrder.onReorder}
+        />
+      )}
 
       {/* Sections Display */}
       {sections.length === 0 ? (

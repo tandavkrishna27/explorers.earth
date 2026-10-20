@@ -1,3 +1,4 @@
+import ListItemOrder from "../../../../components/reorder/ListItemOrder";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -141,7 +142,7 @@ const PersonListView = () => {
     listName: string;
   } | null>(null);
 
-  const { data, content, loading, refetch } = usePeopleOwner(listId, Boolean(listId));
+  const { data, content, loading, refetch } = usePeopleOwner(listId, Boolean(listId), true);
   const commands = usePeopleCommands(), isUpdating = commands.loading, deletingList = commands.loading;
   const beginEffects = usePeopleCallerCustody();
   const updatePersonList = ({ variables }: { variables: { documentId?: string; Visibility?: boolean; List_Name?: string; list_description?: string | null; top_people_heading?: string }; optimisticResponse?: unknown; refetchQueries?: unknown[] }) => commands.updateList(variables.documentId!, { ...(variables.Visibility === undefined ? {} : { visibility: variables.Visibility ? 'public' : 'private', publicationState: variables.Visibility ? 'published' : 'draft' }), ...(variables.List_Name === undefined ? {} : { title: variables.List_Name }), ...(variables.list_description === undefined ? {} : { description: variables.list_description }), ...(variables.top_people_heading === undefined ? {} : { heading: variables.top_people_heading }) });
@@ -340,6 +341,11 @@ const PersonListView = () => {
           >
             <AddIcon size="5" /> Add Person
           </button>
+
+          {/* The order set here is the order of this list on its public page. */}
+
+          <ListItemOrder category="people" listId={listId!} items={people.map(item => ({ id: item.documentId, title: item.name }))} noun="Person" nounPlural="people" onChanged={() => { void refetch(); }} />
+
 
           {people.length === 0 ? (
             <div className="flex flex-col items-center py-16 text-center">

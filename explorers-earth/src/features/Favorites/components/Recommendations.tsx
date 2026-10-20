@@ -1,5 +1,6 @@
 
 
+import ListItemOrder from "../../../components/reorder/ListItemOrder";
 import {
   FC,
   memo,
@@ -243,7 +244,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
   // The owner read returns this list complete and bounded, so the two Strapi reads - one
   // paginated for the grid and one unpaginated for the suggestion comparison - become one
   // read, and the ten-at-a-time reveal is a window over it rather than another round trip.
-  const owner = usePlacesOwner(selectedCity?.documentId, Boolean(selectedCity?.documentId));
+  const owner = usePlacesOwner(selectedCity?.documentId, Boolean(selectedCity?.documentId), true);
   const loading = owner.loading;
   const ownerList = useMemo(
     () => owner.data?.recommendationLists?.find((list) => list.documentId === selectedCity?.documentId),
@@ -980,6 +981,14 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
       {/* ── Places Tab ── */}
       {activeTab === "places" && (
       <>
+      {/* The order set here is the order of this list on its public page. */}
+      {selectedCity?.documentId && (
+        <div className="mt-2">
+          <ListItemOrder category="places" listId={selectedCity.documentId}
+            items={ownerPlaces.map((place: any) => ({ id: place.documentId, title: place.Place_Details?.Title ?? place.Contact_Name ?? "" }))}
+            noun="Place" nounPlural="places" onChanged={() => { owner.refetch(); }} />
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-2 mb-20 md:mb-0">
         {loading && !placesData?.recommendedPlaces?.length ? (
           // Skeleton cards while loading — sit directly in the grid

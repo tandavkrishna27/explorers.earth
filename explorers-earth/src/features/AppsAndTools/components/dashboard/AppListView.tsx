@@ -1,3 +1,4 @@
+import ListItemOrder from "../../../../components/reorder/ListItemOrder";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -138,7 +139,7 @@ const AppListView = () => {
     listName: string;
   } | null>(null);
 
-  const { data, content, loading, refetch } = useAppsOwner(listId, Boolean(listId));
+  const { data, content, loading, refetch } = useAppsOwner(listId, Boolean(listId), true);
   const commands = useAppsCommands(), isUpdating = commands.loading, deletingList = commands.loading;
   const beginEffects = useAppsCallerCustody();
   const updateAppList = ({ variables }: { variables: { documentId?: string; Visibility?: boolean; List_Name?: string; list_description?: string | null }; optimisticResponse?: unknown; refetchQueries?: unknown[] }) => commands.updateList(variables.documentId!, { ...(variables.Visibility === undefined ? {} : { visibility: variables.Visibility ? 'public' : 'private', publicationState: variables.Visibility ? 'published' : 'draft' }), ...(variables.List_Name === undefined ? {} : { title: variables.List_Name }), ...(variables.list_description === undefined ? {} : { description: variables.list_description }) });
@@ -339,6 +340,11 @@ const AppListView = () => {
           >
             <AddIcon size="5" /> Add App
           </button>
+
+          {/* The order set here is the order of this list on its public page. */}
+
+          <ListItemOrder category="apps" listId={listId!} items={apps.map(item => ({ id: item.documentId, title: item.title }))} noun="App" nounPlural="apps" onChanged={() => { void refetch(); }} />
+
 
           {apps.length === 0 ? (
             <div className="flex flex-col items-center py-16 text-center">

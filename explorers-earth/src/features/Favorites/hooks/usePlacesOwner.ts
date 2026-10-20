@@ -44,7 +44,8 @@ export function advancePlacesFence(previous:PlacesFenceFloor|undefined,next:Plac
 // rather than a guaranteed re-trip. This is local retry behaviour, not a server policy.
 const STALE_READ_RETRIES=3,STALE_READ_BACKOFF_MS=50;
 export class PlacesReadBehindError extends Error{constructor(){super('Places read is older than the saved pins. Reload the list.');this.name='PlacesReadBehindError';}}
-export function usePlacesOwner(listId?:string,enabled=true){
+/** `keep` retains the last read of the same owner and route while a refresh is in flight, so a screen that triggered the refresh is not replaced by its loading state. */
+export function usePlacesOwner(listId?:string,enabled=true,keep=false){
  // Finding 2. The fetch scope is the abort/authority token AND the React cache key, so
  // anything added here clears content and re-runs the whole paginated owner read. It must
  // therefore carry owner epoch and route path ONLY.
@@ -67,7 +68,7 @@ export function usePlacesOwner(listId?:string,enabled=true){
  useEffect(()=>{
   const controller=new AbortController(),identity=++attempt.current;let timer:ReturnType<typeof setTimeout>|undefined;
   const live=()=>!controller.signal.aborted&&attempt.current===identity;
-  setReceived(undefined);setError(undefined);if(!enabled||!accountId){setLoading(false);return()=>controller.abort();}
+  setReceived(previous=>keep&&previous?.scope===scope?previous:undefined);setError(undefined);if(!enabled||!accountId){setLoading(false);return()=>controller.abort();}
   setLoading(true);
   void readPlacesOwnerContent(controller.signal).then(content=>{
    if(!live())return;
@@ -87,7 +88,7 @@ export function usePlacesOwner(listId?:string,enabled=true){
    setError(failure instanceof Error?failure:new Error('Places could not be loaded'));
   }).finally(()=>{if(live()&&!timer)setLoading(false);});
   return()=>{controller.abort();if(timer)clearTimeout(timer);};
- },[scope,enabled,revision,accountId,generation,retry]);
+ },[scope,enabled,revision,accountId,generation,retry,keep]);
  const content=received?.scope===scope?received.content:undefined;
  // The legacy consumers read recommendationLists, and one of them reads a single list, so
  // both shapes come from the one read rather than from two different queries.

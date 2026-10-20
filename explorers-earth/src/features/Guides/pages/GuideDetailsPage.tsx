@@ -1,6 +1,4 @@
-import { useCategoryNavigation } from "../../navigation/CategoryNavigationProvider";
 import { GuideEditingProvider } from "../context/GuideEditingProvider";
-import type { IntentAuthority } from "../../navigation/categoryNavigationPolicy";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -32,7 +30,7 @@ import TipsTimeline from "../components/GuideDetails/TipsTimeline";
 import GooglePlaceModal from "../../PublicHome/components/PublicGuideViews/GooglePlaceModal";
 import ConfirmationModal from "../../../components/ui/ConfirmationModal";
 import useAuthStore from "../../../store/store";
-import { CategoryVisibilityModal } from "../../../components/CategoryVisibilityModal";
+import { useGuidePublishNotice } from "../hooks/useGuidePublishNotice";
 import { ListVisibilityModal } from "../../../components/ListVisibilityModal";
 import { guideDescriptionText } from "../../../utils/guideDescriptionText";
 
@@ -44,6 +42,7 @@ const GuideDetailsPage = () => {
   const [sectionToDelete, setSectionToDelete] = useState<{ id: string; title: string } | null>(null);
   const [activeTab, setActiveTab] = useState("journey");
   const [viewMode, setViewMode] = useState<"timeline" | "list">("list");
+  const [reorderingDays, setReorderingDays] = useState(false);
   const [selectedSection, setSelectedSection] = useState<any>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [selectedGooglePlace, setSelectedGooglePlace] = useState<{ visible: boolean; place: any }>({
@@ -57,15 +56,6 @@ const GuideDetailsPage = () => {
   const mainTabsRef = useRef<HTMLDivElement>(null);
   const guideHeaderRef = useRef<HTMLDivElement>(null);
 
-  const navigation = useCategoryNavigation();
-  const [visibilityPrompt, setVisibilityPrompt] = useState<{
-    isOpen: boolean;
-    categoryName: string;
-    visibilityField: string;
-    origin?: IntentAuthority;
-    defaultValue: boolean;
-  } | null>(null);
-
   const [listVisibilityPrompt, setListVisibilityPrompt] = useState<{
     isOpen: boolean;
     listName: string;
@@ -74,23 +64,8 @@ const GuideDetailsPage = () => {
   // Strapi users_permissions_user relation is not needed to name them.
   const { user } = useAuthStore();
 
-  const promptedLocation = useRef<string | null>(null);
-  useEffect(() => {
-    if (location.state?.justCreatedGuide && navigation.authority && promptedLocation.current !== location.key) {
-      promptedLocation.current = location.key;
-      const isPublic = navigation.snapshot?.visibility.public_guides === "Yes";
-      if (!isPublic && navigation.authority) {
-        setVisibilityPrompt({
-          origin: navigation.authority,
-          isOpen: true,
-          categoryName: "Guides",
-          visibilityField: "public_guides",
-          defaultValue: false,
-        });
-      }
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state, location.key, navigation.authority, navigation.snapshot]);
+  // Publishing (not creating) is what offers the category switch; see the hook.
+  const { notifyPublished, modal: publishNoticeModal } = useGuidePublishNotice();
 
   // Get sidebar width from CSS variable
   useEffect(() => {
@@ -122,7 +97,7 @@ const GuideDetailsPage = () => {
   // One bracketed owner read for this guide, its fields and every section. `guide` is the
   // mapped legacy shape the rest of this page already reads; `observation` is the branded
   // aggregate a section write states its revision from.
-  const { guide: ownedGuide, observation, content, loading, error, refresh: refetch } = useGuidesOwner(guideId);
+  const { guide: ownedGuide, observation, content, loading, error, refresh: refetch } = useGuidesOwner(guideId, true, { keepWhileRefreshing: true });
   const data = ownedGuide ? { guide: ownedGuide } : undefined;
 
   // Deleting a section goes through the guide aggregate at the current revision, so a
@@ -132,6 +107,24 @@ const GuideDetailsPage = () => {
     if (!observation) throw new Error("Guide could not be loaded. Refresh and try again.");
     const intent = GuidesClient.prepareIntent(observation);
     await GuidesClient.removeSection(intent, sectionId);
+    refetch();
+  };
+
+  // The complete new order of the days, written at the revision this page read. A guide
+  // changed elsewhere is reloaded rather than overwritten, so the owner sees what is there
+  // before moving anything again.
+  const reorderSections = async (sectionIds: string[]) => {
+    if (!observation) throw new Error("Guide could not be loaded. Refresh and try again.");
+    const intent = GuidesClient.prepareIntent(observation);
+    try {
+      await GuidesClient.reorderSections(intent, sectionIds);
+    } catch (failure) {
+      refetch();
+      if ((failure as { status?: number })?.status === 409) {
+        throw new Error("This guide was changed somewhere else. It has been reloaded; try moving the day again.");
+      }
+      throw failure;
+    }
     refetch();
   };
 
@@ -267,7 +260,7 @@ const GuideDetailsPage = () => {
     }
   }, [location.state, data?.guide]);
 
-  if (loading) {
+  if (loading && !data?.guide) {
     return (
       <div className="dashboard-theme flex justify-center items-center min-h-screen bg-dashboard-bg">
         <EarthLoader context="general" size="small" />
@@ -425,6 +418,7 @@ const GuideDetailsPage = () => {
             setOpenMenuId(openMenuId === sectionId ? null : sectionId)
           }
           onGuideUpdate={refetch}
+          dayOrder={{ open: reorderingDays, onOpenChange: setReorderingDays, onReorder: reorderSections }}
           onPlaceClick={(place) => {
             setSelectedGooglePlace({ visible: true, place });
           }}
@@ -489,7 +483,7 @@ const GuideDetailsPage = () => {
 
           {/* Guide Header Banner */}
           <div ref={guideHeaderRef} className="mb-8">
-            <GuideHeader guide={guide} guideId={guideId!} onVisibilityChange={refetch} />
+            <GuideHeader guide={guide} guideId={guideId!} onVisibilityChange={refetch} onPublished={notifyPublished} />
           </div>
 
           {/* Circular Tabs - Sticky when scrolled */}
@@ -632,20 +626,7 @@ const GuideDetailsPage = () => {
         isDanger={true}
         isLoading={!!deletingSection}
       />
-      {visibilityPrompt && (
-        <CategoryVisibilityModal
-          isOpen={visibilityPrompt.isOpen}
-          onClose={() => setVisibilityPrompt(null)}
-          categoryName={visibilityPrompt.categoryName}
-          visibilityField={visibilityPrompt.visibilityField} origin={visibilityPrompt.origin}
-          accountDocumentId={visibilityPrompt.origin?.accountDocumentId ?? ""}
-          onSuccess={() => {
-            // The canonical owner read is account-scoped, so reloading the guide is what
-            // reflects a category visibility change here.
-            refetch();
-          }}
-        />
-      )}
+      {publishNoticeModal}
       {listVisibilityPrompt && (
         <ListVisibilityModal
           isOpen={listVisibilityPrompt.isOpen}
@@ -658,7 +639,7 @@ const GuideDetailsPage = () => {
               if (!list) throw new Error("Guide could not be loaded. Refresh and try again.");
               await setGuidePublished(list, true);
               refetch();
-              toast.success(`"${listVisibilityPrompt.listName}" guide published!`);
+              notifyPublished();
             } catch (err: any) {
               toast.error(`Failed to publish: ${err.message}`);
             }

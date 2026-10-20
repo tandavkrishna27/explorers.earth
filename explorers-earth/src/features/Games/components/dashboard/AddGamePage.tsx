@@ -1,7 +1,8 @@
+import ReorderableMediaStrip from '../../../../components/reorder/ReorderableMediaStrip';
 import { useEffect, useRef, useState } from 'react';
 import { friendlyErrorMessage } from "../../../../utils/friendlyError";
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Gamepad2, Loader2, Search, X } from 'lucide-react';
+import { ArrowLeft, Gamepad2, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '../../../../store/store';
 import type { RecommendationObservation } from '../../../../lib/explorersApiClient';
@@ -93,7 +94,7 @@ export default function AddGamePage() {
     <label className="block">Your rating<select value={rating ?? ''} onChange={event => setRating(event.target.value ? Number(event.target.value) : null)} disabled={saving} className="block bg-dashboard-muted p-2"><option value="">No rating</option>{Array.from({ length: 10 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}</select></label>
     <div><h3>My Thoughts</h3><TiptapEditor value={note} onChange={setNote} placeholder="Why do you recommend this game?" /></div>
     <label className="block">Snapshots<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple disabled={saving || pending > 0} onChange={event => { void upload(Array.from(event.target.files ?? [])); event.target.value = ''; }} /></label>
-    {pending > 0 && <p role="status">Uploading snapshots…</p>}<div className="flex flex-wrap gap-3">{media.map(item => <div key={item.id}><img className="w-24 h-24 object-cover rounded" src={item.url} alt="Game snapshot" /><button aria-label="Remove snapshot" disabled={saving} onClick={() => setMedia(value => value.filter(row => row.id !== item.id))}><X size={16} /></button></div>)}</div>
+    {pending > 0 && <p role="status">Uploading snapshots…</p>}<ReorderableMediaStrip items={media} onChange={setMedia} noun="Snapshot" alt="Game snapshot" removeLabel="Remove snapshot" disabled={saving} />
     {error && <p role="alert">{error}</p>}<button onClick={save} disabled={saving || pending > 0 || !title.trim() || Boolean(gameId && initialized.current !== scope)} className="bg-dashboard-accent text-white rounded-xl px-5 py-3">{saving && <Loader2 className="inline animate-spin mr-2" size={16} />}Save game</button>
    </section>
   </div>

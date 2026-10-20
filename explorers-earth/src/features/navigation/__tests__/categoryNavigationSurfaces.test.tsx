@@ -61,6 +61,8 @@ import english from '../../../i18n/resources/en.json';
 import Settings from '../../Settings/Settings';
 import GuideDetailsPage from '../../Guides/pages/GuideDetailsPage';
 import GuideHeader from '../../Guides/components/GuideDetails/GuideHeader';
+import { GUIDE_PUBLISHED_HIDDEN_MESSAGE, useGuidePublishNotice } from '../../Guides/hooks/useGuidePublishNotice';
+import { toast } from 'sonner';
 import { GuideEditingProvider } from '../../Guides/context/GuideEditingProvider';
 import BookListView from '../../Books/components/dashboard/BookListView';
 import MovieListView from '../../Movies/components/dashboard/MovieListView';
@@ -352,35 +354,85 @@ describe('ordinary category headers use verified navigation', () => {
     expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_games', 'public_books']);
   });
   it.each([
-    ['public_recommendations', Favorites, 'justCreatedList'], ['public_apps', AppsHome, 'justCreatedList'], ['public_guides', GuidesPage, 'justCreatedGuide'],
+    ['public_recommendations', Favorites, 'justCreatedList'], ['public_apps', AppsHome, 'justCreatedList'],
   ] as const)('%s existing creation prompt captures publication origin', async (category, Component, stateKey) => {
     const h = surfaceHarness(<Component />, { initial: { [category]: 'No' }, lists: listFixture, route: { pathname: '/', state: { [stateKey]: true } } }); await h.ready();
     const confirm = await screen.findByRole('button', { name: 'Yes, Make Public' }); expect(confirm).toBeEnabled(); fireEvent.click(confirm);
     await waitFor(() => expect(h.writes).toHaveLength(1));
     expect(h.writes[0].variables).toEqual(canonicalWrite(category, true, ['public_profile', 'public_books']));
   });
-  it('GuideDetails existing creation prompt publishes only Guides', async () => {
-    const h = surfaceHarness(<Routes><Route path="/guides/:guideId" element={<GuideDetailsPage />} /></Routes>, { initial: { public_guides: 'No' }, lists: { guide: guideFixture }, route: { pathname: '/guides/g1', state: { justCreatedGuide: true } } }); await h.ready();
-    fireEvent.click(await screen.findByRole('button', { name: 'Yes, Make Public' }));
-    await waitFor(() => expect(h.writes).toHaveLength(1));
-    expect(h.writes[0].variables).toEqual(canonicalWrite('public_guides', true, ['public_profile', 'public_books']));
+  // UAT GDE-07: the category prompt belongs to PUBLISHING a guide into a hidden category,
+  // not to creating one (a new guide is still a draft).
+  it.each([
+    ['GuidesPage', <GuidesPage />, '/'],
+    ['GuideDetailsPage', <Routes><Route path="/guides/:guideId" element={<GuideDetailsPage />} /></Routes>, '/guides/g1'],
+  ] as const)('%s does not ask to make Guides public right after a guide is created', async (_name, element, pathname) => {
+    const h = surfaceHarness(element, { initial: { public_guides: 'No' }, lists: { guide: guideFixture }, route: { pathname, state: { justCreatedGuide: true } } }); await h.ready();
+    await screen.findByText('Test guide');
+    expect(screen.queryByRole('button', { name: 'Yes, Make Public' })).toBeNull();
+    expect(h.writes).toEqual([]);
   });
-  it.each(['switch', 'switch-back', 'logout-login'])('GuideDetails prompt retains its origin through %s', async transition => {
-    const h = surfaceHarness(<Routes><Route path="/guides/:guideId" element={<GuideDetailsPage />} /></Routes>, { initial: { public_guides: 'No' }, lists: { guide: guideFixture }, route: { pathname: '/guides/g1', state: { justCreatedGuide: true } } }); await h.ready();
-    await screen.findByRole('button', { name: 'Yes, Make Public' });
-    await act(async () => { if (transition === 'logout-login') useAuthStore.getState().logout(); else loginSurface('u2'); if (transition !== 'switch') loginSurface(); }); await h.ready();
-    const confirm = screen.getByRole('button', { name: 'Yes, Make Public' }); expect(confirm).toBeDisabled(); fireEvent.click(confirm); expect(h.writes).toEqual([]);
+  it('Guides Top Picks counter and copy state the same limit as the pin rule', async () => {
+    const h = surfaceHarness(<GuidesPage />, { initial: { public_guides: 'Yes' } }); await h.ready();
+    // Previously "0/<number of guides>" beside copy that said "up to 5".
+    const open = await screen.findByRole('button', { name: /Manage Top Picks \(0\/5\)/ });
+    fireEvent.click(open);
+    expect(await screen.findByText(/Pin up to 5 guides as Top Picks/)).toBeInTheDocument();
+    expect(screen.getByText('Pinned (0 of 5)')).toBeInTheDocument();
+  });
+  describe('publishing a guide while the Guides category is hidden', () => {
+    const draft = { ...guideFixture, Visibility: false };
+    function PublishHost() {
+      const { notifyPublished, modal } = useGuidePublishNotice();
+      return <GuideEditingProvider observation={guideAggregateObservation} list={guideListObservation} reload={() => {}}>
+        <GuideHeader guide={draft as any} guideId="g1" onPublished={notifyPublished} />{modal}
+      </GuideEditingProvider>;
+    }
+    beforeEach(() => { window.localStorage.clear(); vi.mocked(explorersApiClient.updateMyCollection).mockResolvedValue({ ...guideFixture, visibility: 'public' } as never); });
+    afterEach(() => { window.localStorage.clear(); });
+
+    it('says the guide is not visible yet and offers to publish only Guides, once', async () => {
+      const h = surfaceHarness(<PublishHost />, { initial: { public_guides: 'No' } }); await h.ready();
+      fireEvent.click(screen.getByRole('checkbox'));
+      expect(await screen.findByRole('button', { name: 'Yes, Make Public' })).toBeEnabled();
+      expect(vi.mocked(toast.info)).toHaveBeenCalledWith(GUIDE_PUBLISHED_HIDDEN_MESSAGE, expect.anything());
+      expect(vi.mocked(toast.success)).not.toHaveBeenCalledWith('Guide published');
+      fireEvent.click(screen.getByRole('button', { name: 'Yes, Make Public' }));
+      await waitFor(() => expect(h.writes).toHaveLength(1));
+      expect(h.writes[0].variables).toEqual(canonicalWrite('public_guides', true, ['public_profile', 'public_books']));
+    });
+    it('keeps warning on later publishes but does not ask a second time', async () => {
+      const first = surfaceHarness(<PublishHost />, { initial: { public_guides: 'No' } }); await first.ready();
+      fireEvent.click(screen.getByRole('checkbox')); await screen.findByRole('button', { name: 'Yes, Make Public' });
+      cleanup(); vi.mocked(toast.info).mockClear();
+      const second = surfaceHarness(<PublishHost />, { initial: { public_guides: 'No' } }); await second.ready();
+      fireEvent.click(screen.getByRole('checkbox'));
+      await waitFor(() => expect(vi.mocked(toast.info)).toHaveBeenCalledWith(GUIDE_PUBLISHED_HIDDEN_MESSAGE, expect.anything()));
+      expect(screen.queryByRole('button', { name: 'Yes, Make Public' })).toBeNull();
+    });
+    it('just confirms the publish when the Guides category is already public', async () => {
+      const h = surfaceHarness(<PublishHost />, { initial: { public_guides: 'Yes' } }); await h.ready();
+      fireEvent.click(screen.getByRole('checkbox'));
+      await waitFor(() => expect(vi.mocked(toast.success)).toHaveBeenCalledWith('Guide published'));
+      expect(screen.queryByRole('button', { name: 'Yes, Make Public' })).toBeNull();
+      expect(vi.mocked(toast.info)).not.toHaveBeenCalled();
+    });
+    it.each(['switch', 'switch-back', 'logout-login'])('retains its origin through %s', async transition => {
+      const h = surfaceHarness(<PublishHost />, { initial: { public_guides: 'No' } }); await h.ready();
+      fireEvent.click(screen.getByRole('checkbox')); await screen.findByRole('button', { name: 'Yes, Make Public' });
+      await act(async () => { if (transition === 'logout-login') useAuthStore.getState().logout(); else loginSurface('u2'); if (transition !== 'switch') loginSurface(); }); await h.ready();
+      const confirm = screen.getByRole('button', { name: 'Yes, Make Public' }); expect(confirm).toBeDisabled(); fireEvent.click(confirm); expect(h.writes).toEqual([]);
+    });
   });
   it.each([
     ['public_recommendations', Favorites, 'justCreatedList', 'UsersPermissionsUser'],
     ['public_apps', AppsHome, 'justCreatedList', 'MyAccountForApps'],
-    ['public_guides', GuidesPage, 'justCreatedGuide', 'GetUserAccount'],
   ] as const)('%s creation prompt uses verified origin even while the legacy account query is pending', async (category, Component, stateKey, query) => {
     const h = surfaceHarness(<Component />, { initial: { [category]: 'No' }, route: { pathname: '/', state: { [stateKey]: true } }, respond: name => name === query ? new Promise(() => {}) : undefined }); await h.ready();
     expect(await screen.findByRole('button', { name: 'Yes, Make Public' })).toBeEnabled(); expect(h.writes).toEqual([]);
   });
   it.each([
-    ['public_recommendations', Favorites, 'justCreatedList'], ['public_apps', AppsHome, 'justCreatedList'], ['public_guides', GuidesPage, 'justCreatedGuide'],
+    ['public_recommendations', Favorites, 'justCreatedList'], ['public_apps', AppsHome, 'justCreatedList'],
   ].flatMap(([category, Component, stateKey]) => ['switch', 'switch-back', 'logout-login'].map(transition => ({ category: category as string, Component: Component as React.ComponentType, stateKey: stateKey as string, transition }))))('$category open prompt never rebinds after $transition', async ({ category, Component, stateKey, transition }) => {
     const h = surfaceHarness(<Component />, { initial: { [category]: 'No' }, lists: listFixture, route: { pathname: '/', state: { [stateKey]: true } } }); await h.ready();
     await screen.findByRole('button', { name: 'Yes, Make Public' });

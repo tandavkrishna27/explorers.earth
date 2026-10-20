@@ -37,7 +37,8 @@ export function productViewModel(detail:Readonly<EditableOwnerRecommendation>,me
   logo_url:facts.logoUrl,
   description:facts.description,
   // The legacy type models an absent map and an absent list as null, not as empties.
-  specifications:Object.keys(facts.specifications).length?{...facts.specifications}:null,
+  specifications:facts.specifications.length?Object.fromEntries(facts.specifications.map(entry=>[entry.key,entry.value])):null,
+  specification_list:facts.specifications.length?facts.specifications.map(entry=>({key:entry.key,value:entry.value})):null,
   user_recommendation_note:detail.note,
   user_rating:detail.userRating,
   is_pinned:selectedPin!==undefined,

@@ -65,7 +65,7 @@ describePg("Products storage against PostgreSQL", () => {
     const entity = await readProductEntity(pool, entityId);
     expect(entity.kind).toBe("product");
     expect(entity.details).toEqual(details());
-    expect(entity.details.specifications).toEqual({Weight: "1kg", Colour: "Black"});
+    expect(entity.details.specifications).toEqual([{key: "Weight", value: "1kg"}, {key: "Colour", value: "Black"}]);
   });
 
   // The ticket's parameterisation: every amount, with an explicit currency and without.
@@ -175,6 +175,39 @@ describePg("Products storage against PostgreSQL", () => {
     await expect(withClient(client => insertProductDetails(client, entityId, details()))).rejects.toThrow();
   });
 
+  // 0061: a jsonb object cannot keep the order an owner typed; the column now stores an array.
+  it("keeps specifications in the owner's order, including keys jsonb would have sorted", async () => {
+    const {entityId} = await seed();
+    const ordered = [{key: "Zeta", value: "last by name"}, {key: "A", value: "short key"}, {key: "Medium key", value: "m"}];
+    await withClient(client => insertProductDetails(client, entityId, details({specifications: ordered})));
+    expect((await pool.query("SELECT jsonb_typeof(specifications) t, specifications s FROM product_entity_details WHERE entity_id=$1", [entityId])).rows[0].t).toBe("array");
+    expect((await readProductEntity(pool, entityId)).details.specifications).toEqual(ordered);
+  });
+
+  it("still reads a legacy object row, as a list in the order it was stored in", async () => {
+    const {entityId} = await seed();
+    await pool.query(`INSERT INTO product_entity_details(entity_id,product_url,specifications) VALUES($1,'https://example.com/w','{"Weight":"1kg","Colour":"Black"}'::jsonb)`, [entityId]);
+    const specs = (await readProductEntity(pool, entityId)).details.specifications;
+    expect(specs.map(entry => entry.key).sort()).toEqual(["Colour", "Weight"]);
+    expect(specs.find(entry => entry.key === "Weight")?.value).toBe("1kg");
+  });
+
+  it("refuses malformed ordered specifications at the database", async () => {
+    const insert = async (json: string) => {
+      const {entityId} = await seed();
+      return pool.query(`INSERT INTO product_entity_details(entity_id,product_url,specifications) VALUES($1,'https://example.com/w',$2::jsonb)`, [entityId, json]);
+    };
+    await expect(insert('[{"key":"A","value":"1"},{"key":"A","value":"2"}]')).rejects.toThrow();
+    await expect(insert('[{"key":"A","value":2}]')).rejects.toThrow();
+    await expect(insert('[{"key":"A"}]')).rejects.toThrow();
+    await expect(insert('[{"key":"A","value":"1","extra":"x"}]')).rejects.toThrow();
+    await expect(insert('[{"key":"","value":"1"}]')).rejects.toThrow();
+    await expect(insert('[["A","1"]]')).rejects.toThrow();
+    await expect(insert('"text"')).rejects.toThrow();
+    await expect(insert(JSON.stringify(Array.from({length: 201}, (_, i) => ({key: `k${i}`, value: "v"}))))).rejects.toThrow();
+    await expect(insert(JSON.stringify(Array.from({length: 200}, (_, i) => ({key: `k${i}`, value: "v"}))))).resolves.toBeTruthy();
+  });
+
   it("refuses an unsafe image URL and a non-string specification value at the database", async () => {
     const {entityId} = await seed();
     await expect(pool.query("INSERT INTO product_entity_details(entity_id,product_url,image_urls) VALUES($1,'https://example.com/w',ARRAY['javascript:alert(1)'])", [entityId])).rejects.toThrow();
@@ -232,6 +265,7 @@ describePg("Products storage against PostgreSQL", () => {
     // Numbers at the display edge, exactly as RecommendedProduct declares them.
     expect(product).toMatchObject({price: 19.9, currency: "USD", buy_url: "https://example.com/buy", product_category: null});
     expect(product.specifications).toEqual({Weight: "1kg", Colour: "Black"});
+    expect(product.specification_list).toEqual([{key: "Weight", value: "1kg"}, {key: "Colour", value: "Black"}]);
     expect(product.images).toEqual(["https://example.com/a.png"]);
   });
 });

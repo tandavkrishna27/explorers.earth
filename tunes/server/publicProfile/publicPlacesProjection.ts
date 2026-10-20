@@ -123,7 +123,7 @@ async function children(db:PoolClient,account:string,collectionId:string,limit:n
  return {places:await projectRows(db,rows.slice(0,limit)),nextCursor:hasMore?encodePlacePinsCursor(secret,fencedBinding,{pinBucket:last.pin_bucket,sortPosition:placePinsReadInteger(last.sort_position),id:last.id}):null,eligibleItemCount:metadata.eligibleItemCount,eligiblePinCount:metadata.eligiblePinCount,eligibilityFingerprint:metadata.eligibilityFingerprint};
 }
 
-/** Outer list ordering remains independent; child pages use authenticated pinned tuple seek. */
+/** Outer list ordering: pinned lists first in pin order, then display order (the owner's list order). child pages use authenticated pinned tuple seek. */
 export async function publicPlacesProjection(pool:Pool,username:string,limit:number,cursor?:string,slug?:string,secret=""){
  const offset=slug?0:publicProfileCursorStart(cursor);if(!Number.isInteger(limit)||limit<1||limit>24)throw new Error('Invalid Places page size');
  const db=await pool.connect();let observed:any,result:any,catalog:any,peopleCatalog:any,peopleScope:any;
@@ -134,7 +134,7 @@ export async function publicPlacesProjection(pool:Pool,username:string,limit:num
    JOIN creator_accounts a ON a.id=c.account_id JOIN account_category_settings s ON s.account_id=a.id AND s.category=c.category
    LEFT JOIN collection_media cm ON cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover' AND EXISTS(SELECT 1 FROM media_assets m WHERE m.id=cm.media_id AND m.account_id=cm.account_id AND m.status='ready')
    WHERE a.id=$1 AND c.category='places' AND ${gate} AND ${listGate} AND ($2::text IS NULL OR c.slug=$2)
-   ORDER BY c.display_order,c.id LIMIT $3 OFFSET $4`,[observed.id,slug??null,slug?1:limit+1,slug?0:offset])).rows;
+   ORDER BY c.pin_order NULLS LAST,c.display_order,c.id LIMIT $3 OFFSET $4`,[observed.id,slug??null,slug?1:limit+1,slug?0:offset])).rows;
   if(slug&&!rows.length){await db.query('COMMIT');return undefined;}
   const lists=[];
   for(const row of rows.slice(0,slug?1:limit)){
