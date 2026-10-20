@@ -502,6 +502,7 @@
   "common": {
     "cancel": "ରଦ୍ଦ କରନ୍ତୁ",
     "error": "An error occurred. Please try again later.",
+    "free": "ମାଗଣା",
     "hidePassword": "Hide password",
     "loading": "Loading...",
     "noResults": "No results found",

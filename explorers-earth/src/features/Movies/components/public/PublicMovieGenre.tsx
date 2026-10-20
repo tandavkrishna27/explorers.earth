@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, Link, useOutletContext, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import type { RecommendedMovie } from "../../types";
@@ -6,6 +6,8 @@ import { slugToGenreName, deduplicateMovies } from "../../utils/movieHelpers";
 import MoviePosterCard from "./MoviePosterCard";
 import MovieDetailModal from "./MovieDetailModal";
 import MoviePosterSkeleton from "./MoviePosterSkeleton";
+import { useTrackAnalytics, createAnalyticsOptions } from "../../../../services/analyticsService";
+import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
 import SEO from "../../../../components/SEO";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { usePublicHeaderDescriptor } from "../../../PublicHome/components/PublicHeaderDescriptorContext";
@@ -20,6 +22,8 @@ const PublicMovieGenre = () => {
   const [selectedMovie, setSelectedMovie] = useState<RecommendedMovie | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
+  const { data: accountData } = usePublicProfileShell(username);
+  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
   const page=usePublicMovieGenre(username,genreSlug,{enabled:true});
   const {data:moviesData,loading,error:queryError,refetch}=page;
   const genreName=isNonNullObject(moviesData?.genre)&&typeof moviesData.genre.genre_name==='string'?moviesData.genre.genre_name:slugToGenreName(genreSlug??'');
@@ -28,10 +32,22 @@ const PublicMovieGenre = () => {
   usePublicHeaderDescriptor(genreSlug?{navigationKey:location.key,title:genreName,url:window.location.href,analyticsContext:'movies-genre-header',analyticsMetadata:{genre:genreSlug}}:undefined);
   useEffect(()=>{if(!loading||hasUsableData)outletContext?.setIsPageLoaded?.(true);},[hasUsableData,loading,outletContext]);
   const handleRetry=()=>refetch();
-  const handleMovieClick = (movie: RecommendedMovie) => {
+  const analytics = useTrackAnalytics({
+    ...createAnalyticsOptions.movies(accountDocumentId || "", username),
+    ready: hasUsableData,
+  });
+  const handleMovieClick = useCallback((movie: RecommendedMovie) => {
     setSelectedMovie(movie);
     setModalOpen(true);
-  };
+    analytics.trackClick("movie-card", {
+      id: movie.documentId,
+      listId: movie.movie_list?.documentId,
+      title: movie.title,
+      mediaType: movie.media_type || "movie",
+      listName: movie.movie_list?.List_Name,
+      genre: genreSlug,
+    });
+  }, [analytics, genreSlug]);
 
   const pageTitle = `${genreName} Movies | ${username}'s Movie List | explorers`;
   const metaDescription = `Explore ${filteredMovies.length} ${genreName} movie${filteredMovies.length !== 1 ? "s" : ""} recommended by ${username} on explorers.`;

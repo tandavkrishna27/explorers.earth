@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { motion, PanInfo } from "framer-motion";
 import { Play, Star } from "lucide-react";
 import type { RecommendedProduct } from "../../types";
-import { buildImageUrl, formatPrice } from "../../utils/productHelpers";
+import { buildImageUrl } from "../../utils/productHelpers";
+import { useFormatMoney } from "../../../../lib/money";
 
 interface ProductTopPicksMobileHeroProps {
   products: RecommendedProduct[];
@@ -12,6 +13,7 @@ interface ProductTopPicksMobileHeroProps {
 }
 
 const ProductTopPicksMobileHero = ({ products, onProductClick, showManageButton = false, onManageClick }: ProductTopPicksMobileHeroProps) => {
+  const formatMoney = useFormatMoney();
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
@@ -55,7 +57,7 @@ const ProductTopPicksMobileHero = ({ products, onProductClick, showManageButton 
           const posterUrl = (product.images && product.images.length > 0)
             ? buildImageUrl(product.images[0])
             : buildImageUrl(product.logo_url);
-          const priceStr = formatPrice(product.price, product.currency);
+          const priceStr = formatMoney(product.price, product.currency);
 
           return (
             <motion.div

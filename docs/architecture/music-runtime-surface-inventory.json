@@ -564,7 +564,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
-      "line": 142
+      "line": 157
     },
     {
       "method": "GET",
@@ -574,7 +574,7 @@
       "policy": "authoritative-strapi-bearer+immutable-binding+lifecycle-state",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersAnalyticsRoutes.ts",
-      "line": 190
+      "line": 205
     },
     {
       "method": "PUT",

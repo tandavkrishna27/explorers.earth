@@ -502,6 +502,7 @@
   "common": {
     "cancel": "İptal",
     "error": "Bir hata oluştu. Lütfen daha sonra tekrar deneyin.",
+    "free": "Ücretsiz",
     "hidePassword": "Şifreyi gizle",
     "loading": "Yükleniyor...",
     "noResults": "Sonuç bulunamadı",

@@ -502,6 +502,7 @@
   "common": {
     "cancel": "Anuluj",
     "error": "Wystąpił błąd. Spróbuj ponownie później.",
+    "free": "Za darmo",
     "hidePassword": "Ukryj hasło",
     "loading": "Ładowanie...",
     "noResults": "Nie znaleziono wyników",

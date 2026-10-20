@@ -7,8 +7,16 @@
 #
 # <staging-dir> holds what the workflow uploaded: release.tar.gz (one top-level
 # directory named for the commit), explorers.conf (the rendered nginx site),
-# production.compose.yml, and deploy.env (IMAGE_NAME, IMAGE_DIGEST, COMMIT,
-# NGINX_SITE_PATH, SERVER_NAME).
+# production.compose.yml, deploy.env (IMAGE_NAME, IMAGE_DIGEST, COMMIT,
+# NGINX_SITE_PATH, SERVER_NAME), and production.env, rendered from the
+# explorers-production GitHub environment and already validated by the workflow.
+#
+# backup and stage first install a staged production.env, if there is one: a
+# regular file only, copied root-owned 0600 to /opt/explorers/production.env.next
+# and renamed over production.env, the previous one kept as production.env.previous
+# (0600), the staged copy shredded. Whichever phase runs first installs it; the
+# other finds no staged copy and uses the installed file. Without a staged copy a
+# hand-made production.env is used as before.
 #
 # stage:    unpack the release beside the live one; place the compose file; refuse
 #           an image whose bundled migration chain is older than the database's;
@@ -62,6 +70,26 @@ compose() {
     docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"
 }
 
+# The staged production.env carries every application secret, so it is never
+# followed through a symlink, never printed, and gone from the staging directory
+# once installed. The swap is a rename on one filesystem, so a reader sees the old
+# file or the new one, never a partial one.
+install_staged_env() {
+  local staged="$staging/production.env"
+  [[ -e "$staged" || -L "$staged" ]] || return 0
+  [[ -f "$staged" && ! -L "$staged" ]] || fail "the staged production.env is not a regular file; refusing it"
+  install -d -m 0700 -o root -g root "$OPT"
+  rm -f "$ENV_FILE.next" "$ENV_FILE.previous.next"
+  install -m 0600 -o root -g root "$staged" "$ENV_FILE.next"
+  if [[ -f "$ENV_FILE" && ! -L "$ENV_FILE" ]]; then
+    install -m 0600 -o root -g root "$ENV_FILE" "$ENV_FILE.previous.next"
+    mv -f "$ENV_FILE.previous.next" "$ENV_FILE.previous"
+  fi
+  mv -f "$ENV_FILE.next" "$ENV_FILE"
+  shred -u "$staged" 2>/dev/null || rm -f "$staged"
+  echo "installed production.env from the explorers-production environment (previous kept as $ENV_FILE.previous)"
+}
+
 compose_diagnostics() {
   compose ps || true
   compose logs --no-color --tail 200 migrate api || true
@@ -77,7 +105,7 @@ preflight() {
   docker compose version >/dev/null || fail "docker compose v2 is not available"
   command -v nginx >/dev/null || fail "nginx is not installed"
   command -v curl >/dev/null || fail "curl is not installed"
-  [[ -f "$ENV_FILE" && ! -L "$ENV_FILE" ]] || fail "$ENV_FILE is missing (P2 Task 9 Step 3)"
+  [[ -f "$ENV_FILE" && ! -L "$ENV_FILE" ]] || fail "$ENV_FILE is missing: the workflow renders it from the explorers-production environment"
   [[ "$(stat -c '%u %a' "$ENV_FILE")" == "0 600" ]] || fail "$ENV_FILE must be root-owned mode 0600"
 }
 
@@ -91,6 +119,7 @@ migration_rank() { local id="$1"; printf '%d' "$((10#${id%%_*}))"; }
 # host can decide that. A database volume that exists while postgres is down is
 # refused: it cannot be backed up.
 backup() {
+  install_staged_env
   preflight
   [[ -f "$staging/platform-backup.mjs" ]] || fail "staging is missing platform-backup.mjs"
   install -d -m 0700 "$OPT"
@@ -135,6 +164,7 @@ SQL
 }
 
 stage() {
+  install_staged_env
   preflight
   [[ -f "$staging/release.tar.gz" && -f "$staging/production.compose.yml" ]] || fail "staging is missing the release or compose file"
 
@@ -164,11 +194,16 @@ stage() {
   # Until step 5 starts the new image, a refusal must leave the compose file that
   # matches what is running; otherwise the next `compose up` pairs the running
   # image with another release's migration marker and the gate refuses it.
+  # production.env is deliberately not put back: it is the explorers-production
+  # environment's current, validated configuration, the running containers keep
+  # the values they were created with until the next `compose up`, and the next
+  # deploy renders the same file again. production.env.previous stays for a
+  # restore by hand.
   refuse() {
     if (( had_previous )); then cp -p "$COMPOSE_FILE.previous" "$COMPOSE_FILE"; else rm -f "$COMPOSE_FILE"; fi
     fail "$*; $COMPOSE_FILE left as it was"
   }
-  compose config --quiet || refuse "compose refused to render; check $ENV_FILE against deploy/production.env.example"
+  compose config --quiet || refuse "compose refused to render; check the explorers-production environment against deploy/production.env.example"
 
   # 3. The verified image, and the migration chain it bundles.
   compose pull || refuse "could not pull $IMAGE"
@@ -239,7 +274,7 @@ SQL
   gateway="$(docker inspect -f '{{with index .NetworkSettings.Networks "explorers-canonical_egress"}}{{.Gateway}}{{end}}' "$api_container")"
   configured="$(sed -n 's/^EXPLORERS_TRUSTED_PROXY_IP=//p' "$ENV_FILE" | tail -n 1)"
   if [[ "$gateway" != "$configured" ]]; then
-    local advice="EXPLORERS_TRUSTED_PROXY_IP is '$configured' but nginx reaches the API from '$gateway'. Set it to $gateway in $ENV_FILE, then: docker compose -f $COMPOSE_FILE --env-file $ENV_FILE --env-file $IMAGE_ENV up -d api"
+    local advice="EXPLORERS_TRUSTED_PROXY_IP is '$configured' but nginx reaches the API from '$gateway'. Set the explorers-production environment variable EXPLORERS_TRUSTED_PROXY_IP to $gateway and redeploy (docs/operations/explorers-cutover-runbook.md, step 5.3)"
     if [[ -z "$db_head" ]]; then echo "::warning::first deploy: $advice"
     else compose_diagnostics; fail "$advice"; fi
   else

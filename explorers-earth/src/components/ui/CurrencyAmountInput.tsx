@@ -1,13 +1,16 @@
 /**
- * CurrencyAmountInput Component
- * A reusable component for selecting currency and entering formatted amounts
+ * CurrencyAmountInput
+ * A currency picker (every active ISO 4217 currency) beside an amount field whose decimal
+ * places follow the chosen currency: JPY takes none, USD two, KWD three. Nothing picks a
+ * currency on the person's behalf unless the caller passes one in `value`.
  */
 
-import React, { useMemo, useState, useEffect } from "react";
-import Select, { StylesConfig } from "react-select";
-import CurrencyInput from "react-currency-input-field";
-import * as currencyCodes from "currency-codes";
-import getSymbolFromCurrency from "currency-symbol-map";
+import React from 'react';
+import CurrencyInput from 'react-currency-input-field';
+import { useTranslation } from 'react-i18next';
+import CurrencyPicker from './CurrencyPicker';
+import { minorUnitsOf } from '../../../../tunes/shared/currency';
+import { precisionMessage, useFormatMoney } from '../../lib/money';
 
 interface CurrencyAmountInputProps {
   value: { amount: string; currency: string };
@@ -18,192 +21,54 @@ interface CurrencyAmountInputProps {
   disabled?: boolean;
 }
 
-interface CurrencyOption {
-  value: string;
-  label: string;
-}
-
 const CurrencyAmountInput: React.FC<CurrencyAmountInputProps> = ({
   value,
   onChange,
-  className = "",
+  className = '',
   label,
-  placeholder = "Enter amount",
+  placeholder = 'Enter amount',
   disabled = false,
 }) => {
-  const [localAmount, setLocalAmount] = useState(value.amount || "");
-  const [localCurrency, setLocalCurrency] = useState(value.currency || "USD");
-
-  // Update local state when value prop changes
-  useEffect(() => {
-    setLocalAmount(value.amount || "");
-    setLocalCurrency(value.currency || "USD");
-  }, [value.amount, value.currency]);
-
-  // Generate currency options from currency-codes
-  const currencyOptions: CurrencyOption[] = useMemo(() => {
-    // currency-codes exports codes() function that returns all currency codes
-    const allCodes = currencyCodes.codes();
-    return allCodes
-      .map((code: string) => {
-        const currencyInfo = currencyCodes.code(code);
-        const name = currencyInfo?.currency || code;
-        const symbol = getSymbolFromCurrency(code) || code;
-        return {
-          value: code,
-          label: `${code} — ${name} (${symbol})`,
-        };
-      })
-      .filter((opt) => opt.value) // Filter out any invalid entries
-      .sort((a, b) => a.value.localeCompare(b.value));
-  }, []);
-
-  // Handle currency change
-  const handleCurrencyChange = (selectedOption: CurrencyOption | null) => {
-    if (selectedOption) {
-      const newCurrency = selectedOption.value;
-      setLocalCurrency(newCurrency);
-      onChange({
-        amount: localAmount,
-        currency: newCurrency,
-      });
-    }
-  };
-
-  // Handle amount change
-  const handleAmountChange = (value: string | undefined) => {
-    const amount = value || "";
-    setLocalAmount(amount);
-    onChange({
-      amount,
-      currency: localCurrency,
-    });
-  };
-
-  // Get currency symbol for preview
-  const currencySymbol = getSymbolFromCurrency(localCurrency) || localCurrency;
-
-  // Format preview with Intl.NumberFormat
-  const previewText = useMemo(() => {
-    if (!localAmount || parseFloat(localAmount) === 0) {
-      return "";
-    }
-
-    try {
-      const numericValue = parseFloat(localAmount);
-      if (isNaN(numericValue)) {
-        return "";
-      }
-
-      return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: localCurrency,
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(numericValue);
-    } catch (error) {
-      // Fallback formatting if Intl.NumberFormat fails
-      return `${currencySymbol}${parseFloat(localAmount).toLocaleString("en-US", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      })}`;
-    }
-  }, [localAmount, localCurrency, currencySymbol]);
-
-  // Custom styles for react-select
-  const selectStyles: StylesConfig<CurrencyOption, false> = {
-    control: (provided, state) => ({
-      ...provided,
-      backgroundColor: "rgb(61, 78, 64)", // dashboard-muted
-      borderColor: state.isFocused ? "rgb(52, 152, 219)" : "rgb(60, 78, 64)", // dashboard-accent or dashboard-muted
-      color: "white",
-      minHeight: "42px",
-      boxShadow: state.isFocused ? "0 0 0 2px rgba(52, 152, 219, 0.2)" : "none",
-      "&:hover": {
-        borderColor: "rgb(52, 152, 219)",
-      },
-    }),
-    menu: (provided) => ({
-      ...provided,
-      backgroundColor: "rgb(34, 49, 38)", // dashboard-sidebar
-      zIndex: 10003, // Above modal
-    }),
-    option: (provided, state) => ({
-      ...provided,
-      backgroundColor: state.isSelected
-        ? "rgb(52, 152, 219)" // dashboard-accent
-        : state.isFocused
-        ? "rgb(61, 78, 64)" // dashboard-muted
-        : "transparent",
-      color: "white",
-      "&:hover": {
-        backgroundColor: state.isSelected
-          ? "rgb(52, 152, 219)"
-          : "rgb(61, 78, 64)",
-      },
-    }),
-    singleValue: (provided) => ({
-      ...provided,
-      color: "white",
-    }),
-    input: (provided) => ({
-      ...provided,
-      color: "white",
-    }),
-    placeholder: (provided) => ({
-      ...provided,
-      color: "rgba(255, 255, 255, 0.5)",
-    }),
-  };
-
-  const selectedCurrency = currencyOptions.find(
-    (opt) => opt.value === localCurrency
-  ) || currencyOptions.find((opt) => opt.value === "USD");
+  const { t } = useTranslation();
+  const formatMoney = useFormatMoney();
+  const { amount, currency } = value;
+  // Until a currency is chosen there is no precision to enforce; two places is the common
+  // case and the amount is re-checked the moment a currency arrives.
+  const units = currency ? minorUnitsOf(currency) ?? 2 : 2;
+  const problem = amount && currency ? precisionMessage(t, amount, currency) : undefined;
+  const preview = amount && currency && !problem && Number.isFinite(Number(amount)) ? formatMoney(amount, currency) : '';
 
   return (
     <div className={`space-y-2 ${className}`}>
-      {label && (
-        <label className="block text-dashboard font-poppins text-sm font-medium">
-          {label}
-        </label>
-      )}
+      {label && <label className="block text-dashboard font-poppins text-sm font-medium">{label}</label>}
 
       <div className="flex flex-col md:flex-row gap-2">
-        {/* Currency Select */}
-        <div className="w-full md:w-48 lg:w-64 flex-shrink-0">
-          <Select<CurrencyOption, false>
-            value={selectedCurrency}
-            onChange={handleCurrencyChange}
-            options={currencyOptions}
-            isSearchable
-            isDisabled={disabled}
-            placeholder="Select currency..."
-            styles={selectStyles}
-            className="react-select-container"
-            classNamePrefix="react-select"
-          />
+        <div className="w-full md:w-64 flex-shrink-0">
+          <CurrencyPicker value={currency} onChange={(code) => onChange({ amount, currency: code })} disabled={disabled} invalid={Boolean(amount) && !currency} />
         </div>
 
-        {/* Amount Input */}
         <div className="flex-1 min-w-0">
           <CurrencyInput
             id="currency-amount-input"
             name="currency-amount-input"
-            value={localAmount}
-            onValueChange={handleAmountChange}
+            aria-label={t('currency.amountLabel')}
+            aria-invalid={Boolean(problem) || undefined}
+            inputMode="decimal"
+            value={amount}
+            onValueChange={(next) => onChange({ amount: next ?? '', currency })}
             placeholder={placeholder}
-            decimalsLimit={2}
+            decimalsLimit={units}
+            allowNegativeValue={false}
             disabled={disabled}
-            prefix={currencySymbol}
-            className="w-full p-3 bg-dashboard-muted text-dashboard rounded-lg border border-dashboard focus:outline-none focus:ring-2 focus:ring-dashboard-accent font-poppins text-sm"
+            className="w-full p-3 bg-dashboard-muted text-dashboard rounded-lg border border-dashboard focus:outline-none focus:ring-2 focus:ring-dashboard-accent font-poppins text-base"
           />
         </div>
       </div>
 
-      {/* Preview */}
-      {previewText && (
+      {problem && <p role="alert" className="text-red-400 text-xs font-poppins">{problem}</p>}
+      {preview && (
         <p className="text-dashboard-light text-xs font-poppins">
-          Preview: <span className="font-semibold">{previewText}</span>
+          {t('currency.preview')} <span className="font-semibold">{preview}</span>
         </p>
       )}
     </div>
@@ -211,4 +76,3 @@ const CurrencyAmountInput: React.FC<CurrencyAmountInputProps> = ({
 };
 
 export default CurrencyAmountInput;
-

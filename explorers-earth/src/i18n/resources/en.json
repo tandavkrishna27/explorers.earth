@@ -234,13 +234,17 @@
       },
       "dateRange": {
         "from": "From:",
-        "to": "To:"
+        "to": "To:",
+        "maxRange": "Choose a date range of 93 days or less.",
+        "endBeforeStart": "The end date can't be earlier than the start date. Choose an end date on or after the start date."
       },
       "emptyState": {
         "customRange": {
           "bothMissing": "Please select both start and end dates for the custom range to view analytics data.",
           "endMissing": "Please select an end date for the custom range to view analytics data.",
-          "startMissing": "Please select a start date for the custom range to view analytics data."
+          "startMissing": "Please select a start date for the custom range to view analytics data.",
+          "endBeforeStart": "The end date can't be earlier than the start date. Choose an end date on or after the start date.",
+          "tooLong": "Choose a date range of 93 days or less."
         },
         "howToStart": {
           "askFriends": "• Ask friends to scan your QR codes",
@@ -263,8 +267,9 @@
       },
       "error": {
         "errorLabel": "Error:",
-        "message": "Unable to fetch analytics data. Please try again later.",
-        "title": "Error Loading Analytics"
+        "message": "We couldn't load your analytics right now. Please try again.",
+        "title": "Error Loading Analytics",
+        "retry": "Retry"
       },
       "loading": {
         "loadingData": "Loading analytics data...",
@@ -286,7 +291,8 @@
       },
       "timePeriod": "Time Period:",
       "title": "Analytics Dashboard",
-      "countsNote": "Totals count visits, not unique visitors. Public pages are measured anonymously, without cookies."
+      "countsNote": "Totals count visits, not unique visitors. Public pages are measured anonymously, without cookies.",
+      "untitledList": "Untitled list"
     }
   },
   "auth": {
@@ -524,6 +530,7 @@
   "common": {
     "cancel": "Cancel",
     "error": "An error occurred. Please try again later.",
+    "free": "Free",
     "hidePassword": "Hide password",
     "loading": "Loading...",
     "noResults": "No results found",
@@ -2534,6 +2541,25 @@
       "retry": "Try again",
       "retrying": "Retrying…"
     }
+  },
+  "currency": {
+    "amountLabel": "Amount",
+    "clear": "Clear currency",
+    "emptyMeansUnknown": "Leave the price empty if you do not know it. A price of 0 is shown as Free.",
+    "invalidAmount": "Enter an amount like 19.90, with no currency symbol.",
+    "label": "Currency",
+    "maxDecimals_one": "{{code}} allows at most {{count}} decimal place.",
+    "maxDecimals_other": "{{code}} allows at most {{count}} decimal places.",
+    "needsCurrency": "Choose a currency for the price.",
+    "needsPrice": "Enter a price for the currency, or clear the currency.",
+    "noDecimals": "{{code}} has no decimal places; enter a whole amount.",
+    "noMatch": "No currency matches",
+    "placeholder": "Search by code or name",
+    "preview": "Preview:",
+    "priceLabel": "Price",
+    "retired": "retired",
+    "suggested": "Suggested for your region",
+    "unknown": "Not set"
   },
   "recovery": {
     "pendingDeletion": {

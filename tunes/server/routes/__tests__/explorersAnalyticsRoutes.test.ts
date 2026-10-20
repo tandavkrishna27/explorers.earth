@@ -85,6 +85,48 @@ describe("explorers analytics routes", () => {
     expect(JSON.stringify(response.body)).not.toContain("203.0.113.90");
   });
 
+  // The Movies and Games list and genre pages report the same event shape as the other
+  // media categories: an anonymous page view, and a card click that names its item/list.
+  const mediaEvents = [
+    ["movies list view", "public-movies", "/tk2727/movies/weekend", "view", undefined, "list-1", null, undefined],
+    ["movies genre view", "public-movies", "/tk2727/movies/genre/drama", "view", undefined, null, null, undefined],
+    ["movies list card click", "public-movies", "/tk2727/movies/weekend", "click", "movie-card", "list-1", "movie-1", { id: "movie-1", listId: "list-1", listName: "Weekend", title: "Heat", mediaType: "movie" }],
+    ["movies genre card click", "public-movies", "/tk2727/movies/genre/drama", "click", "movie-card", "list-1", "movie-1", { id: "movie-1", listId: "list-1", listName: "Weekend", title: "Heat", genre: "drama" }],
+    ["games list view", "public-games", "/tk2727/games/backlog", "view", undefined, "list-2", null, undefined],
+    ["games genre view", "public-games", "/tk2727/games/genre/rpg", "view", undefined, null, null, undefined],
+    ["games list card click", "public-games", "/tk2727/games/backlog", "click", "game-card", "list-2", "game-1", { id: "game-1", listId: "list-2", listName: "Backlog", title: "Elden Ring", genres: "RPG, Action" }],
+    ["games genre card click", "public-games", "/tk2727/games/genre/rpg", "click", "game-card", "list-2", "game-1", { id: "game-1", listId: "list-2", listName: "Backlog", title: "Elden Ring", genre: "rpg" }],
+  ] as const;
+
+  it.each(mediaEvents)(
+    "accepts the %s event and validates its public target before ingesting",
+    async (_label, page, canonicalPath, type, element, locationId, recommendationId, metadata) => {
+      const { app, service, validatePublicTarget } = buildApp();
+      const { request } = await loopback.open({ app });
+      const body = {
+        basis: "anonymous-v1",
+        eventId: "evt-20260824-media-1",
+        accountId: "account-1",
+        locationId,
+        recommendationId,
+        event: {
+          type,
+          timestamp: "2026-08-24T03:30:00.000Z",
+          page,
+          canonicalPath,
+          ...(element ? { element } : {}),
+          ...(metadata ? { metadata } : {}),
+        },
+      };
+
+      const response = await request.post("/api/explorers/analytics/events").send(body);
+
+      expect(response.status).toBe(201);
+      expect(validatePublicTarget).toHaveBeenCalledWith(expect.objectContaining({ accountId: "account-1", locationId, recommendationId }));
+      expect(service.ingest).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it("returns 204 when analytics consent is denied", async () => {
     const { app, service } = buildApp();
     service.ingest.mockResolvedValue({ status: "consent-denied" });
@@ -340,6 +382,37 @@ describe("explorers analytics routes", () => {
 
       expect(response.status).toBe(200);
       expect(service.readAccountEvents).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  // Intl.supportedValuesOf("timeZone") lists only canonical names, so the old allow-list
+  // answered 400 for zones browsers send every day.
+  it.each(["Asia/Kolkata", "Europe/Kyiv", "America/Argentina/Buenos_Aires", "Asia/Calcutta", "UTC"])(
+    "accepts the timezone %s that the runtime can use",
+    async (timeZone) => {
+      const { app, service } = buildApp();
+      const { request } = await loopback.open({ app });
+      const response = await request
+        .get("/api/explorers/analytics/events")
+        .query({ accountId: "account-1", fromDate: "2026-08-01", toDate: "2026-08-31", timeZone });
+
+      expect(response.status).toBe(200);
+      expect(service.readAccountEvents).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each(["Mars/Olympus_Mons", "Asia/Kolkata;DROP", "../etc/passwd", "Asia/Kolkata/a/b/c", `Asia/${"x".repeat(200)}`])(
+    "rejects the unusable or unsafe timezone %s",
+    async (timeZone) => {
+      const { app, service, authorizeOwner } = buildApp();
+      const { request } = await loopback.open({ app });
+      const response = await request
+        .get("/api/explorers/analytics/events")
+        .query({ accountId: "account-1", fromDate: "2026-08-01", toDate: "2026-08-31", timeZone });
+
+      expect(response.status).toBe(400);
+      expect(authorizeOwner).not.toHaveBeenCalled();
+      expect(service.readAccountEvents).not.toHaveBeenCalled();
     },
   );
 

@@ -60,7 +60,9 @@ src/
 │   ├── useToast.ts                     # Toast notifications
 │   └── useUsernameValidation.ts        # Async username availability check
 ├── lib/
-│   └── apolloCache.ts          # Immutable-ID GraphQL normalization policy
+│   ├── apolloCache.ts          # Immutable-ID GraphQL normalization policy
+│   ├── money.ts                # The one price formatter (formatMoney / useFormatMoney); never format money ad hoc
+│   └── currencyOptions.ts      # Currency picker options (Intl.DisplayNames) and locale-region currency suggestion
 ├── store/              # Zustand global state
 │   ├── store.ts        # Main app store (auth, user data)
 │   ├── useCityStore.ts # Selected city state

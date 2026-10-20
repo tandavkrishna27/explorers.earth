@@ -19,6 +19,7 @@ import { readExplorersAnalyticsEvents } from '../../../services/explorersAnalyti
 import {
   AnalyticsTimeFilter,
   getAnalyticsDateRange,
+  getCustomRangeIssue,
 } from '../utils/analyticsDateRange';
 
 // Time filter types
@@ -38,6 +39,8 @@ const AnalyticsDashboard: React.FC = () => {
   const [accountAnalyticsData, setAccountAnalyticsData] = useState<PublicPageAnalyticsData[]>([]);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsError, setAnalyticsError] = useState<Error | null>(null);
+  // Bumped by Retry so the same scope is read again.
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Time filter state
   const [timeFilter, setTimeFilter] = useState<AnalyticsTimeFilter>({
@@ -88,6 +91,7 @@ const AnalyticsDashboard: React.FC = () => {
   const isCustomRangeComplete =
     timeFilter.type !== 'custom' ||
     Boolean(timeFilter.startDate && timeFilter.endDate && isCustomRangeValid);
+  const customRangeIssue = getCustomRangeIssue(timeFilter);
 
   // Filter events by date range
   const filteredEvents = useMemo(() => {
@@ -131,10 +135,9 @@ const AnalyticsDashboard: React.FC = () => {
       } else if (!timeFilter.endDate) {
         return t('analytics.dashboard.emptyState.customRange.endMissing');
       }
-      return t('analytics.dashboard.dateRange.maxRange', {
-        days: 93,
-        defaultValue: 'Choose a date range of 93 days or less.',
-      });
+      return customRangeIssue === 'endBeforeStart'
+        ? t('analytics.dashboard.dateRange.endBeforeStart')
+        : t('analytics.dashboard.dateRange.maxRange', { days: 93 });
     }
     if (!hasAnyAnalyticsData) {
       return t('analytics.dashboard.emptyState.noDataMessage');
@@ -221,6 +224,9 @@ const AnalyticsDashboard: React.FC = () => {
       })
       .catch((caught) => {
         if (!active) return;
+        // The raw failure (status, response body) is for the console only; the UI shows
+        // a translated message.
+        console.error('Analytics read failed', caught);
         setAccountAnalyticsData([]);
         setEventsWithCountries([]);
         setAnalyticsError(
@@ -234,7 +240,7 @@ const AnalyticsDashboard: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [accountDocumentId, getDateRange, isAuthenticated, isCustomRangeComplete, token]);
+  }, [accountDocumentId, getDateRange, isAuthenticated, isCustomRangeComplete, token, reloadKey]);
 
   // Calculate metrics from filtered events
   const processedData = useMemo(() => {
@@ -271,6 +277,78 @@ const AnalyticsDashboard: React.FC = () => {
       totalViewsOtherSources
     };
   }, [filteredEvents]);
+
+  const customRangeError =
+    customRangeIssue === 'endBeforeStart'
+      ? t('analytics.dashboard.dateRange.endBeforeStart')
+      : customRangeIssue === 'tooLong'
+        ? t('analytics.dashboard.dateRange.maxRange', { days: 93 })
+        : null;
+
+  // Shared by the loaded, empty and error views so the owner can always change the period.
+  const timePeriodControl = (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <label className="dt-label text-sm">{t('analytics.dashboard.timePeriod')}</label>
+          <div className="w-full sm:w-auto sm:min-w-[180px] relative" ref={timeFilterDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsTimeFilterDropdownOpen(!isTimeFilterDropdownOpen)}
+              className="dt-input w-full text-left flex justify-between items-center dt-label px-3 py-2 text-sm border border-dashboard-border rounded-lg bg-dashboard-surface text-dashboard focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent"
+            >
+              <span>
+                {TIME_FILTER_OPTIONS.find(option => option.value === timeFilter.type)?.label || t('analytics.dashboard.timeFilter.selectPeriod')}
+              </span>
+              <svg
+                className={`w-4 h-4 transition-transform ${isTimeFilterDropdownOpen ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {isTimeFilterDropdownOpen && (
+              <div className="absolute top-full left-0 right-0 mt-1 dt-surface border border-dashboard rounded-lg shadow-dashboard-elevated z-50 max-h-60 overflow-y-auto scrollbar-hide">
+                {TIME_FILTER_OPTIONS.map(option => (
+                  <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        setTimeFilter(prev => option.value === 'custom'
+                          ? {
+                            type: 'custom',
+                            startDate: prev.type === 'custom' ? prev.startDate : '',
+                            endDate: prev.type === 'custom' ? prev.endDate : '',
+                          }
+                          : { type: option.value as Exclude<TimeFilter, 'custom'> });
+                        setIsTimeFilterDropdownOpen(false);
+                      }}
+                    className={`w-full px-3 py-2 text-left dt-label hover:bg-dashboard-muted transition-colors ${timeFilter.type === option.value ? 'bg-dashboard-muted text-dashboard-accent' : ''
+                      }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+  );
+
+  const customRangeControls = timeFilter.type === 'custom' && (
+    <AnalyticsDateRangeControls
+      startDate={timeFilter.startDate}
+      endDate={timeFilter.endDate}
+      error={customRangeError}
+      onStartDateChange={(startDate) => setTimeFilter(prev => (
+        prev.type === 'custom' ? { ...prev, startDate } : prev
+      ))}
+      onEndDateChange={(endDate) => setTimeFilter(prev => (
+        prev.type === 'custom' ? { ...prev, endDate } : prev
+      ))}
+    />
+  );
 
   // Loading state — render structured shimmer skeleton instead of a spinner
   if (loading) {
@@ -329,19 +407,39 @@ const AnalyticsDashboard: React.FC = () => {
     );
   }
 
-  // Error state
+  // Error state. The time-period control stays usable and Retry reads the same scope again.
   if (error) {
+    const handleRetry = () => {
+      if (accountError) void canonicalAccount.refetch?.();
+      setReloadKey((key) => key + 1);
+    };
     return (
       <div className="bg-dashboard-bg min-h-screen">
-        <div className="dashboard-theme flex items-center justify-center min-h-[400px]">
-          <div className="dt-surface p-6 rounded-lg text-center max-w-md">
-            <h3 className="dt-heading mb-2 text-dashboard-danger">{t('analytics.dashboard.error.title')}</h3>
-            <p className="dt-subtext mb-4">
-              {t('analytics.dashboard.error.message')}
-            </p>
-            <p className="dt-subtext text-xs">
-              {t('analytics.dashboard.error.errorLabel')} {error.message}
-            </p>
+        <div className="dashboard-theme p-4 sm:p-5 md:p-6 space-y-6">
+          <div className="mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h1 className="dt-heading mb-2">{t('analytics.dashboard.title')}</h1>
+                <p className="dt-subtext">{t('analytics.dashboard.subtitle')}</p>
+              </div>
+              {timePeriodControl}
+            </div>
+            {customRangeControls}
+          </div>
+          <div className="flex items-center justify-center min-h-[300px] px-4">
+            <div role="alert" className="dt-surface p-6 rounded-lg text-center max-w-md">
+              <h3 className="dt-heading mb-2 text-dashboard-danger">{t('analytics.dashboard.error.title')}</h3>
+              <p className="dt-subtext mb-4">
+                {t('analytics.dashboard.error.message')}
+              </p>
+              <button
+                type="button"
+                onClick={handleRetry}
+                className="px-4 py-2 text-sm rounded-lg border border-dashboard-border bg-dashboard-surface text-dashboard hover:bg-dashboard-muted focus:outline-none focus:ring-2 focus:ring-dashboard-accent"
+              >
+                {t('analytics.dashboard.error.retry')}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -365,74 +463,11 @@ const AnalyticsDashboard: React.FC = () => {
               </div>
 
               {/* Time Filter Dropdown - Always Visible */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <label className="dt-label text-sm">{t('analytics.dashboard.timePeriod')}</label>
-                <div className="w-full sm:w-auto sm:min-w-[180px] relative" ref={timeFilterDropdownRef}>
-                  <button
-                    type="button"
-                    onClick={() => setIsTimeFilterDropdownOpen(!isTimeFilterDropdownOpen)}
-                    className="dt-input w-full text-left flex justify-between items-center dt-label px-3 py-2 text-sm border border-dashboard-border rounded-lg bg-dashboard-surface text-dashboard focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent"
-                  >
-                    <span>
-                      {TIME_FILTER_OPTIONS.find(option => option.value === timeFilter.type)?.label || t('analytics.dashboard.timeFilter.selectPeriod')}
-                    </span>
-                    <svg
-                      className={`w-4 h-4 transition-transform ${isTimeFilterDropdownOpen ? 'rotate-180' : ''}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-
-                  {isTimeFilterDropdownOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-1 dt-surface border border-dashboard rounded-lg shadow-dashboard-elevated z-50 max-h-60 overflow-y-auto scrollbar-hide">
-                      {TIME_FILTER_OPTIONS.map(option => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => {
-                            setTimeFilter(prev => option.value === 'custom'
-                              ? {
-                                type: 'custom',
-                                startDate: prev.type === 'custom' ? prev.startDate : '',
-                                endDate: prev.type === 'custom' ? prev.endDate : '',
-                              }
-                              : { type: option.value as Exclude<TimeFilter, 'custom'> });
-                            setIsTimeFilterDropdownOpen(false);
-                          }}
-                          className={`w-full px-3 py-2 text-left dt-label hover:bg-dashboard-muted transition-colors ${timeFilter.type === option.value ? 'bg-dashboard-muted text-dashboard-accent' : ''
-                            }`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
+              {timePeriodControl}
             </div>
 
             {/* Custom Date Range Inputs */}
-            {timeFilter.type === 'custom' && (
-              <AnalyticsDateRangeControls
-                startDate={timeFilter.startDate}
-                endDate={timeFilter.endDate}
-                error={!isCustomRangeValid && timeFilter.startDate && timeFilter.endDate
-                  ? t('analytics.dashboard.dateRange.maxRange', {
-                    days: 93,
-                    defaultValue: 'Choose a date range of 93 days or less.',
-                  })
-                  : null}
-                onStartDateChange={(startDate) => setTimeFilter(prev => (
-                  prev.type === 'custom' ? { ...prev, startDate } : prev
-                ))}
-                onEndDateChange={(endDate) => setTimeFilter(prev => (
-                  prev.type === 'custom' ? { ...prev, endDate } : prev
-                ))}
-              />
-            )}
+            {customRangeControls}
           </div>
 
           {/* Context-Aware Empty State */}
@@ -451,7 +486,7 @@ const AnalyticsDashboard: React.FC = () => {
               </div>
 
               {/* These tips tell the owner to share QR codes to start seeing data. */}
-              {(
+              {!customRangeIssue && (
                 <div className="space-y-2 text-left">
                   <h4 className="dt-label mb-2">{t('analytics.dashboard.emptyState.howToStart.title')}</h4>
                   <ul className="dt-subtext space-y-1">
@@ -487,74 +522,11 @@ const AnalyticsDashboard: React.FC = () => {
             </div>
 
             {/* Time Filter Dropdown */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-              <label className="dt-label text-sm">{t('analytics.dashboard.timePeriod')}</label>
-              <div className="w-full sm:w-auto sm:min-w-[180px] relative" ref={timeFilterDropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setIsTimeFilterDropdownOpen(!isTimeFilterDropdownOpen)}
-                  className="dt-input w-full text-left flex justify-between items-center dt-label px-3 py-2 text-sm border border-dashboard-border rounded-lg bg-dashboard-surface text-dashboard focus:outline-none focus:ring-2 focus:ring-dashboard-accent focus:border-transparent"
-                >
-                  <span>
-                    {TIME_FILTER_OPTIONS.find(option => option.value === timeFilter.type)?.label || t('analytics.dashboard.timeFilter.selectPeriod')}
-                  </span>
-                  <svg
-                    className={`w-4 h-4 transition-transform ${isTimeFilterDropdownOpen ? 'rotate-180' : ''}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-
-                {isTimeFilterDropdownOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1 dt-surface border border-dashboard rounded-lg shadow-dashboard-elevated z-50 max-h-60 overflow-y-auto scrollbar-hide">
-                    {TIME_FILTER_OPTIONS.map(option => (
-                      <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => {
-                            setTimeFilter(prev => option.value === 'custom'
-                              ? {
-                                type: 'custom',
-                                startDate: prev.type === 'custom' ? prev.startDate : '',
-                                endDate: prev.type === 'custom' ? prev.endDate : '',
-                              }
-                              : { type: option.value as Exclude<TimeFilter, 'custom'> });
-                            setIsTimeFilterDropdownOpen(false);
-                          }}
-                        className={`w-full px-3 py-2 text-left dt-label hover:bg-dashboard-muted transition-colors ${timeFilter.type === option.value ? 'bg-dashboard-muted text-dashboard-accent' : ''
-                          }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+            {timePeriodControl}
           </div>
 
           {/* Custom Date Range Inputs */}
-          {timeFilter.type === 'custom' && (
-            <AnalyticsDateRangeControls
-              startDate={timeFilter.startDate}
-              endDate={timeFilter.endDate}
-              error={!isCustomRangeValid && timeFilter.startDate && timeFilter.endDate
-                ? t('analytics.dashboard.dateRange.maxRange', {
-                  days: 93,
-                  defaultValue: 'Choose a date range of 93 days or less.',
-                })
-                : null}
-              onStartDateChange={(startDate) => setTimeFilter(prev => (
-                prev.type === 'custom' ? { ...prev, startDate } : prev
-              ))}
-              onEndDateChange={(endDate) => setTimeFilter(prev => (
-                prev.type === 'custom' ? { ...prev, endDate } : prev
-              ))}
-            />
-          )}
+          {customRangeControls}
         </div>
 
         {/* Summary Cards */}

@@ -26,7 +26,7 @@ it('production default retains exact Google URL/key/mask/photo semantics',async(
 });
 it('actual photo and price modules bypass missing key only in owned mode',async()=>{
  let data:any;const m=load(fixture,{axios:{get:async()=>({data})}});
- const services=(p:any)=>['googlePhotosService.ts','googlePlaceService.ts'].map(name=>load('explorers-earth/src/features/Guides/utils/'+name,{'../../../lib/browserPlacesProvider':{browserPlacesProvider:p},'../../../lib/publicRuntimeConfig':{mapsBrowserKey:()=>''}}));
+ const services=(p:any)=>['googlePhotosService.ts','googlePlaceService.ts'].map(name=>load('explorers-earth/src/features/Guides/utils/'+name,{'../../../lib/browserPlacesProvider':{browserPlacesProvider:p},'../../../lib/publicRuntimeConfig':{mapsBrowserKey:()=>''},'../../../lib/money':{formatMoney:(amount:unknown)=>String(amount)}}));
  const [photos,price]=services(m.browserPlacesProvider);data=m.GUIDES_PROVIDER_PHOTOS;expect(await photos.fetchGooglePlacePhotos(m.GUIDES_PROVIDER_ID)).toEqual([{url:m.GUIDES_PROVIDER_PATHS.jpeg,width:8,height:8,aspectRatio:'8:8'}]);data=m.GUIDES_PROVIDER_PRICE;expect(await price.fetchPlacePriceLevel(m.GUIDES_PROVIDER_ID)).toEqual({priceLevel:2,priceRange:'$5 - $10'});
  const [prodPhotos,prodPrice]=services({kind:'google-sdk',details:()=>{throw Error('unexpected request');}});expect(await prodPhotos.fetchGooglePlacePhotos('id')).toEqual([]);expect(await prodPrice.fetchPlacePriceLevel('id')).toBeUndefined();
 });

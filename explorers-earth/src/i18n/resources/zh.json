@@ -502,6 +502,7 @@
   "common": {
     "cancel": "取消",
     "error": "发生错误。请稍后再试。",
+    "free": "免费",
     "hidePassword": "隐藏密码",
     "loading": "加载中...",
     "noResults": "未找到结果",
