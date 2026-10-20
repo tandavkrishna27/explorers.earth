@@ -271,11 +271,11 @@ describe("public place directions", () => {
     );
   });
 
-  it("does not open directions without a finite destination", () => {
+  it("offers no directions without a finite destination", () => {
     render(<Overview fetchedPlace={{ Place_Details: {} }} />);
 
-    fireEvent.click(screen.getAllByRole("button")[0]);
-
+    expect(screen.queryByText("Directions")).toBeNull();
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
     expect(window.open).not.toHaveBeenCalled();
   });
 

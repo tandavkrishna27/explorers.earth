@@ -80,6 +80,10 @@ const Overview: FC<OverviewProps> = memo(({ fetchedPlace, onTabChange, isPublicC
     void fetchLocation().catch(() => undefined);
   }, []);
 
+  const hasDirections = buildGoogleMapsDirectionsUrl(fetchedPlace.Place_Details?.Geometry) !== null;
+  const hasPhone = Boolean(fetchedPlace.Contact_Number);
+  const hasActions = hasDirections || hasPhone || Boolean(websiteHref);
+
   const handleDirections = () => {
     const url = buildGoogleMapsDirectionsUrl(
       fetchedPlace.Place_Details.Geometry,
@@ -109,9 +113,10 @@ const Overview: FC<OverviewProps> = memo(({ fetchedPlace, onTabChange, isPublicC
   return (
     <div className="px-4 mb-20 overflow-x-hidden">
       {/* Action Icons with Labels */}
+      {hasActions && (
       <div className="flex flex-row items-center justify-around py-4">
         {/* Directions Icon */}
-        <div className="flex flex-col items-center gap-2">
+        {hasDirections && <div className="flex flex-col items-center gap-2">
           <button
             onClick={handleDirections}
             className="w-12 h-12 rounded-full border border-dashboard flex items-center justify-center hover:bg-dashboard-muted transition-colors"
@@ -121,10 +126,10 @@ const Overview: FC<OverviewProps> = memo(({ fetchedPlace, onTabChange, isPublicC
           <span className="text-dashboard text-xs font-poppins">
             Directions
           </span>
-        </div>
+        </div>}
 
         {/* Phone Icon */}
-        <div className="flex flex-col items-center gap-2">
+        {hasPhone && <div className="flex flex-col items-center gap-2">
           <button
             onClick={handlePhoneCall}
             disabled={!fetchedPlace.Contact_Number}
@@ -133,10 +138,10 @@ const Overview: FC<OverviewProps> = memo(({ fetchedPlace, onTabChange, isPublicC
             <Dailer size="20" />
           </button>
           <span className="text-dashboard text-xs font-poppins">Call</span>
-        </div>
+        </div>}
 
         {/* Website Link Icon */}
-        <div className="flex flex-col items-center gap-2">
+        {Boolean(websiteHref) && <div className="flex flex-col items-center gap-2">
           <button
             onClick={handleWebsiteRedirect}
             disabled={!websiteHref}
@@ -145,8 +150,9 @@ const Overview: FC<OverviewProps> = memo(({ fetchedPlace, onTabChange, isPublicC
             <BoldLinkIcon color="var(--dash-text)" />
           </button>
           <span className="text-dashboard text-xs font-poppins">Website</span>
-        </div>
+        </div>}
       </div>
+      )}
 
       {/* Conditional Rendering: If both sections are available, show them first, then photos */}
       {fetchedPlace?.Users_Social_URL &&
