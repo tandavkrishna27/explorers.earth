@@ -24,3 +24,18 @@ describe('CategoryListsOrder', () => {
     expect(container).toBeEmptyDOMElement();
   });
 });
+
+describe('CategoryListsOrder staying open', () => {
+  const lists = [{ id: 'a', title: 'One' }, { id: 'b', title: 'Two' }];
+  it('stays open when the screen around it remounts after a move, until it is closed', async () => {
+    const first = render(<CategoryListsOrder category="places" lists={lists} onChanged={() => {}} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Reorder lists' }));
+    first.unmount();
+    const second = render(<CategoryListsOrder category="places" lists={lists} onChanged={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Done reordering' })).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Done reordering' }));
+    second.unmount();
+    render(<CategoryListsOrder category="places" lists={lists} onChanged={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Reorder lists' })).toBeTruthy();
+  });
+});
