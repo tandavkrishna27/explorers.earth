@@ -45,6 +45,7 @@ import {
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import ErrorBoundary from "../../../components/ErrorBoundary";
 import { useMapsUsable } from "./useMapsUsable";
+import { notePreviewText } from "../../../utils/notePreviewText";
 import { usePublicHeaderDescriptor } from "./PublicHeaderDescriptorContext";
 import {
   isNonNullObject,
@@ -821,13 +822,13 @@ const PublicHome = memo(() => {
   const locationNote = useMemo(() => {
     // First try direct string fields
     if (selectedCity?.Note && typeof selectedCity.Note === "string") {
-      return selectedCity.Note.replace(/<[^>]*>/g, "").substring(0, 150);
+      return notePreviewText(selectedCity.Note).substring(0, 150);
     }
     if (
       selectedCity?.description &&
       typeof selectedCity.description === "string"
     ) {
-      return selectedCity.description.replace(/<[^>]*>/g, "").substring(0, 150);
+      return notePreviewText(selectedCity.description).substring(0, 150);
     }
 
     // Then try object fields
@@ -837,7 +838,7 @@ const PublicHome = memo(() => {
       noteSource &&
       (noteSource as any)?.note
     ) {
-      return (noteSource as any).note.replace(/<[^>]*>/g, "").substring(0, 150);
+      return notePreviewText((noteSource as any).note).substring(0, 150);
     }
 
     return "";
@@ -990,14 +991,14 @@ const PublicHome = memo(() => {
 
   const getCityNoteHelper = (city: any) => {
     if (city?.Note && typeof city.Note === "string") {
-      return city.Note.replace(/<[^>]*>/g, "").substring(0, 150);
+      return notePreviewText(city.Note).substring(0, 150);
     }
     if (city?.description && typeof city.description === "string") {
-      return city.description.replace(/<[^>]*>/g, "").substring(0, 150);
+      return notePreviewText(city.description).substring(0, 150);
     }
     const noteSource = city?.List_Name_Details;
     if (typeof noteSource === "object" && noteSource && noteSource.note) {
-      return noteSource.note.replace(/<[^>]*>/g, "").substring(0, 150);
+      return notePreviewText(noteSource.note).substring(0, 150);
     }
     return "";
   };

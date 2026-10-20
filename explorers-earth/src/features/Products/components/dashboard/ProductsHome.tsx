@@ -1,4 +1,5 @@
 import CategoryListsOrder from "../../../../components/reorder/CategoryListsOrder";
+import { notePreviewText } from "../../../../utils/notePreviewText";
 import { NavigationStatus } from "../../../navigation/NavigationStatus";
 import type { IntentAuthority } from "../../../navigation/categoryNavigationPolicy";
 import { useCategoryNavigation } from "../../../navigation/CategoryNavigationProvider";
@@ -183,7 +184,7 @@ export const ProductListCard = ({
               {list.Visibility ? "Public" : "Draft"}
             </span>
           </div>
-          {list.list_description && <p className="text-xs text-dashboard-muted mt-0.5 line-clamp-2">{list.list_description}</p>}
+          {list.list_description && <p className="text-xs text-dashboard-muted mt-0.5 line-clamp-2">{notePreviewText(list.list_description)}</p>}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
           <Switch

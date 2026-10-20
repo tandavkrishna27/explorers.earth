@@ -1,4 +1,5 @@
 import ListItemOrder from "../../../../components/reorder/ListItemOrder";
+import { notePreviewText } from "../../../../utils/notePreviewText";
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import { explorersApiClient } from "../../../../lib/explorersApiClient";
@@ -89,7 +90,7 @@ const BookRow = ({
         </div>
         {notePreview && (
           <p className="text-[11px] text-white/30 truncate mt-1 italic line-clamp-1">
-            {notePreview.replace(/<[^>]+>/g, '')}
+            {notePreviewText(notePreview)}
           </p>
         )}
       </div>

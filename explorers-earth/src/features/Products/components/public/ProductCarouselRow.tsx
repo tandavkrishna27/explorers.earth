@@ -1,4 +1,5 @@
 import { ShoppingBag } from "lucide-react";
+import { notePreviewText } from "../../../../utils/notePreviewText";
 import type { ProductList, RecommendedProduct } from "../../types";
 import { buildImageUrl } from "../../utils/productHelpers";
 import { deduplicateProducts } from "../../utils/productHelpers";
@@ -21,7 +22,7 @@ const ProductCarouselRow = ({ list, onProductClick, onViewAll }: ProductCarousel
         <div>
           <h2 className="text-sm font-bold text-[color:var(--category-text,#fff)]">{list.List_Name}</h2>
           {list.list_description && (
-            <p className="text-xs text-[color:var(--category-muted,rgba(255,255,255,0.4))] mt-0.5 line-clamp-1">{list.list_description}</p>
+            <p className="text-xs text-[color:var(--category-muted,rgba(255,255,255,0.4))] mt-0.5 line-clamp-1">{notePreviewText(list.list_description)}</p>
           )}
         </div>
         <button
