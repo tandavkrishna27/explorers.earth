@@ -50,6 +50,16 @@ describe("profile compatibility mapper", () => {
     expect(toProfileViewModel(account).Bio).toBe("<p>Hello</p>");
   });
 
+  it("a profile save with no edits leaves a bio with a literal <b> and a line break unchanged (PRF-X04)", () => {
+    const stored = "Verification persona r4a.  Edited <b> & line\nsecond line";
+    const view = toProfileViewModel({ ...account, bioPlain: stored } as typeof account);
+    // The editor is hydrated from Bio and hands the same HTML back on save.
+    const update = toAccountUpdate({ bio: view.Bio }, account);
+    expect(update.bioPlain).toBe(stored);
+    expect(update.bioRich).toEqual({ blocks: [{ text: "Verification persona r4a.  Edited <b> & line" }, { text: "second line" }] });
+    expect(view.Bio_1).toBe(stored);
+  });
+
   it("sends local feed attachments by media ID under the account revision", () => {
     const view = toProfileViewModel(account);
     const update = toAccountUpdate({ Feed_Data: view.Feed_Data }, account);

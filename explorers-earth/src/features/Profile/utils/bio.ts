@@ -7,11 +7,14 @@ const NAMED_ENTITIES: Record<string, string> = {
   nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", "#39": "'",
 };
 
-const HTML_TAG = /<\/?[a-z][^>]*>/i;
 const MAX_BLOCK = 5000;
 const MAX_BLOCKS = 100;
 
-export const looksLikeHtml = (value: string): boolean => HTML_TAG.test(value);
+// Older saves stored the editor's HTML in bioPlain. Editor HTML always opens with a block element
+// (the editor wraps every line in <p>, lists in <ul>/<ol>), whereas a person typing "<b>" or "<3"
+// into their bio produces plain text that merely contains angle brackets. Only the former is HTML.
+const LEGACY_BLOCK_HTML = /^\s*<(?:p|div|h[1-6]|ul|ol|blockquote)(?:\s[^>]*)?>/i;
+export const isStoredBioHtml = (value: string): boolean => LEGACY_BLOCK_HTML.test(value);
 
 function decodeEntities(value: string): string {
   return value.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (match, entity: string) => {
@@ -39,15 +42,26 @@ export function htmlToPlainText(html: string): string {
     .trim();
 }
 
-/** Plain text for storage/SEO, whether the value is editor HTML, legacy HTML stored as plain, or text. */
+/**
+ * Plain text for a bio that was read back from storage: text as saved, or the legacy editor HTML an
+ * older save left in bioPlain. Text that only contains angle brackets is returned untouched.
+ */
 export function toBioPlain(value: unknown): string {
   if (typeof value !== "string") return "";
-  return looksLikeHtml(value) ? htmlToPlainText(value) : value.trim();
+  return isStoredBioHtml(value) ? htmlToPlainText(value) : value.trim();
 }
 
-/** The `bioRich` contract value for a bio, or null when it is empty. */
-export function toBioRich(value: unknown): { blocks: Array<{ text: string }> } | null {
-  const text = toBioPlain(value);
+/**
+ * Plain text for saving, from the editor's HTML. The editor escapes any "<" or "&" the person typed
+ * (as &lt; / &amp;), so a literal "<b>" survives as text while real markup is dropped.
+ */
+export function editorBioToPlain(html: unknown): string {
+  return typeof html === "string" ? htmlToPlainText(html) : "";
+}
+
+/** The `bioRich` contract value for an editor bio, or null when it is empty. */
+export function toBioRich(html: unknown): { blocks: Array<{ text: string }> } | null {
+  const text = editorBioToPlain(html);
   if (!text) return null;
   const blocks = text.split("\n").map((line) => line.trim()).filter(Boolean)
     .slice(0, MAX_BLOCKS).map((line) => ({ text: line.slice(0, MAX_BLOCK) }));
@@ -58,12 +72,13 @@ const escapeHtml = (text: string) =>
   text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 /**
- * HTML for the editor and the public page. Plain text is escaped and split into paragraphs;
- * a value that already holds HTML (stored by an older save) is passed through untouched, to be
- * sanitised by the caller as before.
+ * HTML for the editor and the public page. Plain text is escaped (so a typed "<b>" stays text) with
+ * one paragraph per line, blank lines kept; legacy HTML stored by an older save is passed through
+ * untouched, to be sanitised by the caller as before.
  */
 export function bioToHtml(value: unknown): string {
   if (typeof value !== "string" || !value.trim()) return "";
-  if (looksLikeHtml(value)) return value;
-  return value.trim().split(/\n+/).map((line) => `<p>${escapeHtml(line.trim())}</p>`).join("");
+  if (isStoredBioHtml(value)) return value;
+  return value.replace(/\r\n?/g, "\n").trim().split("\n")
+    .map((line) => (line.trim() ? `<p>${escapeHtml(line)}</p>` : "<p><br></p>")).join("");
 }
