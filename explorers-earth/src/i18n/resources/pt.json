@@ -420,7 +420,8 @@
         "primaryAddressRequired": "Endereço principal é obrigatório",
         "profileImageAlt": "Profile",
         "resetLinkSentSuccess": "Link de redefinição enviado com sucesso!",
-        "stateRequired": "Estado é obrigatório"
+        "stateRequired": "Estado é obrigatório",
+        "postalCodeInvalid": "Digite um código postal válido (2 a 10 letras, números, espaços ou hifens)"
       },
       "password": {
         "considerLonger": "Considere usar uma senha mais longa com mais variedade para melhor segurança",
@@ -532,7 +533,8 @@
     "signInWithGoogle": "Entrar com Google",
     "signUpWithGoogle": "Inscrever-se com Google",
     "submit": "Enviar",
-    "and": "e"
+    "and": "e",
+    "confirm": "Confirmar"
   },
   "contact": {
     "closingMessage": "Somos uma equipe pequena com uma grande visão — seus pensamentos importam para nós. Entre em contato e vamos construir algo local e global juntos.",
@@ -807,9 +809,10 @@
         "ariaLabel": "{{label}}: {{value}}",
         "loading": "Loading",
         "unavailable": "Unavailable",
-        "viewsLast90Days": "Views · last 90 days"
+        "viewsLast90Days": "Visualizações · últimos 90 dias"
       },
       "draft": "Rascunho",
+      "published": "Publicada",
       "error": {
         "message": "An error occurred while loading your data",
         "retry": "Retry",
@@ -849,7 +852,98 @@
       },
       "startCurating": "Comece a organizar suas recomendações e compartilhe-as com o mundo!",
       "viewPublicProfileTooltip": "View your public profile as seen by others",
-      "welcomeBack": "Bem-vindo de volta"
+      "welcomeBack": "Bem-vindo de volta",
+      "tabs": {
+        "places": "Lugares",
+        "movies": "Filmes",
+        "books": "Livros",
+        "games": "Jogos",
+        "guides": "Guias",
+        "apps": "Apps e ferramentas",
+        "products": "Produtos",
+        "people": "Pessoas"
+      },
+      "search": {
+        "places": "Pesquisar lugares, listas…",
+        "movies": "Pesquisar filmes, listas…",
+        "books": "Pesquisar livros, listas…",
+        "games": "Pesquisar jogos, listas…",
+        "guides": "Pesquisar guias, listas…",
+        "apps": "Pesquisar apps e ferramentas, listas…",
+        "products": "Pesquisar produtos, listas…",
+        "people": "Pesquisar pessoas, listas…"
+      },
+      "add": {
+        "places": "Adicionar lugares",
+        "movies": "Adicionar filmes",
+        "books": "Adicionar livros",
+        "games": "Adicionar jogos",
+        "guides": "Adicionar guias",
+        "apps": "Adicionar apps",
+        "products": "Adicionar produtos",
+        "people": "Adicionar pessoas"
+      },
+      "emptyState": {
+        "places": {
+          "tag": "Ainda não há lugares",
+          "tagline": "Mapeie o seu mundo",
+          "sub": "Fixe os lugares que marcaram você. Crie listas selecionadas de destinos, pontos e tesouros escondidos que você adora.",
+          "add": "+ Adicionar lista de lugares"
+        },
+        "movies": {
+          "tag": "Ainda não há filmes",
+          "tagline": "Seu cinema pessoal",
+          "sub": "Selecione os filmes que emocionaram você. Compartilhe com o mundo suas listas para assistir, favoritos e prazeres culposos.",
+          "add": "+ Adicionar lista de filmes"
+        },
+        "books": {
+          "tag": "Ainda não há livros",
+          "tagline": "Monte sua biblioteca",
+          "sub": "Reúna as leituras que mudaram o seu jeito de pensar. Compartilhe listas selecionadas de qualquer gênero ou tema.",
+          "add": "+ Adicionar lista de livros"
+        },
+        "games": {
+          "tag": "Ainda não há jogos",
+          "tagline": "Suba de nível suas listas",
+          "sub": "De joias indie a superproduções AAA: selecione suas recomendações de jogos e compartilhe com outros jogadores.",
+          "add": "+ Adicionar lista de jogos"
+        },
+        "music": {
+          "tag": "Ainda não há músicas",
+          "tagline": "Defina a trilha sonora",
+          "sub": "Compartilhe as músicas, os álbuns e os artistas que definem o seu gosto. Crie playlists para cada humor.",
+          "add": "+ Adicionar lista de músicas"
+        },
+        "guides": {
+          "tag": "Ainda não há guias",
+          "tagline": "Escreva o roteiro",
+          "sub": "Crie guias de viagem e roteiros dia a dia. Ajude outras pessoas a explorar o mundo como você fez.",
+          "add": "+ Adicionar guia"
+        },
+        "apps": {
+          "tag": "Ainda não há apps",
+          "tagline": "Suas ferramentas, selecionadas",
+          "sub": "Compartilhe os apps e as ferramentas que você realmente usa. Monte seu kit de ferramentas digital para os outros descobrirem.",
+          "add": "+ Adicionar lista de apps e ferramentas"
+        },
+        "products": {
+          "tag": "Ainda não há produtos",
+          "tagline": "Mostre suas escolhas",
+          "sub": "Recomende os produtos que valem a pena comprar. De equipamentos a gadgets, crie listas que seus seguidores vão adorar.",
+          "add": "+ Adicionar lista de produtos"
+        },
+        "people": {
+          "tag": "Ainda não há pessoas",
+          "tagline": "Celebre grandes mentes",
+          "sub": "Reúna listas de pensadores, criadores e líderes que valem a pena seguir. Compartilhe suas inspirações.",
+          "add": "+ Adicionar lista de pessoas"
+        }
+      },
+      "stats": {
+        "activeLists": "Listas ativas",
+        "recommendations": "Recomendações"
+      },
+      "shareRecommendationsLink": "Compartilhar link das recomendações"
     },
     "profile": {
       "account": {
@@ -915,7 +1009,14 @@
         "video": "Vídeo",
         "viewPublicProfile": "Navigate to Public Profile",
         "visible": "Visível",
-        "whatsappNumber": "Número do WhatsApp"
+        "whatsappNumber": "Número do WhatsApp",
+        "removeProfileImage": "Remover foto do perfil",
+        "removeCoverImage": "Remover imagem de capa",
+        "removeProfileImageConfirmTitle": "Remover a foto do perfil?",
+        "removeProfileImageConfirmMessage": "Sua foto do perfil será substituída pela imagem padrão no seu perfil.",
+        "removeCoverImageConfirmTitle": "Remover a imagem de capa?",
+        "removeCoverImageConfirmMessage": "Sua imagem de capa será substituída pela padrão no seu perfil.",
+        "removeConfirm": "Remover"
       },
       "publicProfile": {
         "accountTypes": {
@@ -1017,15 +1118,15 @@
         "presetTitle": "Select theme preset",
         "recommendations": {
           "categories": {
-            "apps": "Apps & Tools",
-            "books": "Books",
-            "games": "Games",
-            "guides": "Guides",
-            "movies": "Movies & Shows",
-            "music": "Music",
-            "people": "People",
-            "places": "Places",
-            "products": "Products"
+            "apps": "Apps e ferramentas",
+            "books": "Livros",
+            "games": "Jogos",
+            "guides": "Guias",
+            "movies": "Filmes e séries",
+            "music": "Música",
+            "people": "Pessoas",
+            "places": "Lugares",
+            "products": "Produtos"
           },
           "featured": "Featured",
           "help": "Choose how recommendation categories are arranged on your public profile.",
@@ -1245,7 +1346,9 @@
       },
       "travelLikeLocal": "Viaje como um local",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
-      "viewAll": "Ver tudo"
+      "viewAll": "Ver tudo",
+      "bookNotFound": "Livro não encontrado.",
+      "goBack": "Voltar"
     },
     "shareModal": {
       "copied": "Copiado!",
@@ -1290,7 +1393,7 @@
       "cookies": "Política de Cookies",
       "product": "Produto",
       "shareAnywhere": "Compartilhe em qualquer lugar",
-      "useCases": "Use Cases"
+      "useCases": "Casos de uso"
     },
     "copyright": "© 2025 exploradores. Todos os direitos reservados.",
     "madeWithLove": "Feito com amor na terra",
@@ -1307,7 +1410,7 @@
       "share": "Compartilhar",
       "openMenu": "Abrir menu de navegação",
       "closeMenu": "Fechar menu de navegação",
-      "useCases": "Use Cases"
+      "useCases": "Casos de uso"
     },
     "auth": {
       "login": "Entrar",
@@ -2210,7 +2313,9 @@
       "usernameTooShort": "Nome de usuário muito curto. Escolha um nome de usuário mais longo.",
       "usernameUpdateFailed": "Atualização do nome de usuário falhou. Tente novamente.",
       "validationError": "Erro de validação. Verifique sua entrada.",
-      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!"
+      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!",
+      "profileImageRemoveFailed": "Não foi possível remover a foto do perfil. Tente novamente.",
+      "backgroundImageRemoveFailed": "Não foi possível remover a imagem de capa. Tente novamente."
     },
     "info": {
       "aborting": "Abortando...",
@@ -2342,7 +2447,9 @@
       "uploadingImagesToFeed": "Uploading selected images to your feed...",
       "usernameChanged": "Nome de usuário alterado com sucesso!",
       "usernameUpdated": "Nome de usuário atualizado com sucesso!",
-      "welcomeMessage": "Bem-vindo ao explorers!"
+      "welcomeMessage": "Bem-vindo ao explorers!",
+      "profileImageRemoved": "Foto do perfil removida.",
+      "backgroundImageRemoved": "Imagem de capa removida."
     },
     "warning": {
       "accountExpiring": "Conta expirando. Atualize sua conta",
@@ -2393,7 +2500,8 @@
       "usernameCooldownUnknown": "You can change your username now",
       "usernameExpiring": "Nome de usuário expirando. Atualize seu nome de usuário",
       "usernameNotChanged": "Nome de usuário não alterado. Altere seu nome de usuário",
-      "validationPending": "Validação pendente. Aguarde"
+      "validationPending": "Validação pendente. Aguarde",
+      "usernameCooldownUntil": "Você poderá alterar seu nome de usuário novamente em {{date}}."
     }
   },
   "usernameClaim": {
@@ -2410,31 +2518,31 @@
       "counts": {
         "app_one": "{{formattedCount}}{{suffix}} app",
         "app_other": "{{formattedCount}}{{suffix}} apps",
-        "book_one": "{{formattedCount}}{{suffix}} book",
-        "book_other": "{{formattedCount}}{{suffix}} books",
-        "game_one": "{{formattedCount}}{{suffix}} game",
-        "game_other": "{{formattedCount}}{{suffix}} games",
-        "list_one": "{{formattedCount}} list",
-        "list_other": "{{formattedCount}} lists",
-        "movie_one": "{{formattedCount}}{{suffix}} movie",
-        "movie_other": "{{formattedCount}}{{suffix}} movies",
-        "person_one": "{{formattedCount}}{{suffix}} person",
-        "person_other": "{{formattedCount}}{{suffix}} people",
-        "place_one": "{{formattedCount}}{{suffix}} place",
-        "place_other": "{{formattedCount}}{{suffix}} places",
-        "product_one": "{{formattedCount}}{{suffix}} product",
-        "product_other": "{{formattedCount}}{{suffix}} products",
-        "song_one": "{{formattedCount}}{{suffix}} song",
-        "song_other": "{{formattedCount}}{{suffix}} songs"
+        "book_one": "{{formattedCount}}{{suffix}} livro",
+        "book_other": "{{formattedCount}}{{suffix}} livros",
+        "game_one": "{{formattedCount}}{{suffix}} jogo",
+        "game_other": "{{formattedCount}}{{suffix}} jogos",
+        "list_one": "{{formattedCount}} lista",
+        "list_other": "{{formattedCount}} listas",
+        "movie_one": "{{formattedCount}}{{suffix}} filme",
+        "movie_other": "{{formattedCount}}{{suffix}} filmes",
+        "person_one": "{{formattedCount}}{{suffix}} pessoa",
+        "person_other": "{{formattedCount}}{{suffix}} pessoas",
+        "place_one": "{{formattedCount}}{{suffix}} lugar",
+        "place_other": "{{formattedCount}}{{suffix}} lugares",
+        "product_one": "{{formattedCount}}{{suffix}} produto",
+        "product_other": "{{formattedCount}}{{suffix}} produtos",
+        "song_one": "{{formattedCount}}{{suffix}} música",
+        "song_other": "{{formattedCount}}{{suffix}} músicas"
       },
-      "empty": "No public recommendations yet",
-      "emptyHelp": "Check back later for new recommendations.",
-      "loadError": "Couldn’t load recommendations",
-      "loadErrorHelp": "Try again to load the unavailable categories.",
-      "partialError": "Some categories are unavailable",
-      "regionLabel": "Recommendations",
-      "retry": "Try again",
-      "retrying": "Retrying…"
+      "empty": "Ainda não há recomendações públicas",
+      "emptyHelp": "Volte mais tarde para ver novas recomendações.",
+      "loadError": "Não foi possível carregar as recomendações",
+      "loadErrorHelp": "Tente novamente para carregar as categorias indisponíveis.",
+      "partialError": "Algumas categorias estão indisponíveis",
+      "regionLabel": "Recomendações",
+      "retry": "Tentar novamente",
+      "retrying": "Tentando novamente…"
     },
     "unavailable": "Perfil indisponível",
     "notFound": "Perfil não encontrado",
@@ -2445,7 +2553,24 @@
     "businessDetails": "Dados do negócio",
     "noPhotosTitle": "Ainda sem fotos",
     "noPhotosText": "Este usuário ainda não compartilhou fotos. Volte mais tarde!",
-    "visitWebsite": "Visitar site"
+    "visitWebsite": "Visitar site",
+    "footer": {
+      "poweredBy": "Desenvolvido por",
+      "createProfile": "Crie seu perfil",
+      "report": "Denunciar",
+      "privacy": "Privacidade"
+    },
+    "nav": {
+      "places": "Lugares",
+      "guides": "Guias",
+      "profile": "Perfil",
+      "movies": "Filmes",
+      "books": "Livros",
+      "games": "Jogos",
+      "apps": "Apps",
+      "products": "Produtos",
+      "people": "Pessoas"
+    }
   },
   "useCases": {
     "cta": {

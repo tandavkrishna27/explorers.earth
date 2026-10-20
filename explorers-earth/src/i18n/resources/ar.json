@@ -420,7 +420,8 @@
         "primaryAddressRequired": "العنوان الأساسي مطلوب",
         "profileImageAlt": "الملف الشخصي",
         "resetLinkSentSuccess": "تم إرسال رابط إعادة التعيين بنجاح!",
-        "stateRequired": "الولاية مطلوبة"
+        "stateRequired": "الولاية مطلوبة",
+        "postalCodeInvalid": "أدخل رمزًا بريديًا صالحًا (من 2 إلى 10 حروف أو أرقام أو مسافات أو شرطات)"
       },
       "password": {
         "considerLonger": "فكر في استخدام كلمة مرور أطول مع تنوع أكثر لأمان أفضل",
@@ -532,7 +533,8 @@
     "signInWithGoogle": "تسجيل الدخول باستخدام Google",
     "signUpWithGoogle": "التسجيل باستخدام Google",
     "submit": "إرسال",
-    "and": "و"
+    "and": "و",
+    "confirm": "تأكيد"
   },
   "contact": {
     "closingMessage": "نحن فريق صغير برؤية كبيرة — أفكارك مهمة لنا. تواصل معنا ودعنا نبني شيئاً محلياً وعالمياً معاً.",
@@ -807,9 +809,10 @@
         "ariaLabel": "{{label}}: {{value}}",
         "loading": "Loading",
         "unavailable": "Unavailable",
-        "viewsLast90Days": "Views · last 90 days"
+        "viewsLast90Days": "المشاهدات · آخر 90 يومًا"
       },
       "draft": "مسودة",
+      "published": "منشورة",
       "error": {
         "message": "An error occurred while loading your data",
         "retry": "Retry",
@@ -849,7 +852,98 @@
       },
       "startCurating": "ابدأ في تنسيق توصياتك وشاركها مع العالم!",
       "viewPublicProfileTooltip": "View your public profile as seen by others",
-      "welcomeBack": "مرحبا بعودتك"
+      "welcomeBack": "مرحبا بعودتك",
+      "tabs": {
+        "places": "الأماكن",
+        "movies": "الأفلام",
+        "books": "الكتب",
+        "games": "الألعاب",
+        "guides": "الأدلة",
+        "apps": "التطبيقات والأدوات",
+        "products": "المنتجات",
+        "people": "الأشخاص"
+      },
+      "search": {
+        "places": "ابحث عن الأماكن والقوائم…",
+        "movies": "ابحث عن الأفلام والقوائم…",
+        "books": "ابحث عن الكتب والقوائم…",
+        "games": "ابحث عن الألعاب والقوائم…",
+        "guides": "ابحث عن الأدلة والقوائم…",
+        "apps": "ابحث عن التطبيقات والأدوات والقوائم…",
+        "products": "ابحث عن المنتجات والقوائم…",
+        "people": "ابحث عن الأشخاص والقوائم…"
+      },
+      "add": {
+        "places": "إضافة أماكن",
+        "movies": "إضافة أفلام",
+        "books": "إضافة كتب",
+        "games": "إضافة ألعاب",
+        "guides": "إضافة أدلة",
+        "apps": "إضافة تطبيقات",
+        "products": "إضافة منتجات",
+        "people": "إضافة أشخاص"
+      },
+      "emptyState": {
+        "places": {
+          "tag": "لا توجد أماكن بعد",
+          "tagline": "ارسم خريطة عالمك",
+          "sub": "ثبّت الأماكن التي صنعتك. أنشئ قوائم منتقاة للوجهات والمواقع والكنوز الخفية التي تحبها.",
+          "add": "+ إضافة قائمة أماكن"
+        },
+        "movies": {
+          "tag": "لا توجد أفلام بعد",
+          "tagline": "سينماك الخاصة",
+          "sub": "اختر الأفلام التي أثّرت فيك. شارك قوائم المشاهدة ومفضلاتك ومتعك السرّية مع العالم.",
+          "add": "+ إضافة قائمة أفلام"
+        },
+        "books": {
+          "tag": "لا توجد كتب بعد",
+          "tagline": "ابنِ مكتبتك",
+          "sub": "اجمع القراءات التي غيّرت تفكيرك. شارك قوائم منتقاة في أي نوع أو موضوع.",
+          "add": "+ إضافة قائمة كتب"
+        },
+        "games": {
+          "tag": "لا توجد ألعاب بعد",
+          "tagline": "ارتقِ بمستوى قوائمك",
+          "sub": "من الألعاب المستقلة المميزة إلى الإنتاجات الضخمة — اختر توصياتك من الألعاب وشاركها مع اللاعبين.",
+          "add": "+ إضافة قائمة ألعاب"
+        },
+        "music": {
+          "tag": "لا توجد موسيقى بعد",
+          "tagline": "اختر الموسيقى التصويرية",
+          "sub": "شارك الأغاني والألبومات والفنانين الذين يعبّرون عن ذوقك. أنشئ قوائم تشغيل لكل مزاج.",
+          "add": "+ إضافة قائمة موسيقى"
+        },
+        "guides": {
+          "tag": "لا توجد أدلة بعد",
+          "tagline": "اكتب خط الرحلة",
+          "sub": "أعدّ أدلة سفر وبرامج رحلات يومًا بيوم. ساعد الآخرين على استكشاف العالم كما فعلت.",
+          "add": "+ إضافة دليل"
+        },
+        "apps": {
+          "tag": "لا توجد تطبيقات بعد",
+          "tagline": "أدواتك المنتقاة",
+          "sub": "شارك التطبيقات والأدوات التي تستخدمها فعلًا. ابنِ صندوق أدواتك الرقمي ليكتشفه الآخرون.",
+          "add": "+ إضافة قائمة تطبيقات وأدوات"
+        },
+        "products": {
+          "tag": "لا توجد منتجات بعد",
+          "tagline": "اعرض اختياراتك",
+          "sub": "أوصِ بالمنتجات التي تستحق الشراء. من المعدات إلى الأجهزة الذكية — أنشئ قوائم يحبها متابعوك.",
+          "add": "+ إضافة قائمة منتجات"
+        },
+        "people": {
+          "tag": "لا يوجد أشخاص بعد",
+          "tagline": "احتفِ بالعقول العظيمة",
+          "sub": "اجمع قوائم بالمفكرين والمبدعين والقادة الذين يستحقون المتابعة. شارك مصادر إلهامك.",
+          "add": "+ إضافة قائمة أشخاص"
+        }
+      },
+      "stats": {
+        "activeLists": "القوائم النشطة",
+        "recommendations": "التوصيات"
+      },
+      "shareRecommendationsLink": "مشاركة رابط التوصيات"
     },
     "profile": {
       "account": {
@@ -915,7 +1009,14 @@
         "video": "فيديو",
         "viewPublicProfile": "Navigate to Public Profile",
         "visible": "مرئي",
-        "whatsappNumber": "رقم WhatsApp"
+        "whatsappNumber": "رقم WhatsApp",
+        "removeProfileImage": "إزالة صورة الملف الشخصي",
+        "removeCoverImage": "إزالة صورة الغلاف",
+        "removeProfileImageConfirmTitle": "إزالة صورة الملف الشخصي؟",
+        "removeProfileImageConfirmMessage": "سيتم استبدال صورة ملفك الشخصي بالصورة الافتراضية في ملفك.",
+        "removeCoverImageConfirmTitle": "إزالة صورة الغلاف؟",
+        "removeCoverImageConfirmMessage": "سيتم استبدال صورة الغلاف بالصورة الافتراضية في ملفك.",
+        "removeConfirm": "إزالة"
       },
       "publicProfile": {
         "accountTypes": {
@@ -1017,15 +1118,15 @@
         "presetTitle": "Select theme preset",
         "recommendations": {
           "categories": {
-            "apps": "Apps & Tools",
-            "books": "Books",
-            "games": "Games",
-            "guides": "Guides",
-            "movies": "Movies & Shows",
-            "music": "Music",
-            "people": "People",
-            "places": "Places",
-            "products": "Products"
+            "apps": "التطبيقات والأدوات",
+            "books": "الكتب",
+            "games": "الألعاب",
+            "guides": "الأدلة",
+            "movies": "الأفلام والمسلسلات",
+            "music": "الموسيقى",
+            "people": "الأشخاص",
+            "places": "الأماكن",
+            "products": "المنتجات"
           },
           "featured": "Featured",
           "help": "Choose how recommendation categories are arranged on your public profile.",
@@ -1245,7 +1346,9 @@
       },
       "travelLikeLocal": "سافر مثل السكان المحليين",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
-      "viewAll": "عرض الكل"
+      "viewAll": "عرض الكل",
+      "bookNotFound": "لم يتم العثور على الكتاب.",
+      "goBack": "رجوع"
     },
     "shareModal": {
       "copied": "تم النسخ!",
@@ -1290,7 +1393,7 @@
       "cookies": "سياسة ملفات تعريف الارتباط",
       "product": "منتج",
       "shareAnywhere": "شارك في أي مكان",
-      "useCases": "Use Cases"
+      "useCases": "حالات الاستخدام"
     },
     "copyright": "© 2025 المستكشفون. جميع الحقوق محفوظة.",
     "madeWithLove": "صُنع بالحب على الأرض",
@@ -1307,7 +1410,7 @@
       "share": "يشارك",
       "openMenu": "فتح قائمة التنقل",
       "closeMenu": "إغلاق قائمة التنقل",
-      "useCases": "Use Cases"
+      "useCases": "حالات الاستخدام"
     },
     "auth": {
       "login": "تسجيل الدخول",
@@ -2210,7 +2313,9 @@
       "usernameTooShort": "اسم المستخدم قصير جداً. يرجى اختيار اسم مستخدم أطول.",
       "usernameUpdateFailed": "فشل في تحديث اسم المستخدم. يرجى المحاولة مرة أخرى.",
       "validationError": "خطأ في التحقق. يرجى التحقق من إدخالك.",
-      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!"
+      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!",
+      "profileImageRemoveFailed": "تعذرت إزالة صورة الملف الشخصي. يُرجى المحاولة مرة أخرى.",
+      "backgroundImageRemoveFailed": "تعذرت إزالة صورة الغلاف. يُرجى المحاولة مرة أخرى."
     },
     "info": {
       "aborting": "جاري الإيقاف...",
@@ -2342,7 +2447,9 @@
       "uploadingImagesToFeed": "Uploading selected images to your feed...",
       "usernameChanged": "تم تغيير اسم المستخدم بنجاح!",
       "usernameUpdated": "تم تحديث اسم المستخدم بنجاح!",
-      "welcomeMessage": "مرحباً بك في explorers!"
+      "welcomeMessage": "مرحباً بك في explorers!",
+      "profileImageRemoved": "تمت إزالة صورة الملف الشخصي.",
+      "backgroundImageRemoved": "تمت إزالة صورة الغلاف."
     },
     "warning": {
       "accountExpiring": "الحساب ينتهي. يرجى تحديث حسابك",
@@ -2393,7 +2500,8 @@
       "usernameCooldownUnknown": "You can change your username now",
       "usernameExpiring": "اسم المستخدم ينتهي. يرجى تحديث اسم المستخدم",
       "usernameNotChanged": "اسم المستخدم غير متغير. يرجى تغيير اسم المستخدم",
-      "validationPending": "التحقق معلق. يرجى الانتظار"
+      "validationPending": "التحقق معلق. يرجى الانتظار",
+      "usernameCooldownUntil": "يمكنك تغيير اسم المستخدم مرة أخرى في {{date}}."
     }
   },
   "usernameClaim": {
@@ -2408,33 +2516,69 @@
   "publicProfile": {
     "recommendations": {
       "counts": {
-        "app_one": "{{formattedCount}}{{suffix}} app",
-        "app_other": "{{formattedCount}}{{suffix}} apps",
-        "book_one": "{{formattedCount}}{{suffix}} book",
-        "book_other": "{{formattedCount}}{{suffix}} books",
-        "game_one": "{{formattedCount}}{{suffix}} game",
-        "game_other": "{{formattedCount}}{{suffix}} games",
-        "list_one": "{{formattedCount}} list",
-        "list_other": "{{formattedCount}} lists",
-        "movie_one": "{{formattedCount}}{{suffix}} movie",
-        "movie_other": "{{formattedCount}}{{suffix}} movies",
-        "person_one": "{{formattedCount}}{{suffix}} person",
-        "person_other": "{{formattedCount}}{{suffix}} people",
-        "place_one": "{{formattedCount}}{{suffix}} place",
-        "place_other": "{{formattedCount}}{{suffix}} places",
-        "product_one": "{{formattedCount}}{{suffix}} product",
-        "product_other": "{{formattedCount}}{{suffix}} products",
-        "song_one": "{{formattedCount}}{{suffix}} song",
-        "song_other": "{{formattedCount}}{{suffix}} songs"
+        "app_zero": "{{formattedCount}}{{suffix}} تطبيقات",
+        "app_one": "تطبيق واحد{{suffix}}",
+        "app_two": "تطبيقان{{suffix}}",
+        "app_few": "{{formattedCount}}{{suffix}} تطبيقات",
+        "app_many": "{{formattedCount}}{{suffix}} تطبيقًا",
+        "app_other": "{{formattedCount}}{{suffix}} تطبيق",
+        "book_zero": "{{formattedCount}}{{suffix}} كتب",
+        "book_one": "كتاب واحد{{suffix}}",
+        "book_two": "كتابان{{suffix}}",
+        "book_few": "{{formattedCount}}{{suffix}} كتب",
+        "book_many": "{{formattedCount}}{{suffix}} كتابًا",
+        "book_other": "{{formattedCount}}{{suffix}} كتاب",
+        "game_zero": "{{formattedCount}}{{suffix}} ألعاب",
+        "game_one": "لعبة واحدة{{suffix}}",
+        "game_two": "لعبتان{{suffix}}",
+        "game_few": "{{formattedCount}}{{suffix}} ألعاب",
+        "game_many": "{{formattedCount}}{{suffix}} لعبة",
+        "game_other": "{{formattedCount}}{{suffix}} لعبة",
+        "list_zero": "{{formattedCount}} قوائم",
+        "list_one": "قائمة واحدة",
+        "list_two": "قائمتان",
+        "list_few": "{{formattedCount}} قوائم",
+        "list_many": "{{formattedCount}} قائمة",
+        "list_other": "{{formattedCount}} قائمة",
+        "movie_zero": "{{formattedCount}}{{suffix}} أفلام",
+        "movie_one": "فيلم واحد{{suffix}}",
+        "movie_two": "فيلمان{{suffix}}",
+        "movie_few": "{{formattedCount}}{{suffix}} أفلام",
+        "movie_many": "{{formattedCount}}{{suffix}} فيلمًا",
+        "movie_other": "{{formattedCount}}{{suffix}} فيلم",
+        "person_zero": "{{formattedCount}}{{suffix}} أشخاص",
+        "person_one": "شخص واحد{{suffix}}",
+        "person_two": "شخصان{{suffix}}",
+        "person_few": "{{formattedCount}}{{suffix}} أشخاص",
+        "person_many": "{{formattedCount}}{{suffix}} شخصًا",
+        "person_other": "{{formattedCount}}{{suffix}} شخص",
+        "place_zero": "{{formattedCount}}{{suffix}} أماكن",
+        "place_one": "مكان واحد{{suffix}}",
+        "place_two": "مكانان{{suffix}}",
+        "place_few": "{{formattedCount}}{{suffix}} أماكن",
+        "place_many": "{{formattedCount}}{{suffix}} مكانًا",
+        "place_other": "{{formattedCount}}{{suffix}} مكان",
+        "product_zero": "{{formattedCount}}{{suffix}} منتجات",
+        "product_one": "منتج واحد{{suffix}}",
+        "product_two": "منتجان{{suffix}}",
+        "product_few": "{{formattedCount}}{{suffix}} منتجات",
+        "product_many": "{{formattedCount}}{{suffix}} منتجًا",
+        "product_other": "{{formattedCount}}{{suffix}} منتج",
+        "song_zero": "{{formattedCount}}{{suffix}} أغانٍ",
+        "song_one": "أغنية واحدة{{suffix}}",
+        "song_two": "أغنيتان{{suffix}}",
+        "song_few": "{{formattedCount}}{{suffix}} أغانٍ",
+        "song_many": "{{formattedCount}}{{suffix}} أغنية",
+        "song_other": "{{formattedCount}}{{suffix}} أغنية"
       },
-      "empty": "No public recommendations yet",
-      "emptyHelp": "Check back later for new recommendations.",
-      "loadError": "Couldn’t load recommendations",
-      "loadErrorHelp": "Try again to load the unavailable categories.",
-      "partialError": "Some categories are unavailable",
-      "regionLabel": "Recommendations",
-      "retry": "Try again",
-      "retrying": "Retrying…"
+      "empty": "لا توجد توصيات عامة بعد",
+      "emptyHelp": "عد لاحقًا للاطلاع على توصيات جديدة.",
+      "loadError": "تعذّر تحميل التوصيات",
+      "loadErrorHelp": "حاول مرة أخرى لتحميل الفئات غير المتاحة.",
+      "partialError": "بعض الفئات غير متاحة",
+      "regionLabel": "التوصيات",
+      "retry": "حاول مرة أخرى",
+      "retrying": "جارٍ إعادة المحاولة…"
     },
     "unavailable": "الملف الشخصي غير متاح",
     "notFound": "الملف الشخصي غير موجود",
@@ -2445,7 +2589,24 @@
     "businessDetails": "تفاصيل النشاط التجاري",
     "noPhotosTitle": "لا توجد صور بعد",
     "noPhotosText": "لم يشارك هذا المستخدم أي صور بعد. عاود الزيارة لاحقًا!",
-    "visitWebsite": "زيارة الموقع"
+    "visitWebsite": "زيارة الموقع",
+    "footer": {
+      "poweredBy": "مدعوم من",
+      "createProfile": "أنشئ ملفك الشخصي",
+      "report": "إبلاغ",
+      "privacy": "الخصوصية"
+    },
+    "nav": {
+      "places": "الأماكن",
+      "guides": "الأدلة",
+      "profile": "الملف الشخصي",
+      "movies": "الأفلام",
+      "books": "الكتب",
+      "games": "الألعاب",
+      "apps": "التطبيقات",
+      "products": "المنتجات",
+      "people": "الأشخاص"
+    }
   },
   "useCases": {
     "cta": {

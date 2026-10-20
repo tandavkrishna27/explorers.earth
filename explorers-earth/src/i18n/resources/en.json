@@ -849,6 +849,7 @@
         "viewsLast90Days": "Views · last 90 days"
       },
       "draft": "Draft",
+      "published": "Published",
       "error": {
         "message": "An error occurred while loading your data",
         "retry": "Retry",

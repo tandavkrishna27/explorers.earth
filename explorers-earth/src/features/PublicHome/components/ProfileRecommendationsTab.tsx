@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { toUrlSlug } from "../../../utils/formatAddress";
 import { isCanonicalMediaPath } from "../../../lib/canonicalMedia";
 import { publicGuideSlug } from "../../../utils/publicGuideSlug";
@@ -68,8 +69,7 @@ interface RecommendationCategoryQueryState {
   itemCount?: {
     value: number;
     isLowerBound: boolean;
-    singular: string;
-    plural: string;
+    kind: RecommendationCountKind;
   };
   error: unknown | null;
   retry: () => Promise<unknown>;
@@ -126,16 +126,24 @@ const relationCount = (value: unknown) =>
     ? { value: value.length, isLowerBound: value.length >= 4 }
     : { value: 0, isLowerBound: false };
 
+type RecommendationCountKind = "place" | "movie" | "book" | "game" | "app" | "product" | "person";
+
+// Plural forms come from i18next (`publicProfile.recommendations.counts.<kind>_<category>`), so
+// every locale gets its own noun and plural rules instead of an English singular/plural pair.
 const formatCount = (
+  t: TFunction,
   count: { value: number; isLowerBound: boolean },
-  singular: string,
-  plural: string,
-) => `${count.value.toLocaleString()}${count.isLowerBound ? "+" : ""} ${count.value === 1 ? singular : plural}`;
+  kind: RecommendationCountKind,
+) =>
+  t(`publicProfile.recommendations.counts.${kind}`, {
+    count: count.value,
+    formattedCount: count.value.toLocaleString(),
+    suffix: count.isLowerBound ? "+" : "",
+  });
 
 const aggregateCount = (
   lists: any[],
-  singular: string,
-  plural: string,
+  kind: RecommendationCountKind,
 ): RecommendationCategoryQueryState["itemCount"] => {
   const counts = lists.map((list) =>
     relationCount(
@@ -151,8 +159,7 @@ const aggregateCount = (
   return {
     value: counts.reduce((total, count) => total + count.value, 0),
     isLowerBound: counts.some((count) => count.isLowerBound),
-    singular,
-    plural,
+    kind,
   };
 };
 
@@ -274,7 +281,7 @@ const ProfileRecommendationsTab = ({
             }),
           ),
         ),
-        subtitle: formatCount(count, "Place", "Places"),
+        subtitle: formatCount(t, count, "place"),
         href: `/${username}/places/${list.slug || toUrlSlug(list.List_Name || "")}`,
       };
     });
@@ -293,7 +300,7 @@ const ProfileRecommendationsTab = ({
             resolveCoverUrl(movie.poster_path, "movie"),
           ),
         ),
-        subtitle: formatCount(count, "Movie", "Movies"),
+        subtitle: formatCount(t, count, "movie"),
         href: `/${username}/movies/${list.slug || toUrlSlug(list.List_Name || "")}`,
       };
     });
@@ -312,7 +319,7 @@ const ProfileRecommendationsTab = ({
             resolveCoverUrl(book.cover_url, "book"),
           ),
         ),
-        subtitle: formatCount(count, "Book", "Books"),
+        subtitle: formatCount(t, count, "book"),
         href: `/${username}/books/${list.slug || toUrlSlug(list.List_Name || "")}`,
       };
     });
@@ -334,7 +341,7 @@ const ProfileRecommendationsTab = ({
             ),
           ),
         ),
-        subtitle: formatCount(count, "Game", "Games"),
+        subtitle: formatCount(t, count, "game"),
         href: `/${username}/games/${list.slug || toUrlSlug(list.List_Name || "")}`,
       };
     });
@@ -353,7 +360,7 @@ const ProfileRecommendationsTab = ({
             resolveCoverUrl(app.logo_url, "app"),
           ),
         ),
-        subtitle: formatCount(count, "App", "Apps"),
+        subtitle: formatCount(t, count, "app"),
         href: `/${username}/apps/${list.slug || toUrlSlug(list.List_Name || "")}`,
       };
     });
@@ -372,7 +379,7 @@ const ProfileRecommendationsTab = ({
             resolveCoverUrl(parseProductImage(product), "product"),
           ),
         ),
-        subtitle: formatCount(count, "Product", "Products"),
+        subtitle: formatCount(t, count, "product"),
         href: `/${username}/products/${list.slug || toUrlSlug(list.List_Name || "")}`,
       };
     });
@@ -394,7 +401,7 @@ const ProfileRecommendationsTab = ({
             ),
           ),
         ),
-        subtitle: formatCount(count, "Person", "People"),
+        subtitle: formatCount(t, count, "person"),
         href: `/${username}/people/${list.slug || toUrlSlug(list.List_Name || "")}`,
       };
     });
@@ -416,28 +423,28 @@ const ProfileRecommendationsTab = ({
       enabled: enabled.places,
       query: placesQuery,
       lists: placesLists,
-      itemCount: aggregateCount(placesRaw, "place", "places"),
+      itemCount: aggregateCount(placesRaw, "place"),
     }),
     makeGatewayState({
       id: "movies",
       enabled: enabled.movies,
       query: moviesQuery,
       lists: moviesLists,
-      itemCount: aggregateCount(moviesRaw, "movie", "movies"),
+      itemCount: aggregateCount(moviesRaw, "movie"),
     }),
     makeGatewayState({
       id: "books",
       enabled: enabled.books,
       query: booksQuery,
       lists: booksLists,
-      itemCount: aggregateCount(booksRaw, "book", "books"),
+      itemCount: aggregateCount(booksRaw, "book"),
     }),
     makeGatewayState({
       id: "games",
       enabled: enabled.games,
       query: gamesQuery,
       lists: gamesLists,
-      itemCount: aggregateCount(gamesRaw, "game", "games"),
+      itemCount: aggregateCount(gamesRaw, "game"),
     }),
     makeGatewayState({
       id: "guides",
@@ -450,21 +457,21 @@ const ProfileRecommendationsTab = ({
       enabled: enabled.apps,
       query: appsQuery,
       lists: appsLists,
-      itemCount: aggregateCount(appsRaw, "app", "apps"),
+      itemCount: aggregateCount(appsRaw, "app"),
     }),
     makeGatewayState({
       id: "products",
       enabled: enabled.products,
       query: productsQuery,
       lists: productsLists,
-      itemCount: aggregateCount(productsRaw, "product", "products"),
+      itemCount: aggregateCount(productsRaw, "product"),
     }),
     makeGatewayState({
       id: "people",
       enabled: enabled.people,
       query: peopleQuery,
       lists: peopleLists,
-      itemCount: aggregateCount(peopleRaw, "person", "people"),
+      itemCount: aggregateCount(peopleRaw, "person"),
     }),
   ].filter((state): state is RecommendationCategoryQueryState => state !== null);
 
@@ -492,12 +499,12 @@ const ProfileRecommendationsTab = ({
       }
       const itemCountLabel = state.itemCount
         ? formatCount(
+            t,
             {
               value: state.itemCount.value,
               isLowerBound: state.itemCount.isLowerBound,
             },
-            state.itemCount.singular,
-            state.itemCount.plural,
+            state.itemCount.kind,
           )
         : undefined;
       const ready: RecommendationCategoryReadyViewModel = {
