@@ -535,6 +535,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Analytics/utils/analyticsDateRange.ts
 !explorers-earth/src/features/Analytics/utils/countryMapping.ts
 !explorers-earth/src/features/Analytics/utils/geolocationService.ts
+!explorers-earth/src/features/Analytics/utils/listNames.ts
 !explorers-earth/src/features/Analytics/utils/trafficSource.ts
 !explorers-earth/src/features/AppsAndTools/api/appEnrichmentClient.ts
 !explorers-earth/src/features/AppsAndTools/api/appsClient.ts

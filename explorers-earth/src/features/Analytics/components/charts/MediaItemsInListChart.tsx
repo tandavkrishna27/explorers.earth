@@ -12,6 +12,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { AnalyticsEvent } from '../../api/queries';
 import { useResponsiveChart } from '../../../../hooks/useResponsiveChart';
+import { useTranslation } from 'react-i18next';
 import EmptyState from '../EmptyState';
 
 interface MediaItemsInListChartProps {
@@ -32,6 +33,8 @@ const PIE_COLORS = [
 const MediaItemsInListChart: React.FC<MediaItemsInListChartProps> = ({
   events, pageName, pageLabel, itemLabel, elementPrefix, icon,
 }) => {
+  const { t } = useTranslation();
+  const untitledList = t('analytics.dashboard.untitledList');
   const [selectedList, setSelectedList] = useState<string>('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -67,7 +70,7 @@ const MediaItemsInListChart: React.FC<MediaItemsInListChartProps> = ({
   const listMap = useMemo(() => {
     const map = new Map<string, { name: string; items: Map<string, { title: string; count: number }> }>();
     clickEvents.forEach(e => {
-      const listName = e.metadata?.listName ?? 'Unknown List';
+      const listName = e.metadata?.listName ?? untitledList;
       const itemId   = e.metadata?.id ?? e.element ?? 'unknown';
       const itemTitle = e.metadata?.title ?? e.metadata?.originalElement ?? itemId;
 
@@ -80,7 +83,7 @@ const MediaItemsInListChart: React.FC<MediaItemsInListChartProps> = ({
       listEntry.items.set(itemId, existing);
     });
     return map;
-  }, [clickEvents]);
+  }, [clickEvents, untitledList]);
 
   /** Sorted list options */
   const listOptions = useMemo(

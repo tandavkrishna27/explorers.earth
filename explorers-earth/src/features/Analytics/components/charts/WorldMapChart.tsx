@@ -5,6 +5,7 @@ import {
   Geography,
   ZoomableGroup,
 } from "react-simple-maps";
+import worldTopologyUrl from "world-atlas/countries-110m.json?url";
 import { AnalyticsEvent } from "../../api/queries";
 import { useResponsiveChart } from "../../../../hooks/useResponsiveChart";
 import EmptyState from '../EmptyState';
@@ -351,9 +352,9 @@ const WorldMapChart: React.FC<WorldMapChartProps> = ({ events, isResolvingCountr
     return "#B91C1C"; // Much lighter darkest red for highest views (improved readability)
   };
 
-  // World map topology URL
-  const geoUrl =
-    "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+  // World map topology: shipped with the app as a hashed same-origin asset, so no
+  // third-party origin is contacted (the production CSP only allows 'self').
+  const geoUrl = worldTopologyUrl;
 
   // Responsive map dimensions
   const mapDimensions = {
