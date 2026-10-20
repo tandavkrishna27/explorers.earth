@@ -49,8 +49,8 @@ beforeEach(()=>{
 });
 afterEach(()=>{cleanup();vi.restoreAllMocks();vi.unstubAllGlobals();useAuthStore.getState().logout();});
 function NavigateProbe(){const navigate=useNavigate();return <button onClick={()=>navigate('/other')}>Leave form</button>;}
-function mount(query=''){return render(<MemoryRouter initialEntries={[`/places/${list}/add${query}`]}><NavigateProbe/><Routes><Route path='/places/:listId/add' element={<AddRecommendation/>}/><Route path='/recommendations' element={<p>Saved</p>}/><Route path='/other' element={<p>Other route</p>}/></Routes></MemoryRouter>);}
-function mountEdit(){editing=true;render(<MemoryRouter initialEntries={[`/places/${list}/edit/${recommendation}`]}><Routes><Route path='/places/:listId/edit/:placeId' element={<AddRecommendation type='edit'/>}/><Route path='/recommendations' element={<p>Saved</p>}/></Routes></MemoryRouter>);}
+function mount(query=''){return render(<MemoryRouter initialEntries={[`/places/${list}/add${query}`]}><NavigateProbe/><Routes><Route path='/places/:listId/add' element={<AddRecommendation/>}/><Route path='/recommendations/places' element={<p>Saved</p>}/><Route path='/other' element={<p>Other route</p>}/></Routes></MemoryRouter>);}
+function mountEdit(){editing=true;render(<MemoryRouter initialEntries={[`/places/${list}/edit/${recommendation}`]}><Routes><Route path='/places/:listId/edit/:placeId' element={<AddRecommendation type='edit'/>}/><Route path='/recommendations/places' element={<p>Saved</p>}/></Routes></MemoryRouter>);}
 it('offers all complete canonical roots and only direct children through the real form',async()=>{
  mount();await screen.findByRole('option',{name:'Synthetic term 25'});await act(async()=>fireEvent.change(screen.getByLabelText('Category'),{target:{value:id(25)}}));expect(screen.getByRole('option',{name:'Synthetic term 26'})).toBeInTheDocument();expect(screen.getByLabelText('Subcategory')).toHaveValue('');
 });

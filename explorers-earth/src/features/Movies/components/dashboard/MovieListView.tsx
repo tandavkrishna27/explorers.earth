@@ -1,3 +1,4 @@
+import { notePreviewText } from "../../../../utils/notePreviewText";
 import ListItemOrder from "../../../../components/reorder/ListItemOrder";
 import { createMoviesOwnerDiagnostic, type MoviesOwnerObserver } from '../../api/moviesOwnerDiagnostic';
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -100,7 +101,7 @@ const MovieRow = ({
         </div>
         {extractNoteText(movie.user_recommendation_note) && (
           <p className="text-xs text-white/30 mt-1 line-clamp-1 italic">
-            {extractNoteText(movie.user_recommendation_note).replace(/<[^>]+>/g, '')}
+            {notePreviewText(extractNoteText(movie.user_recommendation_note))}
           </p>
         )}
       </div>

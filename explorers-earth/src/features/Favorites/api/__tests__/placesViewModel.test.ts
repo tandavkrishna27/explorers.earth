@@ -174,3 +174,12 @@ it('refuses to map a complete observation with a list or a place missing from hy
 it('refuses a complete observation of another category',()=>{
  expect(()=>placesViewModel.complete({category:'people',collections:[],memberships:[],topPicks:[]} as never,new Map() as never,new Map() as never)).toThrow();
 });
+
+it('leaves archived and unhydrated lists out of the owner view instead of failing it',()=>{
+ const live=collection(),archived=collection({id:id(5),archived:true}) as never;
+ const view=placesViewModel.complete({category:'places',collections:[live,archived],memberships:[],recommendations:[]} as never,new Map([[id(2),{detail:live} as never]]),new Map());
+ expect(view.lists).toHaveLength(1);
+ const gone=collection({id:id(6)}) as never;
+ expect(()=>placesViewModel.complete({category:'places',collections:[live,gone],memberships:[],recommendations:[]} as never,new Map([[id(2),{detail:live} as never]]),new Map())).toThrow();
+ expect(placesViewModel.complete({category:'places',collections:[live,gone],memberships:[],recommendations:[]} as never,new Map([[id(2),{detail:live} as never]]),new Map(),'',new Set([id(6)])).lists).toHaveLength(1);
+});

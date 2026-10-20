@@ -3,7 +3,6 @@ import { FC, memo, useState, useRef, useEffect, type CSSProperties } from "react
 import CrossIcon from "../../../../assets/icons/CrossIcon";
 import Button from "../../../../components/ui/Button";
 import StarIcon from "../../../../assets/icons/StarIcon";
-import ClockIcon from "../../../../assets/icons/ClockIcon";
 import GoogleIcon from "../../../../assets/icons/GoogleIcon";
 import Tab from "../../../../components/ui/Tab";
 import Overview from "./Details/Overview";
@@ -328,9 +327,9 @@ const PlaceOverview: FC<PlaceOverviewProps> = memo(
             )}
           </div>
 
-          {/* Rating, Category, and Timing Section */}
+          {/* Rating and Category Section */}
           <div className="p-3 text-dashboard">
-            {/* Top row: User rating (left) and Timings (right) */}
+            {/* Top row: User rating */}
             <div className="flex flex-row justify-between items-center gap-4 flex-wrap mb-1.5">
               {!isPersonType && userRating ? (
                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -350,11 +349,7 @@ const PlaceOverview: FC<PlaceOverviewProps> = memo(
                 <div />
               )}
 
-              {/* Timings */}
-              <div className="flex flex-row gap-2 items-center text-dashboard-light">
-                <ClockIcon size={4} />
-                <span className="font-poppins text-xs md:text-sm">9:00 am - 11:30 pm</span>
-              </div>
+              {/* Opening hours are not part of the place model, so none are shown. */}
             </div>
 
             {/* Bottom: Category */}

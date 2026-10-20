@@ -1,3 +1,4 @@
+import { UnpublishCategoryDialog } from "../features/Settings/components/UnpublishCategoryDialog";
 import { NavigationStatus } from "../features/navigation/NavigationStatus";
 import { useCategoryNavigation } from "../features/navigation/CategoryNavigationProvider";
 import type { CategoryId } from "../features/navigation/categoryNavigationPolicy";
@@ -883,15 +884,35 @@ const RecommendationsHub = () => {
     if (!origin || navigation.busy || navigation.snapshot?.autoPinning) return;
     void navigation.request({ category: cat.tabId, action: savedPins.includes(cat.tabId) ? "unpin" : "pin" }, origin);
   };
+  const [unpublishTarget, setUnpublishTarget] = useState<CategoryConfig | null>(null);
   const handleToggleVisibility = (cat: CategoryConfig) => {
     const origin = navigation.authority;
     if (!origin || navigation.busy) return;
-    void navigation.request({ category: cat.visibilityField, action: visibleSet.has(cat.tabId) ? "unpublish" : "publish" }, origin);
+    // Taking a category off the public profile asks first, as Settings does.
+    if (visibleSet.has(cat.tabId)) {
+      setUnpublishTarget(cat);
+      return;
+    }
+    void navigation.request({ category: cat.visibilityField, action: "publish" }, origin);
+  };
+  const confirmUnpublish = async () => {
+    const cat = unpublishTarget;
+    const origin = navigation.authority;
+    if (!cat || !origin || navigation.busy) return;
+    await navigation.request({ category: cat.visibilityField, action: "unpublish" }, origin);
+    setUnpublishTarget(null);
   };
 
   return (
     <div className="min-h-screen bg-dashboard-bg text-dashboard px-4 md:px-8 py-6 md:py-8 pb-24 max-w-7xl mx-auto">
       <NavigationStatus navigation={navigation} />
+      <UnpublishCategoryDialog
+        open={unpublishTarget !== null}
+        categoryName={unpublishTarget?.label ?? "Category"}
+        pending={navigation.busy}
+        onCancel={() => setUnpublishTarget(null)}
+        onConfirm={() => void confirmUnpublish()}
+      />
       {/* Header Banner */}
       <div className="mb-6 md:mb-8">
         <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white uppercase font-poppins">

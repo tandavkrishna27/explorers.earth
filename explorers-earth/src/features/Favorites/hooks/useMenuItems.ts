@@ -53,7 +53,7 @@ export const useMenuItems = ({
       // must not stop the list from being archived.
       const places = observedList()?.recommended_places ?? [];
       try {
-        await Promise.all(places.map((place) => commands.archivePlace(place.documentId)));
+        await commands.archivePlaces(places.map((place) => place.documentId));
       } catch (placeError) {
         console.error("Error archiving individual places:", placeError);
       }
@@ -87,12 +87,9 @@ export const useMenuItems = ({
 
     const newVisibility = !isPublished;
     try {
-      await commands.publishList(listId, newVisibility);
       // A published list serves only its published places, so publishing the list
       // publishes them. Unpublishing leaves each place's own state alone.
-      if (newVisibility) {
-        await Promise.all(places.map((place) => commands.publishPlace(place.documentId, true)));
-      }
+      await commands.publishListWithPlaces(listId, newVisibility, places.map((place) => place.documentId));
 
       setIsPublished(newVisibility);
       setSelectedCity({ ...selectedCity, Visibility: newVisibility });
