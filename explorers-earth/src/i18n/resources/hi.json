@@ -802,6 +802,69 @@
     "ZW": "Zimbabwe"
   },
   "dashboard": {
+    "categoryPages": {
+      "publicVisibility": "सार्वजनिक दृश्यता",
+      "managePublicVisibility": "सार्वजनिक दृश्यता प्रबंधित करें",
+      "public": "सार्वजनिक",
+      "pubShort": "सार्व.",
+      "open": "खोलें",
+      "manageTopPicks": "शीर्ष पसंद प्रबंधित करें",
+      "manageTopPicksCount": "शीर्ष पसंद प्रबंधित करें ({{pinned}}/{{total}})",
+      "manageTopReads": "शीर्ष पठन प्रबंधित करें",
+      "manageTopReadsCount": "शीर्ष पठन प्रबंधित करें ({{pinned}}/{{total}})",
+      "addLocation": "स्थान जोड़ें",
+      "updateLocation": "स्थान अपडेट करें",
+      "pinned_one": "{{count}} पिन किया गया",
+      "pinned_other": "{{count}} पिन किए गए",
+      "empty": {
+        "apps": "अभी तक कोई ऐप नहीं",
+        "books": "अभी तक कोई किताब नहीं",
+        "games": "अभी तक कोई गेम नहीं",
+        "movies": "अभी तक कोई फ़िल्म नहीं",
+        "people": "अभी तक कोई व्यक्ति नहीं",
+        "products": "अभी तक कोई उत्पाद नहीं"
+      },
+      "hub": {
+        "title": "आपकी सभी सिफ़ारिशें एक ही जगह",
+        "subtitle": "अपनी पसंदीदा जगहों, फ़िल्मों, किताबों, गेम, टूल्स और गाइड को चुनें, व्यवस्थित करें और पूरी दुनिया के साथ साझा करें।",
+        "categoryFallback": "श्रेणी",
+        "hidden": "छिपा हुआ",
+        "pinnedToNav": "सार्वजनिक नेविगेशन में पिन किया गया",
+        "categoryOptions": "श्रेणी विकल्प",
+        "publishFirst": "इस श्रेणी को पिन करने से पहले प्रकाशित करें।",
+        "automatic": "स्वचालित प्लेसमेंट · मैन्युअल मोड सेटिंग्स में",
+        "unpin": "सार्वजनिक नेविगेशन से अनपिन करें",
+        "pin": "सार्वजनिक नेविगेशन में पिन करें (अधिकतम 5)",
+        "disableUrl": "सार्वजनिक URL अक्षम करें",
+        "enableUrl": "सार्वजनिक URL सक्षम करें",
+        "viewPublic": "सार्वजनिक पेज देखें",
+        "copyLink": "सार्वजनिक लिंक कॉपी करें",
+        "copied": "कॉपी हो गया!",
+        "copiedToast": "{{category}} का सार्वजनिक लिंक क्लिपबोर्ड पर कॉपी हो गया!",
+        "labels": {
+          "places": "स्थान",
+          "movies": "फ़िल्में और शो",
+          "books": "किताबें",
+          "games": "गेम",
+          "apps": "ऐप्स और टूल्स",
+          "products": "उत्पाद",
+          "people": "लोग",
+          "guides": "गाइड"
+        },
+        "descriptions": {
+          "places": "खाने, ठहरने और घूमने की आपकी पसंदीदा जगहें — साझा करने के लिए चुनी हुई।",
+          "movies": "फ़िल्मों और शो की आपकी वॉचलिस्ट, जिन्हें सुझाना बनता है।",
+          "books": "वे किताबें जो आपके साथ रह गईं, दूसरों के पाने के लिए शेल्फ़ पर सजी।",
+          "games": "आपका गेमिंग हॉल ऑफ़ फ़ेम — वे खिताब जिन्हें आगे बढ़ाना चाहिए।",
+          "apps": "वे ऐप्स और टूल्स जिन पर आप सचमुच भरोसा करते हैं।",
+          "products": "वह सामान जिसे आप किसी दोस्त को खरीदने की सलाह देंगे।",
+          "people": "वे क्रिएटर्स और निर्माता जिन्हें आप सबको फ़ॉलो करने को कहेंगे।",
+          "guides": "आपके यात्रा-कार्यक्रम और स्थानीय जानकारी, दूसरों के अनुसरण के लिए नक्शे पर।"
+        }
+      },
+      "listNowPublic": "{{name}} अब सार्वजनिक है",
+      "listNowDraft": "{{name}} अब मसौदा है"
+    },
     "home": {
       "activePlaces": "सक्रिय स्थान",
       "addLocation": "Add Location",
@@ -1730,20 +1793,20 @@
         "गैर सरकारी संगठनों",
         "सरकारी टीमें"
       ],
-      "explore": "See this perspective",
-      "eyebrow": "Ways to use explorers",
+      "explore": "यह दृष्टिकोण देखें",
+      "eyebrow": "explorers का उपयोग करने के तरीके",
       "perspectives": {
         "brands": {
-          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
-          "title": "Brands"
+          "description": "संग्रह, गाइड, स्थान और उत्पादों को स्पष्ट और मानवीय दृष्टिकोण के साथ क्यूरेट करें।",
+          "title": "ब्रांड्स"
         },
         "creators": {
-          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
-          "title": "Creators"
+          "description": "अपने दर्शकों को उन सिफ़ारिशों के लिए एक स्थायी घर दें जो अन्यथा फ़ीड में खो जातीं।",
+          "title": "क्रिएटर्स"
         },
         "personal": {
-          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
-          "title": "Personal"
+          "description": "उन जगहों, किताबों, फ़िल्मों, टूल्स, लोगों और खोजों को सहेजें जो आपकी दुनिया को आकार देती हैं।",
+          "title": "व्यक्तिगत"
         }
       }
     },

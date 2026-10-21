@@ -8,6 +8,7 @@ import { useGamesCommands, useGamesCallerCustody } from "../../api/query";
 import type { RecommendedGame } from "../../types";
 import { buildCoverUrl } from "../../utils/gameHelpers";
 import DialogPanel from "../../../../components/ui/DialogPanel";
+import { useTranslation } from "react-i18next";
 
 interface TopGamesManagerProps {
   games: RecommendedGame[];
@@ -17,6 +18,7 @@ interface TopGamesManagerProps {
 }
 
 const TopGamesManager = ({ games, allGames, onClose, onRefetch }: TopGamesManagerProps) => {
+  const { t } = useTranslation();
   const { announce, region } = useMoveAnnouncer();
   const [pinnedGames, setPinnedGames] = useState<RecommendedGame[]>(
     [...games].sort((a, b) => (a.pin_order ?? 999) - (b.pin_order ?? 999))
@@ -104,7 +106,7 @@ const TopGamesManager = ({ games, allGames, onClose, onRefetch }: TopGamesManage
         <div className="flex items-center justify-between px-5 py-3 border-b border-white/8">
           <h2 className="text-base font-semibold text-white flex items-center gap-2">
             <Trophy size={16} className="text-amber-400" />
-            Manage Top Picks ({pinnedGames.length}/15)
+            {t("dashboard.categoryPages.manageTopPicksCount", { pinned: pinnedGames.length, total: 15 })}
           </h2>
           <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
             <X size={18} />

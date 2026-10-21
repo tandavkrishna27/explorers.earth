@@ -3,6 +3,7 @@ import { motion, PanInfo } from "framer-motion";
 import { Play, Star } from "lucide-react";
 import type { RecommendedApp } from "../../types";
 import { buildLogoUrl } from "../../utils/appHelpers";
+import { useTranslation } from "react-i18next";
 
 interface AppTopPicksMobileHeroProps {
   apps: RecommendedApp[];
@@ -12,6 +13,7 @@ interface AppTopPicksMobileHeroProps {
 }
 
 const AppTopPicksMobileHero = ({ apps, onAppClick, showManageButton = false, onManageClick }: AppTopPicksMobileHeroProps) => {
+  const { t } = useTranslation();
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
@@ -112,7 +114,7 @@ const AppTopPicksMobileHero = ({ apps, onAppClick, showManageButton = false, onM
                         onManageClick?.();
                       }}
                     >
-                      <Star size={18} fill="currentColor" /> Manage Top Picks
+                      <Star size={18} fill="currentColor" /> {t("dashboard.categoryPages.manageTopPicks")}
                     </button>
                   ) : (
                     <button 

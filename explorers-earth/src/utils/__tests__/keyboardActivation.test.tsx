@@ -51,6 +51,13 @@ const ALLOWED = new Set([
   "features/Books/components/dashboard/AddBookPage.tsx",
   "features/Guides/GuidesPage.tsx",
   "features/PublicHome/components/PublicGuideViews/GuideMapView.tsx",
+  // Hero wrappers: the same action is a real <button> inside, so a role here would nest controls.
+  "features/AppsAndTools/components/public/AppTopPicksHero.tsx",
+  "features/Books/components/public/TopReadsHero.tsx",
+  "features/Games/components/public/TopGamesHero.tsx",
+  "features/Movies/components/public/TopPicksHero.tsx",
+  "features/People/components/public/PersonTopPicksHero.tsx",
+  "features/Products/components/public/ProductTopPicksHero.tsx",
 ]);
 const SRC = resolve(__dirname, "../..");
 

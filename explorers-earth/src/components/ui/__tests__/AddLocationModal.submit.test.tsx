@@ -35,7 +35,7 @@ describe("AddLocationModal submit contract (BUG-5)", () => {
 
     render(<AddLocationModal {...baseProps} onClose={onClose} onSubmit={onSubmit} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Update Location" }));
+    fireEvent.click(screen.getByRole("button", { name: "dashboard.categoryPages.updateLocation" }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     // The submit failed → modal must not close.
@@ -49,7 +49,7 @@ describe("AddLocationModal submit contract (BUG-5)", () => {
 
     render(<AddLocationModal {...baseProps} onClose={onClose} onSubmit={onSubmit} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Update Location" }));
+    fireEvent.click(screen.getByRole("button", { name: "dashboard.categoryPages.updateLocation" }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     expect(onClose).not.toHaveBeenCalled();
@@ -61,7 +61,7 @@ describe("AddLocationModal submit contract (BUG-5)", () => {
 
     render(<AddLocationModal {...baseProps} onClose={onClose} onSubmit={onSubmit} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Update Location" }));
+    fireEvent.click(screen.getByRole("button", { name: "dashboard.categoryPages.updateLocation" }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });
@@ -85,7 +85,7 @@ describe("canonical location edit identity", () => {
     fireEvent.change(screen.getByPlaceholderText("Enter the Name to a create a Shareable link"), { target: { value: "edited-fixture-city" } });
     fireEvent.change(screen.getByPlaceholderText("Enter a note related to your Recommendation"), { target: { value: "updated note" } });
     fireEvent.change(screen.getByPlaceholderText("Enter URL (Youtube / Instagram)"), { target: { value: "https://example.com/social" } });
-    fireEvent.click(screen.getByRole("button", { name: "Update Location" }));
+    fireEvent.click(screen.getByRole("button", { name: "dashboard.categoryPages.updateLocation" }));
     await waitFor(() => expect(submit).toHaveBeenCalledWith(expect.objectContaining({ placeUrl: "edited-fixture-city", listName: initialValues.listName, placeId: initialValues.placeId, note: "updated note", recommendationSocialLink: "https://example.com/social" })));
     expect(close).toHaveBeenCalledTimes(1);
   });
@@ -94,7 +94,7 @@ describe("canonical location edit identity", () => {
     const submit = vi.fn();
     const close = vi.fn();
     render(<AddLocationModal {...baseProps} initialValues={initialValues} existingPlaces={[self, { ...self, documentId: "location-b", slug }]} onClose={close} onSubmit={submit} />);
-    fireEvent.click(screen.getByRole("button", { name: "Update Location" }));
+    fireEvent.click(screen.getByRole("button", { name: "dashboard.categoryPages.updateLocation" }));
     await waitFor(() => expect(toastError).toHaveBeenCalledWith("toast.error.locationAlreadyExists"));
     expect(submit).not.toHaveBeenCalled();
     expect(close).not.toHaveBeenCalled();
@@ -103,7 +103,7 @@ describe("canonical location edit identity", () => {
   it("does not treat missing native IDs as self identity", async () => {
     const submit = vi.fn();
     render(<AddLocationModal {...baseProps} initialValues={{ ...initialValues, documentId: undefined }} existingPlaces={[{ ...self, documentId: undefined }]} onClose={vi.fn()} onSubmit={submit} />);
-    fireEvent.click(screen.getByRole("button", { name: "Update Location" }));
+    fireEvent.click(screen.getByRole("button", { name: "dashboard.categoryPages.updateLocation" }));
     await waitFor(() => expect(toastError).toHaveBeenCalled());
     expect(submit).not.toHaveBeenCalled();
   });
@@ -111,7 +111,7 @@ describe("canonical location edit identity", () => {
   it("requires a nonempty share slug", async () => {
     const submit = vi.fn();
     render(<AddLocationModal {...baseProps} initialValues={{ ...initialValues, placeUrl: "" }} onClose={vi.fn()} onSubmit={submit} />);
-    fireEvent.click(screen.getByRole("button", { name: "Update Location" }));
+    fireEvent.click(screen.getByRole("button", { name: "dashboard.categoryPages.updateLocation" }));
     await screen.findByText("Url name is Required");
     expect(submit).not.toHaveBeenCalled();
   });

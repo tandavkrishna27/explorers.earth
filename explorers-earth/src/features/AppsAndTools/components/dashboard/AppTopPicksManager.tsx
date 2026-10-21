@@ -7,6 +7,7 @@ import { useAppsCommands, useAppsCallerCustody } from "../../api/query";
 import type { RecommendedApp } from "../../types";
 import { buildLogoUrl } from "../../utils/appHelpers";
 import DialogPanel from "../../../../components/ui/DialogPanel";
+import { useTranslation } from "react-i18next";
 
 interface AppTopPicksManagerProps {
   apps: RecommendedApp[];
@@ -22,6 +23,7 @@ const AppTopPicksManager = ({
   onClose,
   onRefetch,
 }: AppTopPicksManagerProps) => {
+  const { t } = useTranslation();
   const { announce, region } = useMoveAnnouncer();
   const [pinnedApps, setPinnedApps] = useState<RecommendedApp[]>(
     [...apps].sort((a, b) => (a.pin_order ?? 999) - (b.pin_order ?? 999))
@@ -112,7 +114,7 @@ const AppTopPicksManager = ({
         <div className="flex items-center justify-between px-5 py-3 border-b border-white/8">
           <h2 className="text-base font-semibold text-white flex items-center gap-2">
             <Star size={16} className="text-blue-400" fill="currentColor" />
-            Manage Top Picks ({pinnedApps.length}/15)
+            {t("dashboard.categoryPages.manageTopPicksCount", { pinned: pinnedApps.length, total: 15 })}
           </h2>
           <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
             <X size={18} />

@@ -800,6 +800,73 @@
     "ZW": "Zimbabwe"
   },
   "dashboard": {
+    "categoryPages": {
+      "publicVisibility": "الظهور العام",
+      "managePublicVisibility": "إدارة الظهور العام",
+      "public": "عام",
+      "pubShort": "عام",
+      "open": "فتح",
+      "manageTopPicks": "إدارة الاختيارات المميزة",
+      "manageTopPicksCount": "إدارة الاختيارات المميزة ({{pinned}}/{{total}})",
+      "manageTopReads": "إدارة أبرز القراءات",
+      "manageTopReadsCount": "إدارة أبرز القراءات ({{pinned}}/{{total}})",
+      "addLocation": "إضافة موقع",
+      "updateLocation": "تحديث الموقع",
+      "pinned_zero": "{{count}} عناصر مثبّتة",
+      "pinned_one": "عنصر واحد مثبّت",
+      "pinned_two": "عنصران مثبّتان",
+      "pinned_few": "{{count}} عناصر مثبّتة",
+      "pinned_many": "{{count}} عنصرًا مثبّتًا",
+      "pinned_other": "{{count}} عنصر مثبّت",
+      "empty": {
+        "apps": "لا توجد تطبيقات بعد",
+        "books": "لا توجد كتب بعد",
+        "games": "لا توجد ألعاب بعد",
+        "movies": "لا توجد أفلام بعد",
+        "people": "لا يوجد أشخاص بعد",
+        "products": "لا توجد منتجات بعد"
+      },
+      "hub": {
+        "title": "كل توصياتك في مكان واحد",
+        "subtitle": "نسّق أماكنك وأفلامك وكتبك وألعابك وأدواتك وأدلتك المفضلة ونظّمها وشاركها مع العالم.",
+        "categoryFallback": "الفئة",
+        "hidden": "مخفي",
+        "pinnedToNav": "مثبّت في التنقل العام",
+        "categoryOptions": "خيارات الفئة",
+        "publishFirst": "انشر هذه الفئة قبل تثبيتها.",
+        "automatic": "ترتيب تلقائي · الوضع اليدوي في الإعدادات",
+        "unpin": "إلغاء التثبيت من التنقل العام",
+        "pin": "تثبيت في التنقل العام (5 كحد أقصى)",
+        "disableUrl": "تعطيل الرابط العام",
+        "enableUrl": "تفعيل الرابط العام",
+        "viewPublic": "عرض الصفحة العامة",
+        "copyLink": "نسخ الرابط العام",
+        "copied": "تم النسخ!",
+        "copiedToast": "تم نسخ الرابط العام لـ {{category}} إلى الحافظة!",
+        "labels": {
+          "places": "الأماكن",
+          "movies": "الأفلام والمسلسلات",
+          "books": "الكتب",
+          "games": "الألعاب",
+          "apps": "التطبيقات والأدوات",
+          "products": "المنتجات",
+          "people": "الأشخاص",
+          "guides": "الأدلة"
+        },
+        "descriptions": {
+          "places": "أماكنك المفضلة للأكل والإقامة والتجوّل، مختارة بعناية لتشاركها.",
+          "movies": "قائمة مشاهدتك من الأفلام والمسلسلات التي تستحق التوصية.",
+          "books": "الكتب التي بقيت معك، على الرف ليجدها الآخرون.",
+          "games": "قاعة مشاهير الألعاب لديك — العناوين التي تستحق أن تنقلها للآخرين.",
+          "apps": "التطبيقات والأدوات التي تعتمد عليها فعلًا.",
+          "products": "المعدّات التي كنت ستنصح صديقًا بشرائها.",
+          "people": "المبدعون وصنّاع المحتوى الذين كنت ستنصح الجميع بمتابعتهم.",
+          "guides": "مسارات رحلاتك ومعرفتك المحلية، مرسومة على الخريطة ليتبعها الآخرون."
+        }
+      },
+      "listNowPublic": "أصبحت {{name}} عامة",
+      "listNowDraft": "أصبحت {{name}} مسودة"
+    },
     "home": {
       "activePlaces": "أماكن نشطة",
       "addLocation": "Add Location",
@@ -1728,20 +1795,20 @@
         "المنظمات غير الحكومية",
         "الفرق الحكومية"
       ],
-      "explore": "See this perspective",
-      "eyebrow": "Ways to use explorers",
+      "explore": "اطّلع على هذا المنظور",
+      "eyebrow": "طرق استخدام explorers",
       "perspectives": {
         "brands": {
-          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
-          "title": "Brands"
+          "description": "نسّق المجموعات والأدلة والمواقع والمنتجات برؤية واضحة وإنسانية.",
+          "title": "العلامات التجارية"
         },
         "creators": {
-          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
-          "title": "Creators"
+          "description": "امنح جمهورك موطنًا دائمًا للتوصيات التي كانت ستختفي لولا ذلك في الخلاصة.",
+          "title": "صنّاع المحتوى"
         },
         "personal": {
-          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
-          "title": "Personal"
+          "description": "احتفظ بالأماكن والكتب والأفلام والأدوات والأشخاص والاكتشافات التي تشكّل عالمك.",
+          "title": "شخصي"
         }
       }
     },

@@ -1,3 +1,4 @@
+import '../../../../../test/englishI18n';
 import {it,expect} from 'vitest';
 import {render,screen,fireEvent,waitFor,act} from '@testing-library/react';
 import {Routes,Route} from 'react-router-dom';

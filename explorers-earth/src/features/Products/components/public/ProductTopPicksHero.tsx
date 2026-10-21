@@ -4,7 +4,7 @@ import { Play, ChevronLeft, ChevronRight, Star } from "lucide-react";
 import type { RecommendedProduct } from "../../types";
 import { buildImageUrl } from "../../utils/productHelpers";
 import { useFormatMoney } from "../../../../lib/money";
-import { keyboardActivation } from "../../../../utils/keyboardActivation";
+import { useTranslation } from "react-i18next";
 
 interface ProductTopPicksHeroProps {
   products: RecommendedProduct[];
@@ -14,6 +14,7 @@ interface ProductTopPicksHeroProps {
 }
 
 const ProductTopPicksHero = ({ products, onProductClick, showManageButton = false, onManageClick }: ProductTopPicksHeroProps) => {
+  const { t } = useTranslation();
   const formatMoney = useFormatMoney();
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -106,7 +107,7 @@ const ProductTopPicksHero = ({ products, onProductClick, showManageButton = fals
           {/* Left Text Detail Section */}
           <div 
             className="w-full lg:w-1/2 flex flex-col gap-4 pointer-events-auto cursor-pointer"
-            {...keyboardActivation(() => onProductClick(activeProduct))}
+            onClick={() => onProductClick(activeProduct)}
           >
             <motion.h1 
               key={`title-${activeProduct.documentId}`}
@@ -154,7 +155,7 @@ const ProductTopPicksHero = ({ products, onProductClick, showManageButton = fals
                   className="flex items-center gap-2 bg-[var(--category-accent,#059669)] hover:bg-[var(--category-accent,#047857)] text-[color:var(--category-accent-ink,#fff)] font-bold py-3 px-8 rounded-lg shadow-xl shadow-emerald-500/20 transition-all hover:scale-105"
                 >
                   <Star size={20} fill="currentColor" />
-                  Manage Top Picks
+                  {t("dashboard.categoryPages.manageTopPicks")}
                 </button>
               ) : (
                 <button 

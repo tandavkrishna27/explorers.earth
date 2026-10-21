@@ -14,8 +14,10 @@ import { usePublicHeaderDescriptor } from "../../../PublicHome/components/Public
 import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice } from "../../../PublicHome/components/PublicRouteContentState";
 import { usePublicMovieGenre } from "../../api/usePublicMovieGenre";
 import { PublicScrollContinuation } from "../../../PublicHome/components/PublicScrollContinuation";
+import { useTranslation } from "react-i18next";
 
 const PublicMovieGenre = () => {
+  const { t } = useTranslation();
   const { username, genreSlug } = useParams<{ username: string; genreSlug: string }>();
   const location = useLocation();
   const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
@@ -84,7 +86,7 @@ const PublicMovieGenre = () => {
               <h1 className="text-xl md:text-2xl font-poppins font-bold text-[color:var(--category-text,#fff)] mb-1">{genreName}</h1>
               {!loading || hasUsableData ? (
                 <p className="text-[color:var(--category-muted,#9ca3af)] font-poppins text-xs md:text-sm mt-1">
-                  {filteredMovies.length} movie{filteredMovies.length !== 1 ? "s" : ""}
+                  {t("publicProfile.recommendations.counts.movie", { count: filteredMovies.length, formattedCount: String(filteredMovies.length), suffix: "" })}
                 </p>
               ) : (
                 <div className="h-3 w-32 bg-[var(--category-skeleton,rgba(255,255,255,0.05))] animate-pulse rounded mt-2" />

@@ -28,6 +28,7 @@ import { ListVisibilityModal } from "../../../../components/ListVisibilityModal"
 import QrCardTagline from "../../../../components/QrCardTagline";
 import DialogPanel from "../../../../components/ui/DialogPanel";
 import { keyboardActivation } from "../../../../utils/keyboardActivation";
+import { useTranslation } from "react-i18next";
 
 
 // ─────────────────────────────────────────────────────────────
@@ -354,6 +355,7 @@ const ManageTab = ({ list, onRefetch }: ManageTabProps) => {
 // Main BookListView
 // ─────────────────────────────────────────────────────────────
 const BookListView = () => {
+  const { t } = useTranslation();
   const { listId } = useParams<{ listId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -518,7 +520,7 @@ const BookListView = () => {
           checked={list?.visibility ?? false}
           onChange={handleToggleVisibility}
           loading={isUpdating}
-          label={list?.visibility ? "Published" : "Draft"}
+          label={list?.visibility ? t("dashboard.home.published") : t("dashboard.home.draft")}
         />
       </div>
 

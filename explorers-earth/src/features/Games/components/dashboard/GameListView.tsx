@@ -27,6 +27,7 @@ import { ListVisibilityModal } from "../../../../components/ListVisibilityModal"
 import QrCardTagline from "../../../../components/QrCardTagline";
 import DialogPanel from "../../../../components/ui/DialogPanel";
 import { keyboardActivation } from "../../../../utils/keyboardActivation";
+import { useTranslation } from "react-i18next";
 
 interface GameRowProps {
   game: RecommendedGame;
@@ -340,6 +341,7 @@ export const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () =
 };
 
 const GameListView = () => {
+  const { t } = useTranslation();
   const { listId } = useParams<{ listId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -526,7 +528,7 @@ const GameListView = () => {
           checked={list?.Visibility ?? false}
           onChange={handleToggleVisibility}
           loading={isUpdating}
-          label={list?.Visibility ? "Published" : "Draft"}
+          label={list?.Visibility ? t("dashboard.home.published") : t("dashboard.home.draft")}
         />
       </div>
 

@@ -4,6 +4,7 @@ import { motion, PanInfo } from "framer-motion";
 import { BookOpen, Star } from "lucide-react";
 import type { RecommendedBook } from "../../types";
 import { buildCoverUrl, formatAuthors } from "../../utils/bookHelpers";
+import { useTranslation } from "react-i18next";
 
 interface TopReadsMobileHeroProps {
   books: RecommendedBook[];
@@ -13,6 +14,7 @@ interface TopReadsMobileHeroProps {
 }
 
 const TopReadsMobileHero = ({ books, onBookClick, showManageButton = false, onManageClick }: TopReadsMobileHeroProps) => {
+  const { t } = useTranslation();
   const categoryStyles = usePublicCategoryThemeStyles();
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -116,7 +118,7 @@ const TopReadsMobileHero = ({ books, onBookClick, showManageButton = false, onMa
                         onManageClick?.();
                       }}
                     >
-                      <Star size={18} fill="currentColor" /> Manage Top Reads
+                      <Star size={18} fill="currentColor" /> {t("dashboard.categoryPages.manageTopReads")}
                     </button>
                   ) : (
                     <button 

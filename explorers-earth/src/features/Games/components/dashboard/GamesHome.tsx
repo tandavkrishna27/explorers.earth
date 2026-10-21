@@ -28,6 +28,7 @@ import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import { CategoryEmptyState } from "../../../../components/CategoryEmptyState";
 import DialogPanel from "../../../../components/ui/DialogPanel";
 import { keyboardActivation } from "../../../../utils/keyboardActivation";
+import { useTranslation } from "react-i18next";
 
 // Create List Modal
 export const CreateGameListModal = ({
@@ -194,6 +195,7 @@ export const GameListCard = ({
   onToggleVisibility: (id: string, current: boolean) => void;
   togglingId: string | null;
 }) => {
+  const { t } = useTranslation();
   const uniqueGames = deduplicateGames(list.recommended_games);
   const gameCount = uniqueGames.length;
   const pinnedCount = uniqueGames.filter(g => g.is_pinned).length;
@@ -213,7 +215,7 @@ export const GameListCard = ({
             <span className={`text-[10px] font-semibold text-white px-1.5 py-0.5 rounded-md uppercase tracking-wider font-poppins shrink-0 ${
               list.Visibility ? "bg-emerald-500/90" : "bg-slate-500/90"
             }`}>
-              {list.Visibility ? "Public" : "Draft"}
+              {list.Visibility ? t("dashboard.categoryPages.public") : t("dashboard.home.draft")}
             </span>
           </div>
           {list.list_description && (
@@ -261,21 +263,21 @@ export const GameListCard = ({
         </div>
       ) : (
         <div className="h-16 rounded-lg bg-white/3 border border-dashed border-dashboard-border flex items-center justify-center mb-4">
-          <p className="text-xs text-dashboard-muted">No games yet</p>
+          <p className="text-xs text-dashboard-muted">{t("dashboard.categoryPages.empty.games")}</p>
         </div>
       )}
 
       <div className="flex items-center justify-between text-xs text-dashboard-muted">
         <div className="flex items-center gap-3">
-          <span>{uniqueGames.length} game{uniqueGames.length !== 1 ? "s" : ""}</span>
+          <span>{t("publicProfile.recommendations.counts.game", { count: uniqueGames.length, formattedCount: String(uniqueGames.length), suffix: "" })}</span>
           {pinnedCount > 0 && (
             <span className="flex items-center gap-1 text-yellow-400/60 font-medium">
-              <Star size={10} fill="currentColor" /> {pinnedCount} pinned
+              <Star size={10} fill="currentColor" /> {t("dashboard.categoryPages.pinned", { count: pinnedCount })}
             </span>
           )}
         </div>
         <span className="flex items-center gap-1 text-blue-400 group-hover:text-blue-300 transition-colors font-medium">
-          Open <ChevronRight size={13} />
+          {t("dashboard.categoryPages.open")} <ChevronRight size={13} />
         </span>
       </div>
     </motion.div>
@@ -283,6 +285,7 @@ export const GameListCard = ({
 };
 
 const GamesHome = () => {
+  const { t } = useTranslation();
   const navigation = useCategoryNavigation();
   const categoryVisible = navigation.snapshot?.visibility.public_games === "Yes";
   const navigate = useNavigate();
@@ -370,7 +373,7 @@ const GamesHome = () => {
             variant="blue"
           />
           <span className="text-[10px] md:text-xs text-[#4ade80] font-semibold leading-tight whitespace-nowrap">
-            Public Visibility
+            {t("dashboard.categoryPages.publicVisibility")}
           </span>
         </div>
         {/* Right: New list btn */}
@@ -406,10 +409,10 @@ const GamesHome = () => {
         {/* Dropdown panel */}
         {dropdownOpen && (
           <div className="absolute top-[calc(100%+6px)] right-0 left-0 p-3.5 z-50 border border-dashboard-accent/30 rounded-2xl bg-dashboard-sidebar/95 backdrop-blur-md shadow-xl flex justify-between items-center">
-            <span className="text-[11px] text-white/90 font-semibold">Manage Public Visibility</span>
+            <span className="text-[11px] text-white/90 font-semibold">{t("dashboard.categoryPages.managePublicVisibility")}</span>
             <div className="flex items-center gap-2">
               <span className={`text-[10px] font-bold uppercase ${categoryVisible ? "text-[#4ade80]" : "text-[#f87171]"}`}>
-                {categoryVisible ? "Pub" : "Draft"}
+                {categoryVisible ? t("dashboard.categoryPages.pubShort") : t("dashboard.home.draft")}
               </span>
               <SwitchButton
                 isChecked={categoryVisible}
@@ -493,7 +496,7 @@ const GamesHome = () => {
                 className="w-full flex items-center justify-between p-4 rounded-[14px] border border-amber-500/25 bg-amber-500/5 hover:bg-amber-500/10 transition-all duration-300 cursor-pointer mb-6"
               >
                 <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-[#fbbf24] font-poppins">
-                  <span className="text-amber-400">★</span> Manage Top Picks ({topPicks.length}/{deduplicateGames(allGames).length})
+                  <span className="text-amber-400">★</span> {t("dashboard.categoryPages.manageTopPicksCount", { pinned: topPicks.length, total: deduplicateGames(allGames).length })}
                 </div>
                 <div className="flex items-center text-amber-500">
                   <svg className="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">

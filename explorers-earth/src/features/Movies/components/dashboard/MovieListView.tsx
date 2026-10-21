@@ -34,6 +34,7 @@ import { ListVisibilityModal } from "../../../../components/ListVisibilityModal"
 import QrCardTagline from "../../../../components/QrCardTagline";
 import DialogPanel from "../../../../components/ui/DialogPanel";
 import { keyboardActivation } from "../../../../utils/keyboardActivation";
+import { useTranslation } from "react-i18next";
 
 
 // Movie Row Component
@@ -158,6 +159,7 @@ const MovieRow = ({
 // Main MovieListView Component
 // ─────────────────────────────────────────────────────────────
 const MovieListView = () => {
+  const { t } = useTranslation();
   const { listId } = useParams<{ listId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -359,7 +361,7 @@ const MovieListView = () => {
           checked={list?.Visibility ?? false}
           onChange={handleToggleVisibility}
           loading={isUpdating}
-          label={list?.Visibility ? "Published" : "Draft"}
+          label={list?.Visibility ? t("dashboard.home.published") : t("dashboard.home.draft")}
         />
       </div>
 

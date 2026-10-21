@@ -18,11 +18,13 @@ import { isNonNullObject, PublicRouteErrorState, PublicRoutePartialNotice, settl
 import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileShell";
 import { usePublicRecommendationCategory } from "../../../PublicHome/api/usePublicRecommendationCategory";
 import { PublicScrollContinuation } from "../../../PublicHome/components/PublicScrollContinuation";
+import { useTranslation } from "react-i18next";
 
 const isRenderableBookList = (value: unknown): value is BookList =>
   isNonNullObject(value) && Array.isArray(value.recommended_books);
 
 const PublicBooks = () => {
+  const { t } = useTranslation();
   const { username } = useParams<{ username: string }>();
   const location = useLocation();
   const { isDesktop } = useDeviceDetection();
@@ -220,7 +222,7 @@ const PublicBooks = () => {
           {hasUsableData && !hasContent && (
             <div className="text-center py-32">
               <BookOpen size={56} className="text-[color:var(--category-muted,rgba(255,255,255,0.15))] mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-[color:var(--category-muted,rgba(255,255,255,0.4))] mb-2">No books yet</h2>
+              <h2 className="text-xl font-semibold text-[color:var(--category-muted,rgba(255,255,255,0.4))] mb-2">{t("dashboard.categoryPages.empty.books")}</h2>
               <p className="text-[color:var(--category-muted,rgba(255,255,255,0.25))] text-sm">
                 Check back soon for book recommendations.
               </p>

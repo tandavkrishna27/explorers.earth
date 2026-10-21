@@ -800,6 +800,70 @@
     "ZW": "זימבבואה"
   },
   "dashboard": {
+    "categoryPages": {
+      "publicVisibility": "נראות ציבורית",
+      "managePublicVisibility": "ניהול נראות ציבורית",
+      "public": "ציבורי",
+      "pubShort": "ציבורי",
+      "open": "פתיחה",
+      "manageTopPicks": "ניהול הבחירות המובילות",
+      "manageTopPicksCount": "ניהול הבחירות המובילות ({{pinned}}/{{total}})",
+      "manageTopReads": "ניהול הקריאות המובילות",
+      "manageTopReadsCount": "ניהול הקריאות המובילות ({{pinned}}/{{total}})",
+      "addLocation": "הוספת מיקום",
+      "updateLocation": "עדכון מיקום",
+      "pinned_one": "פריט אחד מוצמד",
+      "pinned_two": "שני פריטים מוצמדים",
+      "pinned_other": "{{count}} פריטים מוצמדים",
+      "empty": {
+        "apps": "אין עדיין אפליקציות",
+        "books": "אין עדיין ספרים",
+        "games": "אין עדיין משחקים",
+        "movies": "אין עדיין סרטים",
+        "people": "אין עדיין אנשים",
+        "products": "אין עדיין מוצרים"
+      },
+      "hub": {
+        "title": "כל ההמלצות שלכם במקום אחד",
+        "subtitle": "אצרו, ארגנו ושתפו עם העולם את המקומות, הסרטים, הספרים, המשחקים, הכלים והמדריכים האהובים עליכם.",
+        "categoryFallback": "קטגוריה",
+        "hidden": "מוסתר",
+        "pinnedToNav": "מוצמד לניווט הציבורי",
+        "categoryOptions": "אפשרויות קטגוריה",
+        "publishFirst": "פרסמו את הקטגוריה לפני שתצמידו אותה.",
+        "automatic": "מיקום אוטומטי · מצב ידני בהגדרות",
+        "unpin": "ביטול הצמדה מהניווט הציבורי",
+        "pin": "הצמדה לניווט הציבורי (עד 5)",
+        "disableUrl": "השבתת הכתובת הציבורית",
+        "enableUrl": "הפעלת הכתובת הציבורית",
+        "viewPublic": "צפייה בדף הציבורי",
+        "copyLink": "העתקת הקישור הציבורי",
+        "copied": "הועתק!",
+        "copiedToast": "הקישור הציבורי של {{category}} הועתק ללוח!",
+        "labels": {
+          "places": "מקומות",
+          "movies": "סרטים וסדרות",
+          "books": "ספרים",
+          "games": "משחקים",
+          "apps": "אפליקציות וכלים",
+          "products": "מוצרים",
+          "people": "אנשים",
+          "guides": "מדריכים"
+        },
+        "descriptions": {
+          "places": "המקומות האהובים עליכם לאכול, לישון ולשוטט בהם — מקוטלגים לשיתוף.",
+          "movies": "רשימת הצפייה שלכם של סרטים וסדרות ששווה להמליץ עליהם.",
+          "books": "הספרים שנשארו איתכם, על המדף כדי שאחרים ימצאו אותם.",
+          "games": "היכל התהילה שלכם בגיימינג — המשחקים ששווה להעביר הלאה.",
+          "apps": "האפליקציות והכלים שאתם באמת נשבעים בהם.",
+          "products": "הציוד שהייתם ממליצים לחבר לקנות.",
+          "people": "היוצרים והיוצרות שהייתם אומרים לכולם לעקוב אחריהם.",
+          "guides": "המסלולים והידע המקומי שלכם, ממופים כדי שאחרים ילכו בעקבותיהם."
+        }
+      },
+      "listNowPublic": "{{name}} הפך לציבורי",
+      "listNowDraft": "{{name}} הפך לטיוטה"
+    },
     "home": {
       "activePlaces": "מקומות פעילים",
       "addLocation": "Add Location",
@@ -1728,20 +1792,20 @@
         "ארגונים לא ממשלתיים",
         "צוותי ממשלה"
       ],
-      "explore": "See this perspective",
-      "eyebrow": "Ways to use explorers",
+      "explore": "ראו את נקודת המבט הזו",
+      "eyebrow": "דרכים להשתמש ב-explorers",
       "perspectives": {
         "brands": {
-          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
-          "title": "Brands"
+          "description": "אצרו אוספים, מדריכים, מיקומים ומוצרים מתוך נקודת מבט ברורה ואנושית.",
+          "title": "מותגים"
         },
         "creators": {
-          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
-          "title": "Creators"
+          "description": "תנו לקהל שלכם בית קבוע להמלצות שאחרת היו נעלמות בפיד.",
+          "title": "יוצרים"
         },
         "personal": {
-          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
-          "title": "Personal"
+          "description": "שמרו את המקומות, הספרים, הסרטים, הכלים, האנשים וההתגלויות שמעצבים את העולם שלכם.",
+          "title": "אישי"
         }
       }
     },
@@ -1807,18 +1871,18 @@
           "Sequence": 1
         },
         {
-          "Answer": "כֵּן. ניתן לשתף את דף Explorer שלך כקישור או QR עבור פרופילים, הודעות, טבלאות, כרטיסים ומדריכים מודפסים.",
+          "Answer": "כן. ניתן לשתף את דף ה-Explorer שלכם כקישור או כקוד QR בפרופילים, בהודעות, על שולחנות, בכרטיסים ובמדריכים מודפסים.",
           "Question": "האם אוכל לשתף אותו עם קוד QR?",
           "Sequence": 2
         },
         {
-          "Answer": "כֵּן. אתה יכול לשמור על הדף שלך טרי בזמן שאותו קישור ו-QR ממשיכים לעבוד.",
+          "Answer": "כן. אפשר לשמור על הדף שלכם מעודכן בזמן שאותו קישור וקוד QR ממשיכים לעבוד.",
           "Question": "האם אוכל לעדכן את ההמלצות שלי מאוחר יותר?",
           "Sequence": 3
         },
         {
-          "Answer": "כֵּן. הדף יכול להעביר את ההבטחה החינמית בצורה ברורה ללא שפה כבדה בתשלום.",
-          "Question": "האם חוקרים חופשיים לנצח?",
+          "Answer": "כן. הדף יכול להעביר את ההבטחה לחינמיות בצורה ברורה, בלי שפה כבדה של תשלומים.",
+          "Question": "האם explorers חינמי לתמיד?",
           "Sequence": 4
         }
       ]

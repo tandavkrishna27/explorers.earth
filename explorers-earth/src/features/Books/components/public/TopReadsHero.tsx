@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, ChevronLeft, ChevronRight, Star } from "lucide-react";
 import type { RecommendedBook } from "../../types";
 import { buildCoverUrl, formatAuthors } from "../../utils/bookHelpers";
-import { keyboardActivation } from "../../../../utils/keyboardActivation";
+import { useTranslation } from "react-i18next";
 
 interface TopReadsHeroProps {
   books: RecommendedBook[];
@@ -15,6 +15,7 @@ interface TopReadsHeroProps {
 }
 
 const TopReadsHero = ({ books, onBookClick, showManageButton = false, onManageClick }: TopReadsHeroProps) => {
+  const { t } = useTranslation();
   const categoryStyles = usePublicCategoryThemeStyles();
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -141,7 +142,7 @@ const TopReadsHero = ({ books, onBookClick, showManageButton = false, onManageCl
           {/* Left Text Detail Section */}
           <div 
             className="w-full lg:w-1/2 flex flex-col gap-4 pointer-events-auto cursor-pointer"
-            {...keyboardActivation(() => onBookClick(activeBook))}
+            onClick={() => onBookClick(activeBook)}
           >
             <motion.h1 
               key={`title-${activeBook.documentId}`}
@@ -185,7 +186,7 @@ const TopReadsHero = ({ books, onBookClick, showManageButton = false, onManageCl
                   className={`flex items-center gap-2 ${categoryStyles ? 'bg-[var(--category-accent)]' : 'bg-dashboard-accent'} hover:opacity-90 ${categoryStyles ? 'text-[color:var(--category-accent-ink)]' : 'text-white'} font-bold py-4 px-10 rounded-xl shadow-2xl shadow-blue-500/20 transition-all hover:scale-105 active:scale-95`}
                 >
                   <Star size={20} fill="currentColor" />
-                  Manage Top Reads
+                  {t("dashboard.categoryPages.manageTopReads")}
                 </button>
               ) : (
                 <button 

@@ -24,6 +24,7 @@ import QrCardTagline from "../../../../components/QrCardTagline";
 import { useFormatMoney } from "../../../../lib/money";
 import DialogPanel from "../../../../components/ui/DialogPanel";
 import { keyboardActivation } from "../../../../utils/keyboardActivation";
+import { useTranslation } from "react-i18next";
 
 interface ProductRowProps {
   product: RecommendedProduct;
@@ -126,6 +127,7 @@ const ProductRow = ({ product, onPinToggle, onEdit, onDelete, onClick, isPinning
 };
 
 const ProductListView = () => {
+  const { t } = useTranslation();
   const { listId } = useParams<{ listId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -314,7 +316,7 @@ const ProductListView = () => {
           checked={listData.Visibility}
           onChange={handleToggleVisibility}
           loading={isUpdating}
-          label={listData.Visibility ? "Published" : "Draft"}
+          label={listData.Visibility ? t("dashboard.home.published") : t("dashboard.home.draft")}
         />
       </div>
 

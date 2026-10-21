@@ -14,12 +14,14 @@ import { usePublicProfileShell } from "../../../PublicHome/api/usePublicProfileS
 import { usePublicRecommendationCategory } from "../../../PublicHome/api/usePublicRecommendationCategory";
 
 import { PublicScrollContinuation } from "../../../PublicHome/components/PublicScrollContinuation";
+import { useTranslation } from "react-i18next";
 
 type RenderableGameList = { recommended_games: RecommendedGame[] };
 const isRenderableGameList = (value: unknown): value is RenderableGameList =>
   isNonNullObject(value) && Array.isArray(value.recommended_games);
 
 const PublicGamesGenre = () => {
+  const { t } = useTranslation();
   const { username, genreSlug } = useParams<{ username: string; genreSlug: string }>();
   const location = useLocation();
   const outletContext = useOutletContext<{ setIsPageLoaded?: (val: boolean) => void } | null>();
@@ -123,7 +125,7 @@ const PublicGamesGenre = () => {
               <h1 className="text-xl md:text-2xl font-poppins font-bold text-[color:var(--category-text,#fff)] mb-1">{genreName}</h1>
               {!loading || hasUsableData ? (
                 <p className="text-[color:var(--category-muted,#9ca3af)] font-poppins text-xs md:text-sm mt-1 uppercase tracking-wider">
-                  {filteredGames.length} game{filteredGames.length !== 1 ? "s" : ""}
+                  {t("publicProfile.recommendations.counts.game", { count: filteredGames.length, formattedCount: String(filteredGames.length), suffix: "" })}
                 </p>
               ) : (
                 <div className="h-3 w-32 bg-[var(--category-skeleton,rgba(255,255,255,0.05))] animate-pulse rounded mt-2" />

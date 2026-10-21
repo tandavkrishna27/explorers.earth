@@ -5,7 +5,7 @@ import { Users } from "lucide-react";
 import type { RecommendedPerson } from "../../types";
 import { buildImageUrl, getPlatformColor } from "../../utils/personHelpers";
 import PlatformIcon from "../PlatformIcon";
-import { keyboardActivation } from "../../../../utils/keyboardActivation";
+import { useTranslation } from "react-i18next";
 
 interface PersonTopPicksHeroProps {
   people: RecommendedPerson[];
@@ -15,6 +15,7 @@ interface PersonTopPicksHeroProps {
 }
 
 const PersonTopPicksHero = ({ people, onPersonClick, showManageButton = false, onManageClick }: PersonTopPicksHeroProps) => {
+  const { t } = useTranslation();
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -98,7 +99,7 @@ const PersonTopPicksHero = ({ people, onPersonClick, showManageButton = false, o
           {/* Left side — avatar + info */}
           <div
             className="w-full lg:w-1/2 flex flex-col gap-4 pointer-events-auto cursor-pointer"
-            {...keyboardActivation(() => onPersonClick(activePerson))}
+            onClick={() => onPersonClick(activePerson)}
           >
             {/* Circular avatar */}
             <div className="flex items-center gap-4">
@@ -170,7 +171,7 @@ const PersonTopPicksHero = ({ people, onPersonClick, showManageButton = false, o
                   className="flex items-center gap-2 bg-[var(--category-accent,#7c3aed)] hover:bg-[var(--category-accent,#6d28d9)] text-[color:var(--category-accent-ink,#fff)] font-bold py-3 px-8 rounded-lg shadow-xl shadow-violet-500/20 transition-all hover:scale-105"
                 >
                   <Star size={20} fill="currentColor" />
-                  Manage Top Picks
+                  {t("dashboard.categoryPages.manageTopPicks")}
                 </button>
               ) : (
                 <button

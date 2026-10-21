@@ -59,7 +59,7 @@ describe('reference content', () => {
   });
 
   describe('every locale resolves to something renderable', () => {
-    const locales = ['en', 'hi', 'bn', 'es', 'ar', 'fr', 'pt', 'ru', 'de', 'id'];
+    const locales = ['en', 'hi', 'bn', 'es', 'ar', 'fr', 'pt', 'ru', 'de', 'id', 'he'];
 
     it.each(locales)('%s has non-empty terms, privacy, cookies and FAQ', async (locale) => {
       const content = await loadReferenceContent(locale);
@@ -100,6 +100,19 @@ describe('reference content', () => {
       expect(hindi.faqs).not.toStrictEqual(englishReferenceContent.faqs);
       expect(hindi.privacy).toStrictEqual(englishReferenceContent.privacy);
       expect(hindi.cookies).toStrictEqual(englishReferenceContent.cookies);
+    });
+
+    it('serves a translated Hebrew FAQ (I18N-X01) and borrows the legal sections from English', async () => {
+      expect(normalizeReferenceLocale('he-IL')).toBe('he');
+      const hebrew = await loadReferenceContent('he');
+      expect(hebrew.locale).toBe('he');
+      expect(hebrew.faqs).toHaveLength(englishReferenceContent.faqs.length);
+      expect(hebrew.faqs.map((faq) => faq.Sequence)).toEqual(englishReferenceContent.faqs.map((faq) => faq.Sequence));
+      for (const faq of hebrew.faqs) {
+        expect(faq.Question).toMatch(/[\u0590-\u05FF]/);
+        expect(faq.Answer).toMatch(/[\u0590-\u05FF]/);
+      }
+      expect(hebrew.terms).toStrictEqual(englishReferenceContent.terms);
     });
 
     it('serves English to a locale with no file at all', async () => {

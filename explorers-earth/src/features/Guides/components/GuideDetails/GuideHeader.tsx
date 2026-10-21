@@ -12,6 +12,7 @@ import SwitchButton from "../../../../components/ui/SwitchButton";
 import type { Guide } from "../../types";
 import { guideDescriptionText } from "../../../../utils/guideDescriptionText";
 import { useFormatMoney } from "../../../../lib/money";
+import { useTranslation } from "react-i18next";
 
 interface GuideHeaderProps {
   guide: Guide;
@@ -22,6 +23,7 @@ interface GuideHeaderProps {
 }
 
 const GuideHeader: React.FC<GuideHeaderProps> = ({ guide, guideId, onVisibilityChange, onPublished }) => {
+  const { t } = useTranslation();
   const formatMoney = useFormatMoney();
   const navigate = useNavigate();
   const [isPublished, setIsPublished] = useState<boolean>(guide.Visibility || false);
@@ -111,7 +113,7 @@ const GuideHeader: React.FC<GuideHeaderProps> = ({ guide, guideId, onVisibilityC
           disabled={isUpdating}
         />
         <span className="text-xs font-medium text-white">
-          {isPublished ? "Published" : "Draft"}
+          {isPublished ? t("dashboard.home.published") : t("dashboard.home.draft")}
         </span>
       </div>
 

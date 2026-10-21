@@ -800,6 +800,69 @@
     "ZW": "Zimbabwe"
   },
   "dashboard": {
+    "categoryPages": {
+      "publicVisibility": "Visibilité publique",
+      "managePublicVisibility": "Gérer la visibilité publique",
+      "public": "Public",
+      "pubShort": "Public",
+      "open": "Ouvrir",
+      "manageTopPicks": "Gérer les coups de cœur",
+      "manageTopPicksCount": "Gérer les coups de cœur ({{pinned}}/{{total}})",
+      "manageTopReads": "Gérer les lectures phares",
+      "manageTopReadsCount": "Gérer les lectures phares ({{pinned}}/{{total}})",
+      "addLocation": "Ajouter un emplacement",
+      "updateLocation": "Mettre à jour l’emplacement",
+      "pinned_one": "{{count}} épinglé",
+      "pinned_other": "{{count}} épinglés",
+      "empty": {
+        "apps": "Aucune application pour l’instant",
+        "books": "Aucun livre pour l’instant",
+        "games": "Aucun jeu pour l’instant",
+        "movies": "Aucun film pour l’instant",
+        "people": "Aucune personne pour l’instant",
+        "products": "Aucun produit pour l’instant"
+      },
+      "hub": {
+        "title": "Toutes vos recommandations au même endroit",
+        "subtitle": "Sélectionnez, organisez et partagez avec le monde entier vos lieux, films, livres, jeux, outils et guides préférés.",
+        "categoryFallback": "Catégorie",
+        "hidden": "Masqué",
+        "pinnedToNav": "Épinglé dans la navigation publique",
+        "categoryOptions": "Options de la catégorie",
+        "publishFirst": "Publiez cette catégorie avant de l’épingler.",
+        "automatic": "Placement automatique · Mode manuel dans les Paramètres",
+        "unpin": "Retirer de la navigation publique",
+        "pin": "Épingler à la navigation publique (max. 5)",
+        "disableUrl": "Désactiver l’URL publique",
+        "enableUrl": "Activer l’URL publique",
+        "viewPublic": "Voir la page publique",
+        "copyLink": "Copier le lien public",
+        "copied": "Copié !",
+        "copiedToast": "Lien public de {{category}} copié dans le presse-papiers !",
+        "labels": {
+          "places": "Lieux",
+          "movies": "Films et séries",
+          "books": "Livres",
+          "games": "Jeux",
+          "apps": "Apps et outils",
+          "products": "Produits",
+          "people": "Personnes",
+          "guides": "Guides"
+        },
+        "descriptions": {
+          "places": "Vos adresses préférées pour manger, dormir et flâner, sélectionnées pour être partagées.",
+          "movies": "Votre liste de films et de séries qui méritent d’être recommandés.",
+          "books": "Les livres qui vous ont marqué, rangés sur l’étagère pour que d’autres les trouvent.",
+          "games": "Votre panthéon du jeu vidéo : les titres qui valent la peine d’être transmis.",
+          "apps": "Les applications et outils auxquels vous ne renoncez plus.",
+          "products": "L’équipement que vous conseilleriez à un ami d’acheter.",
+          "people": "Les créateurs et artisans que vous conseilleriez à tout le monde de suivre.",
+          "guides": "Vos itinéraires et votre connaissance du terrain, cartographiés pour que d’autres les suivent."
+        }
+      },
+      "listNowPublic": "{{name}} est maintenant public",
+      "listNowDraft": "{{name}} est maintenant un brouillon"
+    },
     "home": {
       "activePlaces": "lieux actifs",
       "addLocation": "Ajouter un emplacement",
@@ -1728,20 +1791,20 @@
         "ONG",
         "Les équipes gouvernementales"
       ],
-      "explore": "See this perspective",
-      "eyebrow": "Ways to use explorers",
+      "explore": "Voir cette perspective",
+      "eyebrow": "Façons d’utiliser explorers",
       "perspectives": {
         "brands": {
-          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
-          "title": "Brands"
+          "description": "Composez des collections, guides, lieux et produits avec un point de vue clair et humain.",
+          "title": "Marques"
         },
         "creators": {
-          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
-          "title": "Creators"
+          "description": "Offrez à votre audience un foyer durable pour les recommandations qui, sinon, disparaîtraient dans le fil.",
+          "title": "Créateurs"
         },
         "personal": {
-          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
-          "title": "Personal"
+          "description": "Gardez les lieux, livres, films, outils, personnes et découvertes qui façonnent votre monde.",
+          "title": "Personnel"
         }
       }
     },

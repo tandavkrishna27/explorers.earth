@@ -8,6 +8,7 @@ import type { RecommendedPerson } from "../../types";
 import { buildImageUrl } from "../../utils/personHelpers";
 import { Users } from "lucide-react";
 import DialogPanel from "../../../../components/ui/DialogPanel";
+import { useTranslation } from "react-i18next";
 
 interface PersonTopPicksManagerProps {
   people: RecommendedPerson[];
@@ -22,6 +23,7 @@ const PersonTopPicksManager = ({
   onClose,
   onRefetch,
 }: PersonTopPicksManagerProps) => {
+  const { t } = useTranslation();
   const { announce, region } = useMoveAnnouncer();
   const [pinnedPeople, setPinnedPeople] = useState<RecommendedPerson[]>(
     [...people].sort((a, b) => (a.pin_order ?? 999) - (b.pin_order ?? 999))
@@ -112,7 +114,7 @@ const PersonTopPicksManager = ({
         <div className="flex items-center justify-between px-5 py-3 border-b border-white/8">
           <h2 className="text-base font-semibold text-white flex items-center gap-2">
             <Star size={16} className="text-violet-400" fill="currentColor" />
-            Manage Top Picks ({pinnedPeople.length}/15)
+            {t("dashboard.categoryPages.manageTopPicksCount", { pinned: pinnedPeople.length, total: 15 })}
           </h2>
           <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
             <X size={18} />

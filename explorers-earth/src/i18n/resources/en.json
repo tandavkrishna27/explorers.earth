@@ -837,6 +837,69 @@
     "ZW": "Zimbabwe"
   },
   "dashboard": {
+    "categoryPages": {
+      "publicVisibility": "Public Visibility",
+      "managePublicVisibility": "Manage Public Visibility",
+      "public": "Public",
+      "pubShort": "Pub",
+      "open": "Open",
+      "manageTopPicks": "Manage Top Picks",
+      "manageTopPicksCount": "Manage Top Picks ({{pinned}}/{{total}})",
+      "manageTopReads": "Manage Top Reads",
+      "manageTopReadsCount": "Manage Top Reads ({{pinned}}/{{total}})",
+      "addLocation": "Add Location",
+      "updateLocation": "Update Location",
+      "pinned_one": "{{count}} pinned",
+      "pinned_other": "{{count}} pinned",
+      "empty": {
+        "apps": "No apps yet",
+        "books": "No books yet",
+        "games": "No games yet",
+        "movies": "No movies yet",
+        "people": "No people yet",
+        "products": "No products yet"
+      },
+      "hub": {
+        "title": "All Your Recommendations in One Place",
+        "subtitle": "Curate, organize, and share your favorite places, movies, books, games, tools, and guides across the world.",
+        "hidden": "Hidden",
+        "categoryFallback": "Category",
+        "pinnedToNav": "Pinned to public nav",
+        "categoryOptions": "Category options",
+        "publishFirst": "Publish this category before pinning it.",
+        "automatic": "Automatic placement · Manual mode in Settings",
+        "unpin": "Unpin from Public Nav",
+        "pin": "Pin to Public Nav (Max 5)",
+        "disableUrl": "Disable Public URL",
+        "enableUrl": "Enable Public URL",
+        "viewPublic": "View Public Page",
+        "copyLink": "Copy Public Link",
+        "copied": "Copied!",
+        "copiedToast": "Copied public {{category}} link to clipboard!",
+        "labels": {
+          "places": "Places",
+          "movies": "Movies & Shows",
+          "books": "Books",
+          "games": "Games",
+          "apps": "Apps & Tools",
+          "products": "Products",
+          "people": "People",
+          "guides": "Guides"
+        },
+        "descriptions": {
+          "places": "Your favorite spots to eat, stay, and wander — curated to share.",
+          "movies": "Your watchlist of films and shows worth recommending.",
+          "books": "The books that stuck with you, shelved for others to find.",
+          "games": "Your gaming hall of fame — the titles worth passing on.",
+          "apps": "The apps and tools you actually swear by.",
+          "products": "The gear you'd tell a friend to buy.",
+          "people": "The creators and makers you'd tell everyone to follow.",
+          "guides": "Your itineraries and local know-how, mapped for others to follow."
+        }
+      },
+      "listNowPublic": "{{name}} is now Public",
+      "listNowDraft": "{{name}} is now a Draft"
+    },
     "home": {
       "activePlaces": "Active places",
       "addLocation": "Add Location",

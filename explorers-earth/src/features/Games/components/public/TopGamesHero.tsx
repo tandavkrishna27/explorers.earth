@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Grid, ChevronLeft, ChevronRight, Star } from "lucide-react";
 import type { RecommendedGame } from "../../types";
 import { buildCoverUrl } from "../../utils/gameHelpers";
-import { keyboardActivation } from "../../../../utils/keyboardActivation";
+import { useTranslation } from "react-i18next";
 
 interface TopGamesHeroProps {
   games: RecommendedGame[];
@@ -14,6 +14,7 @@ interface TopGamesHeroProps {
 }
 
 const TopGamesHero = ({ games, onGameClick, showManageButton = false, onManageClick }: TopGamesHeroProps) => {
+  const { t } = useTranslation();
   const categoryStyles = usePublicCategoryThemeStyles();
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -104,7 +105,7 @@ const TopGamesHero = ({ games, onGameClick, showManageButton = false, onManageCl
           {/* Left Text Detail Section */}
           <div 
             className="w-full lg:w-1/2 flex flex-col gap-4 cursor-pointer pointer-events-auto"
-            {...keyboardActivation(() => onGameClick(activeGame))}
+            onClick={() => onGameClick(activeGame)}
           >
             <motion.h1 
               key={`title-${activeGame.documentId}`}
@@ -148,7 +149,7 @@ const TopGamesHero = ({ games, onGameClick, showManageButton = false, onManageCl
                   className={`flex items-center gap-2 ${categoryStyles ? 'bg-[var(--category-accent)]' : 'bg-dashboard-accent'} hover:opacity-90 ${categoryStyles ? 'text-[color:var(--category-accent-ink)]' : 'text-white'} font-bold py-3 px-8 rounded-lg shadow-xl shadow-blue-500/20 transition-all hover:scale-105`}
                 >
                   <Star size={20} fill="currentColor" />
-                  Manage Top Picks
+                  {t("dashboard.categoryPages.manageTopPicks")}
                 </button>
               ) : (
                 <button 

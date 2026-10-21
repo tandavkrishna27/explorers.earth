@@ -24,6 +24,7 @@ import { ListVisibilityModal } from "../../../../components/ListVisibilityModal"
 import PlatformIcon from "../PlatformIcon";
 import DialogPanel from "../../../../components/ui/DialogPanel";
 import { keyboardActivation } from "../../../../utils/keyboardActivation";
+import { useTranslation } from "react-i18next";
 
 interface PersonRowProps {
   person: RecommendedPerson;
@@ -129,6 +130,7 @@ const PersonRow = ({ person, onPinToggle, onEdit, onDelete, onClick, isPinning }
 };
 
 const PersonListView = () => {
+  const { t } = useTranslation();
   const { listId } = useParams<{ listId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -314,7 +316,7 @@ const PersonListView = () => {
           onChange={handleToggleVisibility}
           disabled={people.length === 0}
           loading={isUpdating}
-          label={listData?.Visibility ? "Published" : "Draft"}
+          label={listData?.Visibility ? t("dashboard.home.published") : t("dashboard.home.draft")}
         />
       </div>
 

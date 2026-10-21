@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createInstance } from 'i18next';
 import { describe, expect, it } from 'vitest';
@@ -121,5 +121,94 @@ describe('dashboard list rows are not hard-coded English', () => {
     expect(home).not.toMatch(/\|\| 0\} (places|movies|books|games|apps & tools|products|persons) ·/);
     expect(home).not.toContain('"Published" : "Draft"');
     expect(home.match(/publicProfile\.recommendations\.counts\./g)?.length).toBeGreaterThanOrEqual(7);
+  });
+});
+
+// I18N-X01 (round 2): landing "Ways to use explorers" section, category home / list pages and the
+// recommendations hub were still English in every maintained locale.
+const CP = 'dashboard.categoryPages.';
+const whoIsForKeys = [
+  'eyebrow', 'explore',
+  ...['personal', 'creators', 'brands'].flatMap((k) => [`perspectives.${k}.title`, `perspectives.${k}.description`]),
+].map((k) => `sections.whoIsFor.${k}`);
+const categoryPageKeys = [
+  'publicVisibility', 'managePublicVisibility', 'public', 'pubShort', 'open', 'manageTopPicks', 'manageTopPicksCount',
+  'manageTopReads', 'manageTopReadsCount', 'addLocation', 'updateLocation', 'listNowPublic', 'listNowDraft',
+  ...['apps', 'books', 'games', 'movies', 'people', 'products'].map((k) => `empty.${k}`),
+  ...['title', 'subtitle', 'hidden', 'pinnedToNav', 'categoryOptions', 'publishFirst', 'automatic', 'unpin', 'pin', 'disableUrl',
+    'enableUrl', 'viewPublic', 'copyLink', 'copied', 'copiedToast', 'categoryFallback'].map((k) => `hub.${k}`),
+  ...['places', 'movies', 'books', 'games', 'apps', 'products', 'people', 'guides'].flatMap((k) => [`hub.labels.${k}`, `hub.descriptions.${k}`]),
+].map((k) => `${CP}${k}`);
+// Same word in the language: [locale, key]
+const SAME_IN_LOCALE = new Set([
+  'es:sections.whoIsFor.perspectives.personal.title',
+  'fr:dashboard.categoryPages.public',
+  'fr:dashboard.categoryPages.hub.labels.guides',
+]);
+
+describe('landing use-case section and category pages are translated (I18N-X01)', () => {
+  const all = { ...REQUIRED_LOCALES, ...ALSO_MAINTAINED };
+  it.each(Object.keys(all))('%s translates every landing / category page / hub key', (lang) => {
+    for (const key of [...whoIsForKeys, ...categoryPageKeys]) {
+      const english = dig(en, key);
+      const value = dig(all[lang], key);
+      expect(exists(english), `${key} missing in en`).toBe(true);
+      expect(exists(value), `${key} missing in ${lang}`).toBe(true);
+      if (!SAME_IN_LOCALE.has(`${lang}:${key}`)) expect(value, `${key} still English in ${lang}`).not.toBe(english);
+      const slots = (english as string).match(/\{\{\w+\}\}/g) ?? [];
+      for (const slot of slots) expect(value, `${key} lost ${slot} in ${lang}`).toContain(slot);
+    }
+  });
+
+  it.each(Object.keys(all))('%s has plural forms for pinned counts that carry the count', (lang) => {
+    const rules = new Intl.PluralRules(lang);
+    const forms = new Set([1, 2, 3, 5, 11, 100, 0].map((n) => rules.select(n)));
+    for (const form of forms) {
+      const value = dig(all[lang], `${CP}pinned_${form}`) ?? dig(all[lang], `${CP}pinned_other`);
+      expect(exists(value), `pinned_${form} missing in ${lang}`).toBe(true);
+    }
+    expect(dig(all[lang], `${CP}pinned_other`)).toContain('{{count}}');
+  });
+
+  it('formats the pinned count with each language plural rules', async () => {
+    const make = async (lang: string, resource: any) => {
+      const i18n = createInstance();
+      await i18n.init({ lng: lang, fallbackLng: 'en', resources: { en: { translation: en }, [lang]: { translation: resource } }, interpolation: { escapeValue: false } });
+      return (count: number) => i18n.t(`${CP}pinned`, { count });
+    };
+    const english = await make('en', en);
+    expect([english(1), english(3)]).toEqual(['1 pinned', '3 pinned']);
+    const arabic = await make('ar', ar);
+    expect([arabic(1), arabic(2), arabic(5), arabic(12)]).toEqual(['عنصر واحد مثبّت', 'عنصران مثبّتان', '5 عناصر مثبّتة', '12 عنصرًا مثبّتًا']);
+    const hebrew = await make('he', he);
+    expect([hebrew(1), hebrew(2), hebrew(7)]).toEqual(['פריט אחד מוצמד', 'שני פריטים מוצמדים', '7 פריטים מוצמדים']);
+    const count = await make('fr', fr);
+    expect([count(1), count(4)]).toEqual(['1 épinglé', '4 épinglés']);
+  });
+});
+
+describe('category pages route their labels through i18n (I18N-X01)', () => {
+  const SRC = resolve(__dirname, '../..');
+  const walk = (dir: string, out: string[] = []): string[] => {
+    for (const name of readdirSync(dir)) {
+      const p = resolve(dir, name);
+      if (statSync(p).isDirectory()) { if (name !== '__tests__' && name !== 'LandingPage') walk(p, out); }
+      else if (p.endsWith('.tsx') && !p.includes('.test.')) out.push(p);
+    }
+    return out;
+  };
+  const LITERALS = [
+    />\s*Public Visibility\s*</, />\s*Manage Public Visibility\s*</, /^\s*Public Visibility\s*$/m,
+    /^\s*(<[^>]+>[^<]*<\/span>\s*)?Manage Top (Picks|Reads)( \(.*\))?\s*$/m, />\s*Manage Top (Picks|Reads)/,
+    /"Pub" : "Draft"/, /\? "Public" : "Draft"/, /\? "Published" : "Draft"/, /^\s*Open( ➔|\s*<ChevronRight)/m,
+    /\} places\s*(<|$)/m, />\s*No (apps|books|games|movies|people|products) yet\s*</, /emptyMessage = "No /, /is now \$\{nextValue/, /"Add Location"/,
+  ];
+  it('leaves none of the category-page strings hard-coded', () => {
+    const offenders: string[] = [];
+    for (const file of walk(SRC)) {
+      const text = readFileSync(file, 'utf8');
+      for (const re of LITERALS) if (re.test(text)) offenders.push(`${file.slice(SRC.length + 1)} ${re}`);
+    }
+    expect(offenders).toEqual([]);
   });
 });

@@ -329,7 +329,7 @@ const Favorites = memo(() => {
       }
 
       await refetchCities();
-      toast.success(`${selectedCity.List_Name} is now ${nextValue ? "Public" : "Draft"}`);
+      toast.success(t(nextValue ? "dashboard.categoryPages.listNowPublic" : "dashboard.categoryPages.listNowDraft", { name: selectedCity.List_Name }));
     } catch (error) {
       console.error("Error updating list visibility:", error);
       toast.error("Failed to update visibility");
@@ -849,11 +849,11 @@ const Favorites = memo(() => {
                     <path d="M12 12v8" />
                   </svg>
                 )}
-                Public
+                {t("dashboard.categoryPages.public")}
               </span>
             ) : (
               <span className="text-[10px] font-semibold text-white bg-slate-500/90 px-1.5 py-0.5 rounded-md uppercase tracking-wider font-poppins">
-                Draft
+                {t("dashboard.home.draft")}
               </span>
             )}
 
@@ -906,7 +906,7 @@ const Favorites = memo(() => {
                             });
                           }
                           refetchCities();
-                          toast.success(`${city.List_Name} is now ${nextValue ? "Public" : "Draft"}`);
+                          toast.success(t(nextValue ? "dashboard.categoryPages.listNowPublic" : "dashboard.categoryPages.listNowDraft", { name: city.List_Name }));
                         }).catch(() => {
                           toast.error("Failed to update visibility");
                         });
@@ -1001,10 +1001,10 @@ const Favorites = memo(() => {
 
         <div className="flex justify-between items-center mt-1">
           <span className="text-[10px] text-white/50 font-medium">
-            {city.recommended_places?.length || 0} places
+            {t("publicProfile.recommendations.counts.place", { count: city.recommended_places?.length || 0, formattedCount: String(city.recommended_places?.length || 0), suffix: "" })}
           </span>
           <span className="text-[10px] text-dashboard-accent font-bold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform duration-200">
-            Open ➔
+            {t("dashboard.categoryPages.open")} ➔
           </span>
         </div>
       </div>
@@ -1077,7 +1077,7 @@ const Favorites = memo(() => {
                             disabled={navigation.busy || !navigation.authority}
                             variant="blue"
                           />
-                          <span className="text-[10px] md:text-xs text-white leading-tight whitespace-nowrap font-medium">Public Visibility</span>
+                          <span className="text-[10px] md:text-xs text-white leading-tight whitespace-nowrap font-medium">{t("dashboard.categoryPages.publicVisibility")}</span>
                         </div>
                         <button
                           onClick={() => setIsLocationModalOpen(true)}
@@ -1112,10 +1112,10 @@ const Favorites = memo(() => {
                         </div>
                         {mobileDropdownOpen && (
                           <div className="absolute top-[calc(100%+6px)] right-0 left-0 p-3.5 z-[100] border border-dashboard-accent/30 rounded-2xl bg-dashboard-sidebar/95 backdrop-blur-md shadow-xl flex justify-between items-center">
-                            <span className="text-[11px] text-white/90 font-semibold">Manage Public Visibility</span>
+                            <span className="text-[11px] text-white/90 font-semibold">{t("dashboard.categoryPages.managePublicVisibility")}</span>
                             <div className="flex items-center gap-2" title={visibilityDisabledReason}>
                               <span className={`text-[10px] font-bold uppercase ${categoryVisible ? "text-[#4ade80]" : "text-[#f87171]"}`}>
-                                {categoryVisible ? "Pub" : "Draft"}
+                                {categoryVisible ? t("dashboard.categoryPages.pubShort") : t("dashboard.home.draft")}
                               </span>
                               <SwitchButton
                                 isChecked={categoryVisible}
@@ -1196,7 +1196,7 @@ const Favorites = memo(() => {
                                           <span className="text-white/40">•</span>
                                           <span>🗼 Landmark, Food</span>
                                           <span className="text-white/40">•</span>
-                                          <span>{featuredCity?.recommended_places?.length || 0} places</span>
+                                          <span>{t("publicProfile.recommendations.counts.place", { count: featuredCity?.recommended_places?.length || 0, formattedCount: String(featuredCity?.recommended_places?.length || 0), suffix: "" })}</span>
                                         </motion.div>
                             
                                         <motion.p 
@@ -1218,7 +1218,7 @@ const Favorites = memo(() => {
                                             onClick={(e) => { e.stopPropagation(); setIsManageModalOpen(true); }}
                                             className="flex items-center gap-1.5 bg-dashboard-accent hover:opacity-90 text-white font-bold py-2.5 px-6 rounded-lg shadow-xl shadow-blue-500/20 transition-all hover:scale-105 cursor-pointer border-none text-xs"
                                           >
-                                            <span className="text-amber-400">★</span> Manage Top Picks
+                                            <span className="text-amber-400">★</span> {t("dashboard.categoryPages.manageTopPicks")}
                                           </button>
                                         </motion.div>
                                       </div>
@@ -1329,7 +1329,7 @@ const Favorites = memo(() => {
                                       <div className="flex flex-wrap items-center gap-2 text-xs text-white/80 font-semibold tracking-wide mt-1">
                                         <span>{city?.List_Name_Details?.note ? "Personal Guide" : "Local Curation"}</span>
                                         <span className="text-white/40">•</span>
-                                        <span>{city?.recommended_places?.length || 0} places</span>
+                                        <span>{t("publicProfile.recommendations.counts.place", { count: city?.recommended_places?.length || 0, formattedCount: String(city?.recommended_places?.length || 0), suffix: "" })}</span>
                                       </div>
                                       
                                       <div className="flex items-center gap-3 mt-4 pointer-events-auto">
@@ -1340,7 +1340,7 @@ const Favorites = memo(() => {
                                             setIsManageModalOpen(true);
                                           }}
                                         >
-                                          <span className="text-amber-400">★</span> Manage Top Picks
+                                          <span className="text-amber-400">★</span> {t("dashboard.categoryPages.manageTopPicks")}
                                         </button>
                                       </div>
                                     </div>
@@ -1357,7 +1357,7 @@ const Favorites = memo(() => {
                           className="w-full flex items-center justify-between p-4 rounded-[14px] border border-amber-500/25 bg-amber-500/5 hover:bg-amber-500/10 transition-all duration-300 cursor-pointer mb-6"
                         >
                           <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-[#fbbf24]">
-                            <span className="text-amber-400">★</span> Manage Top Picks ({pinnedCities.length}/5)
+                            <span className="text-amber-400">★</span> {t("dashboard.categoryPages.manageTopPicksCount", { pinned: pinnedCities.length, total: 5 })}
                           </div>
                           <div className="flex items-center text-amber-500">
                             <svg className="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
@@ -1383,7 +1383,7 @@ const Favorites = memo(() => {
                             className="border-2 border-dashed border-dashboard-border rounded-[14px] flex flex-col items-center justify-center gap-1.5 p-4 min-h-[120px] cursor-pointer hover:border-dashboard-accent hover:bg-dashboard-accent/5 transition-all duration-300"
                           >
                             <span className="text-xl text-white/30 font-light">+</span>
-                            <span className="text-[10px] md:text-xs text-white/45 font-semibold whitespace-nowrap">Add Location</span>
+                            <span className="text-[10px] md:text-xs text-white/45 font-semibold whitespace-nowrap">{t("dashboard.categoryPages.addLocation")}</span>
                           </div>
                         </div>
                       </div>
@@ -1433,7 +1433,7 @@ const Favorites = memo(() => {
                         {/* Published Toggle Switch */}
                         <div className="flex items-center gap-2" data-walkthrough="togglePublish">
                           <span className={`text-[10px] font-semibold uppercase ${selectedCity?.Visibility ? "text-[#4ade80]" : "text-[#f87171]"}`}>
-                            {selectedCity?.Visibility ? "Published" : "Draft"}
+                            {selectedCity?.Visibility ? t("dashboard.home.published") : t("dashboard.home.draft")}
                           </span>
                           <SwitchButton
                             isChecked={selectedCity?.Visibility || false}
@@ -1603,7 +1603,7 @@ const Favorites = memo(() => {
           >
             <div className="p-6 max-h-[80vh] overflow-y-auto font-poppins text-white">
               <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-white">
-                <span className="text-amber-400">★</span> Manage Top Picks
+                <span className="text-amber-400">★</span> {t("dashboard.categoryPages.manageTopPicks")}
               </h2>
               <p className="text-xs text-white/50 mb-6">
                 Pin up to 5 locations as Top Picks and reorder them to customize the hero slideshow on your profile.

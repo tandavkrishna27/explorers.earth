@@ -1526,23 +1526,25 @@ const PublicHome = memo(() => {
                           <div key={city.documentId || idx} className="flex flex-col gap-3">
                             <div className="flex justify-between items-end">
                               <div className="flex flex-col gap-0.5 max-w-[75%]">
-                                <h2
-                                  {...keyboardActivation(() => navigate(`/${username}/places/${citySlug}`))}
-                                  className="text-base font-extrabold text-[var(--category-text,#FFFFFF)] cursor-pointer hover:text-[var(--category-text,#3B82F6)] transition-colors duration-200 flex items-center gap-1.5"
-                                >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    fill="currentColor"
-                                    className="w-4 h-4 shrink-0 text-yellow-400"
+                                <h2 className="text-base font-extrabold text-[var(--category-text,#FFFFFF)]">
+                                  <span
+                                    {...keyboardActivation(() => navigate(`/${username}/places/${citySlug}`))}
+                                    className="cursor-pointer hover:text-[var(--category-text,#3B82F6)] transition-colors duration-200 flex items-center gap-1.5"
                                   >
-                                    <path
-                                      fillRule="evenodd"
-                                      clipRule="evenodd"
-                                      d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"
-                                    />
-                                  </svg>
-                                  <span>{city.List_Name}</span>
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      viewBox="0 0 24 24"
+                                      fill="currentColor"
+                                      className="w-4 h-4 shrink-0 text-yellow-400"
+                                    >
+                                      <path
+                                        fillRule="evenodd"
+                                        clipRule="evenodd"
+                                        d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"
+                                      />
+                                    </svg>
+                                    <span>{city.List_Name}</span>
+                                  </span>
                                 </h2>
                               </div>
                               <button

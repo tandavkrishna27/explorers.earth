@@ -800,6 +800,69 @@
     "ZW": "Zimbabwe"
   },
   "dashboard": {
+    "categoryPages": {
+      "publicVisibility": "Visibilidade pública",
+      "managePublicVisibility": "Gerenciar visibilidade pública",
+      "public": "Público",
+      "pubShort": "Púb.",
+      "open": "Abrir",
+      "manageTopPicks": "Gerenciar destaques",
+      "manageTopPicksCount": "Gerenciar destaques ({{pinned}}/{{total}})",
+      "manageTopReads": "Gerenciar leituras em destaque",
+      "manageTopReadsCount": "Gerenciar leituras em destaque ({{pinned}}/{{total}})",
+      "addLocation": "Adicionar local",
+      "updateLocation": "Atualizar local",
+      "pinned_one": "{{count}} fixado",
+      "pinned_other": "{{count}} fixados",
+      "empty": {
+        "apps": "Ainda não há aplicativos",
+        "books": "Ainda não há livros",
+        "games": "Ainda não há jogos",
+        "movies": "Ainda não há filmes",
+        "people": "Ainda não há pessoas",
+        "products": "Ainda não há produtos"
+      },
+      "hub": {
+        "title": "Todas as suas recomendações em um só lugar",
+        "subtitle": "Selecione, organize e compartilhe com o mundo seus lugares, filmes, livros, jogos, ferramentas e guias favoritos.",
+        "categoryFallback": "Categoria",
+        "hidden": "Oculto",
+        "pinnedToNav": "Fixado na navegação pública",
+        "categoryOptions": "Opções da categoria",
+        "publishFirst": "Publique esta categoria antes de fixá-la.",
+        "automatic": "Posicionamento automático · Modo manual em Configurações",
+        "unpin": "Desafixar da navegação pública",
+        "pin": "Fixar na navegação pública (máx. 5)",
+        "disableUrl": "Desativar URL pública",
+        "enableUrl": "Ativar URL pública",
+        "viewPublic": "Ver página pública",
+        "copyLink": "Copiar link público",
+        "copied": "Copiado!",
+        "copiedToast": "Link público de {{category}} copiado para a área de transferência!",
+        "labels": {
+          "places": "Lugares",
+          "movies": "Filmes e séries",
+          "books": "Livros",
+          "games": "Jogos",
+          "apps": "Apps e ferramentas",
+          "products": "Produtos",
+          "people": "Pessoas",
+          "guides": "Guias"
+        },
+        "descriptions": {
+          "places": "Seus lugares favoritos para comer, se hospedar e passear, selecionados para compartilhar.",
+          "movies": "Sua lista de filmes e séries que vale a pena recomendar.",
+          "books": "Os livros que ficaram com você, na estante para outros encontrarem.",
+          "games": "Seu hall da fama dos games: os títulos que vale a pena indicar.",
+          "apps": "Os apps e ferramentas nos quais você realmente confia.",
+          "products": "O equipamento que você recomendaria a um amigo comprar.",
+          "people": "Os criadores e makers que você diria para todo mundo seguir.",
+          "guides": "Seus roteiros e conhecimento local, mapeados para outros seguirem."
+        }
+      },
+      "listNowPublic": "{{name}} agora é público",
+      "listNowDraft": "{{name}} agora é um rascunho"
+    },
     "home": {
       "activePlaces": "lugares ativos",
       "addLocation": "Add Location",
@@ -1728,20 +1791,20 @@
         "ONGs",
         "Equipes governamentais"
       ],
-      "explore": "See this perspective",
-      "eyebrow": "Ways to use explorers",
+      "explore": "Ver esta perspectiva",
+      "eyebrow": "Formas de usar o explorers",
       "perspectives": {
         "brands": {
-          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
-          "title": "Brands"
+          "description": "Faça a curadoria de coleções, guias, locais e produtos com um ponto de vista claro e humano.",
+          "title": "Marcas"
         },
         "creators": {
-          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
-          "title": "Creators"
+          "description": "Dê ao seu público um lar duradouro para as recomendações que, de outra forma, desapareceriam no feed.",
+          "title": "Criadores"
         },
         "personal": {
-          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
-          "title": "Personal"
+          "description": "Guarde os lugares, livros, filmes, ferramentas, pessoas e descobertas que moldam o seu mundo.",
+          "title": "Pessoal"
         }
       }
     },

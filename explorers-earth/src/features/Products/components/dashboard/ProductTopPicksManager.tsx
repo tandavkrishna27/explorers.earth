@@ -7,6 +7,7 @@ import { useProductsCommands, useProductsCallerCustody } from "../../api/query";
 import type { RecommendedProduct } from "../../types";
 import { buildImageUrl } from "../../utils/productHelpers";
 import DialogPanel from "../../../../components/ui/DialogPanel";
+import { useTranslation } from "react-i18next";
 
 interface ProductTopPicksManagerProps {
   products: RecommendedProduct[];
@@ -22,6 +23,7 @@ const ProductTopPicksManager = ({
   onClose,
   onRefetch,
 }: ProductTopPicksManagerProps) => {
+  const { t } = useTranslation();
   const { announce, region } = useMoveAnnouncer();
   const [pinnedProducts, setPinnedProducts] = useState<RecommendedProduct[]>(
     [...products].sort((a, b) => (a.pin_order ?? 999) - (b.pin_order ?? 999))
@@ -112,7 +114,7 @@ const ProductTopPicksManager = ({
         <div className="flex items-center justify-between px-5 py-3 border-b border-white/8">
           <h2 className="text-base font-semibold text-white flex items-center gap-2">
             <Star size={16} className="text-blue-400" fill="currentColor" />
-            Manage Top Picks ({pinnedProducts.length}/15)
+            {t("dashboard.categoryPages.manageTopPicksCount", { pinned: pinnedProducts.length, total: 15 })}
           </h2>
           <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
             <X size={18} />

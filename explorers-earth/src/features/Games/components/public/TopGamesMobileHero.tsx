@@ -3,6 +3,7 @@ import { motion, PanInfo } from "framer-motion";
 import { Grid, Star } from "lucide-react";
 import type { RecommendedGame } from "../../types";
 import { buildCoverUrl } from "../../utils/gameHelpers";
+import { useTranslation } from "react-i18next";
 
 interface TopGamesMobileHeroProps {
   games: RecommendedGame[];
@@ -12,6 +13,7 @@ interface TopGamesMobileHeroProps {
 }
 
 const TopGamesMobileHero = ({ games, onGameClick, showManageButton = false, onManageClick }: TopGamesMobileHeroProps) => {
+  const { t } = useTranslation();
   const [activeIndex, setActiveIndex] = useState(0);
 
   // Auto-iterate the carousel every 4 seconds
@@ -110,7 +112,7 @@ const TopGamesMobileHero = ({ games, onGameClick, showManageButton = false, onMa
                         onManageClick?.();
                       }}
                     >
-                      <Star size={18} fill="currentColor" /> Manage Top Picks
+                      <Star size={18} fill="currentColor" /> {t("dashboard.categoryPages.manageTopPicks")}
                     </button>
                   ) : (
                     <button 
