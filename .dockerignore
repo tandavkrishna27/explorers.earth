@@ -1039,6 +1039,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/pages/UseCases.tsx
 !explorers-earth/src/pages/onboardingAccountDecision.ts
 !explorers-earth/src/pages/onboardingFinalizeLock.ts
+!explorers-earth/src/pages/onboardingGoogleProfile.ts
 !explorers-earth/src/pages/onboardingPayload.ts
 !explorers-earth/src/pages/public/PublicHomePage.tsx
 !explorers-earth/src/pages/public/PublicProfilePage.tsx

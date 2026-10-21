@@ -31,9 +31,11 @@ describe("runtime route/event/job inventory", () => {
     // explorersPlacePinsRoutes.ts (6 operations plus their 6 ALL method guards).
     // 192 = 190 + the owner list-order operation and its ALL method guard
     // (PATCH /api/explorers/v1/categories/:category/lists/order).
-    expect(inventory.routes).toHaveLength(192);
+    // 193 = 192 + the owner Google profile photo import (POST /api/explorers/v1/media/provider-avatar).
+    expect(inventory.routes).toHaveLength(193);
     expect(inventory.events).toHaveLength(15);
-    expect(inventory.jobs).toHaveLength(37);
+    // 38 = 37 + the Google profile photo fetch deadline (googleAvatarFetch.ts).
+    expect(inventory.jobs).toHaveLength(38);
     expect(inventory.jobs).toContainEqual(expect.objectContaining({kind:'setTimeout',source:'tunes/server/application/appEnrichmentLocalScheduler.ts',lifecycle:'scheduled-callback'}));
     expect(inventory.jobs).toContainEqual(expect.objectContaining({kind:'setTimeout',source:'tunes/server/services/appEnrichmentFetch.ts',lifecycle:'scheduled-callback'}));
     expect(inventory.routes.filter(route => route.path === '/api/explorers/v1/profiles/:username/recommendations/people/sectors/:sectorSlug')).toEqual([

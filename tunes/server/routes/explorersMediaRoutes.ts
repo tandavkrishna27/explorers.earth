@@ -4,6 +4,8 @@ import type { Pool } from "pg";
 import type { ExplorersAuth, ExplorersAuthConfig } from "../auth/betterAuth";
 import { requireActor, sendActorError } from "../middleware/explorersPrincipal";
 import { MediaService, MediaInputError, MediaUnavailable, type MediaUploadInput } from "../application/media";
+import { fromNodeHeaders } from "#auth-runtime";
+import { GoogleAvatarFetcher } from "../services/googleAvatarFetch";
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /**
@@ -18,7 +20,7 @@ const PUBLIC_MEDIA_CACHE_CONTROL = "public, no-cache";
 const failure = (status: number, code: string, message: string) => ({ status, body: { error: { code, message, requestId: randomUUID() } } });
 
 export function setupExplorersMediaRoutes(app: Express, pool: Pool, auth: ExplorersAuth, config: ExplorersAuthConfig,
-  service = new MediaService(pool),beforeMediaCommand?:express.RequestHandler): void {
+  service = new MediaService(pool),beforeMediaCommand?:express.RequestHandler,avatarFetcher = new GoogleAvatarFetcher()): void {
   app.post("/api/explorers/v1/media", async (request, response, next) => {
     if (request.get("origin") !== config.baseURL) {
       const result = failure(403, "FORBIDDEN", "Origin is not trusted");
@@ -32,6 +34,36 @@ export function setupExplorersMediaRoutes(app: Express, pool: Pool, auth: Explor
       const media = await service.createMedia(actor, { purpose: request.get("x-media-purpose") as MediaUploadInput["purpose"],
         filename: request.get("x-file-name") ?? "", mimeType: request.get("content-type") ?? "",
         length: Number(request.get("content-length")), bytes: request.body } , { requestId: randomUUID() });
+      return response.status(201).json({ media });
+    } catch (error) {
+      if (error instanceof MediaInputError) { const result = failure(422, "INVALID_INPUT", error.message); return response.status(result.status).json(result.body); }
+      sendActorError(request, response, error);
+    }
+  });
+
+  /**
+   * Imports the signed-in user's Google profile photo as their own profile media, so the photo
+   * onboarding offered is stored like any upload and served through the same gate. The URL is
+   * read from the session, never from the request, and the fetcher only reaches Google's photo
+   * hosts. Nothing references the new media until the caller attaches it to the account.
+   */
+  app.post("/api/explorers/v1/media/provider-avatar", async (request, response, next) => {
+    if (request.get("origin") !== config.baseURL) {
+      const result = failure(403, "FORBIDDEN", "Origin is not trusted");
+      return response.status(result.status).json(result.body);
+    }
+    try { request.explorersActor = await requireActor(request, auth, pool); next(); }
+    catch (error) { sendActorError(request, response, error); }
+  }, ...(beforeMediaCommand?[beforeMediaCommand]:[]), async (request, response) => {
+    try {
+      const actor = request.explorersActor!;
+      const session = await auth.api.getSession({ headers: fromNodeHeaders(request.headers) });
+      const image = session?.user?.id === actor.userId ? session.user.image : null;
+      let photo: { bytes: Buffer; mimeType: string };
+      try { if (!image) throw new MediaUnavailable("No profile photo"); photo = await avatarFetcher.fetch(image); }
+      catch { const result = failure(404, "NOT_FOUND", "Profile photo unavailable"); return response.status(result.status).json(result.body); }
+      const media = await service.createMedia(actor, { purpose: "profile", filename: "google-profile-photo",
+        mimeType: photo.mimeType, length: photo.bytes.length, bytes: photo.bytes }, { requestId: randomUUID() });
       return response.status(201).json({ media });
     } catch (error) {
       if (error instanceof MediaInputError) { const result = failure(422, "INVALID_INPUT", error.message); return response.status(result.status).json(result.body); }
