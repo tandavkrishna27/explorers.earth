@@ -20,7 +20,7 @@ _CONTRACT_SCHEMA_VERSION=int(re.search(r'EXPECTED_MUSIC_MIGRATION_ID\s*=\s*"(\d{
 # Note that the committed cases.json/receipt.json are the generator's own compact output,
 # so a fresh run reproduces the committed bytes exactly; only the floor and each release's
 # manifestDigest change when the floor moves.
-SCHEMA_VERSION=62
+SCHEMA_VERSION=63
 assert SCHEMA_VERSION==_CONTRACT_SCHEMA_VERSION, (
     'fixture floor SCHEMA_VERSION=%d no longer matches the canonical migration head '
     '(%d, from EXPECTED_MUSIC_MIGRATION_ID in tunes/shared/music-migration-contract.ts). '

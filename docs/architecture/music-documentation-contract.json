@@ -91,7 +91,8 @@
     "0059_explorers_person_suppression_audit",
     "0060_explorers_guide_budget_tier",
     "0061_explorers_product_spec_order_budget_scale",
-    "0062_explorers_handle_holds"
+    "0062_explorers_handle_holds",
+    "0063_explorers_open_library_books"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",

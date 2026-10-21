@@ -1,11 +1,12 @@
 import {BookCatalog} from '../services/bookCatalog';
+import {openLibraryAuthor,openLibraryEdition,openLibraryWork} from './fixtures/book-provider-shapes';
 import {MediaService} from '../application/media';
 import type {Actor} from '../application/actor';
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==','base64');
 const bytes=new Map<string,Buffer>();let storageReads=0;
 const storage={environment:'local' as const,put:async(k:string,b:Buffer)=>{bytes.set(k,b);},get:async(k:string)=>{storageReads++;return bytes.get(k)!;},delete:async(k:string)=>{bytes.delete(k);}};
-let providerTitle='Provider title';const providerFetch=vi.fn(async(url:URL)=>new Response(JSON.stringify(url.pathname.endsWith('/volumes')?{items:[{id:'fixture-v1',volumeInfo:{title:providerTitle,authors:['Writer'],publishedDate:'2024-03',industryIdentifiers:[{type:'ISBN_10',identifier:'123456789X'}],description:'<p>Book summary</p>'}}],totalItems:1}:{id:url.pathname.split('/').at(-1),volumeInfo:{title:providerTitle,authors:['Writer'],publishedDate:'2024-03',industryIdentifiers:[{type:'ISBN_10',identifier:'123456789X'}],description:'<p>Book summary</p>'}})));
-const books=new BookCatalog({apiKey:'deterministic-only',secret:'cursor-test-secret',fetch:providerFetch as any});import { createHmac, randomUUID } from 'node:crypto';
+let providerTitle='Provider title';const providerFetch=vi.fn(async(url:URL)=>url.hostname==='openlibrary.org'?new Response(JSON.stringify(url.pathname.startsWith('/books/')?{...openLibraryEdition,key:url.pathname.slice(0,-5)}:url.pathname.startsWith('/works/')?openLibraryWork:openLibraryAuthor)):new Response(JSON.stringify(url.pathname.endsWith('/volumes')?{items:[{id:'fixture-v1',volumeInfo:{title:providerTitle,authors:['Writer'],publishedDate:'2024-03',industryIdentifiers:[{type:'ISBN_10',identifier:'123456789X'}],description:'<p>Book summary</p>'}}],totalItems:1}:{id:url.pathname.split('/').at(-1),volumeInfo:{title:providerTitle,authors:['Writer'],publishedDate:'2024-03',industryIdentifiers:[{type:'ISBN_10',identifier:'123456789X'}],description:'<p>Book summary</p>'}})));
+const books=new BookCatalog({apiKey:'deterministic-only',secret:'cursor-test-secret',fetch:providerFetch as any,openLibraryIntervalMs:0});import { createHmac, randomUUID } from 'node:crypto';
 import pg from 'pg';
 import request from 'supertest';
 import { afterAll, beforeAll, expect, it, vi } from 'vitest';
@@ -46,6 +47,14 @@ it('refetches trusted Book identity once per command, serializes global identity
  providerTitle='Updated provider';const again=await command(b,'post','/entities/resolve',input);expect(again.body.entity).toEqual(resolved.body.entity);
  const [one,two]=await Promise.all([command(a,'post','/entities/resolve',{...input,externalId:'fixture-v2'}),command(b,'post','/entities/resolve',{...input,externalId:'fixture-v2'})]);expect(one.status).toBe(200);expect(two.body.entity.id).toBe(one.body.entity.id);expect(one.body.entity.id).not.toBe(resolved.body.entity.id);
  expect((await command(a,'post','/entities/resolve',{...input,details:{title:'Spoof'}})).status).toBe(422);
+});
+it('stores an Open Library edition under its own identity and resolves it again to the same entity',async()=>{
+ const a=await persona(),b=await persona(),input={kind:'provider',category:'books',provider:'open_library',externalKind:'edition',externalId:'OL32848840M'};
+ const first=await command(a,'post','/entities/resolve',input);expect(first.status).toBe(200);
+ expect(first.body.entity).toMatchObject({origin:'provider',title:'Dune',provenance:{provider:'open_library',externalKind:'edition',externalId:'OL32848840M',sourceUrl:'https://openlibrary.org/books/OL32848840M.json'},details:{authors:['Frank Herbert'],isbn13:'9781444738209',coverUrl:'https://covers.openlibrary.org/b/id/11481354-M.jpg?default=false'}});
+ const again=await command(b,'post','/entities/resolve',input);expect(again.body.entity.id).toBe(first.body.entity.id);
+ expect((await pool.query("SELECT provider,external_kind FROM entity_identifiers WHERE entity_id=$1",[first.body.entity.id])).rows).toEqual([{provider:'open_library',external_kind:'edition'}]);
+ expect((await command(a,'post','/entities/resolve',{...input,externalKind:'volume'})).status).toBe(422);
 });
 it('roundtrips manual Book facts, sparse overrides/context and identity replacement preserving account editorial relations',async()=>{
  const a=await persona(),b=await persona(),la=await list(a),lb=await list(b);

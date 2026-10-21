@@ -38,7 +38,8 @@ describe("runtime route/event/job inventory", () => {
     expect(inventory.events).toHaveLength(15);
     // 38 = 37 + the Google profile photo fetch deadline (googleAvatarFetch.ts).
     // 39 = 38 + the place photo fetch deadline (tunes/server/services/placePhotoFetch.ts).
-    expect(inventory.jobs).toHaveLength(39);
+    // 40 = 39 + the Open Library request spacing in the Book catalog (bookCatalog.ts).
+    expect(inventory.jobs).toHaveLength(40);
     expect(inventory.jobs).toContainEqual(expect.objectContaining({kind:'setTimeout',source:'tunes/server/application/appEnrichmentLocalScheduler.ts',lifecycle:'scheduled-callback'}));
     expect(inventory.jobs).toContainEqual(expect.objectContaining({kind:'setTimeout',source:'tunes/server/services/appEnrichmentFetch.ts',lifecycle:'scheduled-callback'}));
     expect(inventory.routes.filter(route => route.path === '/api/explorers/v1/profiles/:username/recommendations/people/sectors/:sectorSlug')).toEqual([

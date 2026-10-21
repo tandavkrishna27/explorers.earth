@@ -2,7 +2,7 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0062_explorers_handle_holds",
+    "expectedId": "0063_explorers_open_library_books",
     "files": [
       "0001_runtime_baseline.sql",
       "0002_identity_lifecycle.sql",
@@ -65,7 +65,8 @@
       "0059_explorers_person_suppression_audit.sql",
       "0060_explorers_guide_budget_tier.sql",
       "0061_explorers_product_spec_order_budget_scale.sql",
-      "0062_explorers_handle_holds.sql"
+      "0062_explorers_handle_holds.sql",
+      "0063_explorers_open_library_books.sql"
     ],
     "controlTables": [
       "music_schema_migrations",
