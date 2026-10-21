@@ -198,6 +198,16 @@ describe("PublicHome Places category states", () => {
     expect(screen.getByTestId("contact-number")).toHaveTextContent("+919876543210");
   });
 
+  it("lists a named person whose private contact number is withheld (PLC-X11)", async () => {
+    state.places.data = { recommendationLists: [list("tokyo", "Tokyo", [{ ...place("private-contact-person", "Unused Place"), Recommendation_Type: "person", contact_name: "Pierre Dubois", contact_number: null }])] };
+    renderPlaces("/alice/places/tokyo");
+    const card = await screen.findByTestId("place-card");
+    expect(card).toHaveTextContent("Pierre Dubois");
+    await click(card);
+    expect(await screen.findByTestId("contact-name")).toHaveTextContent("Pierre Dubois");
+    expect(screen.getByTestId("contact-number").textContent).toBe("");
+  });
+
   it.each([null, 42, ""])("keeps a person with undisclosed or invalid canonical name %s ineligible despite a legacy name", async (contactName) => {
     state.places.data = { recommendationLists: [list("tokyo", "Tokyo", [{ ...place("private-person", "Unused Place"), Recommendation_Type: "person", contact_name: contactName, contact_number: null, Contact_Name: "Private Person", Contact_Number: "Private Number" }])] };
     renderPlaces("/alice/places/tokyo");

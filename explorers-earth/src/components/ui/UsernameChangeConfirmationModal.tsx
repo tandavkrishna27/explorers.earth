@@ -1,5 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import Modal from "./Modal";
 
 interface UsernameChangeConfirmationModalProps {
   isOpen: boolean;
@@ -27,64 +28,59 @@ const UsernameChangeConfirmationModal: React.FC<
 > = ({ isOpen, onClose, onConfirm, newUsername, cooldownDays }) => {
   const { t } = useTranslation();
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div className="bg-gray-50 rounded-lg p-6 max-w-md w-full mx-4 shadow-lg border border-gray-200">
-        <div className="mb-4">
-          <h2 className="text-lg font-medium text-gray-800 mb-3">
-            {t('modal.usernameChange.title')}
-          </h2>
-          <div className="text-sm text-gray-600 space-y-3">
-            <p>
-              {t('modal.usernameChange.description')}
-            </p>
-            <ul className="list-disc pl-5 space-y-1 text-gray-600">
-              <li>
-                <span className="font-medium">{t('modal.usernameChange.profileLabel')}</span>{" "}
-                <code className="bg-gray-200 px-1 rounded text-xs text-gray-700">
-                  explorers.earth/{newUsername}
-                </code>
-              </li>
-              <li>
-                <span className="font-medium">{t('modal.usernameChange.listLabel')}</span>{" "}
-                <code className="bg-gray-200 px-1 rounded text-xs text-gray-700">
-                  explorers.earth/{newUsername}/places
-                </code>
-              </li>
-            </ul>
-            <p className="text-gray-600">
-              {t('modal.usernameChange.warning')}
-            </p>
-            <p className="text-gray-700">
-              {t('modal.usernameChange.cooldownPrefix')}{" "}
-              {cooldownDays < 1
-                ? t('modal.usernameChange.minute')
-                : cooldownDays === 1
-                  ? t('modal.usernameChange.day')
-                  : `${cooldownDays} ${t('modal.usernameChange.days')}`}{" "}
-              {t('modal.usernameChange.cooldownSuffix')}
-            </p>
-          </div>
+    <Modal isOpen={isOpen} onClose={onClose}>
+      <div className="p-6">
+        <h2 className="mb-3 text-lg font-semibold text-dashboard">
+          {t('modal.usernameChange.title')}
+        </h2>
+        <div className="space-y-3 text-sm text-dashboard-light">
+          <p>{t('modal.usernameChange.description')}</p>
+          <ul className="list-disc space-y-1 pl-5">
+            <li>
+              <span className="font-medium text-dashboard">{t('modal.usernameChange.profileLabel')}</span>{" "}
+              <code className="break-all rounded bg-dashboard-muted px-1 text-xs text-dashboard">
+                explorers.earth/{newUsername}
+              </code>
+            </li>
+            <li>
+              <span className="font-medium text-dashboard">{t('modal.usernameChange.listLabel')}</span>{" "}
+              <code className="break-all rounded bg-dashboard-muted px-1 text-xs text-dashboard">
+                explorers.earth/{newUsername}/places
+              </code>
+            </li>
+          </ul>
+          <p>{t('modal.usernameChange.warning')}</p>
+          <p className="text-dashboard">
+            {t('modal.usernameChange.cooldownPrefix')}{" "}
+            {cooldownDays < 1
+              ? t('modal.usernameChange.minute')
+              : cooldownDays === 1
+                ? t('modal.usernameChange.day')
+                : `${cooldownDays} ${t('modal.usernameChange.days')}`}{" "}
+            {t('modal.usernameChange.cooldownSuffix')}
+          </p>
         </div>
 
-        <div className="flex justify-end space-x-3">
+        <div className="mt-6 flex justify-end gap-3">
           <button
+            type="button"
+            data-autofocus
             onClick={onClose}
-            className="px-4 py-2 text-gray-600 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors"
+            className="rounded-md border border-dashboard px-4 py-2 text-dashboard transition-colors hover:bg-dashboard-muted"
           >
             {t('modal.usernameChange.cancel')}
           </button>
           <button
+            type="button"
             onClick={onConfirm}
-            className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-md transition-colors"
+            className="rounded-md bg-red-700 px-4 py-2 text-white transition-colors hover:bg-red-800"
           >
             {t('modal.usernameChange.confirm')}
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };
 

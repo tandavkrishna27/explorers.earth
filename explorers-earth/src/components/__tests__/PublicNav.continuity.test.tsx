@@ -3,6 +3,9 @@ import { Router, Route, Routes, type Navigator } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PublicNav from '../PublicNav';
 
+const preloadPublicTabs = vi.hoisted(() => vi.fn());
+vi.mock('../../routes/publicRoutePreload', () => ({ preloadPublicTabs }));
+
 const usePublicRecommendationCategory = vi.hoisted(() => vi.fn(() => ({ data: undefined, loading: false, error: null, refetch: vi.fn() })));
 const publicIdentity = vi.hoisted(() => ({ state: 'available', account: null as Record<string, unknown> | null }));
 const availableAccount = {
@@ -67,7 +70,21 @@ describe('PublicNav immediate semantic activation', () => {
     vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined);
   });
 
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => { vi.restoreAllMocks(); preloadPublicTabs.mockClear(); });
+
+  it('warms the pinned tabs\' route chunks once the nav is ready, and not while it is loading', () => {
+    publicIdentity.state = 'loading';
+    publicIdentity.account = null;
+    const loading = renderHeldRouter();
+    expect(preloadPublicTabs).not.toHaveBeenCalled();
+    loading.unmount();
+
+    publicIdentity.state = 'available';
+    publicIdentity.account = availableAccount;
+    renderHeldRouter();
+    expect(preloadPublicTabs).toHaveBeenCalledTimes(1);
+    expect(preloadPublicTabs).toHaveBeenCalledWith(['public_profile', 'public_books']);
+  });
 
   it('retains browser-adopted intent while the router location lags across animation frames', () => {
     const view = renderHeldRouter();

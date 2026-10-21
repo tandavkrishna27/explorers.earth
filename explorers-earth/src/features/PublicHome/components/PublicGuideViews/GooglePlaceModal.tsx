@@ -9,6 +9,7 @@ import Overview from "../PlaceDetails/Details/Overview";
 import MediaGallery from "../PlaceDetails/Details/MediaGallery";
 import Address from "../PlaceDetails/Details/Address";
 import { EarthLoader } from "../../../../components/EarthLoader";
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 interface GooglePlaceModalProps {
   place: any; // Google Place data with place_id, name, formatted_address, etc.
@@ -206,7 +207,7 @@ const GooglePlaceModal: FC<GooglePlaceModalProps> = memo(
 
     return (
       <>
-        <div
+        <DialogPanel onClose={onClose}
           data-category-google-place={categoryStyles ? true : undefined}
           className={`${categoryStyles ? 'public-place-detail bg-[var(--category-panel)] text-[var(--category-text)]' : 'dashboard-theme bg-[#2a2a2a]/90'} h-full overflow-y-auto overflow-x-hidden scrollbar-hide rounded-t-2xl shadow-dashboard-elevated flex flex-col transition-transform duration-200 ease-out`}
           style={{
@@ -299,7 +300,7 @@ const GooglePlaceModal: FC<GooglePlaceModalProps> = memo(
               onTabChange={handleTabChange}
             />
           </div>
-        </div>
+        </DialogPanel>
       </>
     );
   }

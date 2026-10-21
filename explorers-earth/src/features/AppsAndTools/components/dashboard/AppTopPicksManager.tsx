@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useAppsCommands, useAppsCallerCustody } from "../../api/query";
 import type { RecommendedApp } from "../../types";
 import { buildLogoUrl } from "../../utils/appHelpers";
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 interface AppTopPicksManagerProps {
   apps: RecommendedApp[];
@@ -89,7 +90,7 @@ const AppTopPicksManager = ({
   };
 
   return (
-    <motion.div
+    <DialogPanel onClose={onClose}
       className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[150] flex items-end md:items-center justify-center md:p-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -216,7 +217,7 @@ const AppTopPicksManager = ({
           </button>
         </div>
       </motion.div>
-    </motion.div>
+    </DialogPanel>
   );
 };
 

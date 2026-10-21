@@ -24,6 +24,7 @@ import { parseTimeline } from "../../utils/guideDataParser";
 import TipsIcon from "../../../../assets/icons/TipsIcon";
 import DeleteIcon from "../../../../assets/icons/DeleteIcon";
 import ConfirmationModal from "../../../../components/ui/ConfirmationModal";
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 interface EditTipModalProps {
   isOpen: boolean;
@@ -143,7 +144,7 @@ const EditTipModal: React.FC<EditTipModalProps> = ({
           />
 
           {/* Modal */}
-          <motion.div
+          <DialogPanel onClose={onClose}
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -236,7 +237,7 @@ const EditTipModal: React.FC<EditTipModalProps> = ({
                 />
               </div>
             </div>
-          </motion.div>
+          </DialogPanel>
         </>
       )}
 

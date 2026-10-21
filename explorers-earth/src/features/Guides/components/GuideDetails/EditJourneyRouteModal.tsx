@@ -14,6 +14,7 @@ import DeleteIcon from "../../../../assets/icons/DeleteIcon";
 import EditIcon from "../../../../assets/icons/EditIcon";
 import VerticalKebab from "../../../../assets/icons/VerticalKebab";
 import type { Guide } from "../../types";
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 interface IntermediateCity {
   id: string;
@@ -295,7 +296,7 @@ const EditJourneyRouteModal: React.FC<EditJourneyRouteModalProps> = ({
             className="fixed inset-0 z-50 flex items-center justify-center px-2 sm:px-4 md:px-12 lg:px-[15%] xl:px-[20%] pointer-events-none"
           >
             {/* Modal */}
-            <motion.div
+            <DialogPanel onClose={onClose}
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -600,7 +601,7 @@ const EditJourneyRouteModal: React.FC<EditJourneyRouteModalProps> = ({
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </DialogPanel>
           </div>
         </>
       )}

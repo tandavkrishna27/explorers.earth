@@ -1,6 +1,6 @@
 import type { AccountDto, UpdateAccountInput, RevisionInput } from "../../../../../tunes/shared/explorersContract";
 import type { KeyValuePair } from "../types/profileSave";
-import { bioToHtml, toBioPlain, toBioRich } from "../utils/bio";
+import { bioToHtml, editorBioToPlain, toBioPlain, toBioRich } from "../utils/bio";
 import { explorersApiClient } from "../../../lib/explorersApiClient";
 
 /** Only the compatibility mapper uses documentId; persistence always uses canonical UUIDs. */
@@ -47,7 +47,7 @@ export function toAccountUpdate(values: KeyValuePair, account: Pick<AccountDto, 
   }
   if ("bio" in values) {
     // The editor hands over HTML; the contract keeps plain text in bioPlain and blocks in bioRich.
-    result.bioPlain = optional(toBioPlain(values.bio));
+    result.bioPlain = optional(editorBioToPlain(values.bio));
     result.bioRich = toBioRich(values.bio);
   }
   if ("mobilenumberLink" in values) result.mobileNumber = optional(values.mobilenumberLink);

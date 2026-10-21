@@ -10,6 +10,7 @@ import { toast } from "sonner";
 
 import type { RecommendedBook } from "../../types";
 import { buildCoverUrl, formatAuthors } from "../../utils/bookHelpers";
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 interface TopReadsManagerProps {
   books: RecommendedBook[];
@@ -77,7 +78,7 @@ const TopReadsManager = ({ books, allBooks, onClose, onRefetch }: TopReadsManage
     finally {if(current())setSaving(false);}
   };
   return (
-    <motion.div
+    <DialogPanel onClose={onClose}
       className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-end md:items-center justify-center md:p-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -221,7 +222,7 @@ const TopReadsManager = ({ books, allBooks, onClose, onRefetch }: TopReadsManage
           </button>
         </div>
       </motion.div>
-    </motion.div>
+    </DialogPanel>
   );
 };
 

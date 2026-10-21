@@ -91,11 +91,16 @@ export const placeRecommendationContextSchema=z.object(contextFields).strict().s
  * Returns the disclosable fields when the creator chose public, and nulls otherwise. The
  * public projection calls this rather than spreading the context, so adding a field to
  * the context cannot silently publish it.
+ *
+ * A person recommendation is the exception for the NAME only: there the name is who is
+ * being recommended (the card's identity), not a way to contact anyone, so it is always
+ * disclosed. Contact visibility still gates the number, and every other contact detail.
  */
 export function publicPlaceContact(context:PlaceRecommendationContext){
  const disclosed=context.contactVisibility==='public';
+ const nameIsIdentity=context.recommendationType==='person';
  return {
-  contact_name:disclosed?context.contactName:null,
+  contact_name:disclosed||nameIsIdentity?context.contactName:null,
   contact_number:disclosed?context.contactNumber:null,
  };
 }

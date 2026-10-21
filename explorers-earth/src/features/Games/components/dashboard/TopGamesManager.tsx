@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useGamesCommands, useGamesCallerCustody } from "../../api/query";
 import type { RecommendedGame } from "../../types";
 import { buildCoverUrl } from "../../utils/gameHelpers";
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 interface TopGamesManagerProps {
   games: RecommendedGame[];
@@ -80,7 +81,7 @@ const TopGamesManager = ({ games, allGames, onClose, onRefetch }: TopGamesManage
   };
 
   return (
-    <motion.div
+    <DialogPanel onClose={onClose}
       className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-end md:items-center justify-center md:p-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -223,7 +224,7 @@ const TopGamesManager = ({ games, allGames, onClose, onRefetch }: TopGamesManage
           </button>
         </div>
       </motion.div>
-    </motion.div>
+    </DialogPanel>
   );
 };
 

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search, Globe, Check } from 'lucide-react';
+import DialogPanel from "../components/ui/DialogPanel";
 
 interface Language {
   code: string;
@@ -118,7 +119,7 @@ const LanguageModal: React.FC<LanguageModalProps> = ({
   const modal = (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
+        <DialogPanel onClose={onClose}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -244,7 +245,7 @@ const LanguageModal: React.FC<LanguageModalProps> = ({
               </div>
             </div>
           </motion.div>
-        </motion.div>
+        </DialogPanel>
       )}
     </AnimatePresence>
   );

@@ -1,6 +1,7 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Button from "./Button";
+import DialogPanel from "../../components/ui/DialogPanel";
 
 interface ConfirmationModalProps {
     isOpen: boolean;
@@ -39,7 +40,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                     />
 
                     {/* Modal */}
-                    <motion.div
+                    <DialogPanel onClose={() => { if (!isLoading) onClose(); }}
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -75,7 +76,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                                 />
                             </div>
                         </div>
-                    </motion.div>
+                    </DialogPanel>
                 </>
             )}
         </AnimatePresence>

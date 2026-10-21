@@ -28,6 +28,7 @@ import ProductDetailModal from "../public/ProductDetailModal";
 import ProductTopPicksHero from "../public/ProductTopPicksHero";
 import ProductTopPicksMobileHero from "../public/ProductTopPicksMobileHero";
 import ProductTopPicksManager from "./ProductTopPicksManager";
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 
 export const CreateProductListModal = ({
@@ -75,7 +76,7 @@ export const CreateProductListModal = ({
 
   return (
     <AnimatePresence>
-      <motion.div
+      <DialogPanel onClose={onClose}
         className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[150] flex items-center justify-center p-4 md:p-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -147,7 +148,7 @@ export const CreateProductListModal = ({
             </div>
           </form>
         </motion.div>
-      </motion.div>
+      </DialogPanel>
     </AnimatePresence>
   );
 };

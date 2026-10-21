@@ -1,4 +1,4 @@
-import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import NavButton from "./ui/NavButton";
 import DirectionBoard from "../assets/icons/DirectionBoard";
 import Profile from "../assets/icons/Profile";
@@ -7,6 +7,7 @@ import { Film, BookOpen, Gamepad2, Smartphone, ShoppingBag, Users } from "lucide
 import { useLocation, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { computePinnedNavTabIds } from "../utils/navPinning";
+import { preloadPublicTabs } from "../routes/publicRoutePreload";
 import { usePublicAccountIdentity } from "../features/PublicHome/api/PublicAccountIdentityProvider";
 import { usePublicRecommendationCategory } from "../features/PublicHome/api/usePublicRecommendationCategory";
 
@@ -170,6 +171,15 @@ const PublicNav = memo(() => {
   }, []);
 
   const activePathname = intendedPathname ?? location.pathname;
+
+  // Warm the pinned tabs' route chunks once the nav is ready (see publicRoutePreload.ts).
+  // MUST be before any early return to comply with React Rules of Hooks.
+  const pinnedTabKey = loading || !accountData
+    ? ""
+    : computePinnedNavTabIds(accountData, categoryListCountMap).join(",");
+  useEffect(() => {
+    if (pinnedTabKey) preloadPublicTabs(pinnedTabKey.split(","));
+  }, [pinnedTabKey]);
 
   // Don't render tabs until account data is loaded to prevent flash of default tabs
   if (loading || !accountData) {

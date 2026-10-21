@@ -19,6 +19,7 @@ import StayView from "./Views/StayView";
 import ActivitiesView from "./Views/ActivitiesView";
 import TipsView from "./Views/TipsView";
 import BudgetView from "./Views/BudgetView";
+import DialogPanel from "../../../../../components/ui/DialogPanel";
 
 interface SectionDetailModalProps {
   section: any;
@@ -129,7 +130,7 @@ const SectionDetailModal: React.FC<SectionDetailModalProps> = ({
           />
 
           {/* Modal */}
-          <motion.div
+          <DialogPanel onClose={onClose}
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -374,7 +375,7 @@ const SectionDetailModal: React.FC<SectionDetailModalProps> = ({
                 )}
               </div>
             </div>
-          </motion.div>
+          </DialogPanel>
         </>
       )}
     </AnimatePresence>

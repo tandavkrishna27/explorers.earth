@@ -420,7 +420,8 @@
         "primaryAddressRequired": "כתובת ראשית נדרשת",
         "profileImageAlt": "Profile",
         "resetLinkSentSuccess": "קישור איפוס נשלח בהצלחה!",
-        "stateRequired": "מדינה נדרשת"
+        "stateRequired": "מדינה נדרשת",
+        "postalCodeInvalid": "הזינו מיקוד תקין (2–10 אותיות, ספרות, רווחים או מקפים)"
       },
       "password": {
         "considerLonger": "שקול להשתמש בסיסמה ארוכה יותר עם יותר גיוון לאבטחה טובה יותר",
@@ -532,7 +533,8 @@
     "signInWithGoogle": "התחבר עם Google",
     "signUpWithGoogle": "הירשם עם Google",
     "submit": "שלח",
-    "and": "וכן"
+    "and": "וכן",
+    "confirm": "אישור"
   },
   "contact": {
     "closingMessage": "אנחנו צוות קטן עם חזון גדול — המחשבות שלכם חשובות לנו. צרו קשר ובואו נבנה משהו מקומי וגלובלי יחד.",
@@ -807,9 +809,10 @@
         "ariaLabel": "{{label}}: {{value}}",
         "loading": "Loading",
         "unavailable": "Unavailable",
-        "viewsLast90Days": "Views · last 90 days"
+        "viewsLast90Days": "צפיות · 90 הימים האחרונים"
       },
       "draft": "טיוטה",
+      "published": "פורסם",
       "error": {
         "message": "An error occurred while loading your data",
         "retry": "Retry",
@@ -849,7 +852,98 @@
       },
       "startCurating": "התחל לאסוף את ההמלצות שלך ושתף אותן עם העולם!",
       "viewPublicProfileTooltip": "View your public profile as seen by others",
-      "welcomeBack": "ברוכים השבים"
+      "welcomeBack": "ברוכים השבים",
+      "tabs": {
+        "places": "מקומות",
+        "movies": "סרטים",
+        "books": "ספרים",
+        "games": "משחקים",
+        "guides": "מדריכים",
+        "apps": "אפליקציות וכלים",
+        "products": "מוצרים",
+        "people": "אנשים"
+      },
+      "search": {
+        "places": "חיפוש מקומות, רשימות…",
+        "movies": "חיפוש סרטים, רשימות…",
+        "books": "חיפוש ספרים, רשימות…",
+        "games": "חיפוש משחקים, רשימות…",
+        "guides": "חיפוש מדריכים, רשימות…",
+        "apps": "חיפוש אפליקציות וכלים, רשימות…",
+        "products": "חיפוש מוצרים, רשימות…",
+        "people": "חיפוש אנשים, רשימות…"
+      },
+      "add": {
+        "places": "הוספת מקומות",
+        "movies": "הוספת סרטים",
+        "books": "הוספת ספרים",
+        "games": "הוספת משחקים",
+        "guides": "הוספת מדריכים",
+        "apps": "הוספת אפליקציות",
+        "products": "הוספת מוצרים",
+        "people": "הוספת אנשים"
+      },
+      "emptyState": {
+        "places": {
+          "tag": "עדיין אין מקומות",
+          "tagline": "מפו את העולם שלכם",
+          "sub": "סמנו את המקומות שעיצבו אתכם. בנו רשימות נבחרות של יעדים, מקומות וקסמים נסתרים שאתם אוהבים.",
+          "add": "+ הוספת רשימת מקומות"
+        },
+        "movies": {
+          "tag": "עדיין אין סרטים",
+          "tagline": "הקולנוע האישי שלכם",
+          "sub": "אצרו את הסרטים שריגשו אתכם. שתפו עם העולם את רשימות הצפייה, האהובים וההנאות המפתות שלכם.",
+          "add": "+ הוספת רשימת סרטים"
+        },
+        "books": {
+          "tag": "עדיין אין ספרים",
+          "tagline": "בנו את הספרייה שלכם",
+          "sub": "אספו את הקריאות ששינו את דרך החשיבה שלכם. שתפו רשימות נבחרות בכל ז'אנר או נושא.",
+          "add": "+ הוספת רשימת ספרים"
+        },
+        "games": {
+          "tag": "עדיין אין משחקים",
+          "tagline": "שדרגו את הרשימות שלכם",
+          "sub": "מפנינים עצמאיות ועד הפקות ענק — אצרו את המלצות המשחקים שלכם ושתפו אותן עם שחקנים אחרים.",
+          "add": "+ הוספת רשימת משחקים"
+        },
+        "music": {
+          "tag": "עדיין אין מוזיקה",
+          "tagline": "קבעו את פס הקול",
+          "sub": "שתפו את השירים, האלבומים והאמנים שמגדירים את הטעם שלכם. בנו פלייליסטים לכל מצב רוח.",
+          "add": "+ הוספת רשימת מוזיקה"
+        },
+        "guides": {
+          "tag": "עדיין אין מדריכים",
+          "tagline": "כתבו את המסלול",
+          "sub": "צרו מדריכי טיול ומסלולים יום אחר יום. עזרו לאחרים לחקור את העולם כפי שעשיתם.",
+          "add": "+ הוספת מדריך"
+        },
+        "apps": {
+          "tag": "עדיין אין אפליקציות",
+          "tagline": "סט הכלים שלכם, באצירה",
+          "sub": "שתפו את האפליקציות והכלים שבהם אתם באמת משתמשים. בנו ארגז כלים דיגיטלי שאחרים יגלו.",
+          "add": "+ הוספת רשימת אפליקציות וכלים"
+        },
+        "products": {
+          "tag": "עדיין אין מוצרים",
+          "tagline": "הציגו את הבחירות שלכם",
+          "sub": "המליצו על מוצרים שכדאי לקנות. מציוד ועד גאדג'טים — אצרו רשימות שהעוקבים שלכם יאהבו.",
+          "add": "+ הוספת רשימת מוצרים"
+        },
+        "people": {
+          "tag": "עדיין אין אנשים",
+          "tagline": "חגגו מוחות גדולים",
+          "sub": "אספו רשימות של הוגים, יוצרים ומנהיגים שכדאי לעקוב אחריהם. שתפו את מקורות ההשראה שלכם.",
+          "add": "+ הוספת רשימת אנשים"
+        }
+      },
+      "stats": {
+        "activeLists": "רשימות פעילות",
+        "recommendations": "המלצות"
+      },
+      "shareRecommendationsLink": "שיתוף קישור ההמלצות"
     },
     "profile": {
       "account": {
@@ -915,7 +1009,14 @@
         "video": "וידאו",
         "viewPublicProfile": "Navigate to Public Profile",
         "visible": "גלוי",
-        "whatsappNumber": "מספר WhatsApp"
+        "whatsappNumber": "מספר WhatsApp",
+        "removeProfileImage": "הסרת תמונת הפרופיל",
+        "removeCoverImage": "הסרת תמונת הכיסוי",
+        "removeProfileImageConfirmTitle": "להסיר את תמונת הפרופיל?",
+        "removeProfileImageConfirmMessage": "תמונת הפרופיל שלכם תוחלף בתמונת ברירת המחדל בפרופיל.",
+        "removeCoverImageConfirmTitle": "להסיר את תמונת הכיסוי?",
+        "removeCoverImageConfirmMessage": "תמונת הכיסוי תוחלף בתמונת ברירת המחדל בפרופיל.",
+        "removeConfirm": "הסרה"
       },
       "publicProfile": {
         "accountTypes": {
@@ -1017,15 +1118,15 @@
         "presetTitle": "Select theme preset",
         "recommendations": {
           "categories": {
-            "apps": "Apps & Tools",
-            "books": "Books",
-            "games": "Games",
-            "guides": "Guides",
-            "movies": "Movies & Shows",
-            "music": "Music",
-            "people": "People",
-            "places": "Places",
-            "products": "Products"
+            "apps": "אפליקציות וכלים",
+            "books": "ספרים",
+            "games": "משחקים",
+            "guides": "מדריכים",
+            "movies": "סרטים וסדרות",
+            "music": "מוזיקה",
+            "people": "אנשים",
+            "places": "מקומות",
+            "products": "מוצרים"
           },
           "featured": "Featured",
           "help": "Choose how recommendation categories are arranged on your public profile.",
@@ -1245,7 +1346,9 @@
       },
       "travelLikeLocal": "נסע כמו מקומי",
       "typeDeleteToConfirm": "Type 'delete' to confirm",
-      "viewAll": "הצג הכל"
+      "viewAll": "הצג הכל",
+      "bookNotFound": "הספר לא נמצא.",
+      "goBack": "חזרה"
     },
     "shareModal": {
       "copied": "הועתק!",
@@ -1290,7 +1393,7 @@
       "cookies": "מדיניות קובצי Cookie",
       "product": "מוּצָר",
       "shareAnywhere": "שתף בכל מקום",
-      "useCases": "Use Cases"
+      "useCases": "מקרי שימוש"
     },
     "copyright": "© 2025 חוקרים. כֹּל הַזְכוּיוֹת שְׁמוּרוֹת.",
     "madeWithLove": "נוצר באהבה עלי אדמות",
@@ -1307,7 +1410,7 @@
       "share": "לַחֲלוֹק",
       "openMenu": "פתח את תפריט הניווט",
       "closeMenu": "סגור את תפריט הניווט",
-      "useCases": "Use Cases"
+      "useCases": "מקרי שימוש"
     },
     "auth": {
       "login": "התחבר",
@@ -2204,7 +2307,9 @@
       "usernameTooShort": "Username is too short. Please choose a longer username.",
       "usernameUpdateFailed": "עדכון שם משתמש נכשל. אנא נסה שוב.",
       "validationError": "שגיאת אימות. אנא בדוק את הקלט שלך.",
-      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!"
+      "youCanOnlyUpload4Files": "You can only upload up to 4 files total!",
+      "profileImageRemoveFailed": "לא ניתן היה להסיר את תמונת הפרופיל. נסו שוב.",
+      "backgroundImageRemoveFailed": "לא ניתן היה להסיר את תמונת הכיסוי. נסו שוב."
     },
     "info": {
       "aborting": "Aborting...",
@@ -2336,7 +2441,9 @@
       "uploadingImagesToFeed": "Uploading selected images to your feed...",
       "usernameChanged": "שם משתמש שונה בהצלחה!",
       "usernameUpdated": "שם המשתמש עודכן בהצלחה!",
-      "welcomeMessage": "ברוכים הבאים ל-explorers!"
+      "welcomeMessage": "ברוכים הבאים ל-explorers!",
+      "profileImageRemoved": "תמונת הפרופיל הוסרה.",
+      "backgroundImageRemoved": "תמונת הכיסוי הוסרה."
     },
     "warning": {
       "accountExpiring": "Account is expiring. Please update your account",
@@ -2387,7 +2494,8 @@
       "usernameCooldownUnknown": "You can change your username now",
       "usernameExpiring": "Username is expiring. Please update your username",
       "usernameNotChanged": "Username is not changed. Please change your username",
-      "validationPending": "Validation is pending. Please wait"
+      "validationPending": "Validation is pending. Please wait",
+      "usernameCooldownUntil": "תוכלו לשנות שוב את שם המשתמש ב-{{date}}."
     }
   },
   "usernameClaim": {
@@ -2402,33 +2510,42 @@
   "publicProfile": {
     "recommendations": {
       "counts": {
-        "app_one": "{{formattedCount}}{{suffix}} app",
-        "app_other": "{{formattedCount}}{{suffix}} apps",
-        "book_one": "{{formattedCount}}{{suffix}} book",
-        "book_other": "{{formattedCount}}{{suffix}} books",
-        "game_one": "{{formattedCount}}{{suffix}} game",
-        "game_other": "{{formattedCount}}{{suffix}} games",
-        "list_one": "{{formattedCount}} list",
-        "list_other": "{{formattedCount}} lists",
-        "movie_one": "{{formattedCount}}{{suffix}} movie",
-        "movie_other": "{{formattedCount}}{{suffix}} movies",
-        "person_one": "{{formattedCount}}{{suffix}} person",
-        "person_other": "{{formattedCount}}{{suffix}} people",
-        "place_one": "{{formattedCount}}{{suffix}} place",
-        "place_other": "{{formattedCount}}{{suffix}} places",
-        "product_one": "{{formattedCount}}{{suffix}} product",
-        "product_other": "{{formattedCount}}{{suffix}} products",
-        "song_one": "{{formattedCount}}{{suffix}} song",
-        "song_other": "{{formattedCount}}{{suffix}} songs"
+        "app_one": "אפליקציה אחת{{suffix}}",
+        "app_two": "שתי אפליקציות{{suffix}}",
+        "app_other": "{{formattedCount}}{{suffix}} אפליקציות",
+        "book_one": "ספר אחד{{suffix}}",
+        "book_two": "שני ספרים{{suffix}}",
+        "book_other": "{{formattedCount}}{{suffix}} ספרים",
+        "game_one": "משחק אחד{{suffix}}",
+        "game_two": "שני משחקים{{suffix}}",
+        "game_other": "{{formattedCount}}{{suffix}} משחקים",
+        "list_one": "רשימה אחת",
+        "list_two": "שתי רשימות",
+        "list_other": "{{formattedCount}} רשימות",
+        "movie_one": "סרט אחד{{suffix}}",
+        "movie_two": "שני סרטים{{suffix}}",
+        "movie_other": "{{formattedCount}}{{suffix}} סרטים",
+        "person_one": "אדם אחד{{suffix}}",
+        "person_two": "שני אנשים{{suffix}}",
+        "person_other": "{{formattedCount}}{{suffix}} אנשים",
+        "place_one": "מקום אחד{{suffix}}",
+        "place_two": "שני מקומות{{suffix}}",
+        "place_other": "{{formattedCount}}{{suffix}} מקומות",
+        "product_one": "מוצר אחד{{suffix}}",
+        "product_two": "שני מוצרים{{suffix}}",
+        "product_other": "{{formattedCount}}{{suffix}} מוצרים",
+        "song_one": "שיר אחד{{suffix}}",
+        "song_two": "שני שירים{{suffix}}",
+        "song_other": "{{formattedCount}}{{suffix}} שירים"
       },
-      "empty": "No public recommendations yet",
-      "emptyHelp": "Check back later for new recommendations.",
-      "loadError": "Couldn’t load recommendations",
-      "loadErrorHelp": "Try again to load the unavailable categories.",
-      "partialError": "Some categories are unavailable",
-      "regionLabel": "Recommendations",
-      "retry": "Try again",
-      "retrying": "Retrying…"
+      "empty": "עדיין אין המלצות ציבוריות",
+      "emptyHelp": "חזרו מאוחר יותר כדי לראות המלצות חדשות.",
+      "loadError": "לא ניתן היה לטעון את ההמלצות",
+      "loadErrorHelp": "נסו שוב כדי לטעון את הקטגוריות שאינן זמינות.",
+      "partialError": "חלק מהקטגוריות אינן זמינות",
+      "regionLabel": "המלצות",
+      "retry": "נסו שוב",
+      "retrying": "מנסה שוב…"
     },
     "unavailable": "הפרופיל אינו זמין",
     "notFound": "הפרופיל לא נמצא",
@@ -2439,7 +2556,24 @@
     "businessDetails": "פרטי העסק",
     "noPhotosTitle": "עדיין אין תמונות",
     "noPhotosText": "המשתמש הזה עדיין לא שיתף תמונות. חזור מאוחר יותר!",
-    "visitWebsite": "בקר באתר"
+    "visitWebsite": "בקר באתר",
+    "footer": {
+      "poweredBy": "מופעל על ידי",
+      "createProfile": "צרו את הפרופיל שלכם",
+      "report": "דיווח",
+      "privacy": "פרטיות"
+    },
+    "nav": {
+      "places": "מקומות",
+      "guides": "מדריכים",
+      "profile": "פרופיל",
+      "movies": "סרטים",
+      "books": "ספרים",
+      "games": "משחקים",
+      "apps": "אפליקציות",
+      "products": "מוצרים",
+      "people": "אנשים"
+    }
   },
   "useCases": {
     "cta": {

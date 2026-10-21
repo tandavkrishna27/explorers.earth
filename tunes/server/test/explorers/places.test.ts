@@ -5,9 +5,9 @@
  *
  * Scoped to what needs no database, which is also what the integration suite cannot
  * cheaply cover: the declarations in migrations 0046-0048, and the shared contract's
- * schemas. Deliberately NOT repeated here - `publicPlaceContact`'s disclosure rules and
+ * schemas. Deliberately NOT repeated here - `publicPlaceContact`'s place disclosure rules and
  * cross-account isolation, which `places.integration.test.ts:125-159` already asserts
- * against real rows. Duplicating them would add no evidence and two places to update.
+ * against real rows (the person-name rule below needs no rows, so it lives here). Duplicating them would add no evidence and two places to update.
  *
  * Structured after `apps.test.ts`, which is the established shape for a category unit
  * suite: assert the migration declares the guards, then assert the contract refuses what
@@ -28,6 +28,7 @@ import {
   placeLocationSnapshotSchema,
   placePhotosSchema,
   placeRecommendationContextSchema,
+  publicPlaceContact,
   resolveManualPlaceSchema,
   safePlaceUrlSchema,
 } from "../../../shared/explorersPlaceContract";
@@ -209,4 +210,13 @@ it("requires a title to resolve a manual Place", () => {
   expect(resolveManualPlaceSchema.safeParse({
     kind: "provider", category: "places", details: { title: "Corner cafe" },
   }).success).toBe(false);
+});
+
+it("publicPlaceContact always discloses a person's name but gates the number on contact visibility", () => {
+  const person = {...emptyPlaceContext(), recommendationType: "person" as const, contactName: "Pierre Dubois", contactNumber: "+33 1 23 45 67 89"};
+  expect(publicPlaceContact({...person, contactVisibility: "private"})).toEqual({contact_name: "Pierre Dubois", contact_number: null});
+  expect(publicPlaceContact({...person, contactVisibility: "public"})).toEqual({contact_name: "Pierre Dubois", contact_number: "+33 1 23 45 67 89"});
+  // An ordinary place keeps the name private with the rest of its contact details.
+  const place = {...person, recommendationType: "place" as const};
+  expect(publicPlaceContact({...place, contactVisibility: "private"})).toEqual({contact_name: null, contact_number: null});
 });

@@ -22,6 +22,7 @@ import ProductDetailModal from "../public/ProductDetailModal";
 import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
 import QrCardTagline from "../../../../components/QrCardTagline";
 import { useFormatMoney } from "../../../../lib/money";
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 interface ProductRowProps {
   product: RecommendedProduct;
@@ -515,7 +516,7 @@ const ProductListView = () => {
 
       {/* Delete List Modal */}
       {showDeleteListModal && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+        <DialogPanel onClose={() => setShowDeleteListModal(false)} className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
           <div className="bg-dashboard-card rounded-2xl border border-dashboard-border p-6 w-full max-w-sm">
             <h3 className="text-lg font-semibold text-dashboard mb-2">Archive list?</h3>
             <p className="text-sm text-dashboard-muted mb-5">
@@ -535,7 +536,7 @@ const ProductListView = () => {
               </button>
             </div>
           </div>
-        </div>
+        </DialogPanel>
       )}
 
       {/* Detail Modal */}

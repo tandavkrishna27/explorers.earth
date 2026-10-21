@@ -6,6 +6,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import GuideSectionForm from "../GuideSectionForm";
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 interface SectionFormModalProps {
   isOpen: boolean;
@@ -62,7 +63,7 @@ const SectionFormModal: React.FC<SectionFormModalProps> = ({
           />
 
           {/* Modal */}
-          <motion.div
+          <DialogPanel onClose={onClose}
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -167,7 +168,7 @@ const SectionFormModal: React.FC<SectionFormModalProps> = ({
                 </div>
               </div>
             </div>
-          </motion.div>
+          </DialogPanel>
         </>
       )}
     </AnimatePresence>

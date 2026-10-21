@@ -1029,7 +1029,7 @@ const Home = memo(() => {
                                 <div className="flex-1 min-w-0">
                                   <h4 className="text-base font-bold text-dashboard truncate mb-1">{item.List_Name}</h4>
                                   <p className="text-xs text-dashboard-muted truncate">
-                                    {item.recommended_places?.length || 0} places · <span style={{ color: statusColor }}>{isPub ? "Published" : "Draft"}</span>
+                                    {t("publicProfile.recommendations.counts.place", { count: item.recommended_places?.length || 0, formattedCount: (item.recommended_places?.length || 0).toLocaleString(), suffix: "" })} · <span style={{ color: statusColor }}>{isPub ? t("dashboard.home.published") : t("dashboard.home.draft")}</span>
                                   </p>
                                 </div>
                                 <div className="flex-shrink-0">
@@ -1115,7 +1115,7 @@ const Home = memo(() => {
                                 <div className="flex-1 min-w-0">
                                   <h4 className="text-base font-bold text-dashboard truncate mb-1">{item.List_Name}</h4>
                                   <p className="text-xs text-dashboard-muted truncate">
-                                    {item.recommended_movies?.length || 0} movies · <span style={{ color: statusColor }}>{isPub ? "Published" : "Draft"}</span>
+                                    {t("publicProfile.recommendations.counts.movie", { count: item.recommended_movies?.length || 0, formattedCount: (item.recommended_movies?.length || 0).toLocaleString(), suffix: "" })} · <span style={{ color: statusColor }}>{isPub ? t("dashboard.home.published") : t("dashboard.home.draft")}</span>
                                   </p>
                                 </div>
                                 <div className="flex-shrink-0">
@@ -1173,7 +1173,7 @@ const Home = memo(() => {
                                 <div className="flex-1 min-w-0">
                                   <h4 className="text-base font-bold text-dashboard truncate mb-1">{item.List_Name}</h4>
                                   <p className="text-xs text-dashboard-muted truncate">
-                                    {item.recommended_books?.length || 0} books · <span style={{ color: statusColor }}>{isPub ? "Published" : "Draft"}</span>
+                                    {t("publicProfile.recommendations.counts.book", { count: item.recommended_books?.length || 0, formattedCount: (item.recommended_books?.length || 0).toLocaleString(), suffix: "" })} · <span style={{ color: statusColor }}>{isPub ? t("dashboard.home.published") : t("dashboard.home.draft")}</span>
                                   </p>
                                 </div>
                                 <div className="flex-shrink-0">
@@ -1231,7 +1231,7 @@ const Home = memo(() => {
                                 <div className="flex-1 min-w-0">
                                   <h4 className="text-base font-bold text-dashboard truncate mb-1">{item.List_Name}</h4>
                                   <p className="text-xs text-dashboard-muted truncate">
-                                    {item.recommended_games?.length || 0} games · <span style={{ color: statusColor }}>{isPub ? "Published" : "Draft"}</span>
+                                    {t("publicProfile.recommendations.counts.game", { count: item.recommended_games?.length || 0, formattedCount: (item.recommended_games?.length || 0).toLocaleString(), suffix: "" })} · <span style={{ color: statusColor }}>{isPub ? t("dashboard.home.published") : t("dashboard.home.draft")}</span>
                                   </p>
                                 </div>
                                 <div className="flex-shrink-0">
@@ -1295,7 +1295,7 @@ const Home = memo(() => {
                                     )}
                                   </div>
                                   <p className="text-xs text-dashboard-muted truncate">
-                                    {guide.Guide_Type || "Itinerary"} · <span style={{ color: statusColor }}>{isPub ? "Published" : "Draft"}</span>
+                                    {guide.Guide_Type || "Itinerary"} · <span style={{ color: statusColor }}>{isPub ? t("dashboard.home.published") : t("dashboard.home.draft")}</span>
                                   </p>
                                 </div>
                                 <div className="flex-shrink-0">
@@ -1380,7 +1380,7 @@ const Home = memo(() => {
                                 <div className="flex-1 min-w-0">
                                   <h4 className="text-base font-bold text-dashboard truncate mb-1">{item.List_Name}</h4>
                                   <p className="text-xs text-dashboard-muted truncate">
-                                    {item.recommended_apps?.length || 0} apps & tools · <span style={{ color: statusColor }}>{isPub ? "Published" : "Draft"}</span>
+                                    {t("publicProfile.recommendations.counts.app", { count: item.recommended_apps?.length || 0, formattedCount: (item.recommended_apps?.length || 0).toLocaleString(), suffix: "" })} · <span style={{ color: statusColor }}>{isPub ? t("dashboard.home.published") : t("dashboard.home.draft")}</span>
                                   </p>
                                 </div>
                                 <div className="flex-shrink-0">
@@ -1438,7 +1438,7 @@ const Home = memo(() => {
                                 <div className="flex-1 min-w-0">
                                   <h4 className="text-base font-bold text-dashboard truncate mb-1">{item.List_Name}</h4>
                                   <p className="text-xs text-dashboard-muted truncate">
-                                    {item.recommended_products?.length || 0} products · <span style={{ color: statusColor }}>{isPub ? "Published" : "Draft"}</span>
+                                    {t("publicProfile.recommendations.counts.product", { count: item.recommended_products?.length || 0, formattedCount: (item.recommended_products?.length || 0).toLocaleString(), suffix: "" })} · <span style={{ color: statusColor }}>{isPub ? t("dashboard.home.published") : t("dashboard.home.draft")}</span>
                                   </p>
                                 </div>
                                 <div className="flex-shrink-0">
@@ -1496,7 +1496,7 @@ const Home = memo(() => {
                                 <div className="flex-1 min-w-0">
                                   <h4 className="text-base font-bold text-dashboard truncate mb-1">{item.List_Name}</h4>
                                   <p className="text-xs text-dashboard-muted truncate">
-                                    {item.recommended_people?.length || 0} persons · <span style={{ color: statusColor }}>{isPub ? "Published" : "Draft"}</span>
+                                    {t("publicProfile.recommendations.counts.person", { count: item.recommended_people?.length || 0, formattedCount: (item.recommended_people?.length || 0).toLocaleString(), suffix: "" })} · <span style={{ color: statusColor }}>{isPub ? t("dashboard.home.published") : t("dashboard.home.draft")}</span>
                                   </p>
                                 </div>
                                 <div className="flex-shrink-0">

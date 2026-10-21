@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useProductsCommands, useProductsCallerCustody } from "../../api/query";
 import type { RecommendedProduct } from "../../types";
 import { buildImageUrl } from "../../utils/productHelpers";
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 interface ProductTopPicksManagerProps {
   products: RecommendedProduct[];
@@ -89,7 +90,7 @@ const ProductTopPicksManager = ({
   };
 
   return (
-    <motion.div
+    <DialogPanel onClose={onClose}
       className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[150] flex items-end md:items-center justify-center md:p-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -216,7 +217,7 @@ const ProductTopPicksManager = ({
           </button>
         </div>
       </motion.div>
-    </motion.div>
+    </DialogPanel>
   );
 };
 

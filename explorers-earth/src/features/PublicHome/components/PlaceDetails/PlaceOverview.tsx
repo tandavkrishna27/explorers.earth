@@ -15,6 +15,7 @@ import { createPlaceGEOData } from "../../../../utils/geoHelpers";
 import { createCanonicalUrl } from "../../../../utils/getCurrentDomain";
 import { IMAGE_CONFIG } from "../../../../config";
 import { resolvePublicPlaceImage } from "../publicPlaceMedia";
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 interface PlaceOverviewProps {
   placeId: string | null;
@@ -224,7 +225,7 @@ const PlaceOverview: FC<PlaceOverviewProps> = memo(
           />
         )}
 
-        <div
+        <DialogPanel onClose={onClose}
           data-public-place-detail={isPublicProfile ? true : undefined}
           className={`${isPublicProfile
             ? "public-place-detail border"
@@ -366,7 +367,7 @@ const PlaceOverview: FC<PlaceOverviewProps> = memo(
               onTabChange={handleTabChange}
             />
           </div>
-        </div>
+        </DialogPanel>
       </>
     );
   }

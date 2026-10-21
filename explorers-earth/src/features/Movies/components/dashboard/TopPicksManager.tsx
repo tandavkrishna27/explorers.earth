@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import type { RecommendedMovie } from "../../types";
 import { buildPosterUrl } from "../../utils/movieHelpers";
+import DialogPanel from "../../../../components/ui/DialogPanel";
 
 interface TopPicksManagerProps {
   movies: RecommendedMovie[];
@@ -62,7 +63,7 @@ const TopPicksManager = ({
   const handleMoveDown=(index:number)=>move(index,1);
   const handleSave=async()=>{if(busy.current)return;busy.current=true;setSaving(true);try{await persist(pinnedMovies,true);toast.success('Top picks updated!');onRefetch();onClose();}catch{toast.error('Failed to save. Your staged selection is preserved.');}finally{busy.current=false;setSaving(false);}};
   return (
-    <motion.div
+    <DialogPanel onClose={onClose}
       className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[150] flex items-end md:items-center justify-center md:p-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -190,7 +191,7 @@ const TopPicksManager = ({
           </button>
         </div>
       </motion.div>
-    </motion.div>
+    </DialogPanel>
   );
 };
 

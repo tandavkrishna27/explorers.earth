@@ -1022,7 +1022,7 @@ const RecommendationForm = memo(
                 />
                 {/* Loading indicator during validation */}
                 {(isValidatingLocation || isSubmitting) && (
-                  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999]">
+                  <div role="status" aria-live="polite" aria-busy="true" className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999]">
                     <div className="bg-dashboard-sidebar p-6 rounded-lg flex flex-col items-center gap-4 shadow-dashboard-elevated border border-dashboard">
                       <EarthLoader context="general" size="small" />
                       <p className="text-white font-poppins text-sm font-medium">
