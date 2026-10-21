@@ -94,6 +94,11 @@ describe("production canonical compose", () => {
     }
   });
 
+  it("passes IGDB through as optional, so a deploy without it keeps Games manual-only", () => {
+    expect(compose.services.api.environment.IGDB_CLIENT_ID).toBe("${IGDB_CLIENT_ID:-}");
+    expect(compose.services.api.environment.IGDB_CLIENT_SECRET).toBe("${IGDB_CLIENT_SECRET:-}");
+  });
+
   it("names no Strapi variable", () => {
     expect(raw).not.toMatch(/STRAPI/i);
   });

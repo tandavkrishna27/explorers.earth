@@ -22,6 +22,9 @@
 #   variables  GOOGLE_CLIENT_ID EXPLORERS_MEDIA_S3_BUCKET EXPLORERS_MEDIA_S3_REGION
 #              EXPLORERS_BACKUP_AGE_RECIPIENT EXPLORERS_SERVER_NAME
 #              EXPLORERS_TRUSTED_PROXY_IP (optional; see below)
+#   optional   IGDB_CLIENT_ID (variable) + IGDB_CLIENT_SECRET (secret): Games search.
+#              Both or neither; with neither the lines are blank and Games stays
+#              manual-only, so a deploy never waits on the Twitch app.
 #
 # The two database password FILES are generated on the host by
 # explorers-bootstrap.sh and never leave it; this file only names their paths.
@@ -71,12 +74,23 @@ for source in "${SOURCES[@]}"; do
   fi
   single_line "$github"
 done
+single_line IGDB_CLIENT_ID
+single_line IGDB_CLIENT_SECRET
+if [[ -n "${IGDB_CLIENT_ID-}" && -z "${IGDB_CLIENT_SECRET-}" ]]; then
+  echo "::error::Environment secret IGDB_CLIENT_SECRET is not set in explorers-production; IGDB needs both IGDB_CLIENT_ID and IGDB_CLIENT_SECRET, or neither." >&2; missing=1
+elif [[ -z "${IGDB_CLIENT_ID-}" && -n "${IGDB_CLIENT_SECRET-}" ]]; then
+  echo "::error::Environment variable IGDB_CLIENT_ID is not set in explorers-production; IGDB needs both IGDB_CLIENT_ID and IGDB_CLIENT_SECRET, or neither." >&2; missing=1
+fi
 if [[ -z "${EXPLORERS_SERVER_NAME-}" ]]; then
   echo "::error::Repository variable EXPLORERS_SERVER_NAME is not set." >&2; missing=1
 fi
 single_line EXPLORERS_SERVER_NAME
 single_line EXPLORERS_TRUSTED_PROXY_IP
 [[ "$missing" == 0 ]] || exit 1
+
+if [[ -z "${IGDB_CLIENT_ID-}" ]]; then
+  echo "::notice::IGDB_CLIENT_ID and IGDB_CLIENT_SECRET are not set; Games search stays manual-only."
+fi
 
 trusted_proxy_ip="${EXPLORERS_TRUSTED_PROXY_IP-}"
 if [[ -z "$trusted_proxy_ip" ]]; then
@@ -105,6 +119,8 @@ rm -f "$out"
     read -r name _ github <<<"$source"
     printf '%s=%s\n' "$name" "${!github}"
   done
+  printf 'IGDB_CLIENT_ID=%s\n' "${IGDB_CLIENT_ID-}"
+  printf 'IGDB_CLIENT_SECRET=%s\n' "${IGDB_CLIENT_SECRET-}"
 } > "$out"
 chmod 0600 "$out"
 

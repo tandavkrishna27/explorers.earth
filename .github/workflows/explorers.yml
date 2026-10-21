@@ -36,10 +36,11 @@ name: Deploy explorers.earth (canonical)
 # explorers-production environment secrets (rendered into production.env):
 #   EXPLORERS_AUTH_SECRET, MUSIC_GATE_ATTESTATION_KEY, GOOGLE_CLIENT_SECRET,
 #   GOOGLE_BOOKS_API_KEY, TMDB_ACCESS_TOKEN, EXPLORERS_S3_ACCESS_KEY_ID,
-#   EXPLORERS_S3_SECRET_ACCESS_KEY
+#   EXPLORERS_S3_SECRET_ACCESS_KEY, optional IGDB_CLIENT_SECRET
 # explorers-production environment variables:
 #   GOOGLE_CLIENT_ID, EXPLORERS_MEDIA_S3_BUCKET, EXPLORERS_MEDIA_S3_REGION,
-#   EXPLORERS_BACKUP_AGE_RECIPIENT, optional EXPLORERS_TRUSTED_PROXY_IP
+#   EXPLORERS_BACKUP_AGE_RECIPIENT, optional EXPLORERS_TRUSTED_PROXY_IP,
+#   optional IGDB_CLIENT_ID (Games search; set with IGDB_CLIENT_SECRET or not at all)
 
 on:
   workflow_dispatch:
@@ -145,11 +146,13 @@ jobs:
           TMDB_ACCESS_TOKEN: ${{ secrets.TMDB_ACCESS_TOKEN }}
           EXPLORERS_S3_ACCESS_KEY_ID: ${{ secrets.EXPLORERS_S3_ACCESS_KEY_ID }}
           EXPLORERS_S3_SECRET_ACCESS_KEY: ${{ secrets.EXPLORERS_S3_SECRET_ACCESS_KEY }}
+          IGDB_CLIENT_SECRET: ${{ secrets.IGDB_CLIENT_SECRET }}
           GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
           EXPLORERS_MEDIA_S3_BUCKET: ${{ vars.EXPLORERS_MEDIA_S3_BUCKET }}
           EXPLORERS_MEDIA_S3_REGION: ${{ vars.EXPLORERS_MEDIA_S3_REGION }}
           EXPLORERS_BACKUP_AGE_RECIPIENT: ${{ vars.EXPLORERS_BACKUP_AGE_RECIPIENT }}
           EXPLORERS_TRUSTED_PROXY_IP: ${{ vars.EXPLORERS_TRUSTED_PROXY_IP }}
+          IGDB_CLIENT_ID: ${{ vars.IGDB_CLIENT_ID }}
         run: |
           set -euo pipefail
           umask 077
