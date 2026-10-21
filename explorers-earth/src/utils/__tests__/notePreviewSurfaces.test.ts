@@ -13,6 +13,17 @@ const surfaces = [
   "features/AppsAndTools/components/dashboard/AppListView.tsx",
   "features/Books/components/public/TopReadsHero.tsx",
   "features/PublicHome/components/PublicHome.tsx",
+  // UAT BKS-X01: every category's list rows, including Places.
+  "features/Favorites/components/Recommendations.tsx",
+  "features/Games/components/dashboard/GameListView.tsx",
+  "features/Movies/components/dashboard/MovieListView.tsx",
+  "features/Books/components/dashboard/BooksHome.tsx",
+  "features/People/components/dashboard/PeopleHome.tsx",
+  "features/Products/components/dashboard/ProductsHome.tsx",
+  "features/AppsAndTools/components/dashboard/AppsHome.tsx",
+  "features/People/components/public/PersonCarouselRow.tsx",
+  "features/Products/components/public/ProductCarouselRow.tsx",
+  "features/AppsAndTools/components/public/AppCarouselRow.tsx",
 ];
 
 describe("note previews", () => {

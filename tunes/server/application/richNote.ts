@@ -84,7 +84,11 @@ export function normalizeRichNote(raw:unknown):RichNote|null {
  // DOMPurify also records removal of its synthetic BODY container, which is
  // not author data. Any change to serialized author data remains fail-closed.
  if(safe!==canonical)invalid();
- if(Buffer.byteLength(safe,'utf8')>RICH_NOTE_BYTES)tooLarge();
- if(safe===''||safe==='<p><br></p>')return null;
- return {version:1,format:'quill-html',html:safe};
+ // The serializer writes every U+00A0 as &nbsp; (an author's literal "&nbsp;" stays &amp;nbsp;).
+ // Plain spaces keep entities out of every surface that reads notes (UAT BKS-X01); this runs on
+ // save and on each read, so notes stored before it are normalised without a migration.
+ const normalized=safe.replace(/&nbsp;/g,' ');
+ if(Buffer.byteLength(normalized,'utf8')>RICH_NOTE_BYTES)tooLarge();
+ if(normalized===''||normalized==='<p><br></p>')return null;
+ return {version:1,format:'quill-html',html:normalized};
 }

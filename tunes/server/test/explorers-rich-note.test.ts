@@ -13,6 +13,12 @@ describe('server rich-note boundary',()=>{
   const html='<p><span class="ql-emojiblot" data-name="grinning">﻿<span contenteditable="false"><span class="ap ap-grinning">😀</span></span>﻿</span></p>';
   expect(normalizeRichNote(note(html))).toEqual(note(html));
  });
+ // UAT BKS-X01: Quill writes runs of spaces as &nbsp;, which list rows then showed literally.
+ // Notes are normalised here on save and on every read, so stored notes need no migration.
+ it('turns non-breaking spaces into plain spaces',()=>{
+  expect(normalizeRichNote(note('<p>UAT&nbsp;note&nbsp;with&nbsp;spaces</p>'))).toEqual(note('<p>UAT note with spaces</p>'));
+  expect(normalizeRichNote(note('<p>a b &amp;nbsp; c</p>'))).toEqual(note('<p>a b &amp;nbsp; c</p>'));
+ });
  it.each(['','<p><br></p>'])('normalizes verified empty document %s',html=>expect(normalizeRichNote(note(html))).toBeNull());
  it('rejects unknown versions and keys and retains null',()=>{expect(normalizeRichNote(null)).toBeNull();expect(()=>normalizeRichNote({...note('<p>A</p>'),version:2})).toThrow();expect(()=>normalizeRichNote({...note('<p>A</p>'),owner:'forged'})).toThrow();});
  it.each(['<script>alert(1)</script>','<p onclick="x()">A</p>','<svg><p>A</p></svg>','<p><img src="x"></p>','<span style="color:red; background:url(x)">A</span>','<span class="unknown">A</span>','<p><strong>A</p>','<p a="1" a="2">A</p>','<ol><li data-list="checked">A</li></ol>','<span class="ql-emojiblot" data-name="forged">😀</span>','<span class="ql-emojiblot" data-name="grinning"><span class="ap ap-grinning">😈</span></span>','<a href="javascript:alert(1)">A</a>','<a href="//evil.example">A</a>'])('rejects unsupported or lossy markup %s',html=>expect(()=>normalizeRichNote(note(html))).toThrow(expect.objectContaining({status:422})));
