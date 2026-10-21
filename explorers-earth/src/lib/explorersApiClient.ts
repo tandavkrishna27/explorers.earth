@@ -1,6 +1,7 @@
 import {announceRevisionConflict} from './revisionConflict';
 import {changedSinceViewed,isViewObservation,markCommandSent,settleViewedAccount,settleViewedRevision,viewedAccountRevision,wasCommandSent} from './viewedRevisions';
 import {gameCatalogRequestSchema,gameMembershipCommandSchema,gameMembershipResultSchema} from '../../../tunes/shared/explorersGameOwnerContract';
+import {gameCandidatePageSchema,type GameCandidatePage} from '../../../tunes/shared/explorersGameContract';
 import {resolveProviderGameSchema} from '../../../tunes/shared/explorersContract';
 import {movieGenreTermsResultSchema,importMovieMediaRequestSchema,movieMediaImportResultSchema} from '../../../tunes/shared/explorersMovieMediaContract';
 import {movieSearchRequestSchema,movieCandidatesSchema,movieEntityDtoSchema,resolveProviderMovieSchema,resolveManualMovieSchema} from '../../../tunes/shared/explorersMovieContract';
@@ -559,10 +560,13 @@ export const explorersApiClient = {
     return page;
    }finally{unsubscribe();signal?.removeEventListener('abort',stop);}
   },
-  async searchGames(input:{query:string;limit:24;cursor?:string},signal?:AbortSignal):Promise<never> {
+  /** IGDB search hits. A 503 PROVIDER_NOT_CONFIGURED means this deployment has no IGDB credentials. */
+  async searchGames(input:{query:string;limit:24;cursor?:string},signal?:AbortSignal):Promise<GameCandidatePage> {
    const parsed=gameCatalogRequestSchema.parse({...input,limit:String(input.limit)}),query=new URLSearchParams({query:parsed.query,limit:String(parsed.limit)});if(parsed.cursor)query.set('cursor',parsed.cursor);
    const generation=useAuthStore.getState().generation,response=await fetch('/api/explorers/v1/catalog/games?'+query.toString(),{credentials:'include',cache:'no-store',signal});
-   await responseBody<never>(response,generation);throw new ExplorersApiError(503,'PROVIDER_INVALID_RESPONSE','Games provider is unavailable');
+   const page=gameCandidatePageSchema.safeParse(await responseBody<unknown>(response,generation));
+   if(!page.success)throw new ExplorersApiError(502,'PROVIDER_INVALID_RESPONSE','Game search returned an unexpected answer');
+   return page.data;
   },
   async resolveGameProvider(externalId:string,key:string,signal?:AbortSignal):Promise<never> {
    const input=commandInput(resolveProviderGameSchema,{kind:'provider',category:'games',provider:'igdb',externalKind:'game',externalId});commandInput(commandKeySchema,key);

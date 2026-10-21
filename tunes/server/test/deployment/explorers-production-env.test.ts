@@ -44,6 +44,8 @@ const INPUTS: Record<string, string> = {
   EXPLORERS_MEDIA_S3_REGION: "ap-south-1",
   EXPLORERS_BACKUP_AGE_RECIPIENT: `age1${"q".repeat(58)}`,
 };
+// Optional: Games search uses IGDB only when both are set.
+const IGDB = { IGDB_CLIENT_ID: "igdbclientsentinel", IGDB_CLIENT_SECRET: "igdbsecretsentinel0123" };
 const SECRET_VALUES = [
   INPUTS.EXPLORERS_AUTH_SECRET, INPUTS.MUSIC_GATE_ATTESTATION_KEY, INPUTS.GOOGLE_CLIENT_SECRET,
   INPUTS.GOOGLE_BOOKS_API_KEY, INPUTS.TMDB_ACCESS_TOKEN, INPUTS.EXPLORERS_S3_ACCESS_KEY_ID,
@@ -101,9 +103,9 @@ describe("explorers.yml renders production.env from the explorers-production env
 
   it("takes every value from a step environment variable of the same GitHub name", () => {
     const secrets = ["EXPLORERS_AUTH_SECRET", "MUSIC_GATE_ATTESTATION_KEY", "GOOGLE_CLIENT_SECRET", "GOOGLE_BOOKS_API_KEY",
-      "TMDB_ACCESS_TOKEN", "EXPLORERS_S3_ACCESS_KEY_ID", "EXPLORERS_S3_SECRET_ACCESS_KEY"];
+      "TMDB_ACCESS_TOKEN", "EXPLORERS_S3_ACCESS_KEY_ID", "EXPLORERS_S3_SECRET_ACCESS_KEY", "IGDB_CLIENT_SECRET"];
     const variables = ["GOOGLE_CLIENT_ID", "EXPLORERS_MEDIA_S3_BUCKET", "EXPLORERS_MEDIA_S3_REGION",
-      "EXPLORERS_BACKUP_AGE_RECIPIENT", "EXPLORERS_TRUSTED_PROXY_IP"];
+      "EXPLORERS_BACKUP_AGE_RECIPIENT", "EXPLORERS_TRUSTED_PROXY_IP", "IGDB_CLIENT_ID"];
     const expected = Object.fromEntries([
       ...secrets.map((name) => [name, `\${{ secrets.${name} }}`]),
       ...variables.map((name) => [name, `\${{ vars.${name} }}`]),
@@ -176,7 +178,29 @@ describe("deploy/render-production-env.sh", () => {
       GOOGLE_BOOKS_API_KEY: INPUTS.GOOGLE_BOOKS_API_KEY,
       TMDB_ACCESS_TOKEN: INPUTS.TMDB_ACCESS_TOKEN,
       EXPLORERS_BACKUP_AGE_RECIPIENT: INPUTS.EXPLORERS_BACKUP_AGE_RECIPIENT,
+      IGDB_CLIENT_ID: "",
+      IGDB_CLIENT_SECRET: "",
     });
+  });
+
+  it("treats IGDB as optional: blank when unset, both values when set, never one without the other", () => {
+    const unset = render(INPUTS);
+    expect(unset.status, unset.output).toBe(0);
+    expect(unset.output).toContain("::notice::IGDB_CLIENT_ID and IGDB_CLIENT_SECRET are not set; Games search stays manual-only.");
+    const set = render({ ...INPUTS, ...IGDB });
+    expect(set.status, set.output).toBe(0);
+    expect(set.output).not.toContain(IGDB.IGDB_CLIENT_SECRET);
+    const file = readFileSync(set.out, "utf8");
+    expect(file).toMatch(new RegExp(`^IGDB_CLIENT_ID=${IGDB.IGDB_CLIENT_ID}$`, "m"));
+    expect(file).toMatch(new RegExp(`^IGDB_CLIENT_SECRET=${IGDB.IGDB_CLIENT_SECRET}$`, "m"));
+    for (const [name, kind] of [["IGDB_CLIENT_ID", "variable"], ["IGDB_CLIENT_SECRET", "secret"]]) {
+      const { [name]: _omitted, ...half } = { ...INPUTS, ...IGDB };
+      const result = render(half);
+      expect(result.status, name).toBe(1);
+      expect(result.output).toContain(`::error::Environment ${kind} ${name} is not set in explorers-production; IGDB needs both IGDB_CLIENT_ID and IGDB_CLIENT_SECRET, or neither.`);
+      expect(result.output).not.toContain(IGDB.IGDB_CLIENT_SECRET);
+      expect(existsSync(result.out)).toBe(false);
+    }
   });
 
   it("keeps the image placeholders and fixed database names identical to production.env.example", () => {
@@ -247,6 +271,16 @@ describe("deploy/host/validate-production-env.sh", () => {
     expect(result.stderr).toContain("FAIL: production.env: EXPLORERS_BACKUP_AGE_RECIPIENT must be the age PUBLIC key");
   });
 
+  it("checks a set IGDB pair like any other value, and only the characters Twitch issues", () => {
+    let file = setValue(setValue(validFile(), "IGDB_CLIENT_ID", IGDB.IGDB_CLIENT_ID), "IGDB_CLIENT_SECRET", IGDB.IGDB_CLIENT_SECRET);
+    expect(validate(file).status).toBe(0);
+    file = setValue(file, "IGDB_CLIENT_SECRET", "igdb.secret$sentinel");
+    const result = validate(file);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain("FAIL: production.env: IGDB_CLIENT_SECRET must be letters, digits, _ or -");
+    expect(result.output).not.toContain("igdb.secret$sentinel");
+  });
+
   // [name, bad value, expected message after "FAIL: production.env: "]
   const cases: Array<[string, string, string]> = [
     ["GOOGLE_BOOKS_API_KEY", "", "GOOGLE_BOOKS_API_KEY is empty or missing"],
@@ -254,6 +288,8 @@ describe("deploy/host/validate-production-env.sh", () => {
     ["EXPLORERS_MEDIA_S3_BUCKET", "0000", "EXPLORERS_MEDIA_S3_BUCKET still holds the example value"],
     ["TMDB_ACCESS_TOKEN", "tmdb$sentinel", "TMDB_ACCESS_TOKEN must be one plain value"],
     ["AWS_SECRET_ACCESS_KEY", "aws sentinel", "AWS_SECRET_ACCESS_KEY must be one plain value"],
+    ["IGDB_CLIENT_ID", "igdbclientsentinel", "IGDB_CLIENT_ID and IGDB_CLIENT_SECRET must be set together"],
+    ["IGDB_CLIENT_SECRET", "igdb.secret", "IGDB_CLIENT_ID and IGDB_CLIENT_SECRET must be set together"],
     ["GOOGLE_CLIENT_SECRET", "\"quotedsentinel\"", "GOOGLE_CLIENT_SECRET must be one plain value"],
     ["EXPLORERS_PUBLIC_ORIGIN", "https://other.sentinel", `EXPLORERS_PUBLIC_ORIGIN must be exactly https://${SERVER_NAME}`],
     ["EXPLORERS_PUBLIC_ORIGIN", `https://${SERVER_NAME}/`, `EXPLORERS_PUBLIC_ORIGIN must be exactly https://${SERVER_NAME}`],

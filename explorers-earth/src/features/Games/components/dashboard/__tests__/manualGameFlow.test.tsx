@@ -7,6 +7,7 @@ import GameListView from '../GameListView';
 import { toast } from 'sonner';
 import { GamesClient } from '../../../api/gamesClient';
 import useAuthStore from '../../../../../store/store';
+import { ExplorersApiError } from '../../../../../lib/explorersApiClient';
 
 const fixture = vi.hoisted(() => ({ content: { view: { lists: [] }, details: new Map(), observation: {} }, loading: false, error: undefined as Error | undefined, refetch: vi.fn() }));
 vi.mock('../../../hooks/useGamesOwner', () => ({ useGamesOwner: () => ({ content: fixture.content, data: { gameLists: fixture.content.view.lists }, loading: fixture.loading, error: fixture.error, refetch: fixture.refetch }), invalidateGames: vi.fn() }));
@@ -41,6 +42,22 @@ describe('native manual Games', () => {
   vi.mocked(GamesClient.search).mockRejectedValue(new Error('Provider unavailable'));
   mount(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'My manual draft' } }); fireEvent.change(screen.getByLabelText('Search for a game'), { target: { value: 'Provider query' } }); fireEvent.click(screen.getByRole('button', { name: 'Search' }));
   expect(await screen.findByRole('status')).toHaveTextContent('Provider unavailable'); expect(screen.getByLabelText('Game title')).toHaveValue('My manual draft'); expect(GamesClient.prepareManualIntent).not.toHaveBeenCalled();
+ });
+ it('search lists IGDB candidates and picking one fills the title, keeping the rest of the draft', async () => {
+  vi.mocked(GamesClient.search).mockResolvedValue({ version: 'explorers-game-candidates/v1', nextCursor: null, items: [
+   { externalId: '7346', title: 'The Legend of Zelda: Breath of the Wild', year: 2017, coverUrl: 'https://images.igdb.com/igdb/image/upload/t_cover_big/co3p2d.jpg', platforms: ['Wii U', 'Nintendo Switch'], genres: ['Adventure'] },
+   { externalId: '233', title: 'Zelda fan game', year: null, coverUrl: null, platforms: [], genres: [] }] } as never);
+  mount(); fireEvent.change(await screen.findByLabelText('Your rating'), { target: { value: '9' } }); fireEvent.change(screen.getByLabelText('Search for a game'), { target: { value: 'zelda' } }); fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+  expect(GamesClient.search).toHaveBeenCalledWith({ query: 'zelda', limit: 24 });
+  expect(await screen.findByText('Wii U · Nintendo Switch')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Use Zelda fan game' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Use The Legend of Zelda: Breath of the Wild (2017)' }));
+  expect(screen.getByLabelText('Game title')).toHaveValue('The Legend of Zelda: Breath of the Wild'); expect(screen.getByLabelText('Your rating')).toHaveValue('9');
+ });
+ it('says search is not available when the deployment has no IGDB credentials', async () => {
+  vi.mocked(GamesClient.search).mockRejectedValue(new ExplorersApiError(503, 'PROVIDER_NOT_CONFIGURED', 'Game search is not available. Add the game manually.'));
+  mount(); fireEvent.change(await screen.findByLabelText('Search for a game'), { target: { value: 'zelda' } }); fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+  expect(await screen.findByRole('status')).toHaveTextContent('Game search is not available yet. Add the game manually below.');
  });
  it('account replacement while parent observation is pending cannot create a game', async () => {
   const parent = deferred<never>(); vi.mocked(GamesClient.observeCollection).mockReturnValue(parent.promise); mount(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Old owner draft' } }); fireEvent.click(screen.getByRole('button', { name: 'Save game' }));

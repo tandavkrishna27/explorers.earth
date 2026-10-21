@@ -58,6 +58,23 @@ for name in "${REQUIRED[@]}"; do
   fi
 done
 
+# Games search (IGDB) is optional: both blank keeps Games manual-only. Twitch
+# issues both as letters and digits; the API ignores anything else.
+igdb_id="$(env_value IGDB_CLIENT_ID)"
+igdb_secret="$(env_value IGDB_CLIENT_SECRET)"
+if [[ -n "$igdb_id" || -n "$igdb_secret" ]]; then
+  if [[ -z "$igdb_id" || -z "$igdb_secret" ]]; then
+    problem "IGDB_CLIENT_ID and IGDB_CLIENT_SECRET must be set together"
+  else
+    for name in IGDB_CLIENT_ID IGDB_CLIENT_SECRET; do
+      (( $(env_count "$name") == 1 )) || problem "$name is set more than once"
+      value="$(env_value "$name")"
+      # No {1,512} bound: POSIX ERE caps repetition counts at 255.
+      [[ "$value" =~ ^[A-Za-z0-9_-]+$ && ${#value} -le 512 ]] || problem "$name must be letters, digits, _ or -"
+    done
+  fi
+fi
+
 origin="$(env_value EXPLORERS_PUBLIC_ORIGIN)"
 [[ "$origin" == "https://$server_name" ]] || problem "EXPLORERS_PUBLIC_ORIGIN must be exactly https://$server_name (no path, no trailing slash)"
 
