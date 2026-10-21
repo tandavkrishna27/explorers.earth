@@ -129,19 +129,18 @@ Variables). The workflow would also read them if they were set on the environmen
 
 | GitHub name | What it is | Format | Where to get it | Reuse? |
 |---|---|---|---|---|
-| `EXPLORERS_SERVER_NAME` | The one public hostname | e.g. `explorers.earth` or `www.explorers.earth`, whichever you chose (runbook section 1) | Your DNS decision | n/a |
+| `EXPLORERS_SERVER_NAME` | The one public hostname | The apex, `explorers.earth` (decided; runbook section 1). `www.explorers.earth` is redirected to it automatically by the deployed nginx site, so do not set this to a www name. The certificate in `EXPLORERS_TLS_CERTIFICATE` must include `www.explorers.earth` | Your DNS decision | n/a |
 | `EXPLORERS_PUBLIC_JSON` | The production `public.json` the SPA reads at runtime | One line of JSON whose `origin` is `https://$EXPLORERS_SERVER_NAME` | One-liner below | **The Maps key inside it (`mapsBrowserKey`) has the same value as the `VITE_GOOGLE_MAPS_API_KEY` secret**, if that key is restricted by HTTP referrer to `https://<host>/*`. Otherwise create a browser key that is |
 | `EXPLORERS_TLS_CERTIFICATE`, `EXPLORERS_TLS_CERTIFICATE_KEY` | Certificate paths on the host | e.g. `/etc/letsencrypt/live/<host>/fullchain.pem`, `privkey.pem` | certbot on the host | n/a |
 | `EXPLORERS_NGINX_SITE_PATH` | The nginx file that serves the host name today | A path under `/etc/nginx/` | `explorers-bootstrap.sh check` names it (runbook 2.4) | n/a |
 
-`EXPLORERS_PUBLIC_JSON` for explorers.earth. If you chose `www`, use `https://www.explorers.earth`
-as the origin. The Maps key is read at a hidden prompt and never appears on a command line:
+`EXPLORERS_PUBLIC_JSON` for explorers.earth, with `https://explorers.earth` as the origin. The Maps key is read at a hidden prompt and never appears on a command line:
 
 ```bash
 read -rsp 'Google Maps browser key: ' k; echo
 printf '%s\n' "$k" | jq -cR '{version:1,environment:"production",origin:"https://explorers.earth",apiPath:"/api",socketPath:"/socket.io",mapsBrowserKey:.,analytics:{enabled:false}}' | gh variable set EXPLORERS_PUBLIC_JSON
 unset k
-gh variable set EXPLORERS_SERVER_NAME            # explorers.earth (or www.explorers.earth)
+gh variable set EXPLORERS_SERVER_NAME            # explorers.earth (the apex)
 gh variable set EXPLORERS_TLS_CERTIFICATE
 gh variable set EXPLORERS_TLS_CERTIFICATE_KEY
 gh variable set EXPLORERS_NGINX_SITE_PATH

@@ -49,16 +49,35 @@ function parse(source: string): Block {
 
 const config = parse(stripComments(raw));
 const servers = config.children.filter((block) => block.header === "server");
-const tls = servers.find((server) => server.directives.some((d) => d.startsWith("listen 443")));
+const canonical = (server: Block) => server.directives.includes("server_name @EXPLORERS_SERVER_NAME@");
+const www = (server: Block) => server.directives.includes("server_name www.@EXPLORERS_SERVER_NAME@");
+const tls = servers.find((server) => canonical(server) && server.directives.some((d) => d.startsWith("listen 443")));
 const locations = tls?.children.filter((block) => block.header.startsWith("location ")) ?? [];
 const location = (match: string) => locations.find((block) => block.header === `location ${match}`);
 
 describe("production nginx site", () => {
   it("has a TLS server and a port-80 server that only redirects", () => {
     expect(tls).toBeDefined();
-    const plain = servers.find((server) => server.directives.includes("listen 80"));
+    const plain = servers.find((server) => canonical(server) && server.directives.includes("listen 80"));
     expect(plain?.children).toEqual([]);
     expect(plain?.directives).toContain("return 301 https://@EXPLORERS_SERVER_NAME@$request_uri");
+  });
+
+  it("redirects www to the canonical host on ports 80 and 443 and serves nothing else there", () => {
+    // Break caught: the deploy replaces the live site file, so a template with no
+    // www server leaves www.<name> unserved after cutover.
+    const target = "return 301 https://@EXPLORERS_SERVER_NAME@$request_uri";
+    const wwwServers = servers.filter(www);
+    expect(wwwServers).toHaveLength(2);
+    const plain = wwwServers.find((server) => server.directives.includes("listen 80"));
+    const secure = wwwServers.find((server) => server.directives.includes("listen 443 ssl http2"));
+    expect(plain?.children).toEqual([]);
+    expect(plain?.directives).toContain(target);
+    expect(secure?.children).toEqual([]);
+    expect(secure?.directives).toEqual(expect.arrayContaining([
+      target, "ssl_certificate @EXPLORERS_TLS_CERTIFICATE@", "ssl_certificate_key @EXPLORERS_TLS_CERTIFICATE_KEY@",
+      "ssl_protocols TLSv1.2 TLSv1.3",
+    ]));
   });
 
   it("serves the release through the current symlink, with headers.conf outside the served root", () => {
