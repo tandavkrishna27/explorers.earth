@@ -31,6 +31,7 @@ import { useDistanceValidation } from "../../../hooks/useDistanceValidation";
 import {
   LocationValidationCoords,
   getDistanceLimitText,
+  LOCATION_VALIDATION_CONFIG,
 } from "../../../config/locationValidationConfig";
 import { EarthLoader } from "../../../components/EarthLoader";
 import { useTranslation } from "react-i18next";
@@ -839,6 +840,11 @@ const RecommendationForm = memo(
                 toast.error(
                   `Unable to validate distance to ${selectedCity.List_Name}: ${distanceResult.error}. Please try again or check your connection.`
                 );
+              } else if (distanceResult.method === "fallback") {
+                // No driving route, so the straight-line distance decided it (PLC-04).
+                toast.error(
+                  `This place is too far from ${selectedCity.List_Name}. Distance: ${distanceText}. Maximum allowed: ${LOCATION_VALIDATION_CONFIG.MAX_DISTANCE_KM} km.`
+                );
               } else {
                 // This means the place is too far, not an API error
                 toast.error(
@@ -867,7 +873,7 @@ const RecommendationForm = memo(
               toast.error(
                 `This place appears to be too far from ${selectedCity.List_Name
                 }. ${fallbackResult.distance?.text || "Distance check failed"
-                }. Unable to validate travel time at this time.`
+                }. Maximum allowed: ${LOCATION_VALIDATION_CONFIG.MAX_DISTANCE_KM} km.`
               );
               return false;
             }
