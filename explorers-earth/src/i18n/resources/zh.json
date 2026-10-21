@@ -1219,6 +1219,7 @@
         "qrDownloadError": "下载二维码失败。请重试。",
         "qrDownloadSuccess": "二维码下载成功！",
         "qrNotReady": "二维码还未准备好下载",
+        "listCoverImportFailed": "List created, but its cover photo could not be imported. You can add one later.",
         "listCreateFailed": "Failed to create recommendation list. Please try again."
       },
       "travelLikeLocal": "像当地人一样旅行",

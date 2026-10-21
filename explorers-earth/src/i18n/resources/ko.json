@@ -1219,6 +1219,7 @@
         "qrDownloadError": "QR 코드 다운로드에 실패했습니다. 다시 시도해 주세요.",
         "qrDownloadSuccess": "QR 코드가 성공적으로 다운로드되었습니다!",
         "qrNotReady": "QR 코드가 다운로드 준비가 되지 않았습니다",
+        "listCoverImportFailed": "List created, but its cover photo could not be imported. You can add one later.",
         "listCreateFailed": "Failed to create recommendation list. Please try again."
       },
       "travelLikeLocal": "현지인처럼 여행하기",

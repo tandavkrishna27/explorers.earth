@@ -1409,6 +1409,7 @@
         "qrDownloadError": "فشل في تنزيل رمز QR. يرجى المحاولة مرة أخرى.",
         "qrDownloadSuccess": "تم تنزيل رمز QR بنجاح !",
         "qrNotReady": "رمز QR غير جاهز للتنزيل",
+        "listCoverImportFailed": "List created, but its cover photo could not be imported. You can add one later.",
         "listCreateFailed": "Failed to create recommendation list. Please try again."
       },
       "travelLikeLocal": "سافر مثل السكان المحليين",

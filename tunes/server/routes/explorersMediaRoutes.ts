@@ -6,6 +6,7 @@ import { requireActor, sendActorError } from "../middleware/explorersPrincipal";
 import { MediaService, MediaInputError, MediaUnavailable, type MediaUploadInput } from "../application/media";
 import { fromNodeHeaders } from "#auth-runtime";
 import { GoogleAvatarFetcher } from "../services/googleAvatarFetch";
+import { PlacePhotoFetcher, PlacePhotoFetchFailure } from "../services/placePhotoFetch";
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /**
@@ -20,7 +21,8 @@ const PUBLIC_MEDIA_CACHE_CONTROL = "public, no-cache";
 const failure = (status: number, code: string, message: string) => ({ status, body: { error: { code, message, requestId: randomUUID() } } });
 
 export function setupExplorersMediaRoutes(app: Express, pool: Pool, auth: ExplorersAuth, config: ExplorersAuthConfig,
-  service = new MediaService(pool),beforeMediaCommand?:express.RequestHandler,avatarFetcher = new GoogleAvatarFetcher()): void {
+  service = new MediaService(pool),beforeMediaCommand?:express.RequestHandler,avatarFetcher = new GoogleAvatarFetcher(),
+  placePhotos = new PlacePhotoFetcher()): void {
   app.post("/api/explorers/v1/media", async (request, response, next) => {
     if (request.get("origin") !== config.baseURL) {
       const result = failure(403, "FORBIDDEN", "Origin is not trusted");
@@ -67,6 +69,33 @@ export function setupExplorersMediaRoutes(app: Express, pool: Pool, auth: Explor
       return response.status(201).json({ media });
     } catch (error) {
       if (error instanceof MediaInputError) { const result = failure(422, "INVALID_INPUT", error.message); return response.status(result.status).json(result.body); }
+      sendActorError(request, response, error);
+    }
+  });
+
+  // A Places list cover, fetched here from the photoUri Google answers with skipHttpRedirect
+  // rather than by the browser (see placePhotoFetch). The owner is authenticated before any
+  // outbound request, and the bytes take the same createMedia path as an uploaded cover.
+  app.post("/api/explorers/v1/media/place-photo", async (request, response, next) => {
+    if (request.get("origin") !== config.baseURL) {
+      const result = failure(403, "FORBIDDEN", "Origin is not trusted");
+      return response.status(result.status).json(result.body);
+    }
+    try { request.explorersActor = await requireActor(request, auth, pool); next(); }
+    catch (error) { sendActorError(request, response, error); }
+  }, express.json({ limit: "4kb" }), ...(beforeMediaCommand?[beforeMediaCommand]:[]), async (request, response) => {
+    try {
+      const body = request.body as unknown;
+      if (!body || typeof body !== "object" || Object.keys(body).length !== 1 || typeof (body as { photoUri?: unknown }).photoUri !== "string")
+        throw new MediaInputError("Invalid place photo");
+      const photo = await placePhotos.fetch((body as { photoUri: string }).photoUri);
+      const media = await service.createMedia(request.explorersActor!, { purpose: "collection", filename: "place-photo",
+        mimeType: photo.mimeType, length: photo.bytes.length, bytes: photo.bytes }, { requestId: randomUUID() });
+      return response.status(201).json({ media });
+    } catch (error) {
+      if (error instanceof MediaInputError || error instanceof PlacePhotoFetchFailure) {
+        const result = failure(422, "INVALID_INPUT", error.message); return response.status(result.status).json(result.body);
+      }
       sendActorError(request, response, error);
     }
   });

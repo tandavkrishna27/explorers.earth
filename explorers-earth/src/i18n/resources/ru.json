@@ -1219,6 +1219,7 @@
         "qrDownloadError": "Не удалось загрузить QR-код. Попробуйте еще раз.",
         "qrDownloadSuccess": "QR-код успешно загружен!",
         "qrNotReady": "QR-код не готов для загрузки",
+        "listCoverImportFailed": "List created, but its cover photo could not be imported. You can add one later.",
         "listCreateFailed": "Failed to create recommendation list. Please try again."
       },
       "travelLikeLocal": "Путешествуйте как местный",

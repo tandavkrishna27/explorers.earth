@@ -854,7 +854,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",
-      "line": 24
+      "line": 26
     },
     {
       "method": "POST",
@@ -864,7 +864,17 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",
-      "line": 50
+      "line": 52
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/media/place-photo",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersMediaRoutes.ts",
+      "line": 79
     },
     {
       "method": "DELETE",
@@ -874,7 +884,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "delete",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",
-      "line": 74
+      "line": 103
     },
     {
       "method": "GET",
@@ -884,7 +894,7 @@
       "policy": "ready-media+owner-or-live-public-profile-or-book-recommendation-attachment",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",
-      "line": 136
+      "line": 165
     },
     {
       "method": "HEAD",
@@ -894,7 +904,7 @@
       "policy": "ready-media+owner-or-live-public-profile-or-book-recommendation-attachment",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",
-      "line": 137
+      "line": 166
     },
     {
       "method": "POST",
@@ -2599,6 +2609,12 @@
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/services/objectStorage.ts",
       "line": 77
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/placePhotoFetch.ts",
+      "line": 35
     },
     {
       "kind": "setTimeout",

@@ -55,6 +55,7 @@ export const PlacesClient={
  // A place gallery is owned media in S3, so provider imagery is imported rather than
  // linked and nothing here references a provider URL.
  async upload(file:File,purpose:'recommendation'|'collection'='recommendation',signal?:AbortSignal){const state=useAuthStore.getState(),scope={accountId:state.accountId,generation:state.generation,route:route()};current(scope,signal);const media=await explorersApiClient.createMedia(file,purpose,signal);current(scope,signal);return media;},
+ async importPlacePhoto(photoUri:string,signal?:AbortSignal){const state=useAuthStore.getState(),scope={accountId:state.accountId,generation:state.generation,route:route()};current(scope,signal);const media=await explorersApiClient.importPlacePhoto(photoUri,signal);current(scope,signal);return media;},
  // Places is not a top-pick category (topPickCategorySchema covers books, movies,
  // games, apps, products and people), so this read asks for none. Requesting them
  // made the whole read throw 422 before a request went out.

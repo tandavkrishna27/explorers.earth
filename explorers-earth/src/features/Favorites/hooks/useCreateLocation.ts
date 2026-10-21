@@ -92,28 +92,31 @@ export const useCreateLocation = ({
       ) || [];
 
       let coverMediaId: string | undefined;
+      let coverImportFailed = false;
 
-      // Only import a thumbnail if the provider has one.
+      // Only import a thumbnail if the provider has one. The cover is optional, so a failed
+      // import still creates the list, and names the failed step instead of hiding it.
+      //
+      // The browser asks Google only for the photo's URI (skipHttpRedirect answers JSON from
+      // places.googleapis.com, which CSP allows). The bytes are fetched by the API: following
+      // the redirect here lands on googleusercontent.com, which CSP refuses, and that used to
+      // abort every Places create.
       if (photoReferences.length > 0) {
-        const googlePhotoResponse = await fetch(
-          `${GOOGLE_PLACES_API_BASE_URL}/${values.placeId}/${
-            photoReferences[0]
-          }/media?maxWidthPx=400&key=${mapsBrowserKey()}`,
-          { redirect: "follow" }
-        );
-
-        if (!googlePhotoResponse.ok) {
-          throw new Error("Failed to fetch Google photo");
+        try {
+          const photo = await axios.get(
+            `${GOOGLE_PLACES_API_BASE_URL}/${values.placeId}/${
+              photoReferences[0]
+            }/media?maxWidthPx=400&skipHttpRedirect=true&key=${mapsBrowserKey()}`
+          );
+          const photoUri = photo.data?.photoUri;
+          if (typeof photoUri !== "string" || !photoUri) throw new Error("Google photo has no URI");
+          // Imported into owned media rather than linked, so the thumbnail keeps working
+          // when the provider does not.
+          coverMediaId = (await commands.importPlacePhoto(photoUri)).id;
+        } catch (photoError) {
+          console.warn("Failed to import the place photo; creating the list without a cover:", photoError);
+          coverImportFailed = true;
         }
-
-        // Imported into owned media rather than linked, so the thumbnail keeps working
-        // when the provider does not.
-        const imageBlob = await googlePhotoResponse.blob();
-        const file = new File([imageBlob], `${values.listName || "location"}.jpg`, {
-          type: imageBlob.type || "image/jpeg",
-        });
-        const media = await commands.upload(file, "collection");
-        coverMediaId = media.id;
       }
 
       const snapshot = locationSnapshot({
@@ -173,6 +176,7 @@ export const useCreateLocation = ({
       }
 
       toast(t("dashboard.recommendations.toastMessages.listCreated"));
+      if (coverImportFailed) toast.error(t("dashboard.recommendations.toastMessages.listCoverImportFailed"));
       if (onCreated) onCreated(created.id);
       return true;
     } catch (error) {
