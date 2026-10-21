@@ -22,6 +22,7 @@ import {
   type SaveTerminalStatus,
 } from "../types/profileSave";
 import TiptapEditor from "../../Favorites/components/TiptapEditor";
+import { normalizeRichTextHtml } from "../../../utils/richTextHtml";
 // import SwitchButton from "../../../components/ui/SwitchButton";
 import { AddIcon } from "../../../assets/icons/AddIcon";
 import CrossIcon from "../../../assets/icons/CrossIcon";
@@ -519,9 +520,14 @@ const ProfileFormSession: FC<ProfileFormProps> = memo(
     }, [onResetDirtyState, resetDirtyState]);
 
 
+    // Bio as last loaded or saved, normalised, so editor re-emits of the same content
+    // (e.g. &nbsp; rewritten as spaces after a save) do not count as edits.
+    const savedBioRef = useRef(normalizeRichTextHtml(initialValues.bio));
+
     // Initialize bio state
     useEffect(() => {
       setBio(initialValues.bio || "");
+      savedBioRef.current = normalizeRichTextHtml(initialValues.bio);
     }, [initialValues.bio]);
 
     // Initialize primary address combined state
@@ -712,7 +718,7 @@ const ProfileFormSession: FC<ProfileFormProps> = memo(
     const handleBioChange = (value: string) => {
       setBio(value);
       // Mark form as dirty when user changes bio (only after initialization)
-      if (isFormInitialized) {
+      if (isFormInitialized && normalizeRichTextHtml(value) !== savedBioRef.current) {
         setIsFormDirty(true);
       }
     };
@@ -823,7 +829,10 @@ const ProfileFormSession: FC<ProfileFormProps> = memo(
         if (terminal === "saved") {
           const changedDuringSave = commitRevision?.(values, result.status === "saved" || result.status === "deferred"
             ? result.committedRevision : undefined);
-          if (!changedDuringSave) resetDirtyState();
+          if (!changedDuringSave) {
+            savedBioRef.current = normalizeRichTextHtml(formData.bio);
+            resetDirtyState();
+          }
         }
 
         return terminal;
