@@ -197,6 +197,7 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
         ["GET", "/api/explorers/v1/collections/:id/editable"],
         ["GET", "/api/explorers/v1/recommendations"],
         ["GET", "/api/explorers/v1/recommendations/search"],
+        ["GET", "/api/explorers/v1/content-summary"],
         ["GET", "/api/explorers/v1/recommendations/:id"],
         ["GET", "/api/explorers/v1/recommendations/:id/editable"],
         ["GET", "/api/explorers/v1/categories/:category/content-snapshot"],

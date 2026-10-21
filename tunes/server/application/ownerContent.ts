@@ -122,6 +122,22 @@ export class OwnerContentService {
   }
   return result;
  }
+ /** HUB-X02. Per-category list and item counts for Home, counted the way the owner views do:
+  * an item is one live membership of a live recommendation in a live list, and Guides count
+  * the guide itself as its item. One statement, so the numbers are mutually consistent. */
+ async getContentSummary(actor:Actor,raw:unknown) {
+  return this.read(actor,['collections:read','recommendations:read'],async db=>{
+   if(raw&&typeof raw==='object'&&Object.keys(raw).length)throw new RecommendationFailure(422,'Query parameters are not accepted');
+   const rows=(await db.query(`SELECT c.category,count(*)::int AS lists,
+     count(*) FILTER (WHERE c.active)::int AS active_lists,coalesce(sum(c.items),0)::int AS items,coalesce(sum(c.items) FILTER (WHERE c.active),0)::int AS active_items
+    FROM (SELECT c.category,c.visibility='public' AND (c.category='guides' OR c.publication_state='published') AS active,
+      (SELECT count(*) FROM collection_items i JOIN recommendations r ON r.id=i.recommendation_id AND r.account_id=i.account_id AND ${statusPredicate('r','active')}
+        WHERE i.collection_id=c.id AND i.account_id=c.account_id) AS items
+     FROM collections c WHERE c.account_id=$1 AND ${statusPredicate('c','active')}) c GROUP BY c.category ORDER BY c.category`,[actor.accountId])).rows;
+   return wire.ownerContentSummarySchema.parse({version:VERSION,categories:rows.map(r=>({category:r.category,lists:r.lists,activeLists:r.active_lists,
+    items:r.category==='guides'?r.lists:r.items,activeItems:r.category==='guides'?r.active_lists:r.active_items}))});
+  });
+ }
  async getSnapshot(actor:Actor,raw:unknown) {
   return this.read(actor,['collections:read','recommendations:read'],async db=>{
    const input=parseContent(wire.ownerSnapshotRequestSchema,raw),s=await this.snapshot(db,actor,input.category,input.snapshotToken);

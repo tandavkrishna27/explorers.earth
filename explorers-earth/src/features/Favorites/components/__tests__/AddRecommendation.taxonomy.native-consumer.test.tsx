@@ -115,7 +115,7 @@ it('creates a person entity inside Places with Places taxonomy through the actua
 it.each(['empty','unconfigured','error','loading'])('distinguishes %s catalog without clearing an untouched edit assignment',async state=>{
  const transport=vi.mocked(fetch),implementation=transport.getMockImplementation()!;
  transport.mockImplementation(async(...args)=>String(args[0]).includes('/catalog/taxonomy')?state==='loading'?new Promise<Response>(()=>{}):state==='error'?reply({error:{code:'UNAVAILABLE',message:'Synthetic unavailable',requestId:'synthetic'}},503):reply(state==='empty'?page([]):{...page([]),state:'UNCONFIGURED',catalogVersion:0,defaultLocale:null}):implementation(...args));
- mountEdit();await screen.findByLabelText('Category');await screen.findByText(state==='empty'?'No Places categories are available.':state==='unconfigured'?'Places taxonomy is not configured.':state==='loading'?'Loading Places taxonomy…':/Invalid taxonomy catalog response/);expect(screen.getByLabelText('Category')).toHaveValue(id(25));
+ mountEdit();await screen.findByLabelText('Category');await screen.findByText(state==='empty'?'No Places categories are available.':state==='unconfigured'?'Places taxonomy is not configured.':state==='loading'?'Loading Places taxonomy…':/Synthetic unavailable/);expect(screen.getByLabelText('Category')).toHaveValue(id(25));
  // Finding 6a. An indeterminate catalog must not tell the owner their valid stored term is
  // unavailable; only a catalog that actually landed without the term may say that.
  const stored=Array.from((screen.getByLabelText('Category') as HTMLSelectElement).options).find(option=>option.value===id(25))!;

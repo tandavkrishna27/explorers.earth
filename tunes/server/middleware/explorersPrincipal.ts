@@ -5,6 +5,7 @@ import type { ExplorersAuth } from "../auth/betterAuth";
 import type { Actor } from "../application/actor";
 import { authorizeOperation, AuthorizationError } from "../application/authorization";
 import { requestIdFor } from "../http/requestId";
+import { classifyUnexpectedError, logServerError } from "../http/unexpectedError";
 
 export async function requireActor(request: Request, auth: ExplorersAuth, db: Pick<Pool, "query">): Promise<Actor> {
   if (request.headers.authorization || request.headers["x-account-id"] || request.headers["x-user-id"]) {
@@ -42,10 +43,21 @@ export function sendActorError(request: Request, response: Response, error: unkn
     return;
   }
   // Not an actor failure (for example a session lookup or database error). Callers map
-  // their own domain errors first, so this is the last resort and says so honestly rather
-  // than blaming the account.
-  console.error("Unexpected error while resolving the request actor", error);
-  response.status(503).json({ error: { code: "UNAVAILABLE", message: "The service is temporarily unavailable", requestId } });
+  // their own domain errors first, so this is the last resort. PROD-06: it logs the cause
+  // with the request id, and a transient database failure says so with Retry-After rather
+  // than an opaque 503 the client cannot tell from a defect.
+  const cause = classifyUnexpectedError(error);
+  const status = cause.kind === "capacity" ? 429 : cause.kind === "conflict" ? 409 : 503;
+  logServerError(request, requestId, status, error);
+  if (cause.kind !== "defect") response.setHeader("Retry-After", "1");
+  if (status === 429) {
+    response.status(429).json({ error: { code: "RATE_LIMITED", message: "The service is busy; retry shortly", requestId, retryable: true } });
+  } else if (status === 409) {
+    response.status(409).json({ error: { code: "CONFLICT", message: "A concurrent change interrupted this request; retry", requestId, retryable: true } });
+  } else {
+    response.status(503).json({ error: { code: "UNAVAILABLE", message: "The service is temporarily unavailable", requestId,
+      ...(cause.kind !== "defect" ? { retryable: true as const } : {}) } });
+  }
 }
 
 export function explorersPrincipal(auth: ExplorersAuth, db: Pick<Pool, "query">) {

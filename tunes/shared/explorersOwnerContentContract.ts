@@ -74,6 +74,11 @@ export type EditableOwnerCollection=z.infer<typeof editableOwnerCollectionSchema
 export type EditableOwnerRecommendation=z.infer<typeof editableOwnerRecommendationSchema>;
 export const ownerSnapshotRequestSchema=z.object({category:contentCategorySchema,snapshotToken:token.optional()}).strict();
 export const ownerSnapshotValidationRequestSchema=ownerSnapshotRequestSchema.extend({snapshotToken:token}).strict();
+// HUB-X02. One read for the Home counters, so they never sum lists that are still loading.
+// "Active" is what the owner views call Visibility: public and published (Guides: public).
+const summaryCount=z.number().int().nonnegative().safe();
+export const ownerContentSummarySchema=z.object({version:z.literal('explorers-owner-content/v2'),categories:z.array(z.object({category:contentCategorySchema,lists:summaryCount,activeLists:summaryCount,items:summaryCount,activeItems:summaryCount}).strict()).max(8)}).strict();
+export type OwnerContentSummary=z.infer<typeof ownerContentSummarySchema>;
 export const ownerSnapshotSchema=z.object({version:z.literal('explorers-owner-content/v2'),snapshotToken:token,revision,expiresAt:z.number().int().positive(),pinRevision:z.number().int().positive().safe().nullable()}).strict();
 export const ownerMembershipsRequestSchema=z.object({category:contentCategorySchema,collectionStatus:status,recommendationStatus:status,recommendationId:contentIdSchema.optional(),limit,cursor:token.optional(),snapshotToken:token.optional()}).strict();
 export const ownerMembershipDtoSchema=z.object({recommendationId:contentIdSchema,collectionId:contentIdSchema,collectionRevision:z.number().int().positive().safe(),displayOrder:z.number().int().nonnegative(),collectionArchived:z.boolean(),recommendationArchived:z.boolean(),placePinPosition:z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER-1).safe().nullable().optional()}).strict();
