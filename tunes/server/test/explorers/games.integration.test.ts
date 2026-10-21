@@ -93,7 +93,7 @@ it('actual owner manual rating validates1..10/null and rejects stale edit observ
  const cleared=await command(a,'patch',`/recommendations/${row.id}`,{expectedRevision:saved.body.recommendation.revision,userRating:null});expect(cleared.status).toBe(200);expect((await editable(a,row.id)).userRating).toBeNull();
 });
 it('actual IGDB search/resolve stays unavailable and never creates receipts/provider entities',async()=>{
- const a=await persona();const reply=await request(app.app).get('/api/explorers/v1/catalog/games').query({query:'Games',limit:24}).set('cookie',a.cookie);expect(reply.status).toBe(503);expect(reply.body.error.code).toBe('PROVIDER_UNAVAILABLE');
+ const a=await persona();const reply=await request(app.app).get('/api/explorers/v1/catalog/games').query({query:'Games',limit:24}).set('cookie',a.cookie);expect(reply.status).toBe(503);expect(reply.body.error.code).toBe('PROVIDER_NOT_CONFIGURED');
  const key=randomUUID(),resolved=await command(a,'post','/entities/resolve',{kind:'provider',category:'games',provider:'igdb',externalKind:'game',externalId:'42'},key);expect(resolved.status).toBe(503);expect(resolved.body.error.code).toBe('PROVIDER_UNAVAILABLE');expect((await admin.query('SELECT count(*) FROM application_command_receipts WHERE account_id=$1 AND idempotency_key_hash=$2',[a.accountId,createHash('sha256').update(key).digest()])).rows[0].count).toBe('0');
  expect((await request(app.app).get('/api/explorers/v1/catalog/games').query({query:'Game'})).status).toBe(401);
 });

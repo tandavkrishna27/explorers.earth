@@ -56,7 +56,7 @@ describe('Games manual native boundaries',()=>{
   const service=new CatalogService({query} as any,{} as any,{} as any);
   const actor={accountId:id,userId:'user',role:'owner',credential:{kind:'oauth',scopes:['entities:resolve']}} as any;
   for(const input of [{},{query:'  '},{query:['Game']},{query:'Game',limit:'25'},{query:'Game',token:'fake'},{query:'Game',cursor:['x']}])await expect(service.searchGames(actor,input)).rejects.toMatchObject({status:422});
-  await expect(service.searchGames(actor,{query:' Game ',limit:'24'})).rejects.toMatchObject({status:503,code:'PROVIDER_UNAVAILABLE'});
+  await expect(service.searchGames(actor,{query:' Game ',limit:'24'})).rejects.toMatchObject({status:503,code:'PROVIDER_NOT_CONFIGURED'});
   expect(query).toHaveBeenCalledTimes(7);
  });
  it('accepts only the strict IGDB identity selector so unavailable can be truthful',()=>{

@@ -1,6 +1,10 @@
 import {gameCatalogRequestSchema} from '../../shared/explorersGameOwnerContract';
 import {movieGenreTermsResultSchema} from '../../shared/explorersMovieMediaContract';
 import {MovieCatalog,MovieProviderFailure} from '../services/movieCatalog';
+import type {GameCatalog} from '../services/gameCatalog';
+import {createGameCatalogFromEnv} from '../services/gameCatalogFactory';
+import {toGameCandidate} from '../services/gameCatalogContracts';
+import type {GameCandidatePage} from '../../shared/explorersGameContract';
 import {movieEntityDtoSchema,resolveManualMovieSchema} from '../../shared/explorersMovieContract';
 import type { Pool } from 'pg';
 import { entityCoreDtoSchema, resolveEntitySchema,commandKeySchema,type RequestContext } from '../../shared/explorersContract';
@@ -29,14 +33,17 @@ export function movieSearchFailure(error:unknown,requestId:string):{status:numbe
   return {status:503,body:{error:{code:'PROVIDER_UNAVAILABLE',message:'Movie details are unavailable',requestId}}};
 }
 export class GameCatalogFailure extends Error {
- readonly status=503;readonly code='PROVIDER_UNAVAILABLE' as const;
- constructor(){super('Games provider is unavailable');}
+ readonly status=503;
+ /** PROVIDER_NOT_CONFIGURED: no IGDB credentials on this deployment, so Games is manual-only. */
+ constructor(readonly code:'PROVIDER_UNAVAILABLE'|'PROVIDER_NOT_CONFIGURED'='PROVIDER_UNAVAILABLE'){super(code==='PROVIDER_NOT_CONFIGURED'?'Game search is not available. Add the game manually.':'Games provider is unavailable');}
 }
+/** The IGDB catalog's binding of an actor to the credential and epoch it was authorized under. */
+const gameBinding=(db:Pool)=>async(actor:Actor)=>{await authorizeOperation(db,actor,'entities:resolve',actor?.accountId);const c=actor.credential;return {accountId:actor.accountId,userId:actor.userId,credentialKey:c.kind==='web-session'?`web-session:${c.sessionId}`:`oauth:${c.grantId}`,authorizationEpoch:c.kind==='web-session'?String(c.sessionVersion):'oauth'};};
 const reviewedMovieGenreMappings:Readonly<Record<string,string>>={"movie:28": "action", "movie:12": "adventure", "movie:16": "animation", "movie:35": "comedy", "movie:80": "crime", "movie:99": "documentary", "movie:18": "drama", "movie:10751": "family", "movie:14": "fantasy", "movie:36": "history", "movie:27": "horror", "movie:10402": "music", "movie:9648": "mystery", "movie:10749": "romance", "movie:878": "science-fiction", "movie:10770": "tv-movie", "movie:53": "thriller", "movie:10752": "war", "movie:37": "western", "tv:10759": "action-adventure", "tv:16": "animation", "tv:35": "comedy", "tv:80": "crime", "tv:99": "documentary", "tv:18": "drama", "tv:10751": "family", "tv:10762": "kids", "tv:9648": "mystery", "tv:10763": "news", "tv:10764": "reality", "tv:10765": "sci-fi-fantasy", "tv:10766": "soap", "tv:10767": "talk", "tv:10768": "war-politics", "tv:37": "western"};
 /** Existing owned catalog context only. Provider ingestion/fetch is a separate
  * trusted server adapter; HTTP callers cannot supply or overwrite shared facts. */
 export class CatalogService {
-  constructor(private readonly db:Pool,private readonly books=new BookCatalog(),private readonly movies=new MovieCatalog({accessToken:process.env.TMDB_ACCESS_TOKEN,apiKey:process.env.TMDB_API_KEY,authorize:a=>authorizeOperation(db,a,'entities:resolve',a.accountId)})) {}
+  constructor(private readonly db:Pool,private readonly books=new BookCatalog(),private readonly movies=new MovieCatalog({accessToken:process.env.TMDB_ACCESS_TOKEN,apiKey:process.env.TMDB_API_KEY,authorize:a=>authorizeOperation(db,a,'entities:resolve',a.accountId)}),private readonly games:GameCatalog|undefined=createGameCatalogFromEnv(process.env,gameBinding(db))) {}
   async movieGenres(actor:Actor,input:unknown){
     await authorizeOperation(this.db,actor,'entities:resolve',actor?.accountId);
     if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).length)throw new MovieGenreFailure(422,'INVALID_INPUT');
@@ -48,7 +55,12 @@ export class CatalogService {
     await authorizeOperation(this.db,actor,'entities:resolve',actor.accountId);return result;
   }
   async searchBooks(actor:Actor,input:unknown){await authorizeOperation(this.db,actor,'entities:resolve',actor?.accountId);return this.books.search(actor.accountId,input);}
-  async searchGames(actor:Actor,input:unknown){await authorizeOperation(this.db,actor,'entities:resolve',actor?.accountId);parseContent(gameCatalogRequestSchema,input);throw new GameCatalogFailure();}
+  async searchGames(actor:Actor,input:unknown):Promise<GameCandidatePage>{
+    await authorizeOperation(this.db,actor,'entities:resolve',actor?.accountId);const parsed=parseContent(gameCatalogRequestSchema,input);
+    if(!this.games)throw new GameCatalogFailure('PROVIDER_NOT_CONFIGURED');
+    const page=await this.games.search(actor,parsed);
+    return {version:page.version,items:page.items.map(toGameCandidate),nextCursor:page.nextCursor};
+  }
   async searchMovies(actor:Actor,input:unknown){return this.movies.search(actor,input);}
   async resolveEntity(actor:Actor,input:unknown,context?:RequestContext) {
     await authorizeOperation(this.db,actor,'entities:resolve',actor?.accountId);

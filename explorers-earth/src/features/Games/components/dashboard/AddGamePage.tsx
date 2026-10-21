@@ -5,7 +5,8 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Gamepad2, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '../../../../store/store';
-import type { RecommendationObservation } from '../../../../lib/explorersApiClient';
+import { ExplorersApiError, type RecommendationObservation } from '../../../../lib/explorersApiClient';
+import type { GameCandidate } from '../../../../../../tunes/shared/explorersGameContract';
 import { GamesClient, type ManualGameIntent } from '../../api/gamesClient';
 import { useGamesCommands } from '../../api/query';
 import { invalidateGames, useGamesOwner } from '../../hooks/useGamesOwner';
@@ -26,12 +27,13 @@ export default function AddGamePage() {
  const [title, setTitle] = useState(''), [note, setNote] = useState(''), [rating, setRating] = useState<number | null>(null);
  const [media, setMedia] = useState<{ id: string; url: string }[]>([]), [pending, setPending] = useState(0);
  const [saving, setSaving] = useState(false), [error, setError] = useState(''), [query, setQuery] = useState(''), [searchError, setSearchError] = useState('');
+ const [candidates, setCandidates] = useState<GameCandidate[]>([]), [searching, setSearching] = useState(false);
  const initialized = useRef(''), draftObservation = useRef<RecommendationObservation>();
  const intent = useRef<{ scope: string; signature: string; value: ManualGameIntent }>();
  const updateKey = useRef<{ signature: string; key: string }>();
  const mounted = useRef(true);
  useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.abort(); active.current++; }; }, []);
- useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setTitle(''); setNote(''); setRating(null); setMedia([]); setPending(0); setSaving(false); setError(''); setSearchError(''); setExistingId(''); }, [scope]);
+ useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setTitle(''); setNote(''); setRating(null); setMedia([]); setPending(0); setSaving(false); setError(''); setSearchError(''); setCandidates([]); setSearching(false); setExistingId(''); }, [scope]);
  useEffect(() => {
   if (!gameId || !owner.content || initialized.current === scope) return;
   const game = owner.content.view.lists.find(list => list.documentId === listId)?.recommended_games.find(row => row.documentId === gameId);
@@ -74,7 +76,14 @@ export default function AddGamePage() {
   } catch (failure) { if (valid(captured, operation)) setError(friendlyErrorMessage(failure, 'Game could not be saved')); }
   finally { if (valid(captured, operation)) setSaving(false); }
  };
- const search = async () => { const captured = scope; setSearchError(''); try { await GamesClient.search({ query: query.trim(), limit: 24 }); if (valid(captured)) setSearchError('Provider game acquisition is unavailable. Your manual draft is preserved.'); } catch (failure) { if (valid(captured)) setSearchError(friendlyErrorMessage(failure, 'Provider search unavailable')); } };
+ // A hit only fills the form; the game is still saved as the owner's own entry.
+ const search = async () => {
+  const captured = scope; setSearchError(''); setCandidates([]); setSearching(true);
+  try { const page = await GamesClient.search({ query: query.trim(), limit: 24 }); if (!valid(captured)) return; setCandidates([...page.items]); if (!page.items.length) setSearchError('No games found. Add the game manually below.'); }
+  catch (failure) { if (valid(captured)) setSearchError(failure instanceof ExplorersApiError && failure.code === 'PROVIDER_NOT_CONFIGURED' ? 'Game search is not available yet. Add the game manually below.' : friendlyErrorMessage(failure, 'Provider search unavailable')); }
+  finally { if (valid(captured)) setSearching(false); }
+ };
+ const choose = (candidate: GameCandidate) => { setTitle(candidate.title); setCandidates([]); };
  // Edit controls require the actual complete owner observation. A loaded draft
  // stays owned by its original observation across refreshes and never rebases.
  if (gameId && initialized.current !== scope) {
@@ -86,7 +95,11 @@ export default function AddGamePage() {
  }
  return <div className="min-h-screen text-dashboard"><header className="border-b border-dashboard-border px-4 md:px-6 py-3 flex items-center gap-3"><button aria-label="Back to game list" onClick={() => navigate(`/recommendations/games/${listId}`)}><ArrowLeft size={20} /></button><h1 className="font-semibold">{gameId ? 'Edit Game' : 'Add Game'}</h1></header>
   <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-6" style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom))" }}>
-   {!gameId && <section className="rounded-2xl border border-dashboard-border bg-dashboard-sidebar p-5 space-y-3"><h2 className="font-semibold flex gap-2"><Search size={18} />Find a game</h2><input aria-label="Search for a game" placeholder="Search for a game..." value={query} onChange={event => setQuery(event.target.value)} className="w-full bg-dashboard-muted rounded-xl p-3" /><button disabled={!query.trim()} onClick={search}>Search</button>{searchError && <p role="status">{searchError}</p>}<p className="text-sm text-dashboard-muted">You can add your own game below.</p></section>}
+   {!gameId && <section className="rounded-2xl border border-dashboard-border bg-dashboard-sidebar p-5 space-y-3"><h2 className="font-semibold flex gap-2"><Search size={18} />Find a game</h2><input aria-label="Search for a game" placeholder="Search for a game..." value={query} onChange={event => setQuery(event.target.value)} className="w-full bg-dashboard-muted rounded-xl p-3" /><button disabled={!query.trim() || searching} onClick={search}>Search</button>{searching && <Loader2 className="inline animate-spin ml-2" size={16} aria-hidden />}{searchError && <p role="status">{searchError}</p>}
+    {candidates.length > 0 && <ul className="space-y-2">{candidates.map(candidate => { const label = candidate.year ? `${candidate.title} (${candidate.year})` : candidate.title; return <li key={candidate.externalId}><button type="button" aria-label={`Use ${label}`} onClick={() => choose(candidate)} className="flex w-full items-center gap-3 rounded-xl bg-dashboard-muted p-2 text-left">
+     {candidate.coverUrl ? <img src={candidate.coverUrl} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-16 w-12 shrink-0 rounded object-cover" /> : <span className="flex h-16 w-12 shrink-0 items-center justify-center rounded bg-dashboard-sidebar"><Gamepad2 size={18} aria-hidden /></span>}
+     <span className="min-w-0"><span className="block font-medium truncate">{label}</span>{candidate.platforms.length > 0 && <span className="block text-sm text-dashboard-muted truncate">{candidate.platforms.join(' · ')}</span>}{candidate.genres.length > 0 && <span className="block text-xs text-dashboard-muted truncate">{candidate.genres.join(', ')}</span>}</span>
+    </button></li>; })}</ul>}<p className="text-sm text-dashboard-muted">You can add your own game below.</p></section>}
    {!gameId && existingGames.length > 0 && <section><label>Existing game<select value={existingId} onChange={event => setExistingId(event.target.value)} disabled={commands.loading}><option value="">Select a game</option>{existingGames.map(game => <option key={game.documentId} value={game.documentId}>{game.title}</option>)}</select></label><button disabled={!existingId || commands.loading} onClick={attachExisting}>Add existing game to this list</button></section>}
    <section className="rounded-2xl border border-dashboard-border bg-dashboard-sidebar p-5 space-y-5"><h2 className="font-semibold flex gap-2"><Gamepad2 size={18} />{gameId ? 'My Game' : 'Add manually'}</h2>
     {gameId && owner.loading && <p>Loading game…</p>}{owner.error && <p role="alert">{owner.error.message}</p>}
