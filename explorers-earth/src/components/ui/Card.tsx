@@ -5,6 +5,7 @@ import Location from "../../assets/icons/Location";
 import Profile from "../../assets/icons/Profile";
 import { motion } from "framer-motion";
 import { IMAGE_CONFIG } from "../../config";
+import { useTranslation } from "react-i18next";
 
 interface MenuItem {
   icon?: ReactElement;
@@ -46,6 +47,7 @@ const Card: FC<CardProps> = memo(
     visibility,
     isPinned,
   }) => {
+    const { t } = useTranslation();
     const [showMenu, setShowMenu] = useState(false);
     const kebabContainerRef = useRef<HTMLDivElement>(null);
 
@@ -161,7 +163,7 @@ const Card: FC<CardProps> = memo(
             )}
             {visibility !== undefined && visibility !== null && (
               <span className="text-[10px] font-poppins font-semibold uppercase tracking-wider">
-                {visibility ? "Public" : "Draft"}
+                {visibility ? t("dashboard.categoryPages.public") : t("dashboard.home.draft")}
               </span>
             )}
           </div>

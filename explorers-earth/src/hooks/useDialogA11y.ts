@@ -13,6 +13,81 @@ function focusableWithin(container: HTMLElement): HTMLElement[] {
   );
 }
 
+const RESTORE_TIMEOUT_MS = 5000;
+const LANDMARK = 'main, [role="main"], form, section, [role="region"], nav, header, aside, article';
+
+function isFocusable(el: HTMLElement): boolean {
+  if (!el.isConnected) return false;
+  if (el.matches(":disabled") || el.getAttribute("aria-disabled") === "true") return false;
+  return !el.closest("[hidden], [inert]");
+}
+
+function focusFallback(opener: HTMLElement): HTMLElement | null {
+  let node = opener.parentElement;
+  while (node && node !== document.body) {
+    if (node.matches(FOCUSABLE) && isFocusable(node)) {
+      node.focus({ preventScroll: true });
+      return node;
+    }
+    node = node.parentElement;
+  }
+  const landmark = opener.closest<HTMLElement>(LANDMARK) ?? document.querySelector<HTMLElement>("main, [role='main']");
+  if (landmark) {
+    if (!landmark.hasAttribute("tabindex")) landmark.setAttribute("tabindex", "-1");
+    landmark.focus({ preventScroll: true });
+    return landmark;
+  }
+  return null;
+}
+
+/**
+ * Hands focus back to the element that opened a dialog. When the opener is disabled at close
+ * time (e.g. a "Save" button that stays disabled while a deferred save is pending) focus is
+ * parked on the nearest focusable ancestor / landmark so it never falls to <body>, and moves to
+ * the opener as soon as it becomes enabled again (bounded wait), unless the user went elsewhere.
+ */
+export function restoreFocus(opener: HTMLElement): void {
+  if (!opener.isConnected) return;
+  if (isFocusable(opener)) {
+    opener.focus({ preventScroll: true });
+    if (document.activeElement === opener) return;
+  }
+  const parked = focusFallback(opener);
+
+  const stillParked = () => {
+    const active = document.activeElement;
+    return !active || active === document.body || active === parked;
+  };
+  let done = false;
+  let observer: MutationObserver | null = null;
+  let frame: number | undefined;
+  const finish = () => {
+    done = true;
+    observer?.disconnect();
+    clearTimeout(timer);
+    if (frame !== undefined && typeof cancelAnimationFrame === "function") cancelAnimationFrame(frame);
+  };
+  const attempt = () => {
+    if (done) return;
+    if (!opener.isConnected || !stillParked()) return finish();
+    if (isFocusable(opener)) {
+      opener.focus({ preventScroll: true });
+      finish();
+    }
+  };
+  if (typeof MutationObserver !== "undefined") {
+    observer = new MutationObserver(attempt);
+    observer.observe(opener, { attributes: true, attributeFilter: ["disabled", "aria-disabled", "hidden", "inert"] });
+  }
+  // Disabled state may also flip through an ancestor or via property without an attribute change.
+  const poll = () => {
+    attempt();
+    if (!done && typeof requestAnimationFrame === "function") frame = requestAnimationFrame(poll);
+  };
+  if (typeof requestAnimationFrame === "function") frame = requestAnimationFrame(poll);
+  const timer = setTimeout(finish, RESTORE_TIMEOUT_MS);
+}
+
 /**
  * Modal dialog behaviour shared by Modal and UnsavedChangesModal: moves focus into the
  * dialog, keeps Tab / Shift+Tab inside it, closes on Escape and hands focus back to the
@@ -65,7 +140,7 @@ export function useDialogA11y(open: boolean, containerRef: RefObject<HTMLElement
       document.removeEventListener("keydown", onKeyDown, true);
       const index = openDialogs.indexOf(id);
       if (index >= 0) openDialogs.splice(index, 1);
-      if (opener && opener.isConnected) opener.focus({ preventScroll: true });
+      if (opener) restoreFocus(opener);
     };
   }, [open, containerRef]);
 }

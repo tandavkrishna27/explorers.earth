@@ -33,6 +33,8 @@ import Switch from "../../../../components/ui/Switch";
 import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
 import QrCardTagline from "../../../../components/QrCardTagline";
 import DialogPanel from "../../../../components/ui/DialogPanel";
+import { keyboardActivation } from "../../../../utils/keyboardActivation";
+import { useTranslation } from "react-i18next";
 
 
 // Movie Row Component
@@ -57,7 +59,7 @@ const MovieRow = ({
 
   return (
     <div 
-      onClick={onRowClick}
+      {...keyboardActivation(onRowClick)}
       className="group flex items-center gap-3 p-3 bg-white/[0.03] border border-white/[0.05] hover:border-white/[0.08] hover:bg-white/[0.06] cursor-pointer rounded-xl transition-all mb-2"
     >
       {/* Poster */}
@@ -157,6 +159,7 @@ const MovieRow = ({
 // Main MovieListView Component
 // ─────────────────────────────────────────────────────────────
 const MovieListView = () => {
+  const { t } = useTranslation();
   const { listId } = useParams<{ listId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -358,7 +361,7 @@ const MovieListView = () => {
           checked={list?.Visibility ?? false}
           onChange={handleToggleVisibility}
           loading={isUpdating}
-          label={list?.Visibility ? "Published" : "Draft"}
+          label={list?.Visibility ? t("dashboard.home.published") : t("dashboard.home.draft")}
         />
       </div>
 
@@ -509,28 +512,28 @@ const MovieListView = () => {
                 </div>
 
                 <div className="flex items-center justify-center gap-8 mt-5 mb-1 pt-4 border-t border-white/5">
-                  <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => {
+                  <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" {...keyboardActivation(() => {
                     if (navigator.share) {
                       navigator.share({ title: list?.List_Name, url: shareUrl });
                     } else {
                       handleCopyUrl();
                     }
-                  }}>
+                  })}>
                     <button className="p-0 bg-transparent rounded-full flex items-center justify-center">
                       <Share2 size={22} className="text-white" strokeWidth={1.5} />
                     </button>
                     <span className="font-poppins text-white text-xs">Share Link</span>
                   </div>
-                  <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={handleCopyUrl}>
+                  <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" {...keyboardActivation(handleCopyUrl)}>
                     <button className="p-0 bg-transparent rounded-full flex items-center justify-center">
                       {copied ? <Check size={22} className="text-white" strokeWidth={1.5} /> : <Copy size={22} className="text-white" strokeWidth={1.5} />}
                     </button>
                     <span className="font-poppins text-white text-xs whitespace-nowrap">{copied ? "Copied" : "Copy Link"}</span>
                   </div>
-                  <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => {
+                  <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" {...keyboardActivation(() => {
                      // trigger download
                      downloadQrSvgAsPng("list-qr-movies", `QR_${list?.List_Name || "List"}.png`);
-                  }}>
+                  })}>
                     <button className="p-0 bg-transparent rounded-full flex items-center justify-center">
                       <Download size={22} className="text-white" strokeWidth={1.5} />
                     </button>

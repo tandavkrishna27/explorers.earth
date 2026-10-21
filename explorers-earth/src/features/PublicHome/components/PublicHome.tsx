@@ -58,6 +58,7 @@ import { usePublicProfileDetail } from "../api/usePublicProfileDetail";
 import { PublicScrollContinuation } from "./PublicScrollContinuation";
 import PublicBlockingOverlay from "./PublicBlockingOverlay";
 import { useFormatMoney } from "../../../lib/money";
+import { keyboardActivation } from "../../../utils/keyboardActivation";
 
 type CardDataItem = {
   Media?: {
@@ -1525,23 +1526,25 @@ const PublicHome = memo(() => {
                           <div key={city.documentId || idx} className="flex flex-col gap-3">
                             <div className="flex justify-between items-end">
                               <div className="flex flex-col gap-0.5 max-w-[75%]">
-                                <h2
-                                  onClick={() => navigate(`/${username}/places/${citySlug}`)}
-                                  className="text-base font-extrabold text-[var(--category-text,#FFFFFF)] cursor-pointer hover:text-[var(--category-text,#3B82F6)] transition-colors duration-200 flex items-center gap-1.5"
-                                >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    fill="currentColor"
-                                    className="w-4 h-4 shrink-0 text-yellow-400"
+                                <h2 className="text-base font-extrabold text-[var(--category-text,#FFFFFF)]">
+                                  <span
+                                    {...keyboardActivation(() => navigate(`/${username}/places/${citySlug}`))}
+                                    className="cursor-pointer hover:text-[var(--category-text,#3B82F6)] transition-colors duration-200 flex items-center gap-1.5"
                                   >
-                                    <path
-                                      fillRule="evenodd"
-                                      clipRule="evenodd"
-                                      d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"
-                                    />
-                                  </svg>
-                                  <span>{city.List_Name}</span>
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      viewBox="0 0 24 24"
+                                      fill="currentColor"
+                                      className="w-4 h-4 shrink-0 text-yellow-400"
+                                    >
+                                      <path
+                                        fillRule="evenodd"
+                                        clipRule="evenodd"
+                                        d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"
+                                      />
+                                    </svg>
+                                    <span>{city.List_Name}</span>
+                                  </span>
                                 </h2>
                               </div>
                               <button
@@ -1732,7 +1735,7 @@ const PublicHome = memo(() => {
                                 <div
                                   key={person.documentId || `linked-person-${index}`}
                                   className="bg-[var(--category-card,rgba(255,255,255,0.05))] border border-[var(--category-control-border,rgba(255,255,255,0.05))] rounded-xl p-4 flex flex-col gap-3 hover:border-[var(--category-control-border,rgba(59,130,246,0.4))] transition-all cursor-pointer"
-                                  onClick={() => setPersonSelection({ scope: linkedModalScope, documentId: person.documentId, listId: person._listId })}
+                                  {...keyboardActivation(() => setPersonSelection({ scope: linkedModalScope, documentId: person.documentId, listId: person._listId }))}
                                 >
                                   <div className="flex items-center gap-3">
                                     <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-violet-950/40 ring-2 ring-white/10">
@@ -1776,7 +1779,7 @@ const PublicHome = memo(() => {
                               <div
                                 key={product.documentId || `linked-product-${index}`}
                                 className="bg-[var(--category-card,rgba(255,255,255,0.05))] border border-[var(--category-control-border,rgba(255,255,255,0.05))] rounded-xl overflow-hidden hover:border-[var(--category-control-border,rgba(59,130,246,0.4))] transition-all cursor-pointer flex flex-col justify-between"
-                                onClick={() => setProductSelection({ scope: linkedModalScope, documentId: product.documentId, listId: product._listId })}
+                                {...keyboardActivation(() => setProductSelection({ scope: linkedModalScope, documentId: product.documentId, listId: product._listId }))}
                               >
                                 <div className="h-32 bg-[var(--category-card,rgba(0,0,0,0.4))] flex items-center justify-center overflow-hidden">
                                   {product.logo_url ? (

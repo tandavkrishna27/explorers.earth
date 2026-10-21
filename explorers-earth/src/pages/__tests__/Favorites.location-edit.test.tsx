@@ -80,7 +80,7 @@ describe("Favorites retained location edits", () => {
     if (mode === "changed") change("placeUrl", slug);
     change("note", "new note");
     change("recommendationSocialLink", "https://example.com/new-social");
-    fireEvent.click(screen.getByRole("button", { name: "Update Location" }));
+    fireEvent.click(screen.getByRole("button", { name: "dashboard.categoryPages.updateLocation" }));
     await waitFor(() => expect(h.updateList).toHaveBeenCalledWith("location-a", { description: "new note" }));
     expect(h.providerGet).not.toHaveBeenCalled();
     expect(h.providerFetch).not.toHaveBeenCalled();
@@ -89,28 +89,28 @@ describe("Favorites retained location edits", () => {
     expect(h.selected.slug).toBe(slug);
     expect(h.selected.List_Name_Details.thumbnail).toBe("/owned-cover.png");
     expect(h.refetch).toHaveBeenCalled();
-    await waitFor(() => expect(screen.queryByRole("button", { name: "Update Location" })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("button", { name: "dashboard.categoryPages.updateLocation" })).toBeNull());
   });
 
   it("refuses another list's slug before commands or provider requests", async () => {
     await openEdit();
     change("placeUrl", "other-city");
-    fireEvent.click(screen.getByRole("button", { name: "Update Location" }));
+    fireEvent.click(screen.getByRole("button", { name: "dashboard.categoryPages.updateLocation" }));
     await waitFor(() => expect(h.error).toHaveBeenCalledWith("toast.error.conflictError"));
     expect(h.updateList).not.toHaveBeenCalled();
     expect(h.providerGet).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Update Location" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "dashboard.categoryPages.updateLocation" })).toBeInTheDocument();
   });
 
   it("keeps the edit draft after a native command failure", async () => {
     h.updateList.mockRejectedValue(new Error("stale observation"));
     await openEdit();
     change("note", "retained draft");
-    fireEvent.click(screen.getByRole("button", { name: "Update Location" }));
+    fireEvent.click(screen.getByRole("button", { name: "dashboard.categoryPages.updateLocation" }));
     await waitFor(() => expect(h.updateList).toHaveBeenCalled());
     await waitFor(() => expect(h.error).toHaveBeenCalledWith("toast.error.recommendedListUpdateFailed"));
     expect(document.querySelector('[name="note"]')).toHaveValue("retained draft");
-    expect(screen.getByRole("button", { name: "Update Location" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "dashboard.categoryPages.updateLocation" })).toBeInTheDocument();
     expect(h.setLocation).not.toHaveBeenCalled();
   });
 
@@ -123,7 +123,7 @@ describe("Favorites retained location edits", () => {
     await openEdit();
     change("note", "native preserved");
     change("recommendationSocialLink", "https://example.com/changed");
-    fireEvent.click(screen.getByRole("button", { name: "Update Location" }));
+    fireEvent.click(screen.getByRole("button", { name: "dashboard.categoryPages.updateLocation" }));
     await waitFor(() => expect(h.setLocation).toHaveBeenCalledWith("location-a", { ...original, instagramMediaUrl: "https://example.com/changed" }));
     expect(h.updateList).toHaveBeenCalledWith("location-a", { title: "Fixture Zero City", slug: "fixture-zero-city" });
     expect(h.updateList).toHaveBeenCalledWith("location-a", { description: "native preserved" });
@@ -140,11 +140,11 @@ describe("Favorites retained location edits", () => {
     if (mode === "missing-location") delete h.native.detail.placeLocation;
     await openEdit();
     change("note", "retained native draft");
-    fireEvent.click(screen.getByRole("button", { name: "Update Location" }));
+    fireEvent.click(screen.getByRole("button", { name: "dashboard.categoryPages.updateLocation" }));
     await waitFor(() => expect(h.error).toHaveBeenCalledWith("toast.error.recommendedListUpdateFailed"));
     expect(h.updateList).not.toHaveBeenCalled();
     expect(h.setLocation).not.toHaveBeenCalled();
     expect(document.querySelector('[name="note"]')).toHaveValue("retained native draft");
-    expect(screen.getByRole("button", { name: "Update Location" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "dashboard.categoryPages.updateLocation" })).toBeInTheDocument();
   });
 });

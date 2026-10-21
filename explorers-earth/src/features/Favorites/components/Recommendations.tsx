@@ -45,6 +45,7 @@ import PersonDetailModal from "../../People/components/public/PersonDetailModal"
 import { deduplicatePeople, buildImageUrl, PlatformIcon } from "../../People";
 import { deduplicateProducts } from "../../Products/utils/productHelpers";
 import { useFormatMoney } from "../../../lib/money";
+import { keyboardActivation } from "../../../utils/keyboardActivation";
 
 // ⭐ TS declaration for window.__walkthrough
 declare global {
@@ -1012,13 +1013,12 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
               return (
                 <div
                   key={data.documentId || `recommendation-${index}`}
-                  onClick={() =>
+                  {...keyboardActivation(() =>
                     setIsExpanded({
                       visible: true,
                       documentId: data.documentId,
                       type: "place",
-                    })
-                  }
+                    }))}
                   className="places-grid-card relative rounded-xl overflow-hidden cursor-pointer shadow-lg transition-transform hover:-translate-y-1 aspect-[4/3] md:aspect-[4/3]"
                   style={{
                     background: `linear-gradient(180deg, rgba(13,15,18,0.1) 0%, rgba(13,15,18,0.85) 90%), url('${image}') center/cover no-repeat`,

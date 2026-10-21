@@ -800,6 +800,69 @@
     "ZW": "Zimbabwe"
   },
   "dashboard": {
+    "categoryPages": {
+      "publicVisibility": "Öffentliche Sichtbarkeit",
+      "managePublicVisibility": "Öffentliche Sichtbarkeit verwalten",
+      "public": "Öffentlich",
+      "pubShort": "Öffentl.",
+      "open": "Öffnen",
+      "manageTopPicks": "Top-Empfehlungen verwalten",
+      "manageTopPicksCount": "Top-Empfehlungen verwalten ({{pinned}}/{{total}})",
+      "manageTopReads": "Top-Lektüren verwalten",
+      "manageTopReadsCount": "Top-Lektüren verwalten ({{pinned}}/{{total}})",
+      "addLocation": "Standort hinzufügen",
+      "updateLocation": "Standort aktualisieren",
+      "pinned_one": "{{count}} angeheftet",
+      "pinned_other": "{{count}} angeheftet",
+      "empty": {
+        "apps": "Noch keine Apps",
+        "books": "Noch keine Bücher",
+        "games": "Noch keine Spiele",
+        "movies": "Noch keine Filme",
+        "people": "Noch keine Personen",
+        "products": "Noch keine Produkte"
+      },
+      "hub": {
+        "title": "Alle deine Empfehlungen an einem Ort",
+        "subtitle": "Kuratiere, ordne und teile deine Lieblingsorte, Filme, Bücher, Spiele, Tools und Guides mit der ganzen Welt.",
+        "categoryFallback": "Kategorie",
+        "hidden": "Verborgen",
+        "pinnedToNav": "An die öffentliche Navigation angeheftet",
+        "categoryOptions": "Kategorieoptionen",
+        "publishFirst": "Veröffentliche diese Kategorie, bevor du sie anheftest.",
+        "automatic": "Automatische Platzierung · Manueller Modus in den Einstellungen",
+        "unpin": "Von der öffentlichen Navigation lösen",
+        "pin": "An öffentliche Navigation anheften (max. 5)",
+        "disableUrl": "Öffentliche URL deaktivieren",
+        "enableUrl": "Öffentliche URL aktivieren",
+        "viewPublic": "Öffentliche Seite ansehen",
+        "copyLink": "Öffentlichen Link kopieren",
+        "copied": "Kopiert!",
+        "copiedToast": "Öffentlicher Link zu {{category}} in die Zwischenablage kopiert!",
+        "labels": {
+          "places": "Orte",
+          "movies": "Filme & Serien",
+          "books": "Bücher",
+          "games": "Spiele",
+          "apps": "Apps und Werkzeuge",
+          "products": "Produkte",
+          "people": "Personen",
+          "guides": "Reiseführer"
+        },
+        "descriptions": {
+          "places": "Deine Lieblingsorte zum Essen, Übernachten und Entdecken – kuratiert zum Teilen.",
+          "movies": "Deine Merkliste mit Filmen und Serien, die eine Empfehlung wert sind.",
+          "books": "Die Bücher, die dir im Gedächtnis geblieben sind – ins Regal gestellt, damit andere sie finden.",
+          "games": "Deine Gaming-Ruhmeshalle – die Titel, die man weiterempfehlen sollte.",
+          "apps": "Die Apps und Tools, auf die du wirklich schwörst.",
+          "products": "Die Ausrüstung, die du einem Freund zum Kauf empfehlen würdest.",
+          "people": "Die Kreativen und Macher, denen du jedem zu folgen raten würdest.",
+          "guides": "Deine Routen und dein Insiderwissen – kartiert, damit andere ihnen folgen können."
+        }
+      },
+      "listNowPublic": "{{name}} ist jetzt öffentlich",
+      "listNowDraft": "{{name}} ist jetzt ein Entwurf"
+    },
     "home": {
       "activePlaces": "aktive Orte",
       "addLocation": "Add Location",
@@ -1728,20 +1791,20 @@
         "NGOs",
         "Regierungsteams"
       ],
-      "explore": "See this perspective",
-      "eyebrow": "Ways to use explorers",
+      "explore": "Diese Perspektive ansehen",
+      "eyebrow": "So nutzt du explorers",
       "perspectives": {
         "brands": {
-          "description": "Curate collections, guides, locations, and products with a clear and human point of view.",
-          "title": "Brands"
+          "description": "Kuratiere Sammlungen, Guides, Orte und Produkte mit einer klaren, menschlichen Perspektive.",
+          "title": "Marken"
         },
         "creators": {
-          "description": "Give your audience a lasting home for the recommendations that would otherwise disappear in the feed.",
-          "title": "Creators"
+          "description": "Gib deinem Publikum ein dauerhaftes Zuhause für Empfehlungen, die sonst im Feed untergehen würden.",
+          "title": "Kreative"
         },
         "personal": {
-          "description": "Keep the places, books, films, tools, people, and discoveries that shape your world.",
-          "title": "Personal"
+          "description": "Bewahre die Orte, Bücher, Filme, Tools, Menschen und Entdeckungen, die deine Welt prägen.",
+          "title": "Privat"
         }
       }
     },

@@ -508,9 +508,9 @@ it.each([
 ] as const)('%s preserves the dashboard accent descendant contract outside category context', (_name, Hero, props) => {
   const Component = Hero as ComponentType<any>;
   const { rerender } = render(<Component {...props} showManageButton onManageClick={() => {}} />);
-  expect(screen.getByRole('button', { name: /Manage Top (Reads|Picks)/ })).toHaveClass('bg-dashboard-accent');
+  expect(screen.getByRole('button', { name: /categoryPages\.manageTop(Reads|Picks)$/ })).toHaveClass('bg-dashboard-accent');
   rerender(<PublicCategoryThemeProvider styles={{ '--category-accent': '#0F172A', '--category-accent-ink': '#FFFFFF' }}><Component {...props} showManageButton onManageClick={() => {}} /></PublicCategoryThemeProvider>);
-  expect(screen.getByRole('button', { name: /Manage Top (Reads|Picks)/ })).not.toHaveClass('bg-dashboard-accent');
+  expect(screen.getByRole('button', { name: /categoryPages\.manageTop(Reads|Picks)$/ })).not.toHaveClass('bg-dashboard-accent');
 });
 
 describe.each(cases)('%s shared modal category isolation', (_name, Modal, prop) => {

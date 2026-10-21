@@ -20,6 +20,7 @@ import ThemedIcon from "../../../components/ui/ThemedIcon";
 import { useQRActions } from "../../../hooks/useQRActions";
 import { generateRecommendationQRUrl } from "../../../utils/qrCodeService";
 import { createUtmParams } from "../../../utils/urlHelpers";
+import { keyboardActivation } from "../../../utils/keyboardActivation";
 
 // type interface for Recommendations
 interface Recommendation {
@@ -219,7 +220,7 @@ const LinksAndQR: FC<LinksAndQRProps> = memo(
                   <div className="flex justify-around items-center w-full mt-6 py-2 border-t border-white/5">
                     {/* Share Link */}
                     <div
-                      onClick={() => setShowShareModal(true)}
+                      {...keyboardActivation(() => setShowShareModal(true))}
                       className="flex flex-col items-center gap-1.5 cursor-pointer text-white/80 hover:text-white transition-colors"
                       data-walkthrough="share-button"
                     >
@@ -229,7 +230,7 @@ const LinksAndQR: FC<LinksAndQRProps> = memo(
 
                     {/* Copy Link */}
                     <div
-                      onClick={handleCopyLink}
+                      {...keyboardActivation(handleCopyLink)}
                       className="flex flex-col items-center gap-1.5 cursor-pointer text-white/80 hover:text-white transition-colors"
                     >
                       <BoldLinkIcon color="currentColor" />
@@ -238,7 +239,7 @@ const LinksAndQR: FC<LinksAndQRProps> = memo(
 
                     {/* Download QR */}
                     <div
-                      onClick={handleDownloadQR}
+                      {...keyboardActivation(handleDownloadQR)}
                       className="flex flex-col items-center gap-1.5 cursor-pointer text-white/80 hover:text-white transition-colors"
                     >
                       <DownloadIcon />

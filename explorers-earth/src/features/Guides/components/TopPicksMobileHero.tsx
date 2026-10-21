@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, PanInfo } from "framer-motion";
 import { Play, Star } from "lucide-react";
 import type { Guide } from "../types";
+import { useTranslation } from "react-i18next";
 
 interface TopPicksMobileHeroProps {
   guides: Guide[];
@@ -23,6 +24,7 @@ const getBudgetTypeLabel = (value: string | null): string => {
 };
 
 const TopPicksMobileHero = ({ guides, onGuideClick, showManageButton = false, onManageClick }: TopPicksMobileHeroProps) => {
+  const { t } = useTranslation();
   const [activeIndex, setActiveIndex] = useState(0);
 
   // Auto-iterate the carousel every 4 seconds
@@ -128,7 +130,7 @@ const TopPicksMobileHero = ({ guides, onGuideClick, showManageButton = false, on
                         onManageClick?.();
                       }}
                     >
-                      <Star size={18} fill="currentColor" /> Manage Top Picks
+                      <Star size={18} fill="currentColor" /> {t("dashboard.categoryPages.manageTopPicks")}
                     </button>
                   ) : (
                     <button 

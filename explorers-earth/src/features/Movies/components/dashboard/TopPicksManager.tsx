@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import type { RecommendedMovie } from "../../types";
 import { buildPosterUrl } from "../../utils/movieHelpers";
 import DialogPanel from "../../../../components/ui/DialogPanel";
+import { useTranslation } from "react-i18next";
 
 interface TopPicksManagerProps {
   movies: RecommendedMovie[];
@@ -26,6 +27,7 @@ const TopPicksManager = ({
   onRefetch,
   // listId kept in interface for future drag-and-drop reorder API call
 }: TopPicksManagerProps) => {
+  const { t } = useTranslation();
   const { announce, region } = useMoveAnnouncer();
   const [pinnedMovies, setPinnedMovies] = useState<RecommendedMovie[]>(
     [...movies].sort((a, b) => (a.pin_order ?? 999) - (b.pin_order ?? 999))
@@ -85,7 +87,7 @@ const TopPicksManager = ({
         <div className="flex items-center justify-between px-5 py-3 border-b border-white/8">
           <h2 className="text-base font-semibold text-white flex items-center gap-2">
             <Star size={16} className="text-yellow-400" fill="currentColor" />
-            Manage Top Picks ({pinnedMovies.length}/15)
+            {t("dashboard.categoryPages.manageTopPicksCount", { pinned: pinnedMovies.length, total: 15 })}
           </h2>
           <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
             <X size={18} />

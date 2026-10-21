@@ -58,6 +58,7 @@ import { CategoryEmptyState } from "../components/CategoryEmptyState";
 
 // Mutations & queries
 import { isCanonicalMediaPath } from "../lib/canonicalMedia";
+import { keyboardActivation } from "../utils/keyboardActivation";
 
 type HomeAnalyticsState = "loading" | "ready" | "unavailable";
 
@@ -833,7 +834,7 @@ const Home = memo(() => {
                   {/* Share Profile Button overlaid on top-right corner of map */}
                   <div
                     title={t("home.shareProfile", "Share Profile")}
-                    onClick={() => setShowProfileShareModal(true)}
+                    {...keyboardActivation(() => setShowProfileShareModal(true))}
                     className="absolute top-2 right-2 bg-[#3B82F6] hover:bg-[#2563EB] border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5 cursor-pointer z-10 transition-all shadow-md"
                   >
                     <span className="text-[10px] font-bold !text-white uppercase tracking-wider font-poppins">{t("home.shareProfile", "Share Profile")}</span>
@@ -1005,7 +1006,7 @@ const Home = memo(() => {
                             return (
                               <div
                                 key={item.documentId || index}
-                                onClick={() => {
+                                {...keyboardActivation(() => {
                                   setSelectedCity({
                                     documentId: item.documentId,
                                     List_Name: item.List_Name,
@@ -1014,7 +1015,7 @@ const Home = memo(() => {
                                     recommended_places: item.recommended_places,
                                   });
                                   navigate('/recommendations');
-                                }}
+                                })}
                                 className="group relative bg-dashboard-sidebar border border-dashboard rounded-2xl p-4 hover:border-dashboard-accent/50 transition-all duration-300 hover:shadow-dashboard-elevated hover:shadow-dashboard-accent/10 hover:scale-[1.02] cursor-pointer flex items-center gap-4"
                               >
                                 <div className="flex-shrink-0">
@@ -1100,7 +1101,7 @@ const Home = memo(() => {
                             return (
                               <div
                                 key={item.documentId || index}
-                                onClick={() => navigate(`/recommendations/movies/${item.documentId}`)}
+                                {...keyboardActivation(() => navigate(`/recommendations/movies/${item.documentId}`))}
                                 className="group relative bg-dashboard-sidebar border border-dashboard rounded-2xl p-4 hover:border-dashboard-accent/50 transition-all duration-300 hover:shadow-dashboard-elevated hover:shadow-dashboard-accent/10 hover:scale-[1.02] cursor-pointer flex items-center gap-4"
                               >
                                 <div className="flex-shrink-0">
@@ -1158,7 +1159,7 @@ const Home = memo(() => {
                             return (
                               <div
                                 key={item.documentId || index}
-                                onClick={() => navigate(`/recommendations/books/${item.documentId}`)}
+                                {...keyboardActivation(() => navigate(`/recommendations/books/${item.documentId}`))}
                                 className="group relative bg-dashboard-sidebar border border-dashboard rounded-2xl p-4 hover:border-dashboard-accent/50 transition-all duration-300 hover:shadow-dashboard-elevated hover:shadow-dashboard-accent/10 hover:scale-[1.02] cursor-pointer flex items-center gap-4"
                               >
                                 <div className="flex-shrink-0">
@@ -1216,7 +1217,7 @@ const Home = memo(() => {
                             return (
                               <div
                                 key={item.documentId || index}
-                                onClick={() => navigate(`/recommendations/games/${item.documentId}`)}
+                                {...keyboardActivation(() => navigate(`/recommendations/games/${item.documentId}`))}
                                 className="group relative bg-dashboard-sidebar border border-dashboard rounded-2xl p-4 hover:border-dashboard-accent/50 transition-all duration-300 hover:shadow-dashboard-elevated hover:shadow-dashboard-accent/10 hover:scale-[1.02] cursor-pointer flex items-center gap-4"
                               >
                                 <div className="flex-shrink-0">
@@ -1273,7 +1274,7 @@ const Home = memo(() => {
                             return (
                               <div
                                 key={guide.documentId || index}
-                                onClick={() => navigate(`/guides/${guide.documentId}`)}
+                                {...keyboardActivation(() => navigate(`/guides/${guide.documentId}`))}
                                 className="group relative bg-dashboard-sidebar border border-dashboard rounded-2xl p-4 hover:border-dashboard-accent/50 transition-all duration-300 hover:shadow-dashboard-elevated hover:shadow-dashboard-accent/10 hover:scale-[1.02] cursor-pointer flex items-center gap-4"
                               >
                                 <div className="flex-shrink-0">
@@ -1365,7 +1366,7 @@ const Home = memo(() => {
                             return (
                               <div
                                 key={item.documentId || index}
-                                onClick={() => navigate(`/recommendations/apps/${item.documentId}`)}
+                                {...keyboardActivation(() => navigate(`/recommendations/apps/${item.documentId}`))}
                                 className="group relative bg-dashboard-sidebar border border-dashboard rounded-2xl p-4 hover:border-dashboard-accent/50 transition-all duration-300 hover:shadow-dashboard-elevated hover:shadow-dashboard-accent/10 hover:scale-[1.02] cursor-pointer flex items-center gap-4"
                               >
                                 <div className="flex-shrink-0">
@@ -1423,7 +1424,7 @@ const Home = memo(() => {
                             return (
                               <div
                                 key={item.documentId || index}
-                                onClick={() => navigate(`/recommendations/products/${item.documentId}`)}
+                                {...keyboardActivation(() => navigate(`/recommendations/products/${item.documentId}`))}
                                 className="group relative bg-dashboard-sidebar border border-dashboard rounded-2xl p-4 hover:border-dashboard-accent/50 transition-all duration-300 hover:shadow-dashboard-elevated hover:shadow-dashboard-accent/10 hover:scale-[1.02] cursor-pointer flex items-center gap-4"
                               >
                                 <div className="flex-shrink-0">
@@ -1481,7 +1482,7 @@ const Home = memo(() => {
                             return (
                               <div
                                 key={item.documentId || index}
-                                onClick={() => navigate(`/recommendations/people/${item.documentId}`)}
+                                {...keyboardActivation(() => navigate(`/recommendations/people/${item.documentId}`))}
                                 className="group relative bg-dashboard-sidebar border border-dashboard rounded-2xl p-4 hover:border-dashboard-accent/50 transition-all duration-300 hover:shadow-dashboard-elevated hover:shadow-dashboard-accent/10 hover:scale-[1.02] cursor-pointer flex items-center gap-4"
                               >
                                 <div className="flex-shrink-0">

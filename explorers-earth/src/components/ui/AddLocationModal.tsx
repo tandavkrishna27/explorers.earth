@@ -221,7 +221,7 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
     <Modal isOpen={isOpen} onClose={onClose}>
       <div className="dashboard-theme flex flex-col gap-3 sm:gap-4 md:gap-6 w-full mx-auto py-2 sm:py-4 md:py-6 px-3 sm:px-6 md:px-8">
         <h2 className="dt-heading mb-1 sm:mb-2">
-          {isEditing ? "Update Location" : "Add Location"}
+          {isEditing ? t("dashboard.categoryPages.updateLocation") : t("dashboard.categoryPages.addLocation")}
         </h2>
 
         <Formik
@@ -330,7 +330,7 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
                 />
                 <Button
                   type="submit"
-                  btnText={isEditing ? "Update Location" : "Add Location"}
+                  btnText={isEditing ? t("dashboard.categoryPages.updateLocation") : t("dashboard.categoryPages.addLocation")}
                   variant="primary"
                   size="medium"
                   isLoading={submitting}

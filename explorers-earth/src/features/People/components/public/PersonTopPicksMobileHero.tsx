@@ -5,6 +5,7 @@ import { Users } from "lucide-react";
 import type { RecommendedPerson } from "../../types";
 import { buildImageUrl, getPlatformColor } from "../../utils/personHelpers";
 import PlatformIcon from "../PlatformIcon";
+import { useTranslation } from "react-i18next";
 
 interface PersonTopPicksMobileHeroProps {
   people: RecommendedPerson[];
@@ -14,6 +15,7 @@ interface PersonTopPicksMobileHeroProps {
 }
 
 const PersonTopPicksMobileHero = ({ people, onPersonClick, showManageButton = false, onManageClick }: PersonTopPicksMobileHeroProps) => {
+  const { t } = useTranslation();
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
@@ -133,7 +135,7 @@ const PersonTopPicksMobileHero = ({ people, onPersonClick, showManageButton = fa
                         onManageClick?.();
                       }}
                     >
-                      <Star size={18} fill="currentColor" /> Manage Top Picks
+                      <Star size={18} fill="currentColor" /> {t("dashboard.categoryPages.manageTopPicks")}
                     </button>
                   ) : (
                     <button

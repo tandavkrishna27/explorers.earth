@@ -31,6 +31,7 @@ import { PlacesClient } from "../api/placesClient";
 import type { CompleteTaxonomyCatalog, RecommendationObservation } from "../../../lib/explorersApiClient";
 import { useLocation } from "react-router-dom";
 import {recordViewedObservation} from '../../../lib/viewedRevisions';
+import { keyboardActivation } from "../../../utils/keyboardActivation";
 
 // Add new type for Custom Search API response
 type CustomSearchImage = {
@@ -986,7 +987,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
                 {showUserMedia && previewUrl.length < 10 && (
                   <div
                     className="h-32 w-32 border-dotted border-2 cursor-pointer rounded-xl border-dashboard-accent flex flex-col items-center justify-center"
-                    onClick={handleUploadMedia}
+                    {...keyboardActivation(handleUploadMedia)}
                   >
                     <span className="text-dashboard-accent text-3xl font-poppins">+</span>
                     <span className="text-dashboard-accent text-xs font-poppins mt-1">

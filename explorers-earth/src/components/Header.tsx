@@ -20,6 +20,7 @@ import { isManualAuthEnabled } from "../config/featureFlags";
 import { useDashboardTheme } from "../contexts/DashboardThemeContext";
 import { useLogout } from "../hooks/useLogout";
 import { IMAGE_CONFIG } from "../config";
+import { keyboardActivation } from "../utils/keyboardActivation";
 
 const recommendationCategories = [
   { id: 'hub', name: 'All Recommendations', path: '/recommendations' },
@@ -153,7 +154,7 @@ const Header = memo(() => {
                 src="/logo.svg"
                 alt="explorers.earth"
                 className={`md:hidden object-contain cursor-pointer header-logo ${theme === 'dark' ? 'header-logo-dark' : 'header-logo-light'}`}
-                onClick={() => navigate(isAuthenticated ? "/home" : "/")}
+                {...keyboardActivation(() => navigate(isAuthenticated ? "/home" : "/"))}
                 style={{ height: "36px", width: "auto" }}
               />
               <div className="hidden md:flex items-center gap-2.5">
@@ -166,7 +167,7 @@ const Header = memo(() => {
               src="/logo.svg"
               alt="explorers.earth"
               className={`object-contain cursor-pointer header-logo ${theme === 'dark' ? 'header-logo-dark' : 'header-logo-light'}`}
-              onClick={() => navigate(isAuthenticated ? "/home" : "/")}
+              {...keyboardActivation(() => navigate(isAuthenticated ? "/home" : "/"))}
               style={{
                 height: "36px",
                 width: "auto",
@@ -177,12 +178,12 @@ const Header = memo(() => {
 
         <div
           className="flex items-center md:hidden"
-          onClick={(e) => {
+          {...keyboardActivation((e) => {
             e.preventDefault();
             e.stopPropagation();
             e.nativeEvent.stopImmediatePropagation();
             setShowMobileMenu((prev) => !prev);
-          }}
+          })}
           onMouseDown={(e) => {
             e.preventDefault();
             e.stopPropagation();

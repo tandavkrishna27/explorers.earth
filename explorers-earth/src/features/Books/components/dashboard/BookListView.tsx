@@ -27,6 +27,8 @@ import Switch from "../../../../components/ui/Switch";
 import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
 import QrCardTagline from "../../../../components/QrCardTagline";
 import DialogPanel from "../../../../components/ui/DialogPanel";
+import { keyboardActivation } from "../../../../utils/keyboardActivation";
+import { useTranslation } from "react-i18next";
 
 
 // ─────────────────────────────────────────────────────────────
@@ -56,7 +58,7 @@ const BookRow = ({
   return (
     <div
       className="group flex items-center gap-3 p-3 bg-white/[0.03] border border-white/[0.05] hover:border-white/[0.08] hover:bg-white/[0.06] cursor-pointer rounded-xl transition-all mb-2"
-      onClick={() => onClick(book)}
+      {...keyboardActivation(() => onClick(book))}
     >
       {/* Cover */}
       <div className="w-10 h-14 flex-shrink-0 rounded overflow-hidden bg-white/5 shadow-sm">
@@ -311,20 +313,20 @@ const ManageTab = ({ list, onRefetch }: ManageTabProps) => {
             <div className="flex items-center justify-center gap-8 mt-5 mb-1 pt-4 border-t border-white/5">
               <div
                 className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
-                onClick={() => {
+                {...keyboardActivation(() => {
                   if (navigator.share) {
                     navigator.share({ title: list.List_Name, url: shareUrl });
                   } else {
                     handleCopyUrl();
                   }
-                }}
+                })}
               >
                 <div className="p-2 bg-white/5 rounded-full flex items-center justify-center border border-white/10">
                   <Share2 size={18} className="text-white" />
                 </div>
                 <span className="text-[11px] text-white/60 font-medium">Share</span>
               </div>
-              <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={handleCopyUrl}>
+              <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" {...keyboardActivation(handleCopyUrl)}>
                 <div className="p-2 bg-white/5 rounded-full flex items-center justify-center border border-white/10">
                   {copied ? <Check size={18} className="text-green-400" /> : <Copy size={18} className="text-white" />}
                 </div>
@@ -332,9 +334,9 @@ const ManageTab = ({ list, onRefetch }: ManageTabProps) => {
               </div>
               <div
                 className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
-                onClick={() => {
+                {...keyboardActivation(() => {
                    downloadQrSvgAsPng("list-qr-books", `QR_${list.slug}.png`, 20);
-                }}
+                })}
               >
                 <div className="p-2 bg-white/5 rounded-full flex items-center justify-center border border-white/10">
                   <Download size={18} className="text-white" />
@@ -353,6 +355,7 @@ const ManageTab = ({ list, onRefetch }: ManageTabProps) => {
 // Main BookListView
 // ─────────────────────────────────────────────────────────────
 const BookListView = () => {
+  const { t } = useTranslation();
   const { listId } = useParams<{ listId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -517,7 +520,7 @@ const BookListView = () => {
           checked={list?.visibility ?? false}
           onChange={handleToggleVisibility}
           loading={isUpdating}
-          label={list?.visibility ? "Published" : "Draft"}
+          label={list?.visibility ? t("dashboard.home.published") : t("dashboard.home.draft")}
         />
       </div>
 

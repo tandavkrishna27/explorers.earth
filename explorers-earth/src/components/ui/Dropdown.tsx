@@ -1,5 +1,6 @@
 import { FC, useEffect, useRef, useState, useCallback } from "react";
 import { KeyValuePair } from "../../features/Profile/components/ProfileForm";
+import { keyboardActivation } from "../../utils/keyboardActivation";
 
 interface DropdownProps {
   initalValue: string;
@@ -146,7 +147,7 @@ const Dropdown: FC<DropdownProps> = ({
                       ? "bg-dashboard-accent text-dashboard font-poppins text-sm"
                       : ""
                     }`}
-                  onClick={() => handleSelect(option)}
+                  {...keyboardActivation(() => handleSelect(option))}
                 >
                   <span className="text-sm font-poppins">
                     {option.Category_Name}

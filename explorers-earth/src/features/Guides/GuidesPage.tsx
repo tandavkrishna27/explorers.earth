@@ -22,6 +22,8 @@ import type { Guide } from "./types";
 import SwitchButton from "../../components/ui/SwitchButton";
 import { AddIcon } from "../../assets/icons/AddIcon";
 import { CategoryEmptyState } from "../../components/CategoryEmptyState";
+import { keyboardActivation } from "../../utils/keyboardActivation";
+import { useTranslation } from "react-i18next";
 
 interface FilterState {
   guideType: string | null;
@@ -32,6 +34,7 @@ interface FilterState {
 }
 
 const GuidesPage: React.FC = () => {
+  const { t } = useTranslation();
   const navigation = useCategoryNavigation();
   const categoryVisible = navigation.snapshot?.visibility.public_guides === "Yes";
   const navigate = useNavigate();
@@ -573,7 +576,7 @@ const GuidesPage: React.FC = () => {
                   disabled={navigation.busy || !navigation.authority}
                   variant="blue"
                 />
-                <span className="text-[10px] md:text-xs text-white leading-tight whitespace-nowrap font-medium">Public Visibility</span>
+                <span className="text-[10px] md:text-xs text-white leading-tight whitespace-nowrap font-medium">{t("dashboard.categoryPages.publicVisibility")}</span>
               </div>
               <div className="flex items-center gap-2">
                 {/* Filter button - only show when there are guides */}
@@ -663,10 +666,10 @@ const GuidesPage: React.FC = () => {
 
             {mobileDropdownOpen && (
               <div className="absolute top-[calc(100%+6px)] right-0 left-0 p-3.5 z-[100] border border-dashboard-accent/30 rounded-2xl bg-dashboard-sidebar/95 backdrop-blur-md shadow-xl flex justify-between items-center md:hidden">
-                <span className="text-[11px] text-white/90 font-semibold">Manage Public Visibility</span>
+                <span className="text-[11px] text-white/90 font-semibold">{t("dashboard.categoryPages.managePublicVisibility")}</span>
                 <div className="flex items-center gap-2">
                   <span className={`text-[10px] font-bold uppercase ${categoryVisible ? "text-[#4ade80]" : "text-[#f87171]"}`}>
-                    {categoryVisible ? "Pub" : "Draft"}
+                    {categoryVisible ? t("dashboard.categoryPages.pubShort") : t("dashboard.home.draft")}
                   </span>
                   <SwitchButton
                     isChecked={categoryVisible}
@@ -1010,7 +1013,7 @@ const GuidesPage: React.FC = () => {
                   className="w-full flex items-center justify-between p-4 rounded-[14px] border border-amber-500/25 bg-amber-500/5 hover:bg-amber-500/10 transition-all duration-300 cursor-pointer"
                 >
                   <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-[#fbbf24] font-poppins">
-                    <span className="text-amber-400">★</span> Manage Top Picks ({pinnedGuides.length}/{GUIDE_PIN_LIMIT})
+                    <span className="text-amber-400">★</span> {t("dashboard.categoryPages.manageTopPicksCount", { pinned: pinnedGuides.length, total: GUIDE_PIN_LIMIT })}
                   </div>
                   <div className="flex items-center text-amber-500">
                     <svg className="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
@@ -1100,7 +1103,7 @@ const GuidesPage: React.FC = () => {
                     )}
                     {/* Add Guide Dotted Card */}
                     <div
-                      onClick={() => navigate("/guides/new")}
+                      {...keyboardActivation(() => navigate("/guides/new"))}
                       className="border-2 border-dashed border-dashboard-border rounded-xl flex flex-col items-center justify-center gap-1.5 p-4 cursor-pointer hover:border-dashboard-accent hover:bg-dashboard-accent/5 transition-all duration-300 aspect-[16/9] md:aspect-[4/3] max-w-none w-full"
                     >
                       <span className="text-2xl text-white/30 font-light">+</span>
@@ -1164,7 +1167,7 @@ const GuidesPage: React.FC = () => {
             >
               <div className="p-6 max-h-[80vh] overflow-y-auto font-poppins text-white">
                 <h2 className="text-xl font-bold mb-2 flex items-center gap-2 text-white">
-                  <span className="text-amber-400">★</span> Manage Top Picks
+                  <span className="text-amber-400">★</span> {t("dashboard.categoryPages.manageTopPicks")}
                 </h2>
                 <p className="text-xs text-white/50 mb-6">
                   Pin up to {GUIDE_PIN_LIMIT} guides as Top Picks and reorder them to customize the hero slideshow on your profile.

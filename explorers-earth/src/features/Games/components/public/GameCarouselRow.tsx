@@ -4,6 +4,7 @@ import { ChevronRight, ChevronLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { RecommendedGame } from "../../types";
 import GameCoverCard from "./GameCoverCard";
+import { useTranslation } from "react-i18next";
 
 interface GameCarouselRowProps {
   title: string;
@@ -22,8 +23,9 @@ const GameCarouselRow = memo(({
   isLoading = false,
   seeAllLink,
   onGameClick,
-  emptyMessage = "No games yet",
+  emptyMessage,
 }: GameCarouselRowProps) => {
+  const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -118,7 +120,7 @@ const GameCarouselRow = memo(({
             </div>
           ))
         ) : games.length === 0 ? (
-          <p className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-sm py-4">{emptyMessage}</p>
+          <p className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-sm py-4">{emptyMessage ?? t("dashboard.categoryPages.empty.games")}</p>
         ) : (
           games.map((game) => (
             <div

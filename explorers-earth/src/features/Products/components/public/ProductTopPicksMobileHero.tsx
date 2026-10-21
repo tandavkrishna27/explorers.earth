@@ -4,6 +4,7 @@ import { Play, Star } from "lucide-react";
 import type { RecommendedProduct } from "../../types";
 import { buildImageUrl } from "../../utils/productHelpers";
 import { useFormatMoney } from "../../../../lib/money";
+import { useTranslation } from "react-i18next";
 
 interface ProductTopPicksMobileHeroProps {
   products: RecommendedProduct[];
@@ -13,6 +14,7 @@ interface ProductTopPicksMobileHeroProps {
 }
 
 const ProductTopPicksMobileHero = ({ products, onProductClick, showManageButton = false, onManageClick }: ProductTopPicksMobileHeroProps) => {
+  const { t } = useTranslation();
   const formatMoney = useFormatMoney();
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -112,7 +114,7 @@ const ProductTopPicksMobileHero = ({ products, onProductClick, showManageButton 
                         onManageClick?.();
                       }}
                     >
-                      <Star size={18} fill="currentColor" /> Manage Top Picks
+                      <Star size={18} fill="currentColor" /> {t("dashboard.categoryPages.manageTopPicks")}
                     </button>
                   ) : (
                     <button 

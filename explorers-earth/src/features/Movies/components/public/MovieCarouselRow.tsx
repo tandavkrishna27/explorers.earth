@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import type { RecommendedMovie } from "../../types";
 import MoviePosterCard from "./MoviePosterCard";
 import MoviePosterSkeleton from "./MoviePosterSkeleton";
+import { useTranslation } from "react-i18next";
 
 interface MovieCarouselRowProps {
   title: string;
@@ -22,8 +23,9 @@ const MovieCarouselRow = memo(({
   loading = false,
   seeAllLink,
   onMovieClick,
-  emptyMessage = "No movies yet",
+  emptyMessage,
 }: MovieCarouselRowProps) => {
+  const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -114,7 +116,7 @@ const MovieCarouselRow = memo(({
         {loading ? (
           <MoviePosterSkeleton count={6} />
         ) : movies.length === 0 ? (
-          <p className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-sm py-4">{emptyMessage}</p>
+          <p className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-sm py-4">{emptyMessage ?? t("dashboard.categoryPages.empty.movies")}</p>
         ) : (
           movies.map((movie) => (
             <MoviePosterCard

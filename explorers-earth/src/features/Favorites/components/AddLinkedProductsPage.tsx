@@ -17,6 +17,7 @@ import { usePlacesOwner } from "../hooks/usePlacesOwner";
 import { usePlacesCommands } from "../api/placesCommands";
 import { useProductsOwner } from "../../Products/hooks/useProductsOwner";
 import { useProductsCommands, useProductsCallerCustody } from "../../Products/api/query";
+import { useTranslation } from "react-i18next";
 
 // ── Fetch location + its linked product lists ─────────────────
 // The location and its linked lists come from the owner reads; the two Strapi
@@ -30,6 +31,7 @@ const SelectProductListCard = ({
   list: any;
   onSelect: () => void;
 }) => {
+  const { t } = useTranslation();
   const products: any[] = list.recommended_products || [];
   const count = products.length;
   const preview = products.slice(0, 4);
@@ -46,10 +48,10 @@ const SelectProductListCard = ({
           <div className="flex items-center gap-2 mb-1">
             <h3 className="text-base font-semibold text-dashboard truncate">{list.List_Name}</h3>
             <span className={`text-[10px] font-semibold text-white px-1.5 py-0.5 rounded-md uppercase tracking-wider font-poppins shrink-0 ${list.Visibility ? "bg-emerald-500/90" : "bg-slate-500/90"}`}>
-              {list.Visibility ? "Public" : "Draft"}
+              {list.Visibility ? t("dashboard.categoryPages.public") : t("dashboard.home.draft")}
             </span>
           </div>
-          <p className="text-xs text-dashboard-muted">{count} product{count !== 1 ? "s" : ""} added</p>
+          <p className="text-xs text-dashboard-muted">{t("publicProfile.recommendations.counts.product", { count: count, formattedCount: String(count), suffix: "" })} added</p>
         </div>
         <span className="flex items-center gap-1 text-blue-400 group-hover:text-blue-300 transition-colors font-medium text-sm">
           Add to this <ChevronRight size={14} />

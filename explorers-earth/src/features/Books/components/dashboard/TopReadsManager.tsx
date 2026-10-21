@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import type { RecommendedBook } from "../../types";
 import { buildCoverUrl, formatAuthors } from "../../utils/bookHelpers";
 import DialogPanel from "../../../../components/ui/DialogPanel";
+import { useTranslation } from "react-i18next";
 
 interface TopReadsManagerProps {
   books: RecommendedBook[];
@@ -20,6 +21,7 @@ interface TopReadsManagerProps {
 }
 
 const TopReadsManager = ({ books, allBooks, onClose, onRefetch }: TopReadsManagerProps) => {
+  const { t } = useTranslation();
   const { announce, region } = useMoveAnnouncer();
   const generation = useAuthStore(state=>state.generation);
   const origin = useRef(generation);
@@ -101,7 +103,7 @@ const TopReadsManager = ({ books, allBooks, onClose, onRefetch }: TopReadsManage
         <div className="flex items-center justify-between px-5 py-3 border-b border-white/8">
           <h2 className="text-base font-semibold text-white flex items-center gap-2">
             <Star size={16} className="text-amber-400" fill="currentColor" />
-            Manage Top Reads ({pinnedBooks.length}/15)
+            {t("dashboard.categoryPages.manageTopReadsCount", { pinned: pinnedBooks.length, total: 15 })}
           </h2>
           <button aria-label="Close Top Reads" onClick={onClose} className="text-white/40 hover:text-white transition-colors">
             <X size={18} />

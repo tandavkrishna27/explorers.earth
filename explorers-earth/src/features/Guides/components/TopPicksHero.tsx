@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Play, ChevronLeft, ChevronRight, Star } from "lucide-react";
 import type { Guide } from "../types";
 import { guideDescriptionText } from "../../../utils/guideDescriptionText";
+import { useTranslation } from "react-i18next";
 
 interface TopPicksHeroProps {
   guides: Guide[];
@@ -27,6 +28,7 @@ const renderGuideDescription = (description: any) =>
   guideDescriptionText(description).trim() || "No description provided.";
 
 const TopPicksHero = ({ guides, onGuideClick, showManageButton = false, onManageClick }: TopPicksHeroProps) => {
+  const { t } = useTranslation();
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   
@@ -161,7 +163,7 @@ const TopPicksHero = ({ guides, onGuideClick, showManageButton = false, onManage
                   className="flex items-center gap-2 bg-dashboard-accent hover:opacity-90 text-white font-bold py-3 px-8 rounded-lg shadow-xl shadow-blue-500/20 transition-all hover:scale-105 border-none cursor-pointer font-poppins text-sm"
                 >
                   <Star size={20} fill="currentColor" />
-                  Manage Top Picks
+                  {t("dashboard.categoryPages.manageTopPicks")}
                 </button>
               ) : (
                 <button 

@@ -1,3 +1,4 @@
+import "../../../../../test/englishI18n";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import {existsSync,readFileSync} from 'node:fs';

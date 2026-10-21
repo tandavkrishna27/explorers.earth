@@ -26,6 +26,7 @@ import { guideDescriptionText } from "../../../../utils/guideDescriptionText";
 import MultiCityJourneyDisplay from "./MultiCityJourneyDisplay";
 import type { Guide } from "../../types";
 import DayOrderPanel from "./DayOrderPanel";
+import { keyboardActivation } from "../../../../utils/keyboardActivation";
 
 interface ItineraryViewProps {
   sections: any[];
@@ -330,7 +331,7 @@ const ItineraryView: React.FC<ItineraryViewProps> = ({
               >
                 <div
                   className="relative hover:bg-opacity-90 transition-all duration-200"
-                  onClick={() => onSectionSelect(section)}
+                  {...keyboardActivation(() => onSectionSelect(section))}
                 >
                   {/* Kebab Menu Container */}
                   <div
@@ -518,7 +519,7 @@ const ItineraryView: React.FC<ItineraryViewProps> = ({
               >
                 {/* Wrapped Day Container - Clickable Box */}
                 <div
-                  onClick={() => onSectionSelect(section)}
+                  {...keyboardActivation(() => onSectionSelect(section))}
                   className="bg-gray-900/50 rounded-lg p-4 sm:p-6 border border-gray-700/50 hover:border-gray-600/50 transition-all duration-200 cursor-pointer space-y-6 sm:space-y-7 md:space-y-9"
                 >
                   {/* Day Heading - Matching Public Side */}

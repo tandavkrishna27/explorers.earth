@@ -55,6 +55,7 @@ import type {
   ProfileWorkspace,
   ProfileWorkspaceId,
 } from "../types/profileWorkspaces";
+import { keyboardActivation } from "../../../utils/keyboardActivation";
 
 // Helper function to normalize mobile number format
 // Converts wrong format (ISO code + number, like "AF9140284510") to correct format (+numeric code, like "+939140284510")
@@ -1086,10 +1087,10 @@ const ProfileFormSession: FC<ProfileFormProps> = memo(
                                             {activeFields.includes(platform) ? (
                                               <span
                                                 className="absolute -right-1 -top-1 w-4 h-4 bg-white rounded-full flex items-center justify-center cursor-pointer text-[hsl(var(--blue-cta))] shrink-0"
-                                                onClick={(e) => {
+                                                {...keyboardActivation((e) => {
                                                   e.stopPropagation();
                                                   handleRemoveTag(platform);
-                                                }}
+                                                })}
                                               >
                                                 <CrossIcon size="3" stroke="hsl(var(--blue-cta))" />
                                               </span>

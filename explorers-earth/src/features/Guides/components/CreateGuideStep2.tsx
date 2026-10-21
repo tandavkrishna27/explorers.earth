@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, type KeyboardEvent } from "react";
 import Button from "../../../components/ui/Button";
 import { useGuidesOwner } from "../hooks/useGuidesOwner";
+import { keyboardActivation } from "../../../utils/keyboardActivation";
 
 // Stable identities for the array defaults. A default parameter creates a fresh array on
 // every render, and the sync effect below lists these in its dependencies - so with the
@@ -400,7 +401,7 @@ const CreateGuideStep2: React.FC<CreateGuideStep2Props> = ({
                 />
                 <div
                   className="absolute inset-y-0 right-0 flex items-center px-2 cursor-pointer"
-                  onClick={() => setIsMonthDropdownOpen((prev) => !prev)}
+                  {...keyboardActivation(() => setIsMonthDropdownOpen((prev) => !prev))}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -473,7 +474,7 @@ const CreateGuideStep2: React.FC<CreateGuideStep2Props> = ({
                 />
                 <div
                   className="absolute inset-y-0 right-0 flex items-center px-2 cursor-pointer"
-                  onClick={() => setIsBudgetDropdownOpen((prev) => !prev)}
+                  {...keyboardActivation(() => setIsBudgetDropdownOpen((prev) => !prev))}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -594,7 +595,7 @@ const CreateGuideStep2: React.FC<CreateGuideStep2Props> = ({
                     />
                     <div
                       className="absolute inset-y-0 right-0 flex items-center px-2 cursor-pointer"
-                      onClick={() => setIsCategoryDropdownOpen((prev) => !prev)}
+                      {...keyboardActivation(() => setIsCategoryDropdownOpen((prev) => !prev))}
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"

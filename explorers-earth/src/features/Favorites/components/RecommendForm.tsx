@@ -34,6 +34,7 @@ import {
 } from "../../../config/locationValidationConfig";
 import { EarthLoader } from "../../../components/EarthLoader";
 import { useTranslation } from "react-i18next";
+import { keyboardActivation } from "../../../utils/keyboardActivation";
 
 // Picker map start only (India centre): never saved as a place's coordinates.
 const MAP_PICKER_START = { lat: 20.5937, lng: 78.9629 };
@@ -1055,10 +1056,10 @@ const RecommendationForm = memo(
                             {activeFields.includes(field.name) ? (
                               <span
                                 className="tag-remove-icon"
-                                onClick={(e) => {
+                                {...keyboardActivation((e) => {
                                   e.stopPropagation();
                                   handleRemoveTag(field.name);
-                                }}
+                                })}
                               >
                                 <CrossIcon size="4" />
                               </span>
@@ -1161,10 +1162,10 @@ const RecommendationForm = memo(
                                     {activeFields.includes(field.name) ? (
                                       <span
                                         className="tag-remove-icon"
-                                        onClick={(e) => {
+                                        {...keyboardActivation((e) => {
                                           e.stopPropagation();
                                           handleRemoveTag(field.name);
-                                        }}
+                                        })}
                                       >
                                         <CrossIcon size="4" />
                                       </span>
@@ -1180,7 +1181,7 @@ const RecommendationForm = memo(
                         <div className="w-full my-4 md:max-w-3xl bg-dashboard-sidebar rounded-md">
                           <div
                             className="flex cursor-pointer items-center w-full justify-between p-4"
-                            onClick={() => setIsOpen(!isOpen)}
+                            {...keyboardActivation(() => setIsOpen(!isOpen))}
                           >
                             <h1 className="text-md font-semibold text-dashboard ">
                               {field.label}

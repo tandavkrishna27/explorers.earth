@@ -58,6 +58,7 @@ const LAZY_LOCALES: Record<string, () => Promise<{ default: unknown }>> = {
   de: () => import('./de.json'),
   es: () => import('./es.json'),
   fr: () => import('./fr.json'),
+  he: () => import('./he.json'),
   hi: () => import('./hi.json'),
   id: () => import('./id.json'),
   pt: () => import('./pt.json'),

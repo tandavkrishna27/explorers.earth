@@ -1,0 +1,58 @@
+{
+  "locale": "he",
+  "terms": [],
+  "privacy": [],
+  "cookies": [],
+  "faqs": [
+    {
+      "Question": "מהו explorers.earth?",
+      "Answer": "explorers.earth מאפשר לכם ליצור ולשתף מדריכי טיולים פשוטים באמצעות קישורים וקודי QR. הוסיפו מקומות, טיפים, מפות ותמונות — ושתפו אותם בכל מקום.",
+      "Sequence": 1
+    },
+    {
+      "Question": "מי יכול ליצור מדריך ב-explorers.earth?",
+      "Answer": "כל אחד — מטיילים, מקומיים, משפיענים, מארחים, בתי קפה, מלונות או עסקים.",
+      "Sequence": 2
+    },
+    {
+      "Question": "האם השימוש ב-explorers.earth חינמי?",
+      "Answer": "כן. explorers.earth חינמי לתמיד. אפשר ליצור קוד QR, להוסיף המלצות ללא הגבלה ולעקוב אחר נתוני אנליטיקה ללא עלות.",
+      "Sequence": 3
+    },
+    {
+      "Question": "האם צריך להוריד אפליקציה?",
+      "Answer": "לא. explorers עובד במלואו בדפדפן — סורקים או לוחצים ואתם בפנים.",
+      "Sequence": 4
+    },
+    {
+      "Question": "האם אפשר לערוך את המדריך לאחר הפרסום?",
+      "Answer": "כן. אפשר לעדכן את המדריך בכל עת, וקוד ה-QR נשאר זהה.",
+      "Sequence": 5
+    },
+    {
+      "Question": "היכן אפשר לשתף את מדריך explorers שלי?",
+      "Answer": "באינסטגרם, בוואטסאפ, בחדרי Airbnb, באתרי אינטרנט, בתפריטים, בכרזות, בכרטיסי ביקור או בכל מקום שבו אפשר להציג קוד QR.",
+      "Sequence": 6
+    },
+    {
+      "Question": "מהו Local Tunes?",
+      "Answer": "Local Tunes היא תכונה ב-explorers.earth המאפשרת להוסיף למדריכים שלכם פלייליסטים מ-Spotify, Apple Music או YouTube Music — ולתת לכל מקום אווירה וסגנון משלו.",
+      "Sequence": 7
+    },
+    {
+      "Question": "האם אני צריך חשבון נפרד עבור Local Tunes?",
+      "Answer": "לא. חשבון explorers.earth שלכם פועל גם עבור explorers וגם עבור LocalTunes.",
+      "Sequence": 8
+    },
+    {
+      "Question": "כמה עולה Local Tunes?",
+      "Answer": "LocalTunes חינמי. מקבלים פלייליסטים ללא הגבלה, אנליטיקה ותכונות מתקדמות ללא עלות.",
+      "Sequence": 9
+    },
+    {
+      "Question": "האם קודי ה-QR קבועים?",
+      "Answer": "כן. ברגע שנוצר, קוד ה-QR לעולם לא משתנה — גם כשמעדכנים את המדריך.",
+      "Sequence": 10
+    }
+  ]
+}

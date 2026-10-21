@@ -3,6 +3,7 @@ import { ChevronRight, ChevronLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { RecommendedBook } from "../../types";
 import BookCoverCard from "./BookCoverCard";
+import { useTranslation } from "react-i18next";
 
 interface BookCarouselRowProps {
   title: string;
@@ -21,8 +22,9 @@ const BookCarouselRow = memo(({
   loading = false,
   seeAllLink,
   onBookClick,
-  emptyMessage = "No books yet",
+  emptyMessage,
 }: BookCarouselRowProps) => {
+  const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -119,7 +121,7 @@ const BookCarouselRow = memo(({
               </div>
             ))
           ) : books.length === 0 ? (
-            <p className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-sm py-4">{emptyMessage}</p>
+            <p className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-sm py-4">{emptyMessage ?? t("dashboard.categoryPages.empty.books")}</p>
           ) : (
             books.map((book) => (
               <BookCoverCard key={book.documentId} book={book} onClick={onBookClick} />

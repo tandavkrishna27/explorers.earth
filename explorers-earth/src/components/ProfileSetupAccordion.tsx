@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Button from "./ui/Button";
 import { IMAGE_CONFIG } from "../config";
 import { isCanonicalMediaPath } from "../lib/canonicalMedia";
+import { keyboardActivation } from "../utils/keyboardActivation";
 
 interface ProfileSetupAccordionProps {
   account: any;
@@ -119,7 +120,7 @@ const ProfileSetupAccordion = ({ account }: ProfileSetupAccordionProps) => {
         
         {/* Header (Clickable area with reduced vertical padding) */}
         <div
-          onClick={() => setIsOpen(!isOpen)}
+          {...keyboardActivation(() => setIsOpen(!isOpen))}
           className="flex items-center justify-between py-2.5 px-5 md:py-3.5 md:px-6 cursor-pointer hover:bg-dashboard-muted/20 transition-colors duration-200 select-none"
         >
           <div className="flex items-center gap-4 flex-1 min-w-0 mr-4">
@@ -223,7 +224,7 @@ const ProfileSetupAccordion = ({ account }: ProfileSetupAccordionProps) => {
                   
                   {/* Item 1: Profile Picture */}
                   <div
-                    onClick={() => handleItemClick("profile_picture", hasProfilePic)}
+                    {...keyboardActivation(() => handleItemClick("profile_picture", hasProfilePic))}
                     className={`flex items-center p-2.5 rounded-xl transition-all duration-150 border border-transparent ${
                       hasProfilePic 
                         ? "cursor-default" 
@@ -251,7 +252,7 @@ const ProfileSetupAccordion = ({ account }: ProfileSetupAccordionProps) => {
 
                   {/* Item 2: Cover Picture */}
                   <div
-                    onClick={() => handleItemClick("cover_picture", hasCoverPic)}
+                    {...keyboardActivation(() => handleItemClick("cover_picture", hasCoverPic))}
                     className={`flex items-center p-2.5 rounded-xl transition-all duration-150 border border-transparent ${
                       hasCoverPic 
                         ? "cursor-default" 
@@ -279,7 +280,7 @@ const ProfileSetupAccordion = ({ account }: ProfileSetupAccordionProps) => {
 
                   {/* Item 3: Bio */}
                   <div
-                    onClick={() => handleItemClick("bio", hasBio)}
+                    {...keyboardActivation(() => handleItemClick("bio", hasBio))}
                     className={`flex items-center p-2.5 rounded-xl transition-all duration-150 border border-transparent ${
                       hasBio 
                         ? "cursor-default" 
@@ -307,7 +308,7 @@ const ProfileSetupAccordion = ({ account }: ProfileSetupAccordionProps) => {
 
                   {/* Item 4: Social Links */}
                   <div
-                    onClick={() => handleItemClick("social_links", hasSocialLinks)}
+                    {...keyboardActivation(() => handleItemClick("social_links", hasSocialLinks))}
                     className={`flex items-center p-2.5 rounded-xl transition-all duration-150 border border-transparent ${
                       hasSocialLinks 
                         ? "cursor-default" 

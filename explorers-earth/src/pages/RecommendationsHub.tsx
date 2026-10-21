@@ -5,6 +5,7 @@ import type { CategoryId } from "../features/navigation/categoryNavigationPolicy
 import { useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import {
   MapPin, Film, BookOpen, Gamepad2,
@@ -526,6 +527,7 @@ const RecommendationCard = ({
   pinSelected,
   unverified,
 }: RecommendationCardProps) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const cardRef = useRef<HTMLDivElement>(null);
@@ -615,7 +617,7 @@ const RecommendationCard = ({
     const fullUrl = `${window.location.origin}${publicPath}`;
     navigator.clipboard.writeText(fullUrl);
     setCopied(true);
-    toast.success(`Copied public ${cat.label} link to clipboard!`);
+    toast.success(t("dashboard.categoryPages.hub.copiedToast", { category: t(`dashboard.categoryPages.hub.labels.${cat.key}`) }));
     setTimeout(() => setCopied(false), 2000);
     setShowKebab(false);
   };
@@ -658,7 +660,7 @@ const RecommendationCard = ({
         {/* Pin indicator — icon only (a pinned category is always public too) */}
         {isPinned && (
           <div
-            title="Pinned to public nav"
+            title={t("dashboard.categoryPages.hub.pinnedToNav")}
             className="w-6 h-6 rounded-full bg-emerald-950/80 backdrop-blur-md border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-sm"
           >
             <Pin size={11} className="fill-emerald-400" />
@@ -669,12 +671,12 @@ const RecommendationCard = ({
         {isPublic ? (
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/80 backdrop-blur-md border border-emerald-500/30 text-[10px] font-semibold text-emerald-400 shadow-sm">
             <Globe size={10} />
-            <span>Public</span>
+            <span>{t("dashboard.categoryPages.public")}</span>
           </div>
         ) : (
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-900/80 backdrop-blur-md border border-white/10 text-[10px] font-semibold text-white/50 shadow-sm">
             <Lock size={10} />
-            <span>Hidden</span>
+            <span>{t("dashboard.categoryPages.hub.hidden")}</span>
           </div>
         )}
 
@@ -683,7 +685,7 @@ const RecommendationCard = ({
           ref={kebabButtonRef}
           onClick={toggleKebab}
           className="w-7 h-7 rounded-full bg-black/40 hover:bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 hover:text-white transition-all shadow-sm"
-          title="Category options"
+          title={t("dashboard.categoryPages.hub.categoryOptions")}
         >
           {isUpdating ? <Loader2 size={13} className="animate-spin text-white" /> : <MoreVertical size={14} />}
         </button>
@@ -703,9 +705,9 @@ const RecommendationCard = ({
                 className="rounded-xl bg-slate-950/95 border border-white/15 backdrop-blur-xl shadow-2xl p-1.5 z-[100] flex flex-col gap-0.5 text-xs font-medium text-white max-h-[70vh] overflow-y-auto"
               >
               {/* Placement changes require an explicit Manual mode choice. */}
-              {automatic ? <button onClick={() => navigate("/settings#public-navigation")} className="px-3 py-2 text-left">Automatic placement · Manual mode in Settings</button> : <button
+              {automatic ? <button onClick={() => navigate("/settings#public-navigation")} className="px-3 py-2 text-left">{t("dashboard.categoryPages.hub.automatic")}</button> : <button
                 disabled={isUpdating || unverified || (!isPublic && !pinSelected)}
-                title={!isPublic && !pinSelected ? "Publish this category before pinning it." : undefined}
+                title={!isPublic && !pinSelected ? t("dashboard.categoryPages.hub.publishFirst") : undefined}
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowKebab(false);
@@ -716,12 +718,12 @@ const RecommendationCard = ({
                 {pinSelected ? (
                   <>
                     <PinOff size={13} className="text-amber-400 shrink-0" />
-                    <span>Unpin from Public Nav</span>
+                    <span>{t("dashboard.categoryPages.hub.unpin")}</span>
                   </>
                 ) : (
                   <>
                     <Pin size={13} className="text-emerald-400 shrink-0" />
-                    <span>Pin to Public Nav (Max 5)</span>
+                    <span>{t("dashboard.categoryPages.hub.pin")}</span>
                   </>
                 )}
               </button>}
@@ -739,12 +741,12 @@ const RecommendationCard = ({
                 {isPublic ? (
                   <>
                     <Lock size={13} className="text-red-400 shrink-0" />
-                    <span>Disable Public URL</span>
+                    <span>{t("dashboard.categoryPages.hub.disableUrl")}</span>
                   </>
                 ) : (
                   <>
                     <Globe size={13} className="text-blue-400 shrink-0" />
-                    <span>Enable Public URL</span>
+                    <span>{t("dashboard.categoryPages.hub.enableUrl")}</span>
                   </>
                 )}
               </button>
@@ -755,7 +757,7 @@ const RecommendationCard = ({
                 className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg hover:bg-white/10 text-dashboard-muted hover:text-white transition-colors text-left border-t border-white/10 mt-1 pt-2"
               >
                 <ExternalLink size={13} className="text-purple-400 shrink-0" />
-                <span>View Public Page</span>
+                <span>{t("dashboard.categoryPages.hub.viewPublic")}</span>
               </button>
 
               {/* Action 4: Copy Public Link */}
@@ -764,7 +766,7 @@ const RecommendationCard = ({
                 className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg hover:bg-white/10 text-dashboard-muted hover:text-white transition-colors text-left"
               >
                 {copied ? <Check size={13} className="text-emerald-400 shrink-0" /> : <Copy size={13} className="text-dashboard-muted shrink-0" />}
-                <span>{copied ? "Copied!" : "Copy Public Link"}</span>
+                <span>{copied ? t("dashboard.categoryPages.hub.copied") : t("dashboard.categoryPages.hub.copyLink")}</span>
               </button>
               </motion.div>
             )}
@@ -776,10 +778,10 @@ const RecommendationCard = ({
       <div className="absolute inset-0 p-6 md:p-7 flex items-center z-20">
         <div className="flex flex-col min-w-0">
           <h3 className="text-3xl md:text-4xl font-black !text-white tracking-tighter leading-none uppercase group-hover:scale-105 transition-transform origin-left">
-            {cat.label}
+            {t(`dashboard.categoryPages.hub.labels.${cat.key}`)}
           </h3>
           <p className="!text-white/70 text-[10px] md:text-xs font-semibold tracking-wide mt-2 line-clamp-2 group-hover:!text-white transition-colors max-w-[85%]">
-            {cat.description}
+            {t(`dashboard.categoryPages.hub.descriptions.${cat.key}`)}
           </p>
           <motion.div className="h-0.5 mt-3 bg-white/20 rounded-full overflow-hidden" initial={{ width: 0 }} whileHover={{ width: "120px" }} transition={{ duration: 0.6 }}>
             <div className="w-full h-full animate-progress" style={{ backgroundColor: accentColor }} />
@@ -844,6 +846,7 @@ const RecommendationCard = ({
 // --- Main RecommendationsHub Component ---
 
 const RecommendationsHub = () => {
+  const { t } = useTranslation();
   const navigation = useCategoryNavigation();
   const account = useMemo(() => navigation.snapshot ? {
     documentId: navigation.snapshot.scope.accountDocumentId, ...navigation.snapshot.visibility,
@@ -908,7 +911,7 @@ const RecommendationsHub = () => {
       <NavigationStatus navigation={navigation} />
       <UnpublishCategoryDialog
         open={unpublishTarget !== null}
-        categoryName={unpublishTarget?.label ?? "Category"}
+        categoryName={unpublishTarget ? t(`dashboard.categoryPages.hub.labels.${unpublishTarget.key}`) : t("dashboard.categoryPages.hub.categoryFallback")}
         pending={navigation.busy}
         onCancel={() => setUnpublishTarget(null)}
         onConfirm={() => void confirmUnpublish()}
@@ -916,10 +919,10 @@ const RecommendationsHub = () => {
       {/* Header Banner */}
       <div className="mb-6 md:mb-8">
         <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white uppercase font-poppins">
-          All Your Recommendations in One Place
+          {t("dashboard.categoryPages.hub.title")}
         </h1>
         <p className="text-xs md:text-sm text-dashboard-muted leading-relaxed font-medium mt-1 max-w-3xl">
-          Curate, organize, and share your favorite places, movies, books, games, tools, and guides across the world.
+          {t("dashboard.categoryPages.hub.subtitle")}
         </p>
       </div>
 

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Play, ChevronLeft, ChevronRight, Star } from "lucide-react";
 import type { RecommendedMovie } from "../../types";
 import { buildBackdropUrl, buildPosterUrl, formatRuntime, getGenreNames } from "../../utils/movieHelpers";
+import { useTranslation } from "react-i18next";
 
 interface TopPicksHeroProps {
   movies: RecommendedMovie[];
@@ -14,6 +15,7 @@ interface TopPicksHeroProps {
 }
 
 const TopPicksHero = ({ movies, onMovieClick, showManageButton = false, onManageClick }: TopPicksHeroProps) => {
+  const { t } = useTranslation();
   const categoryStyles = usePublicCategoryThemeStyles();
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -150,7 +152,7 @@ const TopPicksHero = ({ movies, onMovieClick, showManageButton = false, onManage
                   className={`flex items-center gap-2 ${categoryStyles ? 'bg-[var(--category-accent)]' : 'bg-dashboard-accent'} hover:opacity-90 ${categoryStyles ? 'text-[color:var(--category-accent-ink)]' : 'text-white'} font-bold py-3 px-8 rounded-lg shadow-xl shadow-blue-500/20 transition-all hover:scale-105`}
                 >
                   <Star size={20} fill="currentColor" />
-                  Manage Top Picks
+                  {t("dashboard.categoryPages.manageTopPicks")}
                 </button>
               ) : (
                 <button 

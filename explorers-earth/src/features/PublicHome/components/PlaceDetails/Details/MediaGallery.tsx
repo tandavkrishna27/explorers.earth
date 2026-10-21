@@ -4,6 +4,7 @@ import {
   useMediaViewer,
   convertToMediaItems,
 } from "../../../../../hooks/useMediaViewer";
+import { keyboardActivation } from "../../../../../utils/keyboardActivation";
 
 interface MediaItem {
   url: string;
@@ -81,7 +82,7 @@ const MediaGallery: FC<MediaGalleryProps> = memo(({ Media }) => {
                   src={mediaItem.url}
                   alt="Preview"
                   className="object-cover cursor-pointer h-40 w-full rounded-xl"
-                  onClick={() => handleMediaClick(index)}
+                  {...keyboardActivation(() => handleMediaClick(index))}
                 />
               )}
             </div>

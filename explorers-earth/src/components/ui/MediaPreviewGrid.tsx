@@ -1,4 +1,5 @@
 import { FC, memo } from "react";
+import { keyboardActivation } from "../../utils/keyboardActivation";
 
 interface MediaItem {
   url: string;
@@ -64,7 +65,7 @@ const MediaPreviewGrid: FC<MediaPreviewGridProps> = memo(
                   src={mediaItems[0].url}
                   alt={mediaItems[0].alt || "Media"}
                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-200 cursor-pointer"
-                  onClick={() => handleMediaClick(0)}
+                  {...keyboardActivation(() => handleMediaClick(0))}
                 />
               )}
             </div>
@@ -86,7 +87,7 @@ const MediaPreviewGrid: FC<MediaPreviewGridProps> = memo(
                   src={mediaItems[1].url}
                   alt={mediaItems[1].alt || "Media"}
                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-200 cursor-pointer"
-                  onClick={() => handleMediaClick(1)}
+                  {...keyboardActivation(() => handleMediaClick(1))}
                 />
               )}
             </div>
@@ -108,7 +109,7 @@ const MediaPreviewGrid: FC<MediaPreviewGridProps> = memo(
                   src={mediaItems[2].url}
                   alt={mediaItems[2].alt || "Media"}
                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-200 cursor-pointer"
-                  onClick={() => handleMediaClick(2)}
+                  {...keyboardActivation(() => handleMediaClick(2))}
                 />
               )}
             </div>
@@ -129,14 +130,14 @@ const MediaPreviewGrid: FC<MediaPreviewGridProps> = memo(
                   src={mediaItems[3].url}
                   alt={mediaItems[3].alt || "Media"}
                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-200 cursor-pointer"
-                  onClick={() => handleMediaClick(3)}
+                  {...keyboardActivation(() => handleMediaClick(3))}
                 />
               )}
 
               {/* Clickable Overlay for additional media count */}
               {mediaItems.length > 4 && (
                 <div
-                  onClick={onViewAllMedia}
+                  {...keyboardActivation(() => onViewAllMedia?.())}
                   className="absolute inset-0 bg-black bg-opacity-60 flex flex-col items-center justify-center rounded-lg cursor-pointer hover:bg-opacity-70 transition-all duration-200 group"
                 >
                   <span className="text-white text-xs font-semibold mb-1">
