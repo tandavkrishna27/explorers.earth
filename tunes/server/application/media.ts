@@ -22,7 +22,11 @@ export type AuthorizedMediaObject = { key: string; mimeType: string; length: num
   sha256: string;
   /** Attached to something published, so these bytes are servable to anyone. */
   publicAttachment: boolean };
-export class MediaInputError extends Error {}
+/** code is the API error code: a specific reason for a type, size or unreadable-file
+ * refusal (UAT MED-X01), otherwise the generic INVALID_INPUT. */
+export class MediaInputError extends Error {
+  constructor(message: string, readonly code: string = "INVALID_INPUT") { super(message); }
+}
 export class MediaUnavailable extends Error {}
 
 const limits: Record<MediaUploadInput["purpose"], number> = { profile: 5 * 1024 * 1024,
@@ -35,6 +39,23 @@ function sniff(bytes: Buffer): string | undefined {
   if (bytes.length >= 6 && /^GIF8[79]a$/.test(bytes.toString("ascii",0,6))) return "image/gif";
   if (bytes.length >= 12 && bytes.toString("ascii",4,8)==="ftyp") return "video/mp4";
   return undefined;
+}
+
+const imageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
+/** The reason an upload is refused, or null when it is acceptable. */
+export function mediaUploadProblem(input: MediaUploadInput): { code: string; message: string } | null {
+  const limit = limits[input.purpose];
+  if (!limit) return { code: "INVALID_INPUT", message: "Invalid media upload" };
+  if (!/^[\w. -]{1,255}$/.test(input.filename)) return { code: "INVALID_INPUT", message: "Invalid file name" };
+  const allowed = input.purpose === "feed" ? [...imageTypes, "video/mp4"] : imageTypes;
+  if (!allowed.includes(input.mimeType)) return { code: "UNSUPPORTED_MEDIA_TYPE",
+    message: input.purpose === "feed" ? "Use a JPEG, PNG, WebP or GIF image, or an MP4 video" : "Use a JPEG, PNG, WebP or GIF image" };
+  if (Buffer.isBuffer(input.bytes) && input.bytes.length > limit)
+    return { code: "MEDIA_TOO_LARGE", message: `File is too large. The limit is ${limit / (1024 * 1024)} MB` };
+  if (!Buffer.isBuffer(input.bytes) || input.length !== input.bytes.length || input.length < 1 || sniff(input.bytes) !== input.mimeType)
+    return { code: "UNREADABLE_MEDIA", message: "The file could not be read as the image it claims to be. Try exporting it again" };
+  return null;
 }
 
 export class MediaService {
@@ -101,10 +122,8 @@ export class MediaService {
   async createMedia(actor: Actor, input: MediaUploadInput, _context: RequestContext, readyWrite?: (db: PoolClient, media: MediaDto) => Promise<void>): Promise<MediaDto> {
     await authorizeOperation(this.db, actor, "media:create", actor.accountId);
     await this.retryPendingDeletes(actor.accountId);
-    const limit = limits[input.purpose];
-    if (!limit || !Buffer.isBuffer(input.bytes) || input.length !== input.bytes.length || input.length < 1 || input.length > limit
-      || !/^[\w. -]{1,255}$/.test(input.filename) || sniff(input.bytes) !== input.mimeType
-      || (input.purpose !== "feed" && !input.mimeType.startsWith("image/"))) throw new MediaInputError("Invalid media upload");
+    const problem = mediaUploadProblem(input);
+    if (problem) throw new MediaInputError(problem.message, problem.code);
     const id = randomUUID();
     const key = `${this.storage.environment}/${actor.accountId}/${id}`;
     const dto: MediaDto = { id, url: `/api/explorers/v1/media/${id}/content`, mimeType: input.mimeType,
