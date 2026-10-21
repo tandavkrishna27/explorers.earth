@@ -2149,6 +2149,7 @@
       "searchAndSelectPlaceFirst": "Search and select a place first",
       "selectAtLeastOneImage": "Select at least one image",
       "selectPlaceFromSuggestions": "Select the Place from google suggestions",
+      "pickPlaceFromSuggestions": "Pick a place from the suggestions",
       "selectValidCategory": "Select a Valid Category",
       "serverError": "Palvelinvirhe. Yritä myöhemmin uudelleen.",
       "serviceUnavailable": "Service unavailable. Please try again later.",

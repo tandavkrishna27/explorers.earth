@@ -2353,6 +2353,7 @@
       "searchAndSelectPlaceFirst": "Search and select a place first",
       "selectAtLeastOneImage": "Select at least one image",
       "selectPlaceFromSuggestions": "Select the Place from google suggestions",
+      "pickPlaceFromSuggestions": "Pick a place from the suggestions",
       "selectValidCategory": "Select a Valid Category",
       "serverError": "Erro do servidor. Tente mais tarde.",
       "serviceUnavailable": "Serviço indisponível. Tente novamente mais tarde.",

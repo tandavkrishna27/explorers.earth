@@ -87,6 +87,16 @@ describe("useCreateLocation — Places create focuses the new list (BUG-3 parity
     expect(upload).not.toHaveBeenCalled();
   });
 
+  // PLC-01. The modal shows an editable share-link field; the slug typed there was ignored
+  // and the list name re-slugged instead.
+  it("uses the share slug the owner typed, slugged, over one derived from the name", async () => {
+    axiosGet.mockResolvedValueOnce({ data: { photos: [], location: { latitude: 1, longitude: 2 } } });
+    createList.mockResolvedValueOnce(CREATED);
+    const { result } = hook();
+    await result.current.handleLocationSubmit({ placeId: "ChIJ_city", listName: "Paris", placeUrl: "My Paris Picks" } as never);
+    expect(createList.mock.calls[0][0].slug).toBe("my-paris-picks");
+  });
+
   it("creates the list and its location in one command, with the provider place id", async () => {
     axiosGet.mockResolvedValueOnce({
       data: { photos: [], displayName: { text: "Bengaluru" }, formattedAddress: "Bengaluru, Karnataka, India", location: { latitude: 12.9715987, longitude: 77.5945627 } },

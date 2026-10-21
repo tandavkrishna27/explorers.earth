@@ -2396,6 +2396,7 @@
       "searchAndSelectPlaceFirst": "Search and select a place first",
       "selectAtLeastOneImage": "Select at least one image",
       "selectPlaceFromSuggestions": "Select the Place from google suggestions",
+      "pickPlaceFromSuggestions": "Pick a place from the suggestions",
       "selectValidCategory": "Select a Valid Category",
       "serverError": "Error del servidor. Por favor, inténtelo más tarde.",
       "serviceUnavailable": "Servicio no disponible. Por favor, inténtelo más tarde.",

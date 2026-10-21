@@ -2155,6 +2155,7 @@
       "searchAndSelectPlaceFirst": "Search and select a place first",
       "selectAtLeastOneImage": "Select at least one image",
       "selectPlaceFromSuggestions": "Select the Place from google suggestions",
+      "pickPlaceFromSuggestions": "Pick a place from the suggestions",
       "selectValidCategory": "Select a Valid Category",
       "serverError": "서버 오류. 나중에 다시 시도하세요.",
       "serviceUnavailable": "서비스를 사용할 수 없습니다. 나중에 다시 시도하세요.",
