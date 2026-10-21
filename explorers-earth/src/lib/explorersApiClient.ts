@@ -735,6 +735,12 @@ export const explorersApiClient = {
       headers: { "Content-Type": file.type, "X-Media-Purpose": purpose, "X-File-Name": file.name }, body: file });
     return (await responseBody<{ media: MediaDto }>(response, generation)).media;
   },
+  /** Imports the signed-in user's Google profile photo as profile media; the server reads the URL from the session. */
+  async importProviderAvatar(signal?: AbortSignal): Promise<MediaDto> {
+    const generation = useAuthStore.getState().generation;
+    const response = await fetch("/api/explorers/v1/media/provider-avatar", { method: "POST", credentials: "include", signal });
+    return (await responseBody<{ media: MediaDto }>(response, generation)).media;
+  },
   async deleteMedia(id: string, signal?: AbortSignal): Promise<void> {
     const generation = useAuthStore.getState().generation;
     const response = await fetch(`/api/explorers/v1/media/${encodeURIComponent(id)}`, {
