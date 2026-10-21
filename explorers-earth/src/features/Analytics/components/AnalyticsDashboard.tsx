@@ -636,9 +636,9 @@ const AnalyticsDashboard: React.FC = () => {
           {/* Content Page Performance — unified overview */}
           <div className="dt-surface p-6 rounded-lg">
             <div className="mb-4">
-              <h2 className="dt-heading">Content Page Performance</h2>
+              <h2 className="dt-heading">{t('analytics.dashboard.charts.contentEngagement.title')}</h2>
               <p className="dt-subtext">
-                Views &amp; click-throughs across Movies, Books, Games and Guides pages.
+                {t('analytics.dashboard.charts.contentEngagement.subtitle')}
               </p>
             </div>
             <ContentEngagementChart events={filteredEvents} />
@@ -651,14 +651,14 @@ const AnalyticsDashboard: React.FC = () => {
             <div className="mb-4">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xl">🎬</span>
-                <h2 className="dt-heading">Engagement with Movie Lists</h2>
+                <h2 className="dt-heading">{t('analytics.dashboard.media.movies.listsTitle')}</h2>
               </div>
-              <p className="dt-subtext">Track views &amp; clicks over time for each of your movie lists.</p>
+              <p className="dt-subtext">{t('analytics.dashboard.media.movies.listsSubtitle')}</p>
             </div>
             <MediaListEngagementChart
               events={filteredEvents}
               pageName="public-movies"
-              pageLabel="Movies"
+              category="movies"
               elementPrefix="movie-card"
               color="#60a5fa"
               icon="🎬"
@@ -670,15 +670,14 @@ const AnalyticsDashboard: React.FC = () => {
             <div className="mb-4">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xl">🎬</span>
-                <h2 className="dt-heading">Movies Clicked within a List</h2>
+                <h2 className="dt-heading">{t('analytics.dashboard.media.movies.itemsTitle')}</h2>
               </div>
-              <p className="dt-subtext">Select a list to see which movies visitors clicked most.</p>
+              <p className="dt-subtext">{t('analytics.dashboard.media.movies.itemsSubtitle')}</p>
             </div>
             <MediaItemsInListChart
               events={filteredEvents}
               pageName="public-movies"
-              pageLabel="Movies"
-              itemLabel="movie"
+              category="movies"
               elementPrefix="movie-card"
               color="#60a5fa"
               icon="🎬"
@@ -692,14 +691,14 @@ const AnalyticsDashboard: React.FC = () => {
             <div className="mb-4">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xl">📚</span>
-                <h2 className="dt-heading">Engagement with Book Lists</h2>
+                <h2 className="dt-heading">{t('analytics.dashboard.media.books.listsTitle')}</h2>
               </div>
-              <p className="dt-subtext">Track views &amp; clicks over time for each of your book lists.</p>
+              <p className="dt-subtext">{t('analytics.dashboard.media.books.listsSubtitle')}</p>
             </div>
             <MediaListEngagementChart
               events={filteredEvents}
               pageName="public-books"
-              pageLabel="Books"
+              category="books"
               elementPrefix="book-card"
               color="#f59e0b"
               icon="📚"
@@ -711,15 +710,14 @@ const AnalyticsDashboard: React.FC = () => {
             <div className="mb-4">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xl">📚</span>
-                <h2 className="dt-heading">Books Clicked within a List</h2>
+                <h2 className="dt-heading">{t('analytics.dashboard.media.books.itemsTitle')}</h2>
               </div>
-              <p className="dt-subtext">Select a list to see which books visitors clicked most.</p>
+              <p className="dt-subtext">{t('analytics.dashboard.media.books.itemsSubtitle')}</p>
             </div>
             <MediaItemsInListChart
               events={filteredEvents}
               pageName="public-books"
-              pageLabel="Books"
-              itemLabel="book"
+              category="books"
               elementPrefix="book-card"
               color="#f59e0b"
               icon="📚"
@@ -733,14 +731,14 @@ const AnalyticsDashboard: React.FC = () => {
             <div className="mb-4">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xl">🎮</span>
-                <h2 className="dt-heading">Engagement with Game Lists</h2>
+                <h2 className="dt-heading">{t('analytics.dashboard.media.games.listsTitle')}</h2>
               </div>
-              <p className="dt-subtext">Track views &amp; clicks over time for each of your game lists.</p>
+              <p className="dt-subtext">{t('analytics.dashboard.media.games.listsSubtitle')}</p>
             </div>
             <MediaListEngagementChart
               events={filteredEvents}
               pageName="public-games"
-              pageLabel="Games"
+              category="games"
               elementPrefix="game-card"
               color="#34d399"
               icon="🎮"
@@ -752,15 +750,14 @@ const AnalyticsDashboard: React.FC = () => {
             <div className="mb-4">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xl">🎮</span>
-                <h2 className="dt-heading">Games Clicked within a List</h2>
+                <h2 className="dt-heading">{t('analytics.dashboard.media.games.itemsTitle')}</h2>
               </div>
-              <p className="dt-subtext">Select a list to see which games visitors clicked most.</p>
+              <p className="dt-subtext">{t('analytics.dashboard.media.games.itemsSubtitle')}</p>
             </div>
             <MediaItemsInListChart
               events={filteredEvents}
               pageName="public-games"
-              pageLabel="Games"
-              itemLabel="game"
+              category="games"
               elementPrefix="game-card"
               color="#34d399"
               icon="🎮"
@@ -772,8 +769,8 @@ const AnalyticsDashboard: React.FC = () => {
             <div className="mb-4 flex items-center gap-2">
               <span className="text-xl">🗺️</span>
               <div>
-                <h2 className="dt-heading">Travel Guides</h2>
-                <p className="dt-subtext">Views and guide opens from your public guides page.</p>
+                <h2 className="dt-heading">{t('analytics.dashboard.charts.guides.title')}</h2>
+                <p className="dt-subtext">{t('analytics.dashboard.charts.guides.subtitle')}</p>
               </div>
             </div>
             <GuidesChart events={filteredEvents} />
@@ -782,9 +779,9 @@ const AnalyticsDashboard: React.FC = () => {
           {/* Daily Views Trend by Section */}
           <div className="dt-surface p-6 rounded-lg">
             <div className="mb-4">
-              <h2 className="dt-heading">Daily Views Trend by Section</h2>
+              <h2 className="dt-heading">{t('analytics.dashboard.charts.pageViewsTrend.title')}</h2>
               <p className="dt-subtext">
-                How each content section (Places, Profile, Movies, Books, Games, Guides) is trending over time.
+                {t('analytics.dashboard.charts.pageViewsTrend.subtitle')}
               </p>
             </div>
             <PageViewsTrendChart events={filteredEvents} />

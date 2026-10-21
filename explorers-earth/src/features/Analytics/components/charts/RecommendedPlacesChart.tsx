@@ -7,6 +7,8 @@ import { useResponsiveChart } from '../../../../hooks/useResponsiveChart';
 import EmptyState from '../EmptyState';
 import { buildListNameMap } from '../../utils/listNames';
 
+const RP = 'analytics.dashboard.charts.recommendedPlaces.';
+
 interface RecommendedPlacesChartProps {
   rawAnalyticsData: PublicPageAnalyticsData[];
 }
@@ -103,8 +105,8 @@ const RecommendedPlacesChart: React.FC<RecommendedPlacesChartProps> = ({ rawAnal
         const recommendationId = analyticsRecord.Recommendation_Id;
         
         // Extract place information from metadata
-        const placeName = event.metadata?.placeName || 'Unknown Place';
-        const category = event.metadata?.category || 'Unknown Category';
+        const placeName = event.metadata?.placeName || t(`${RP}unknownPlace`);
+        const category = event.metadata?.category || t(`${RP}unknownCategory`);
         
         // Extract location name with improved logic
         let locationName = '';
@@ -216,8 +218,8 @@ const RecommendedPlacesChart: React.FC<RecommendedPlacesChartProps> = ({ rawAnal
       return (
         <div className="dt-surface p-3 rounded-lg border border-dashboard shadow-dashboard-elevated">
           <p className="dt-label mb-1">{data.name}</p>
-          <p className="dt-subtext text-xs mb-1">Category: {data.category}</p>
-          <p className="dt-subtext text-xs">Clicks: {data.value}</p>
+          <p className="dt-subtext text-xs mb-1">{t(`${RP}tooltip.category`, { category: data.category })}</p>
+          <p className="dt-subtext text-xs">{t(`${RP}tooltip.clicks`, { count: data.value })}</p>
         </div>
       );
     }
@@ -232,7 +234,7 @@ const RecommendedPlacesChart: React.FC<RecommendedPlacesChartProps> = ({ rawAnal
 
   // Custom dropdown component
   const CustomDropdown = () => {
-    const selectedLabel = locationData.find(loc => loc.id === selectedLocation)?.name || 'Select Location';
+    const selectedLabel = locationData.find(loc => loc.id === selectedLocation)?.name || t(`${RP}selectLocationPlaceholder`);
 
     return (
       <div className="w-full sm:max-w-xs relative" ref={dropdownRef}>
@@ -266,7 +268,7 @@ const RecommendedPlacesChart: React.FC<RecommendedPlacesChartProps> = ({ rawAnal
                   selectedLocation === location.id ? 'bg-dashboard-muted text-dashboard-accent' : ''
                 }`}
               >
-                {location.name} ({location.recommendationCount} places)
+                {t(`${RP}locationPlaces`, { location: location.name, count: location.recommendationCount })}
               </button>
             ))}
           </div>
@@ -286,25 +288,25 @@ const RecommendedPlacesChart: React.FC<RecommendedPlacesChartProps> = ({ rawAnal
         <div className="flex flex-col items-center justify-center py-12 px-4">
           <EmptyState 
             icon="map-pin"
-            message="No recommended places data available"
+            message={t(`${RP}noRecommendationData`)}
           />
           
           <div className="space-y-2 text-left mt-4">
             <div className="p-3 bg-dashboard-muted rounded-lg">
               <p className="dt-subtext text-sm">
-                <strong>Analytics Summary:</strong>
+                <strong>{t(`${RP}analyticsSummary`)}</strong>
               </p>
               <ul className="dt-subtext text-xs mt-1 space-y-1">
-                <li>• {totalClickEvents} total click events</li>
-                <li>• {recordsWithRecommendations} records with Recommendation ID</li>
-                <li>• {recommendationData.length} unique recommendations</li>
+                <li>{t(`${RP}totalClickEvents`, { count: totalClickEvents })}</li>
+                <li>{t(`${RP}recordsWithRecommendations`, { count: recordsWithRecommendations })}</li>
+                <li>{t(`${RP}uniqueRecommendations`, { count: recommendationData.length })}</li>
               </ul>
             </div>
             
             <p className="dt-subtext text-xs opacity-75">
               {!selectedLocation 
-                ? 'Please select a location to view recommendation data.'
-                : 'No recommendation clicks found for the selected location. Recommendation data will appear once users click on place cards in your location pages.'
+                ? t(`${RP}selectLocationPrompt`)
+                : t(`${RP}noClicksMessage`)
               }
             </p>
           </div>
@@ -318,7 +320,7 @@ const RecommendedPlacesChart: React.FC<RecommendedPlacesChartProps> = ({ rawAnal
       {/* Location Selector */}
       <div className="mb-4">
         <label className="dt-label block mb-2">
-          Select Location:
+          {t(`${RP}selectLocation`)}
         </label>
         <CustomDropdown />
       </div>
@@ -358,19 +360,19 @@ const RecommendedPlacesChart: React.FC<RecommendedPlacesChartProps> = ({ rawAnal
           <p className={`${chartData.length > 3 ? 'text-base' : 'text-lg'} font-bold text-dashboard-accent`}>
             {chartData.length}
           </p>
-          <p className="dt-subtext text-xs sm:text-sm">Places Shown</p>
+          <p className="dt-subtext text-xs sm:text-sm">{t(`${RP}stats.placesShown`)}</p>
         </div>
         <div className="dt-surface p-3 sm:p-4 rounded-lg text-center">
           <p className={`${chartData.length > 3 ? 'text-base' : 'text-lg'} font-bold text-dashboard-accent`}>
             {chartData.reduce((sum, place) => sum + place.value, 0)}
           </p>
-          <p className="dt-subtext text-xs sm:text-sm">Total Clicks</p>
+          <p className="dt-subtext text-xs sm:text-sm">{t(`${RP}stats.totalClicks`)}</p>
         </div>
         <div className="dt-surface p-3 sm:p-4 rounded-lg text-center">
           <p className={`${chartData.length > 3 ? 'text-base' : 'text-lg'} font-bold text-dashboard-accent`}>
             {chartData.length > 0 ? Math.round(chartData.reduce((sum, place) => sum + place.value, 0) / chartData.length) : 0}
           </p>
-          <p className="dt-subtext text-xs sm:text-sm">Avg Clicks/Place</p>
+          <p className="dt-subtext text-xs sm:text-sm">{t(`${RP}stats.avgClicks`)}</p>
         </div>
       </div>
     </div>

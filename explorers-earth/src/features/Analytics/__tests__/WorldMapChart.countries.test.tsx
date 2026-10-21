@@ -1,4 +1,5 @@
 import { cleanup, render } from "@testing-library/react";
+import "../../../test/englishI18n";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import topology from "world-atlas/countries-110m.json";
 import { feature } from "topojson-client";

@@ -4,6 +4,7 @@ import { AnalyticsEvent } from '../../api/queries';
 import { useResponsiveChart } from '../../../../hooks/useResponsiveChart';
 import EmptyState from '../EmptyState';
 import { resolveTrafficSource } from '../../utils/trafficSource';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Props interface for TrafficSourceChart component
@@ -24,13 +25,14 @@ interface TrafficDataPoint {
 /**
  * Traffic source options for dropdown
  */
+const TS = 'analytics.dashboard.charts.trafficSource.';
 const TRAFFIC_SOURCES = [
-  { value: 'all', label: 'All Sources' },
-  { value: 'direct', label: 'Direct' },
-  { value: 'qr_code_scan', label: 'QR Code' },
-  { value: 'instagram', label: 'Instagram' },
-  { value: 'whatsapp', label: 'WhatsApp' },
-  { value: 'twitter', label: 'Twitter' },
+  { value: 'all', labelKey: `${TS}allSources` },
+  { value: 'direct', labelKey: `${TS}direct` },
+  { value: 'qr_code_scan', labelKey: `${TS}qrCode` },
+  { value: 'instagram', labelKey: `${TS}instagram` },
+  { value: 'whatsapp', labelKey: `${TS}whatsapp` },
+  { value: 'twitter', labelKey: `${TS}twitter` },
 ] as const;
 
 type TrafficSource = typeof TRAFFIC_SOURCES[number]['value'];
@@ -51,6 +53,12 @@ const TrafficSourceChart: React.FC<TrafficSourceChartProps> = ({ events }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { chartConfig } = useResponsiveChart();
+  const { t, i18n } = useTranslation();
+  // A known source gets its translated label; any other utm_source is shown capitalised.
+  const sourceLabel = (source: string) => {
+    const option = TRAFFIC_SOURCES.find(s => s.value === source);
+    return option ? t(option.labelKey) : source.charAt(0).toUpperCase() + source.slice(1);
+  };
 
   // Handle click outside to close dropdown
   useEffect(() => {
@@ -157,7 +165,7 @@ const TrafficSourceChart: React.FC<TrafficSourceChartProps> = ({ events }) => {
           <p className="dt-label text-sm mb-1">{label}</p>
           {payload.map((entry: any, index: number) => (
             <p key={index} className="dt-subtext text-xs" style={{ color: entry.color }}>
-              {entry.dataKey}: {entry.value.toLocaleString()}
+              {t(`${TS}tooltip.sourceCount`, { source: entry.name, count: entry.value.toLocaleString() })}
             </p>
           ))}
         </div>
@@ -169,7 +177,7 @@ const TrafficSourceChart: React.FC<TrafficSourceChartProps> = ({ events }) => {
   // Format timestamp for display
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
-    return date.toLocaleDateString('en-US', { 
+    return date.toLocaleDateString(i18n?.language, {
       month: 'short', 
       day: 'numeric' 
     });
@@ -184,24 +192,24 @@ const TrafficSourceChart: React.FC<TrafficSourceChartProps> = ({ events }) => {
         <div className="flex flex-col items-center justify-center py-12 px-4">
           <EmptyState 
             icon="bar-chart"
-            message="No Traffic Data Available"
-            description="No view events found with traffic source information."
+            message={t(`${TS}noTrafficData`)}
+            description={t(`${TS}noViewEvents`)}
           />
-          
+
           <div className="space-y-2 text-left mt-4">
             <div className="p-3 bg-dashboard-muted rounded-lg">
               <p className="dt-subtext text-sm">
-                <strong>Analytics Summary:</strong>
+                <strong>{t(`${TS}analyticsSummary`)}</strong>
               </p>
               <ul className="dt-subtext text-xs mt-1 space-y-1">
-                <li>• {viewEvents.length} total view events</li>
-                <li>• {viewEvents.filter(e => e.utmParams?.utm_source).length} events with UTM source</li>
-                <li>• {viewEvents.filter(e => !e.utmParams?.utm_source).length} direct traffic events</li>
+                <li>{t(`${TS}totalViewEvents`, { count: viewEvents.length })}</li>
+                <li>{t(`${TS}eventsWithUTM`, { count: viewEvents.filter(e => e.utmParams?.utm_source).length })}</li>
+                <li>{t(`${TS}directTraffic`, { count: viewEvents.filter(e => !e.utmParams?.utm_source).length })}</li>
               </ul>
             </div>
-            
+
             <p className="dt-subtext text-xs opacity-75">
-              Traffic source data will appear once users visit your pages with UTM parameters.
+              {t(`${TS}willAppear`)}
             </p>
           </div>
         </div>
@@ -214,7 +222,7 @@ const TrafficSourceChart: React.FC<TrafficSourceChartProps> = ({ events }) => {
       {/* Traffic Source Selector */}
       <div className="mb-4">
         <label className="dt-label block mb-2">
-          Select Traffic Source:
+          {t(`${TS}selectSource`)}
         </label>
         <div className="w-full sm:max-w-xs relative" ref={dropdownRef}>
           <button
@@ -223,11 +231,7 @@ const TrafficSourceChart: React.FC<TrafficSourceChartProps> = ({ events }) => {
             className="dt-input w-full text-left flex justify-between items-center dt-label"
           >
             <span>
-              {selectedSource === 'all' 
-                ? 'All Sources' 
-                : TRAFFIC_SOURCES.find(s => s.value === selectedSource)?.label || 
-                  selectedSource.charAt(0).toUpperCase() + selectedSource.slice(1)
-              }
+              {sourceLabel(selectedSource)}
             </span>
             <svg 
               className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
@@ -251,10 +255,9 @@ const TrafficSourceChart: React.FC<TrafficSourceChartProps> = ({ events }) => {
                   selectedSource === 'all' ? 'bg-dashboard-muted text-dashboard-accent' : ''
                 }`}
               >
-                All Sources
+                {t(`${TS}allSources`)}
               </button>
               {availableSources.map(source => {
-                const sourceOption = TRAFFIC_SOURCES.find(s => s.value === source);
                 return (
                   <button
                     key={source}
@@ -267,7 +270,7 @@ const TrafficSourceChart: React.FC<TrafficSourceChartProps> = ({ events }) => {
                       selectedSource === source ? 'bg-dashboard-muted text-dashboard-accent' : ''
                     }`}
                   >
-                    {sourceOption?.label || source.charAt(0).toUpperCase() + source.slice(1)}
+                    {sourceLabel(source)}
                   </button>
                 );
               })}
@@ -336,7 +339,7 @@ const TrafficSourceChart: React.FC<TrafficSourceChartProps> = ({ events }) => {
                     stroke={colors[index % colors.length]}
                     strokeWidth={2}
                     dot={{ r: 4 }}
-                    name={TRAFFIC_SOURCES.find(s => s.value === source)?.label || source}
+                    name={sourceLabel(source)}
                   />
                 );
               })
@@ -348,7 +351,7 @@ const TrafficSourceChart: React.FC<TrafficSourceChartProps> = ({ events }) => {
                 stroke="var(--dash-accent)"
                 strokeWidth={2}
                 dot={{ r: 4 }}
-                name={TRAFFIC_SOURCES.find(s => s.value === selectedSource)?.label || selectedSource}
+                name={sourceLabel(selectedSource)}
               />
             )}
           </LineChart>

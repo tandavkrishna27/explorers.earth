@@ -18,8 +18,7 @@ import EmptyState from '../EmptyState';
 interface MediaItemsInListChartProps {
   events: AnalyticsEvent[];
   pageName: string;      // e.g. 'public-movies'
-  pageLabel: string;     // e.g. 'Movies'
-  itemLabel: string;     // e.g. 'movie'  (singular, lowercase)
+  category: 'movies' | 'books' | 'games'; // selects the translated copy
   elementPrefix: string; // e.g. 'movie-card'
   color: string;
   icon: string;
@@ -31,9 +30,11 @@ const PIE_COLORS = [
 ];
 
 const MediaItemsInListChart: React.FC<MediaItemsInListChartProps> = ({
-  events, pageName, pageLabel, itemLabel, elementPrefix, icon,
+  events, pageName, category, elementPrefix, icon,
 }) => {
   const { t } = useTranslation();
+  const M = `analytics.dashboard.media.${category}.`;
+  const C = 'analytics.dashboard.common.';
   const untitledList = t('analytics.dashboard.untitledList');
   const [selectedList, setSelectedList] = useState<string>('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -120,7 +121,7 @@ const MediaItemsInListChart: React.FC<MediaItemsInListChartProps> = ({
       return (
         <div className="dt-surface p-3 rounded-lg border border-dashboard shadow-dashboard-elevated">
           <p className="dt-label mb-1 text-sm">{d.name}</p>
-          <p className="dt-subtext text-xs">Clicks: {d.value}</p>
+          <p className="dt-subtext text-xs">{t(`${C}clicksValue`, { count: d.value })}</p>
         </div>
       );
     }
@@ -136,18 +137,18 @@ const MediaItemsInListChart: React.FC<MediaItemsInListChartProps> = ({
   if (clickEvents.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-10 px-4">
-        <EmptyState icon="map-pin" message={`No ${pageLabel.toLowerCase()} click data available`} />
+        <EmptyState icon="map-pin" message={t(`${M}noClickData`)} />
         <div className="mt-4 p-3 bg-dashboard-muted rounded-lg w-full max-w-sm">
           <p className="dt-subtext text-xs">
-            <strong>Analytics Summary:</strong>
+            <strong>{t(`${C}analyticsSummary`)}</strong>
           </p>
           <ul className="dt-subtext text-xs mt-1 space-y-1">
-            <li>• 0 {itemLabel} click events</li>
-            <li>• 0 lists with click data</li>
+            <li>{t(`${M}clickEvents`, { count: 0 })}</li>
+            <li>{t(`${C}listsWithClickData`, { count: 0 })}</li>
           </ul>
         </div>
         <p className="dt-subtext text-xs mt-3 opacity-70 text-center">
-          {icon} {pageLabel} item clicks will appear here once visitors open {itemLabel}s from your lists.
+          {icon} {t(`${M}itemsHint`)}
         </p>
       </div>
     );
@@ -163,14 +164,14 @@ const MediaItemsInListChart: React.FC<MediaItemsInListChartProps> = ({
     <div className="w-full space-y-6">
       {/* ── List selector dropdown ────────────────────────────────── */}
       <div>
-        <label className="dt-label block mb-2">Select List:</label>
+        <label className="dt-label block mb-2">{t(`${C}selectList`)}</label>
         <div className="w-full sm:max-w-xs relative" ref={dropdownRef}>
           <button
             type="button"
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className="dt-input w-full text-left flex justify-between items-center dt-label"
           >
-            <span>{selectedList || 'Select a list'}</span>
+            <span>{selectedList || t(`${C}selectListPlaceholder`)}</span>
             <svg
               className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
               fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -188,7 +189,7 @@ const MediaItemsInListChart: React.FC<MediaItemsInListChartProps> = ({
                   onClick={() => { setSelectedList(list.name); setIsDropdownOpen(false); }}
                   className={`w-full px-3 py-2 text-left dt-label hover:bg-dashboard-muted transition-colors ${selectedList === list.name ? 'bg-dashboard-muted text-dashboard-accent' : ''}`}
                 >
-                  {list.name} ({list.totalClicks} click{list.totalClicks !== 1 ? 's' : ''})
+                  {t(`${C}listClicks`, { name: list.name, count: list.totalClicks })}
                 </button>
               ))}
             </div>
@@ -221,7 +222,7 @@ const MediaItemsInListChart: React.FC<MediaItemsInListChartProps> = ({
         </div>
       ) : (
         <p className="dt-subtext text-sm text-center py-6">
-          No click data for this list yet.
+          {t(`${C}noClickDataForList`)}
         </p>
       )}
 
@@ -229,11 +230,11 @@ const MediaItemsInListChart: React.FC<MediaItemsInListChartProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="dt-surface p-3 sm:p-4 rounded-lg text-center">
           <p className="text-lg font-bold text-dashboard-accent">{pieData.length}</p>
-          <p className="dt-subtext text-xs sm:text-sm">{pageLabel} Shown</p>
+          <p className="dt-subtext text-xs sm:text-sm">{t(`${M}shown`)}</p>
         </div>
         <div className="dt-surface p-3 sm:p-4 rounded-lg text-center">
           <p className="text-lg font-bold text-dashboard-accent">{totalClicksInList}</p>
-          <p className="dt-subtext text-xs sm:text-sm">Total Clicks</p>
+          <p className="dt-subtext text-xs sm:text-sm">{t(`${C}totalClicks`)}</p>
         </div>
         <div className="dt-surface p-3 sm:p-4 rounded-lg text-center">
           <p className="text-lg font-bold text-dashboard-accent">
@@ -241,7 +242,7 @@ const MediaItemsInListChart: React.FC<MediaItemsInListChartProps> = ({
               ? Math.round(totalClicksInList / uniqueItemsInList)
               : 0}
           </p>
-          <p className="dt-subtext text-xs sm:text-sm">Avg Clicks / {pageLabel.replace(/s$/, '')}</p>
+          <p className="dt-subtext text-xs sm:text-sm">{t(`${M}avgClicks`)}</p>
         </div>
       </div>
     </div>

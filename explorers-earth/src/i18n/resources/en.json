@@ -104,7 +104,11 @@
             "date": "Date: {{date}}",
             "locationViews": "{{location}}: {{value}} views"
           },
-          "unknownLocation": "Unknown Location"
+          "unknownLocation": "Unknown Location",
+          "totalViewEvents": "• {{count}} total view events",
+          "recordsWithLocationId": "• {{count}} records with Location ID",
+          "uniqueLocations": "• {{count}} unique locations",
+          "willAppear": "Location engagement data will appear once users view your location pages."
         },
         "recommendedPlaces": {
           "analyticsSummary": "Analytics Summary:",
@@ -215,7 +219,36 @@
           },
           "totalViewEvents": "• {{count}} total view events",
           "unableToResolve": "Unable to resolve IP addresses to countries at this time. This may be due to network restrictions or service limitations.",
-          "willAppear": "Country data will appear automatically once IP geolocation services are available."
+          "willAppear": "Country data will appear automatically once IP geolocation services are available.",
+          "noGeographicDescription": "Geographic data will appear once visitors interact with your content from different locations."
+        },
+        "contentEngagement": {
+          "title": "Content Page Performance",
+          "subtitle": "Views & click-throughs across Movies, Books, Games and Guides pages.",
+          "empty": "No media page activity yet.",
+          "emptyHint": "Views from Movies, Books, Games & Guides will appear here.",
+          "mediaViews": "Media Views",
+          "viewsAndClicksByPage": "Views & Clicks by Page",
+          "mostClickedItems": "Most Clicked Items",
+          "pageBreakdown": "Page Breakdown",
+          "pageCounts": "{{views}}v · {{clicks}}c"
+        },
+        "guides": {
+          "title": "Travel Guides",
+          "subtitle": "Views and guide opens from your public guides page.",
+          "empty": "No guides page activity yet.",
+          "emptyHint": "Views and guide opens will appear here once visitors browse your guides.",
+          "guideOpens": "Guide Opens",
+          "uniqueGuides": "Unique Guides",
+          "mostOpened": "Most Opened Guides (Top {{count}})",
+          "allOpened": "All Opened Guides ({{count}})",
+          "viewsNoOpens_one": "{{count}} view recorded — no guide opens tracked yet.",
+          "viewsNoOpens_other": "{{count}} views recorded — no guide opens tracked yet."
+        },
+        "pageViewsTrend": {
+          "title": "Daily Views Trend by Section",
+          "subtitle": "How each content section (Places, Profile, Movies, Books, Games, Guides) is trending over time.",
+          "empty": "Not enough data to show trends."
         }
       },
       "comingSoon": {
@@ -292,7 +325,103 @@
       "timePeriod": "Time Period:",
       "title": "Analytics Dashboard",
       "countsNote": "Totals count visits, not unique visitors. Public pages are measured anonymously, without cookies.",
-      "untitledList": "Untitled list"
+      "untitledList": "Untitled list",
+      "common": {
+        "analyticsSummary": "Analytics Summary:",
+        "totalViews": "Total Views",
+        "totalClicks": "Total Clicks",
+        "views": "Views",
+        "date": "Date: {{date}}",
+        "clicksValue": "Clicks: {{count}}",
+        "selectList": "Select List:",
+        "selectListPlaceholder": "Select a list",
+        "allLists": "All Lists",
+        "listClicks_one": "{{name}} ({{count}} click)",
+        "listClicks_other": "{{name}} ({{count}} clicks)",
+        "clicksByList": "Clicks by List",
+        "totalLists": "Total Lists",
+        "totalItemClicks": "Total Item Clicks",
+        "itemClicks": "Item Clicks",
+        "pageViews": "Page Views",
+        "clicks": "Clicks",
+        "opens": "Opens",
+        "allClicksSeries": "All Clicks",
+        "listClicksSeries": "{{list}} Clicks",
+        "noClickDataForList": "No click data for this list yet.",
+        "listsWithClickData": "• {{count}} lists with click data",
+        "clickCount_one": "{{count}} click",
+        "clickCount_other": "{{count}} clicks",
+        "openCount_one": "{{count}} open",
+        "openCount_other": "{{count}} opens",
+        "unknown": "Unknown"
+      },
+      "categories": {
+        "places": "Places",
+        "profile": "Profile",
+        "movies": "Movies",
+        "books": "Books",
+        "games": "Games",
+        "guides": "Guides"
+      },
+      "media": {
+        "movies": {
+          "listsTitle": "Engagement with Movie Lists",
+          "listsSubtitle": "Track views & clicks over time for each of your movie lists.",
+          "itemsTitle": "Movies Clicked within a List",
+          "itemsSubtitle": "Select a list to see which movies visitors clicked most.",
+          "noEngagement": "No movie engagement data yet",
+          "engagementHint": "Views and item clicks from your movies page will appear here.",
+          "noClickData": "No movie click data available",
+          "clickEvents": "• {{count}} movie click events",
+          "itemsHint": "Movie clicks will appear here once visitors open movies from your lists.",
+          "shown": "Movies Shown",
+          "avgClicks": "Avg Clicks / Movie",
+          "noActivity": "No movies page activity yet.",
+          "unique": "Unique Movies",
+          "topClicked": "Top {{count}} Most Clicked Movies",
+          "allClicked": "All Clicked Movies ({{count}})",
+          "viewsNoClicks_one": "{{count}} view recorded — no movie clicks yet.",
+          "viewsNoClicks_other": "{{count}} views recorded — no movie clicks yet."
+        },
+        "books": {
+          "listsTitle": "Engagement with Book Lists",
+          "listsSubtitle": "Track views & clicks over time for each of your book lists.",
+          "itemsTitle": "Books Clicked within a List",
+          "itemsSubtitle": "Select a list to see which books visitors clicked most.",
+          "noEngagement": "No book engagement data yet",
+          "engagementHint": "Views and item clicks from your books page will appear here.",
+          "noClickData": "No book click data available",
+          "clickEvents": "• {{count}} book click events",
+          "itemsHint": "Book clicks will appear here once visitors open books from your lists.",
+          "shown": "Books Shown",
+          "avgClicks": "Avg Clicks / Book",
+          "noActivity": "No books page activity yet.",
+          "unique": "Unique Books",
+          "topClicked": "Top {{count}} Most Clicked Books",
+          "allClicked": "All Clicked Books ({{count}})",
+          "viewsNoClicks_one": "{{count}} view recorded — no book clicks yet.",
+          "viewsNoClicks_other": "{{count}} views recorded — no book clicks yet."
+        },
+        "games": {
+          "listsTitle": "Engagement with Game Lists",
+          "listsSubtitle": "Track views & clicks over time for each of your game lists.",
+          "itemsTitle": "Games Clicked within a List",
+          "itemsSubtitle": "Select a list to see which games visitors clicked most.",
+          "noEngagement": "No game engagement data yet",
+          "engagementHint": "Views and item clicks from your games page will appear here.",
+          "noClickData": "No game click data available",
+          "clickEvents": "• {{count}} game click events",
+          "itemsHint": "Game clicks will appear here once visitors open games from your lists.",
+          "shown": "Games Shown",
+          "avgClicks": "Avg Clicks / Game",
+          "noActivity": "No games page activity yet.",
+          "unique": "Unique Games",
+          "topClicked": "Top {{count}} Most Clicked Games",
+          "allClicked": "All Clicked Games ({{count}})",
+          "viewsNoClicks_one": "{{count}} view recorded — no game clicks yet.",
+          "viewsNoClicks_other": "{{count}} views recorded — no game clicks yet."
+        }
+      }
     }
   },
   "auth": {

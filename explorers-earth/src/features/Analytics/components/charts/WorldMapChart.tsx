@@ -9,6 +9,7 @@ import worldTopologyUrl from "world-atlas/countries-110m.json?url";
 import { AnalyticsEvent } from "../../api/queries";
 import { useResponsiveChart } from "../../../../hooks/useResponsiveChart";
 import EmptyState from '../EmptyState';
+import { useTranslation } from 'react-i18next';
 import { countryCodeForGeography, getCountryName, normalizeCountryKey } from "../../utils/countryMapping";
 
 /**
@@ -40,6 +41,8 @@ interface CountryData {
  */
 const WorldMapChart: React.FC<WorldMapChartProps> = ({ events, isResolvingCountries = false }) => {
   const { chartConfig } = useResponsiveChart();
+  const { t } = useTranslation();
+  const WM = 'analytics.dashboard.charts.worldMap.';
   const [hoveredCountry, setHoveredCountry] = useState<string | null>(null);
   const hoveredCode = hoveredCountry ? normalizeCountryKey(hoveredCountry) : undefined;
   const [mousePosition, setMousePosition] = useState<{
@@ -155,7 +158,7 @@ const WorldMapChart: React.FC<WorldMapChartProps> = ({ events, isResolvingCountr
             <span className="inline-block w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
           </div>
           <p className="dt-subtext text-sm">
-            Resolving country data...
+            {t('analytics.dashboard.loading.resolvingCountry')}
           </p>
         </div>
       </div>
@@ -174,28 +177,24 @@ const WorldMapChart: React.FC<WorldMapChartProps> = ({ events, isResolvingCountr
         <div className="flex flex-col items-center justify-center py-12 px-4">
           <EmptyState
             icon="map"
-            message="No Geographic Data Available"
-            description="Geographic data will appear once visitors interact with your content from different locations."
+            message={t(`${WM}noGeographicData`)}
+            description={t(`${WM}noGeographicDescription`)}
           />
 
           <div className="space-y-2 text-left mt-4">
             <div className="p-3 bg-dashboard-muted rounded-lg">
               <p className="dt-subtext text-sm">
-                <strong>Analytics Summary:</strong>
+                <strong>{t(`${WM}analyticsSummary`)}</strong>
               </p>
               <ul className="dt-subtext text-xs mt-1 space-y-1">
-                <li>• {viewEvents.length} total view events</li>
-                <li>• {eventsWithCountry.length} events with country data</li>
-                <li>
-                  • {viewEvents.length - eventsWithCountry.length} events
-                  pending geolocation
-                </li>
+                <li>{t(`${WM}totalViewEvents`, { count: viewEvents.length })}</li>
+                <li>{t(`${WM}eventsWithCountry`, { count: eventsWithCountry.length })}</li>
+                <li>{t(`${WM}eventsPending`, { count: viewEvents.length - eventsWithCountry.length })}</li>
               </ul>
             </div>
 
             <p className="dt-subtext text-xs opacity-75">
-              Geographic data will appear automatically once IP geolocation
-              services are available.
+              {t(`${WM}willAppear`)}
             </p>
           </div>
         </div>
@@ -233,7 +232,7 @@ const WorldMapChart: React.FC<WorldMapChartProps> = ({ events, isResolvingCountr
                     geo.properties?.name ||
                     geo.properties?.NAME_EN ||
                     geo.properties?.name_en ||
-                    "Unknown";
+                    t('analytics.dashboard.common.unknown');
 
                   const countryCode = countryCodeForGeography(geo);
 
@@ -303,7 +302,7 @@ const WorldMapChart: React.FC<WorldMapChartProps> = ({ events, isResolvingCountr
           >
             <p className="dt-label mb-1">{hoveredCountry}</p>
             <p className="dt-subtext text-dashboard-accent">
-              {getCountryViews(hoveredCode)} views
+              {t(`${WM}tooltip.views`, { views: getCountryViews(hoveredCode) })}
             </p>
           </div>
         )}
@@ -312,7 +311,7 @@ const WorldMapChart: React.FC<WorldMapChartProps> = ({ events, isResolvingCountr
       {/* Legend */}
       <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="dt-subtext text-sm">Views:</span>
+          <span className="dt-subtext text-sm">{t(`${WM}legend.views`)}</span>
           <div className="flex items-center gap-1">
             <div
               className="w-3 h-3 rounded"
@@ -325,33 +324,33 @@ const WorldMapChart: React.FC<WorldMapChartProps> = ({ events, isResolvingCountr
               className="w-3 h-3 rounded"
               style={{ backgroundColor: "#FCA5A5" }}
             ></div>
-            <span className="dt-subtext text-xs">Low</span>
+            <span className="dt-subtext text-xs">{t(`${WM}legend.low`)}</span>
           </div>
           <div className="flex items-center gap-1">
             <div
               className="w-3 h-3 rounded"
               style={{ backgroundColor: "#F87171" }}
             ></div>
-            <span className="dt-subtext text-xs">Medium</span>
+            <span className="dt-subtext text-xs">{t(`${WM}legend.medium`)}</span>
           </div>
           <div className="flex items-center gap-1">
             <div
               className="w-3 h-3 rounded"
               style={{ backgroundColor: "#DC2626" }}
             ></div>
-            <span className="dt-subtext text-xs">High</span>
+            <span className="dt-subtext text-xs">{t(`${WM}legend.high`)}</span>
           </div>
           <div className="flex items-center gap-1">
             <div
               className="w-3 h-3 rounded"
               style={{ backgroundColor: "#B91C1C" }}
             ></div>
-            <span className="dt-subtext text-xs">Highest</span>
+            <span className="dt-subtext text-xs">{t(`${WM}legend.highest`)}</span>
           </div>
         </div>
 
         <div className="dt-subtext text-xs">
-          {countryData.length} countries with views
+          {t(`${WM}countriesWithViews`, { count: countryData.length })}
         </div>
       </div>
     </div>

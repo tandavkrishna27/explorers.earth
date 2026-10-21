@@ -8,7 +8,15 @@ vi.mock('recharts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('recharts')>()),
   ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+vi.mock('react-i18next', async () => {
+  // Resolve against the English resources without importing react-i18next (which is mocked here).
+  const { createInstance } = await import('i18next');
+  const resources = (await import('../../../i18n/resources/en.json')).default;
+  const i18n = createInstance();
+  await i18n.init({ lng: 'en', resources: { en: { translation: resources } }, interpolation: { escapeValue: false } });
+  const t = (key: string, options?: Record<string, unknown>) => String(i18n.t(key, options as never));
+  return { useTranslation: () => ({ t }) };
+});
 vi.mock('../../Favorites/hooks/usePlacesOwner', () => ({
   usePlacesOwner: () => ({ data: { recommendationLists: [{ documentId: 'place-list-1', List_Name: 'Goa trip' }] } }),
 }));
@@ -50,7 +58,7 @@ describe('list names in the owner charts', () => {
     expect(screen.getByRole('button', { name: /Weekend watchlist/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Classics/ })).toBeInTheDocument();
     // A list with no known name falls back to the translated "Untitled list".
-    expect(screen.getByRole('button', { name: /analytics\.dashboard\.untitledList/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Untitled list/ })).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/Location [0-9a-f]{8}/i);
     expect(container.textContent).not.toContain('18e0cca2');
   });
