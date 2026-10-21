@@ -11,6 +11,7 @@ const raw = readFileSync(resolve(repositoryRoot, "deploy/nginx/explorers.conf"),
 const HEADERS_INCLUDE = "include /srv/explorers/current/runtime/headers.conf;";
 const API_UPSTREAM = "http://127.0.0.1:5000";
 const PUBLIC_UPSTREAMS = ["https://id.twitch.tv/", "https://api.igdb.com/"];
+const HSTS = 'add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always';
 const PARAMETERS = ["@EXPLORERS_SERVER_NAME@", "@EXPLORERS_TLS_CERTIFICATE@", "@EXPLORERS_TLS_CERTIFICATE_KEY@"];
 
 type Block = { header: string; body: string; directives: string[]; children: Block[] };
@@ -20,15 +21,20 @@ function stripComments(source: string): string {
 }
 
 // Enough of nginx's grammar for this file: `name args { ... }` blocks and `name args;`.
+// Double-quoted arguments are opaque: HSTS's value carries a `;`.
 function parse(source: string): Block {
   let index = 0;
   const readBlock = (header: string): Block => {
     const block: Block = { header, body: "", directives: [], children: [] };
     let token = "";
+    let quoted = false;
     const start = index;
     while (index < source.length) {
       const char = source[index++];
-      if (char === "{") {
+      if (char === '"') quoted = !quoted;
+      if (quoted || char === '"') {
+        token += char;
+      } else if (char === "{") {
         block.children.push(readBlock(token.trim()));
         token = "";
       } else if (char === "}") {
@@ -54,6 +60,10 @@ const www = (server: Block) => server.directives.includes("server_name www.@EXPL
 const tls = servers.find((server) => canonical(server) && server.directives.some((d) => d.startsWith("listen 443")));
 const locations = tls?.children.filter((block) => block.header.startsWith("location ")) ?? [];
 const location = (match: string) => locations.find((block) => block.header === `location ${match}`);
+const proxyHeaders = [
+  "proxy_set_header Host $host", "proxy_set_header X-Real-IP $remote_addr",
+  "proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for", "proxy_set_header X-Forwarded-Proto $scheme",
+];
 
 describe("production nginx site", () => {
   it("has a TLS server and a port-80 server that only redirects", () => {
@@ -97,6 +107,46 @@ describe("production nginx site", () => {
     for (const block of withHeaders) {
       expect(block.directives, block.header).toContain(HEADERS_INCLUDE.slice(0, -1));
     }
+  });
+
+  it("sends HSTS on every HTTPS response, without preload, and never on port 80", () => {
+    // Break caught (PROD-02): the header was missing. add_header replaces rather than
+    // merges, so a location with its own add_header and no HSTS line silently drops it.
+    expect(tls!.directives).toContain(HSTS);
+    for (const block of locations.filter((b) => b.directives.some((d) => d.startsWith("add_header ")))) {
+      expect(block.directives, block.header).toContain(HSTS);
+    }
+    const secureWww = servers.find((server) => www(server) && server.directives.includes("listen 443 ssl http2"));
+    expect(secureWww?.directives).toContain(HSTS);
+    for (const server of servers.filter((s) => s.directives.includes("listen 80"))) {
+      expect(server.directives.some((d) => d.includes("Strict-Transport-Security"))).toBe(false);
+    }
+    expect(stripComments(raw)).not.toMatch(/preload/);
+  });
+
+  it("sends every non-file request to the API's share page, which sets the status", () => {
+    // Break caught (PROD-03, PROD-04): `try_files $uri /index.html` answered every
+    // unknown path 200 and served crawlers a shell with no per-page metadata.
+    expect(location("/")?.directives).toEqual(["try_files $uri @share"]);
+    const share = location("@share");
+    expect(share?.directives).toEqual(expect.arrayContaining([
+      "rewrite ^ /api/explorers/v1/share-page break", `proxy_pass ${API_UPSTREAM}`,
+      "proxy_set_header X-Explorers-Path $request_uri", "ssi on", ...proxyHeaders,
+    ]));
+    // No add_header: it inherits headers.conf and HSTS from the server scope.
+    expect(share?.directives.some((d) => d.startsWith("add_header "))).toBe(false);
+    // 404 is the API's answer, so it must never be intercepted; only API failure is.
+    expect(share?.directives).toContain("proxy_intercept_errors on");
+    expect(share?.directives).toContain("error_page 500 502 503 504 = @shell");
+    expect(location("@shell")?.directives).toEqual(["try_files /index.html =404"]);
+  });
+
+  it("serves the SSI shell halves only to internal subrequests, from outside the served root", () => {
+    const shell = location("^~ /__explorers_shell/");
+    expect(shell?.directives).toEqual(["internal", "alias /srv/explorers/current/runtime/shell/"]);
+    // Only @share expands SSI, and only from the API; a static file never does.
+    const ssi = locations.filter((block) => block.directives.includes("ssi on")).map((block) => block.header);
+    expect(ssi).toEqual(["location @share"]);
   });
 
   it("never caches the shell or the runtime config", () => {
