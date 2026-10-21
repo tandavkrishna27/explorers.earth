@@ -179,8 +179,9 @@ stage() {
     rm -rf "$incoming" && install -d -m 0755 "$incoming"
     tar -xzf "$staging/release.tar.gz" -C "$incoming" --no-same-owner
     [[ -f "$incoming/$COMMIT/dist/index.html" && -f "$incoming/$COMMIT/dist/runtime-config.json" \
-      && -f "$incoming/$COMMIT/runtime/headers.conf" && ! -e "$incoming/$COMMIT/dist/headers.conf" ]] \
-      || fail "uploaded release does not have the dist/ + runtime/headers.conf layout"
+      && -f "$incoming/$COMMIT/runtime/headers.conf" && ! -e "$incoming/$COMMIT/dist/headers.conf" \
+      && -f "$incoming/$COMMIT/runtime/shell/head.html" && -f "$incoming/$COMMIT/runtime/shell/tail.html" ]] \
+      || fail "uploaded release does not have the dist/ + runtime/{headers.conf,shell/} layout"
     rm -rf "$RELEASE"
     mv "$incoming/$COMMIT" "$RELEASE"
     rmdir "$incoming"

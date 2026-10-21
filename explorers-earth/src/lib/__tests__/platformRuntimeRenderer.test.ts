@@ -24,5 +24,11 @@ describe('immutable image runtime files',()=>{
     expect(files['headers.conf']).toContain('https://www.googletagmanager.com');
     expect(files['headers.conf']).not.toContain('clarity.ms');
   });
+  it('splits the shell for the share page without its title or canonical, keeping assets and robots',()=>{
+    const files=renderRuntimeFiles(config,html);
+    expect(files['shell-head.html']+files['shell-tail.html']).toBe('<html><head><meta name="robots" content="noindex,nofollow" /></head><body><script type="module" src="/assets/bootstrap-hash.js"></script></body></html>');
+    expect(files['shell-tail.html'].startsWith('</head>')).toBe(true);
+    expect(files['index.html']).toContain('<title>App</title>');
+  });
   it('rejects unknown/server config instead of serializing values',()=>expect(()=>renderRuntimeFiles({...config,AWS_SECRET_ACCESS_KEY:'SENTINEL'},html)).toThrow('PUBLIC_RUNTIME_CONFIG_INVALID'));
 });

@@ -55,6 +55,22 @@ describe("release assembly", () => {
     expect(headers).toContain("https://maps.googleapis.com");
   });
 
+  it("writes the two shell halves nginx SSI wraps around the share page, outside dist", () => {
+    // Break caught: location @share includes /__explorers_shell/{head,tail}.html; a
+    // release without them answers every HTML route with an SSI error and no shell.
+    const release = assemble(PUBLIC);
+    const head = readFileSync(join(release, "runtime", "shell", "head.html"), "utf8");
+    const tail = readFileSync(join(release, "runtime", "shell", "tail.html"), "utf8");
+    expect(head.startsWith("<html><head>")).toBe(true);
+    expect(tail).toBe("</head><body></body></html>");
+    // The share page supplies <title> and the canonical link; the shell must not duplicate them.
+    expect(head).not.toContain("<title>");
+    expect(head).not.toContain("canonical");
+    expect(head).toContain('<meta name="robots" content="index,follow" />');
+    expect(existsSync(join(release, "dist", "shell-head.html"))).toBe(false);
+    expect(existsSync(join(release, "dist", "shell"))).toBe(false);
+  });
+
   it("leaves the maps origins out of the CSP when no browser key is configured", () => {
     const { mapsBrowserKey: _omitted, ...withoutKey } = PUBLIC;
     const release = assemble(withoutKey);
