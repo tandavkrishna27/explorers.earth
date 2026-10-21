@@ -234,6 +234,7 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
   }
   if (route.source === "tunes/server/routes/explorersMediaRoutes.ts") {
     if (route.method === "POST" && route.path === "/api/explorers/v1/media") return "explorers-owner";
+    if (route.method === "POST" && route.path === "/api/explorers/v1/media/place-photo") return "explorers-owner";
     if (route.method === "DELETE" && route.path === "/api/explorers/v1/media/:id") return "explorers-owner";
     if (["GET", "HEAD"].includes(route.method) && route.path === "/api/explorers/v1/media/:id/content") return "public";
   }

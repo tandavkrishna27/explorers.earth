@@ -47,6 +47,7 @@ describe("Music surface authorization policy", () => {
     ["explorersCatalogRoutes", "GET", "/api/explorers/v1/catalog/movies", "explorers-owner"],
     ["explorersAccountRoutes", "PATCH", "/api/explorers/v1/account", "explorers-owner"],
     ["explorersMediaRoutes", "POST", "/api/explorers/v1/media", "explorers-owner"],
+    ["explorersMediaRoutes", "POST", "/api/explorers/v1/media/place-photo", "explorers-owner"],
     ["explorersMediaRoutes", "DELETE", "/api/explorers/v1/media/:id", "explorers-owner"],
     ["explorersMediaRoutes", "GET", "/api/explorers/v1/media/:id/content", "public"],
     ["explorersMediaRoutes", "HEAD", "/api/explorers/v1/media/:id/content", "public"],
