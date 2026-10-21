@@ -43,6 +43,7 @@ import {
 import { useLogout } from "../hooks/useLogout";
 import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
 import { explorersApiClient } from "../lib/explorersApiClient";
+import { applyGoogleNamePrefill, readSessionProfile, shouldImportGooglePhoto } from "./onboardingGoogleProfile";
 
 // Get account fields with i18n translations
 const getAccountFields = (t: any) => [
@@ -375,6 +376,23 @@ const OnBoarding = () => {
     }
   }, [storedUsername, fetchedUsername]);
 
+  // The Google name and photo from the session. The form waits for this read (bounded, so a
+  // slow session never blocks onboarding) because AuthForm does not reinitialize once mounted.
+  const [googlePhoto, setGooglePhoto] = useState("");
+  const [keepGooglePhoto, setKeepGooglePhoto] = useState(true);
+  const [sessionProfileLoading, setSessionProfileLoading] = useState(true);
+  useEffect(() => {
+    let active = true;
+    const giveUp = setTimeout(() => { if (active) setSessionProfileLoading(false); }, 3000);
+    void readSessionProfile().then(({ name, photo }) => {
+      if (!active) return;
+      setFormData((prev) => applyGoogleNamePrefill(prev, name));
+      setGooglePhoto(photo);
+      setSessionProfileLoading(false);
+    });
+    return () => { active = false; clearTimeout(giveUp); };
+  }, []);
+
   // Cleanup effect to prevent queries from running after component unmounts
   useEffect(() => {
     return () => {
@@ -436,6 +454,9 @@ const OnBoarding = () => {
       navigate("/home");
     }
   }, [accountCheckLoading, hasCompleteAccount, navigate]);
+
+  // An account that already has a photo is never offered the Google one.
+  const offeredGooglePhoto = canonicalAccount.data?.profileImage ? "" : googlePhoto;
 
   // Map address components for auto-fill
   const mappedAddressData = useMemo(() => {
@@ -703,7 +724,10 @@ const OnBoarding = () => {
       const uploaded: string[] = [];
       try {
         const current = await explorersApiClient.getMyProfile();
-        const profile = tempProfileImage ? await explorersApiClient.createMedia(tempProfileImage, "profile") : null;
+        const profile = tempProfileImage ? await explorersApiClient.createMedia(tempProfileImage, "profile")
+          : shouldImportGooglePhoto({ googlePhoto: offeredGooglePhoto, keepGooglePhoto, hasOwnPhoto: false })
+            // A Google photo that cannot be imported falls back to the default avatar, not a failed onboarding.
+            ? await explorersApiClient.importProviderAvatar().catch(() => null) : null;
         if (profile) uploaded.push(profile.id);
         const background = tempBackgroundImage ? await explorersApiClient.createMedia(tempBackgroundImage, "background") : null;
         if (background) uploaded.push(background.id);
@@ -916,7 +940,7 @@ const OnBoarding = () => {
   /**
    * Show loading state while checking for existing accounts
    */
-  if (accountCheckLoading) {
+  if (accountCheckLoading || sessionProfileLoading) {
     console.log("OnBoarding: Showing account check loading");
     return (
       <div className="bg-black">
@@ -1067,8 +1091,10 @@ const OnBoarding = () => {
                       <img
                         src={
                           previewProfileImage ||
+                          (keepGooglePhoto && offeredGooglePhoto) ||
                           IMAGE_CONFIG.defaultImages.profile
                         }
+                        referrerPolicy="no-referrer"
                         alt={t("auth.validations.onboarding.profileImageAlt")}
                         className="w-full h-full object-cover rounded-full shadow-md"
                       />
@@ -1088,6 +1114,17 @@ const OnBoarding = () => {
                       />
                     </div>
                   </div>
+                  {offeredGooglePhoto && !tempProfileImage && (
+                    <button
+                      type="button"
+                      onClick={() => setKeepGooglePhoto((keep) => !keep)}
+                      className="mt-2 text-xs text-white/80 underline hover:text-white"
+                    >
+                      {keepGooglePhoto
+                        ? t("auth.onboarding.accountDetails.useDefaultAvatar")
+                        : t("auth.onboarding.accountDetails.useGooglePhoto")}
+                    </button>
+                  )}
                 </div>
               )}
 

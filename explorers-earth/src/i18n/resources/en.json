@@ -322,6 +322,8 @@
         "description": "Tell us about yourself",
         "displayName": "Display Name",
         "displayNamePlaceholder": "Enter your display name",
+        "useGooglePhoto": "Use my Google photo",
+        "useDefaultAvatar": "Use default avatar",
         "next": "Next",
         "personal": "Personal",
         "title": "Account",

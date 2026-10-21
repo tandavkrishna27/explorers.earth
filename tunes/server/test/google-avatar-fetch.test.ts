@@ -1,0 +1,15 @@
+import {describe,it,expect} from 'vitest';
+import {GoogleAvatarFetcher,googleAvatarUrl} from '../services/googleAvatarFetch';
+const png=Buffer.from([137,80,78,71,13,10,26,10,1]);
+const url='https://lh3.googleusercontent.com/a/ACg8ocJx-abc_123=s96-c';
+const fixture=(overrides:Record<string,unknown>={})=>new GoogleAvatarFetcher({mode:'deterministic-fixture',resolve:async()=>[{address:'142.250.1.1',family:4}],connect:async()=>({status:200,mimeType:'image/png',body:(async function*(){yield png;})()}),...overrides} as any);
+describe('Google profile photo byte boundary',()=>{
+ it.each(['http://lh3.googleusercontent.com/a/x','https://lh3.googleusercontent.com:444/a/x','https://u@lh3.googleusercontent.com/a/x','https://evil.example/a/x','https://lh3.googleusercontent.com.evil.example/a/x','https://googleusercontent.com/a/x','https://storage.googleusercontent.com/a/x','not a url',''])('rejects %s before DNS',async u=>{let resolutions=0;await expect(fixture({resolve:async()=>{resolutions++;return [];}}).fetch(u)).rejects.toThrow();expect(resolutions).toBe(0);});
+ it('asks Google for a profile-sized rendition of the same photo',()=>{expect(googleAvatarUrl(url).href).toBe('https://lh3.googleusercontent.com/a/ACg8ocJx-abc_123=s512-c');expect(googleAvatarUrl('https://lh5.googleusercontent.com/a/xyz').href).toBe('https://lh5.googleusercontent.com/a/xyz');});
+ it('pins the resolved public IP and keeps the Google TLS name',async()=>{let target:any;const result=await fixture({connect:async(t:any)=>{target=t;return {status:200,mimeType:'image/png',body:(async function*(){yield png;})()};}}).fetch(url);expect(target).toMatchObject({address:'142.250.1.1',family:4,servername:'lh3.googleusercontent.com'});expect(result).toEqual({bytes:png,mimeType:'image/png'});});
+ it('refuses a host that resolves to a private address',async()=>{let calls=0;await expect(fixture({resolve:async()=>[{address:'10.0.0.1',family:4}],connect:async()=>{calls++;throw Error();}}).fetch(url)).rejects.toThrow();expect(calls).toBe(0);});
+ it('does not follow redirects',async()=>{await expect(fixture({connect:async()=>({status:302,mimeType:'image/png',body:(async function*(){yield png;})()})}).fetch(url)).rejects.toThrow();});
+ it('refuses non-image and mislabelled bodies',async()=>{await expect(fixture({connect:async()=>({status:200,mimeType:'text/html',body:(async function*(){yield png;})()})}).fetch(url)).rejects.toThrow();await expect(fixture({connect:async()=>({status:200,mimeType:'image/jpeg',body:(async function*(){yield png;})()})}).fetch(url)).rejects.toThrow();});
+ it('stops reading past the profile photo size limit',async()=>{let stopped=false;await expect(fixture({connect:async()=>({status:200,mimeType:'image/png',body:(async function*(){try{yield Buffer.alloc(5*1024*1024+1);}finally{stopped=true;}})()})}).fetch(url)).rejects.toThrow();expect(stopped).toBe(true);});
+ it('gives up on a stalled body',async()=>{await expect(fixture({deadlineMs:20,connect:async()=>({status:200,mimeType:'image/png',body:{[Symbol.asyncIterator]:()=>({next:()=>new Promise(()=>{})})}})}).fetch(url)).rejects.toThrow();});
+});

@@ -854,7 +854,17 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",
-      "line": 22
+      "line": 24
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/media/provider-avatar",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersMediaRoutes.ts",
+      "line": 50
     },
     {
       "method": "DELETE",
@@ -864,7 +874,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "delete",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",
-      "line": 42
+      "line": 74
     },
     {
       "method": "GET",
@@ -874,7 +884,7 @@
       "policy": "ready-media+owner-or-live-public-profile-or-book-recommendation-attachment",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",
-      "line": 104
+      "line": 136
     },
     {
       "method": "HEAD",
@@ -884,7 +894,7 @@
       "policy": "ready-media+owner-or-live-public-profile-or-book-recommendation-attachment",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",
-      "line": 105
+      "line": 137
     },
     {
       "method": "POST",
@@ -2553,6 +2563,12 @@
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/services/gameProviderTransport.ts",
       "line": 39
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/googleAvatarFetch.ts",
+      "line": 33
     },
     {
       "kind": "setTimeout",
