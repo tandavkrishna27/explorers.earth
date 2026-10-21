@@ -1449,6 +1449,7 @@
         "linkCopied": "Link copied to clipboard!",
         "linkCopyError": "Failed to copy link. Please try again.",
         "listCreated": "Recommendation List Created Successfully!!!",
+        "listCoverImportFailed": "List created, but its cover photo could not be imported. You can add one later.",
         "listCreateFailed": "Failed to create recommendation list. Please try again.",
         "listPublished": "Recommendation list Published successfully!",
         "listPublishError": "List Should have atleast one Recommended Place to be Published",

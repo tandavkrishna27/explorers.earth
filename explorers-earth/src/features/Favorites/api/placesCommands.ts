@@ -124,6 +124,7 @@ export function usePlacesCommands(listId?:string) {
   }),
   // Provider imagery is imported into owned media before it is referenced, so a place
   // gallery never depends on a provider request to render.
+  importPlacePhoto:(photoUri:string)=>run(async(assert,signal)=>{const signature=`place-photo:${photoUri}`;begin('place-photo',signature);assert();const result=await PlacesClient.importPlacePhoto(photoUri,signal);assert();forget(signature);return result;}),
   upload:(file:File,purpose:'recommendation'|'collection'='recommendation')=>run(async(assert,signal)=>{const signature=`upload:${purpose}:${file.name}:${file.size}:${file.lastModified}`;begin(`upload:${purpose}:${file.name}`,signature);assert();const result=await PlacesClient.upload(file,purpose,signal);assert();forget(signature);return result;}),
  };
 }

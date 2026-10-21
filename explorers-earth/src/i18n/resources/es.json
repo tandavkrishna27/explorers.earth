@@ -1405,6 +1405,7 @@
         "qrDownloadError": "Error al descargar el código QR. Por favor inténtalo de nuevo.",
         "qrDownloadSuccess": "¡Código QR descargado exitosamente!",
         "qrNotReady": "Código QR no está listo para descargar",
+        "listCoverImportFailed": "List created, but its cover photo could not be imported. You can add one later.",
         "listCreateFailed": "Failed to create recommendation list. Please try again."
       },
       "travelLikeLocal": "Viaja como un local",

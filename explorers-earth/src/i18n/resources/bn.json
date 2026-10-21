@@ -1219,6 +1219,7 @@
         "qrDownloadError": "Failed to download QR code. Please try again.",
         "qrDownloadSuccess": "QR code downloaded successfully!",
         "qrNotReady": "QR code not ready for download",
+        "listCoverImportFailed": "List created, but its cover photo could not be imported. You can add one later.",
         "listCreateFailed": "Failed to create recommendation list. Please try again."
       },
       "travelLikeLocal": "স্থানীয়দের মতো ভ্রমণ করুন",

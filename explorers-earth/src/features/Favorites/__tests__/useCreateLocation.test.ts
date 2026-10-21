@@ -15,10 +15,11 @@ const CREATED = {
   publicationState: "draft",
 };
 
-const { axiosGet, createList, upload, setSelectedCity } = vi.hoisted(() => ({
+const { axiosGet, createList, upload, importPlacePhoto, setSelectedCity } = vi.hoisted(() => ({
   axiosGet: vi.fn(),
   createList: vi.fn(),
   upload: vi.fn(),
+  importPlacePhoto: vi.fn(),
   setSelectedCity: vi.fn(),
 }));
 
@@ -29,7 +30,7 @@ vi.mock("sonner", () => ({
 vi.mock("axios", () => ({ default: { get: axiosGet, post: vi.fn() } }));
 
 vi.mock("../api/placesCommands", () => ({
-  usePlacesCommands: () => ({ createList, upload, loading: false }),
+  usePlacesCommands: () => ({ createList, upload, importPlacePhoto, loading: false }),
 }));
 
 vi.mock("../../../store/store", () => ({
@@ -62,6 +63,7 @@ describe("useCreateLocation — Places create focuses the new list (BUG-3 parity
     axiosGet.mockReset();
     createList.mockReset();
     upload.mockReset();
+    importPlacePhoto.mockReset();
     setSelectedCity.mockReset();
   });
 
@@ -103,22 +105,28 @@ describe("useCreateLocation — Places create focuses the new list (BUG-3 parity
     });
   });
 
-  it("imports the provider thumbnail into owned collection media rather than linking it", async () => {
-    axiosGet.mockResolvedValueOnce({
-      data: { photos: [{ name: "places/ChIJ_city/photos/ref1" }], displayName: { text: "Bengaluru" }, location: { latitude: 1, longitude: 2 } },
-    });
-    const blob = new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" });
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, blob: async () => blob }));
-    upload.mockResolvedValueOnce({ id: "media_1" });
+  it("imports the provider thumbnail into owned collection media through the API, never from the browser", async () => {
+    axiosGet
+      .mockResolvedValueOnce({
+        data: { photos: [{ name: "places/ChIJ_city/photos/ref1" }], displayName: { text: "Bengaluru" }, location: { latitude: 1, longitude: 2 } },
+      })
+      // skipHttpRedirect answers JSON from places.googleapis.com, which CSP already allows.
+      .mockResolvedValueOnce({ data: { photoUri: "https://lh3.googleusercontent.com/place-photos/abc=s4800-w400" } });
+    const browserFetch = vi.fn();
+    vi.stubGlobal("fetch", browserFetch);
+    importPlacePhoto.mockResolvedValueOnce({ id: "media_1" });
     createList.mockResolvedValueOnce({ ...CREATED });
 
     const { result } = hook();
     const ok = await result.current.handleLocationSubmit({ placeId: "ChIJ_city", listName: "My Cafe List" } as never);
 
     expect(ok).toBe(true);
-    // The collection purpose is what 0030's guard requires of a list cover.
-    expect(upload).toHaveBeenCalledTimes(1);
-    expect(upload.mock.calls[0][1]).toBe("collection");
+    expect(String(axiosGet.mock.calls[1][0])).toContain("/ChIJ_city/photos/ref1/media?");
+    expect(String(axiosGet.mock.calls[1][0])).toContain("skipHttpRedirect=true");
+    // Only the key-free photo URI leaves the browser; the API fetches the bytes.
+    expect(importPlacePhoto).toHaveBeenCalledWith("https://lh3.googleusercontent.com/place-photos/abc=s4800-w400");
+    expect(browserFetch).not.toHaveBeenCalled();
+    expect(upload).not.toHaveBeenCalled();
     expect(createList.mock.calls[0][0].coverMediaId).toBe("media_1");
     // Nothing in the stored location points at a provider URL.
     expect(JSON.stringify(createList.mock.calls[0][0].placeLocation)).not.toContain("googleapis");

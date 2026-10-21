@@ -1219,6 +1219,7 @@
         "qrDownloadError": "QRコードのダウンロードに失敗しました。もう一度お試しください。",
         "qrDownloadSuccess": "QRコードが正常にダウンロードされました!",
         "qrNotReady": "QRコードがダウンロードの準備ができていません",
+        "listCoverImportFailed": "List created, but its cover photo could not be imported. You can add one later.",
         "listCreateFailed": "Failed to create recommendation list. Please try again."
       },
       "travelLikeLocal": "地元の人のように旅行する",

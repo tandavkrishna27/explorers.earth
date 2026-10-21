@@ -1407,6 +1407,7 @@
         "qrDownloadError": "QR कोड डाउनलोड करने में विफल। कृपया पुनः प्रयास करें।",
         "qrDownloadSuccess": "QR कोड सफलतापूर्वक डाउनलोड हुआ!",
         "qrNotReady": "QR कोड डाउनलोड के लिए तैयार नहीं है",
+        "listCoverImportFailed": "List created, but its cover photo could not be imported. You can add one later.",
         "listCreateFailed": "Failed to create recommendation list. Please try again."
       },
       "travelLikeLocal": "स्थानीय की तरह यात्रा करें",
