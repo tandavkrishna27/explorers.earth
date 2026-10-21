@@ -25,7 +25,7 @@ function app(fetch = vi.fn(async () => ({ bytes: jpeg, mimeType: "image/jpeg" })
   const createMedia = vi.fn(async () => ({ id: "m1", url: "/api/explorers/v1/media/m1/content", mimeType: "image/jpeg", size: 4, alternativeText: null, caption: null }));
   const instance = express();
   setupExplorersMediaRoutes(instance, {} as never, {} as never, { baseURL: "https://explorers.test" } as never,
-    { createMedia } as never, undefined, { fetch } as never);
+    { createMedia } as never, undefined, undefined, { fetch } as never);
   return { instance, createMedia, fetch };
 }
 const post = (instance: express.Express, body: unknown, origin = "https://explorers.test", cookie = "session=ok") =>

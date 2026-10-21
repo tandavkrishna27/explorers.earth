@@ -1014,6 +1014,25 @@
     },
     {
       "method": "POST",
+      "path": "/api/explorers/v1/media/provider-avatar",
+      "source": "tunes/server/routes/explorersMediaRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "POST",
       "path": "/api/explorers/v1/media/place-photo",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",
       "decision": "explorers-owner",
@@ -4237,6 +4256,17 @@
       "kind": "setTimeout",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/services/gameProviderTransport.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/googleAvatarFetch.ts",
       "decision": "internal-service",
       "allowed": {
         "internalService": true,

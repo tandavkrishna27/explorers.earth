@@ -31,12 +31,14 @@ describe("runtime route/event/job inventory", () => {
     // explorersPlacePinsRoutes.ts (6 operations plus their 6 ALL method guards).
     // 192 = 190 + the owner list-order operation and its ALL method guard
     // (PATCH /api/explorers/v1/categories/:category/lists/order).
-    // 193 = 192 + the Places list-cover import (POST /api/explorers/v1/media/place-photo),
+    // 193 = 192 + the owner Google profile photo import (POST /api/explorers/v1/media/provider-avatar).
+    // 194 = 193 + the Places list-cover import (POST /api/explorers/v1/media/place-photo),
     // which fetches the Google photo server-side so the browser CSP need not allow it.
-    expect(inventory.routes).toHaveLength(193);
+    expect(inventory.routes).toHaveLength(194);
     expect(inventory.events).toHaveLength(15);
-    // 38 = 37 + the place photo fetch deadline (tunes/server/services/placePhotoFetch.ts).
-    expect(inventory.jobs).toHaveLength(38);
+    // 38 = 37 + the Google profile photo fetch deadline (googleAvatarFetch.ts).
+    // 39 = 38 + the place photo fetch deadline (tunes/server/services/placePhotoFetch.ts).
+    expect(inventory.jobs).toHaveLength(39);
     expect(inventory.jobs).toContainEqual(expect.objectContaining({kind:'setTimeout',source:'tunes/server/application/appEnrichmentLocalScheduler.ts',lifecycle:'scheduled-callback'}));
     expect(inventory.jobs).toContainEqual(expect.objectContaining({kind:'setTimeout',source:'tunes/server/services/appEnrichmentFetch.ts',lifecycle:'scheduled-callback'}));
     expect(inventory.routes.filter(route => route.path === '/api/explorers/v1/profiles/:username/recommendations/people/sectors/:sectorSlug')).toEqual([
