@@ -30,7 +30,7 @@ const PublicPeople = () => {
   });
 
   const { data: accountData, loading: userLoading, error: userError, refetch: refetchUser } = usePublicProfileShell(username);
-  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const accountHandle = typeof accountData?.username === "string" ? accountData.username : undefined;
   const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
   const eligible=accountData?.public_people === "Yes";
   const query = usePublicRecommendationCategory(username, "people", eligible);
@@ -51,11 +51,11 @@ const PublicPeople = () => {
   }, [hasUsableData, loading, outletContext]);
 
   const handleRetry = useCallback(async () => {
-    await settlePublicRouteRetries(refetchUser, accountDocumentId ? refetchPeople : undefined);
-  }, [accountDocumentId, refetchPeople, refetchUser]);
+    await settlePublicRouteRetries(refetchUser, accountHandle ? refetchPeople : undefined);
+  }, [accountHandle, refetchPeople, refetchUser]);
 
   const analytics = useTrackAnalytics(
-    createAnalyticsOptions.people(accountDocumentId || "", username),
+    createAnalyticsOptions.people(accountHandle || "", username),
   );
 
   const owningListByPersonId = useMemo(() => {

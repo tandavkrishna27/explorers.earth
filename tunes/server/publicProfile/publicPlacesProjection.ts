@@ -1,3 +1,4 @@
+import {publicAccountRef} from './publicAccountRef';
 import {readPersonEntity} from '../repositories/personCatalogRepository';
 import {publicPlaceReadFailure,readPublicPlaceEligibility,placePinsReadInteger,publicPlaceSuppressionGate,publicPlaceRowsStillEligible,placePinJoin,placePinBucket,placeSortPosition,encodePlacePinsCursor,decodePlacePinsCursor,type PlacePinsCursorBinding} from '../application/placePinsRead';
 import {publicPlacePinsReadSchema} from '../../shared/explorersPublicContentContract';
@@ -143,7 +144,7 @@ export async function publicPlacesProjection(pool:Pool,username:string,limit:num
    // than a bag of places.
    const location=await readPlaceCollectionDetails(db,row.id,observed.id);
    const childLimit=slug?limit:12;
-   const binding:Omit<PlacePinsCursorBinding,'eligibilityFingerprint'>={account:observed.id,username:username.toLowerCase(),collection:row.id,slug:row.slug,limit:childLimit,collectionRevision:row.collection_revision,categoryRevision:observed.content_revision,accountRevision:observed.account_revision,catalogVersion:JSON.stringify(catalog)};
+   const binding:Omit<PlacePinsCursorBinding,'eligibilityFingerprint'>={account:publicAccountRef(observed.id),username:username.toLowerCase(),collection:row.id,slug:row.slug,limit:childLimit,collectionRevision:row.collection_revision,categoryRevision:observed.content_revision,accountRevision:observed.account_revision,catalogVersion:JSON.stringify(catalog)};
    const page=await children(db,observed.id,row.id,childLimit,slug?cursor:undefined,secret,binding);
    // Ticket 5.2. The lists linked to this location, each gated again by its own
    // projection: a private child under a public location is absent, and unpublishing

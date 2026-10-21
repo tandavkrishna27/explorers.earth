@@ -78,7 +78,7 @@ const PublicBookSubject = () => {
     )
   );
 
-  const analytics = useTrackAnalytics({ ...createAnalyticsOptions.books(typeof accountData?.documentId === 'string' ? accountData.documentId : '', username), ready: hasUsableData && accountData?.public_books === 'Yes' });
+  const analytics = useTrackAnalytics({ ...createAnalyticsOptions.books(typeof accountData?.username === 'string' ? accountData.username : '', username), ready: hasUsableData && accountData?.public_books === 'Yes' });
   const handleBookClick = useCallback((book: RecommendedBook) => {
     setModalState({ open: true, book });
     analytics.trackClick('book-card', { id: book.documentId, listId: book.book_list?.documentId, listName: book.book_list?.List_Name, title: book.title });

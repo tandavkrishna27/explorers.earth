@@ -67,9 +67,15 @@ export class ExplorersAnalyticsEventRepository {
         try {
             await db.query('BEGIN');
             await db.query("SET LOCAL statement_timeout='2000ms'");
+            // Public pages never see the account UUID (SEC-03), so an anonymous event names its
+            // creator by public handle; resolve it here and record against the internal id.
+            if (!uuid.safeParse(input.accountId).success) {
+                const owner = (await db.query('SELECT id FROM creator_accounts WHERE handle_key=lower($1)', [input.accountId])).rows[0];
+                if (!owner)
+                    throw unavailable();
+                input = { ...input, accountId: owner.id };
+            }
             // Serialize before any target row locks, matching retention/purge account-first order.
-            if (!uuid.safeParse(input.accountId).success)
-                throw unavailable();
             await db.query('SELECT id FROM creator_accounts WHERE id=$1 FOR SHARE', [input.accountId]);
             await db.query('SELECT pg_advisory_xact_lock(44036,hashtext($1))', [`${input.accountId}:${input.eventId}`]);
             const category = await this.target(db, input, context);

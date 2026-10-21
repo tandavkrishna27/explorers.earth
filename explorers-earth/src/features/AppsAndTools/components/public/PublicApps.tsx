@@ -35,7 +35,7 @@ const PublicApps = () => {
   const query = usePublicRecommendationCategory(username, "apps", accountData?.public_apps === "Yes");
   const { data, loading: appsLoading, error: appsError, refetch: refetchApps } = query;
 
-  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const accountHandle = typeof accountData?.username === "string" ? accountData.username : undefined;
   const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
 
   const loading = userLoading || appsLoading;
@@ -58,11 +58,11 @@ const PublicApps = () => {
   }, [hasUsableData, loading, outletContext]);
 
   const handleRetry = useCallback(async () => {
-    await settlePublicRouteRetries(refetchUser, accountDocumentId ? refetchApps : undefined);
-  }, [accountDocumentId, refetchApps, refetchUser]);
+    await settlePublicRouteRetries(refetchUser, accountHandle ? refetchApps : undefined);
+  }, [accountHandle, refetchApps, refetchUser]);
 
   const analytics = useTrackAnalytics(
-    createAnalyticsOptions.apps(accountDocumentId || "", username),
+    createAnalyticsOptions.apps(accountHandle || "", username),
   );
 
   const owningListByAppId = useMemo(() => {

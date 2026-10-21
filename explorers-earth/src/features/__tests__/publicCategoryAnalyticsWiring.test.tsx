@@ -65,7 +65,7 @@ vi.mock('@apollo/client', async (importOriginal) => {
 vi.mock('../PublicHome/api/usePublicProfileShell', () => ({
   usePublicProfileShell: () => ({
     data: gatewayFixtures.loading ? undefined : {
-      documentId: 'account-1', username: 'tk2727', Account_Name: 'TK', public_profile: 'Yes',
+      username: 'tk2727', Account_Name: 'TK', public_profile: 'Yes',
       public_apps: 'Yes', public_products: 'Yes', public_people: 'Yes', public_books: 'Yes',
       public_movies: 'Yes', public_guides: 'Yes', public_games: 'Yes', public_recommendations: 'Yes',
     },
@@ -378,7 +378,7 @@ describe('public category analytics wiring', () => {
       );
 
       expect(screen.getAllByRole('banner')).toHaveLength(1);
-      expect(optionsSpy).toHaveBeenLastCalledWith('account-1', 'tk2727', listId);
+      expect(optionsSpy).toHaveBeenLastCalledWith('tk2727', 'tk2727', listId);
       fireEvent.click(screen.getByRole('button', { name: new RegExp(itemLabel, 'i') }));
       expect(analyticsMocks.trackClick).toHaveBeenCalledWith(
         itemElement,
@@ -411,7 +411,7 @@ describe('public category analytics wiring', () => {
       'guide-open', expect.objectContaining({ listId: 'guide-1', title: 'Weekend in Goa', guideType: 'Theme' }),
     ));
     expect(analyticsMocks.hookOptions).toHaveBeenCalledWith(expect.objectContaining({
-      accountId: 'account-1', pageName: 'public-guides', pageUsername: 'tk2727',
+      accountId: 'tk2727', pageName: 'public-guides', pageUsername: 'tk2727',
     }));
   });
 
@@ -433,7 +433,7 @@ describe('public category analytics wiring', () => {
 
     expect(screen.getAllByRole('banner')).toHaveLength(1);
     expect(analyticsMocks.peopleOptions).toHaveBeenLastCalledWith(
-      'account-1',
+      'tk2727',
       'tk2727',
     );
     fireEvent.click(screen.getByRole('button', { name: /Ada/i }));

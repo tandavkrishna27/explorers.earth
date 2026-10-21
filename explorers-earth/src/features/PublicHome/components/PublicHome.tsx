@@ -443,7 +443,7 @@ const PublicHome = memo(() => {
   }, [accountData?.recommendation_lists]);
   // Analytics tracking - initialize after first city is selected
   const analytics = useTrackAnalytics({
-    accountId: accountData?.documentId || "",
+    accountId: accountData?.username || "",
     locationId: selectedCity?.documentId || undefined,
     recommendationId: undefined,
     pageName: "public-home",
@@ -504,7 +504,7 @@ const PublicHome = memo(() => {
 
   // Track recommendation engagement views when card is opened
   useEffect(() => {
-    if (isExpanded.visible && isExpanded.documentId && accountData?.documentId && selectedCity?.documentId) {
+    if (isExpanded.visible && isExpanded.documentId && accountData?.username && selectedCity?.documentId) {
       // Find the clicked item to get its details from current places data
       const clickedItem = displayedPlaces.find(
         (item: any) => item.documentId === isExpanded.documentId
@@ -515,7 +515,7 @@ const PublicHome = memo(() => {
         console.log('Tracking recommendation engagement view:', {
           recommendationId: isExpanded.documentId,
           locationId: selectedCity.documentId,
-          accountId: accountData.documentId
+          accountId: accountData.username
         });
         analytics.trackEvent({
           type: 'click',
@@ -532,7 +532,7 @@ const PublicHome = memo(() => {
         });
       }
     }
-  }, [isExpanded.visible, isExpanded.documentId, accountData?.documentId, selectedCity?.documentId, displayedPlaces, analytics.trackEvent]);
+  }, [isExpanded.visible, isExpanded.documentId, accountData?.username, selectedCity?.documentId, displayedPlaces, analytics.trackEvent]);
 
   // Scroll animation (mobile and desktop) only when visiting base places route
   useEffect(() => {

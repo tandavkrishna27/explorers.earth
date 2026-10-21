@@ -306,7 +306,7 @@ const MapView = memo(() => {
   const { data: accountData } = usePublicProfileShell(username);
   // Page view for the all-places map, so this public page is counted like the rest.
   useTrackAnalytics({
-    ...createAnalyticsOptions.home(typeof accountData?.documentId === "string" ? accountData.documentId : "", username),
+    ...createAnalyticsOptions.home(typeof accountData?.username === "string" ? accountData.username : "", username),
     ready: hasUsableData,
   });
   const navigate = useNavigate();

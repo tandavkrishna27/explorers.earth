@@ -32,7 +32,7 @@ const PublicGamesGenre = () => {
 
   useEffect(() => { setSelectedGame(null); setModalOpen(false); }, [username, genreSlug]);
   const { data: accountData, loading: userLoading, error: userError, refetch: refetchUser } = usePublicProfileShell(username);
-  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const accountHandle = typeof accountData?.username === "string" ? accountData.username : undefined;
   const query = usePublicRecommendationCategory(username, "games", accountData?.public_games === "Yes");
   const { data: gamesData, loading: gamesLoading, error: gamesError, refetch: refetchGames } = query;
 
@@ -50,7 +50,7 @@ const PublicGamesGenre = () => {
   }, [hasUsableData, loading, outletContext]);
 
   const handleRetry = async () => {
-    await settlePublicRouteRetries(refetchUser, accountDocumentId ? refetchGames : undefined);
+    await settlePublicRouteRetries(refetchUser, accountHandle ? refetchGames : undefined);
   };
 
   const allGames: RecommendedGame[] = useMemo(() => {
@@ -65,7 +65,7 @@ const PublicGamesGenre = () => {
   }, [allGames, genreSlug]);
 
   const analytics = useTrackAnalytics({
-    ...createAnalyticsOptions.games(accountDocumentId || "", username),
+    ...createAnalyticsOptions.games(accountHandle || "", username),
     ready: hasUsableData && accountData?.public_games === "Yes",
   });
 

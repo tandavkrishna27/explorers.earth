@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
 
 // types for authentication
 interface AuthState {
@@ -52,6 +52,19 @@ function pendingServerLogout(): string | null {
 }
 
 const initialLogoutAttempt = pendingServerLogout();
+
+// Public pages promise anonymous, storage-less visits, so the persisted auth record exists
+// only while someone is signed in. persist() writes after every set(), so the store's state
+// here is already the new one: signing out removes the record instead of rewriting it.
+let hasSession = () => false;
+const sessionGatedStorage: StateStorage = {
+  getItem: (name) => localStorage.getItem(name),
+  setItem: (name, value) => {
+    if (hasSession()) localStorage.setItem(name, value);
+    else localStorage.removeItem(name);
+  },
+  removeItem: (name) => localStorage.removeItem(name),
+};
 
 const useAuthStore = create<AuthState>()(
   persist(
@@ -148,12 +161,14 @@ const useAuthStore = create<AuthState>()(
     }),
     {
       name: "auth-storage", // key to store the state in localStorage
-      storage: createJSONStorage(() => localStorage), // Use createJSONStorage for localStorage
+      // Written only while a session exists; a signed-out visitor gets nothing (ANL-01).
+      storage: createJSONStorage(() => sessionGatedStorage),
       partialize: () => ({}),
       merge: (_persisted, current) => current,
     }
   )
 );
+hasSession = () => useAuthStore.getState().isAuthenticated;
 
 // A logout in one tab signs out every other open tab: the session cookie they share is
 // already gone, so they must not keep rendering owner pages. Both transports carry the

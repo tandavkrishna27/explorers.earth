@@ -157,7 +157,7 @@ export default function PublicProfileThemeProvider({ children, showShellChrome =
     : isProfileRoot && theme.wallpaperMode === 'full-wallpaper-image' ? readable.primary
     : undefined;
   const analytics = useTrackAnalytics({
-    accountId: account?.documentId || "",
+    accountId: account?.username || "",
     pageName: routeCategory ? PUBLIC_HEADER_ANALYTICS_PAGES[routeCategory] || "public-profile" : "public-profile",
     pageUsername: account?.username,
     autoTrackView: false,

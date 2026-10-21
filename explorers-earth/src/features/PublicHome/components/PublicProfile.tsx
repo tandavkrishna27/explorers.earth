@@ -138,7 +138,7 @@ const PublicProfile = memo(() => {
 
   // Analytics tracking - initialize after accountData is available
   const analytics = useTrackAnalytics(
-    createAnalyticsOptions.profile(accountData?.documentId || "", username)
+    createAnalyticsOptions.profile(accountData?.username || "", username)
   );
 
   // Parse business location data

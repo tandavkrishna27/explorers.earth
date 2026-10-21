@@ -58,9 +58,9 @@ const PublicGamesList = () => {
     },
   } : undefined);
 
-  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const accountHandle = typeof accountData?.username === "string" ? accountData.username : undefined;
   const analytics = useTrackAnalytics({
-    ...createAnalyticsOptions.games(accountDocumentId || "", username, list?.documentId),
+    ...createAnalyticsOptions.games(accountHandle || "", username, list?.documentId),
     waitForLocation: true,
   });
 

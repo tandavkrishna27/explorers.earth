@@ -148,7 +148,7 @@ it('delegates named discovery operations and exact anonymous collection ID reads
  const {DiscoveryService}=await import('../application/discovery');const f=await fixture(1),service=new DiscoveryService(pool,config.secret);
  expect((await service.searchRecommendations(f.actor,{scope:'public',category:'books',creatorHandle:f.handle})).items).toHaveLength(1);
  expect((await service.listCreatorRecommendations(f.handle,{category:'books'})).items).toHaveLength(1);
- expect(await service.getCreatorProfile(f.handle)).toMatchObject({id:f.account,handle:f.handle,displayName:'Search'});
+ {const creator=await service.getCreatorProfile(f.handle);expect(creator).toMatchObject({handle:f.handle,displayName:'Search'});expect(creator).not.toHaveProperty('id');};
  expect(await service.getCollection(null,f.collection)).toMatchObject({id:f.collection,category:'books',title:'Reading'});
  expect(await service.getCollection(f.actor,f.collection)).toMatchObject({id:f.collection,accountId:f.account});
  await pool.query("UPDATE collections SET visibility='private' WHERE id=$1",[f.collection]);expect(await service.getCollection(null,f.collection)).toBeUndefined();
