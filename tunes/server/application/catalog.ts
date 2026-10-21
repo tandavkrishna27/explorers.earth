@@ -64,7 +64,7 @@ export class CatalogService {
       if(parsed.kind==='manual'&&parsed.category==='products')return productEntityDtoSchema.parse(await repository.resolveProductEntity(actor.accountId,parseContent(resolveManualProductSchema,parsed),key));
       if(parsed.kind==='manual'&&parsed.category==='people')return personEntityDtoSchema.parse(await repository.resolvePersonEntity(actor.accountId,parseContent(resolveManualPersonSchema,parsed),key));
       if(parsed.kind==='manual'&&parsed.category==='places')return placeEntityDtoSchema.parse(await repository.resolvePlaceEntity(actor.accountId,parseContent(resolveManualPlaceSchema,parsed),key));
-      if(parsed.kind==='provider'||parsed.category==='books'&&Object.keys(parsed.details).some(k=>k!=='title'))return bookEntityDtoSchema.parse(await repository.resolveBookEntity(actor.accountId,parsed as any,key,()=>this.books.resolve(actor.accountId,(parsed as any).externalId)));
+      if(parsed.kind==='provider'||parsed.category==='books'&&Object.keys(parsed.details).some(k=>k!=='title'))return bookEntityDtoSchema.parse(await repository.resolveBookEntity(actor.accountId,parsed as any,key,()=>this.books.resolve(actor.accountId,(parsed as any).externalId,(parsed as any).provider)));
       return entityCoreDtoSchema.parse(await repository.resolveManualEntity(actor.accountId,parsed as any,key));
     }
     const result=await this.db.query(`SELECT e.id,e.kind,e.title FROM entities e

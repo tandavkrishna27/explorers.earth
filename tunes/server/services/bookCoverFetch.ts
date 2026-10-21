@@ -16,7 +16,9 @@ export function publicAddress(address:string):boolean {
  return !normalized.startsWith('2001:')&&!normalized.startsWith('2002:')&&!normalized.startsWith('3fff:');
 }
 type Address={address:string;family:number};
-type Target=Address&{url:URL;servername:'books.google.com';signal:AbortSignal};
+// Provider cover hosts only. Redirects are never followed, so a cover served elsewhere stays a hotlink.
+const coverHosts=['books.google.com','covers.openlibrary.org'] as const;
+type Target=Address&{url:URL;servername:typeof coverHosts[number];signal:AbortSignal};
 type Response={status:number;mimeType:string;body:AsyncIterable<Uint8Array>;length?:number};
 type Fixture={mode:'deterministic-fixture';resolve:(hostname:string)=>Promise<Address[]>;connect:(target:Target)=>Promise<Response>;deadlineMs?:number};
 function connect(target:Target):Promise<Response>{return new Promise((resolve,reject)=>{
@@ -30,13 +32,13 @@ function sniff(b:Buffer){if(b.length>=8&&b.subarray(0,8).equals(Buffer.from([137
 export class BookCoverFetcher {
  constructor(private readonly fixture?:Fixture){if(fixture&&fixture.mode!=='deterministic-fixture')throw new BookCoverFetchFailure();}
  async fetch(raw:string):Promise<{bytes:Buffer;mimeType:string}>{
-  let u:URL;try{u=new URL(raw);if(raw.length>2048||u.protocol!=='https:'||u.hostname!=='books.google.com'||u.username||u.password||u.port&&u.port!=='443')throw Error();}catch{throw new BookCoverFetchFailure();}
+  let u:URL;try{u=new URL(raw);if(raw.length>2048||u.protocol!=='https:'||!(coverHosts as readonly string[]).includes(u.hostname)||u.username||u.password||u.port&&u.port!=='443')throw Error();}catch{throw new BookCoverFetchFailure();}
   const controller=new AbortController();let timer:ReturnType<typeof setTimeout>|undefined;
   const timeout=new Promise<never>((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(new BookCoverFetchFailure());},this.fixture?.deadlineMs??5000);});
   try{return await Promise.race([(async()=>{
    const addresses=await (this.fixture?.resolve??(hostname=>lookup(hostname,{all:true,verbatim:true})))(u.hostname);
    if(controller.signal.aborted||!addresses.length||addresses.some(a=>!publicAddress(a.address)||isIP(a.address)!==a.family))throw new BookCoverFetchFailure();
-   const response=await (this.fixture?.connect??connect)({...addresses[0],url:u,servername:'books.google.com',signal:controller.signal});
+   const response=await (this.fixture?.connect??connect)({...addresses[0],url:u,servername:u.hostname as typeof coverHosts[number],signal:controller.signal});
    if(response.status!==200||!['image/png','image/jpeg','image/webp','image/gif'].includes(response.mimeType)||response.length!==undefined&&(!Number.isSafeInteger(response.length)||response.length<1||response.length>5*1024*1024))throw new BookCoverFetchFailure();
    let size=0;const chunks:Buffer[]=[];
    for await(const chunk of response.body){if(controller.signal.aborted)throw new BookCoverFetchFailure();size+=chunk.byteLength;if(size>5*1024*1024)throw new BookCoverFetchFailure();chunks.push(Buffer.from(chunk));}

@@ -28,7 +28,8 @@ it('search validates bounds before I/O, binds cursor, caches successes and refet
  expect(String(fetch.mock.calls[1][0])).toContain('/volumes/v_1');
 });
 it('returns safe explicit errors for disabled, malformed, quota and missing volumes',async()=>{
- await expect(new provider.BookCatalog({secret:'secret'}).search('a',{query:'title'})).rejects.toMatchObject({status:503,code:'PROVIDER_UNAVAILABLE'});
+ // Without a key Google is skipped; with Open Library also down the lookup is unavailable.
+ await expect(new provider.BookCatalog({secret:'secret',openLibraryIntervalMs:0,fetch:async()=>new Response('',{status:503})}).search('a',{query:'title'})).rejects.toMatchObject({status:503,code:'PROVIDER_UNAVAILABLE'});
  for(const [response,status,code] of [[new Response('{}'),502,'PROVIDER_INVALID_RESPONSE'],[new Response('secret',{status:429,headers:{'Retry-After':'999'}}),429,'RATE_LIMITED'],[new Response('secret',{status:404}),404,'NOT_FOUND']] as const){
   const service=new provider.BookCatalog({secret:'secret',apiKey:'private-key',fetch:async()=>response});
   await expect(service.search('a',{query:'title'})).rejects.toMatchObject({status,code});

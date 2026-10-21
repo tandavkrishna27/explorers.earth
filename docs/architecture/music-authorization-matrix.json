@@ -4233,6 +4233,17 @@
     {
       "kind": "setTimeout",
       "lifecycle": "scheduled-callback",
+      "source": "tunes/server/services/bookCatalog.ts",
+      "decision": "internal-service",
+      "allowed": {
+        "internalService": true,
+        "browser": false,
+        "public": false
+      }
+    },
+    {
+      "kind": "setTimeout",
+      "lifecycle": "scheduled-callback",
       "source": "tunes/server/services/bookCoverFetch.ts",
       "decision": "internal-service",
       "allowed": {

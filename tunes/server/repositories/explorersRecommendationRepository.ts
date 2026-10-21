@@ -197,16 +197,16 @@ export class ExplorersRecommendationRepository {
       return readPlaceEntity(db,entity.id);
     });
   }
-  async resolveBookEntity(accountId:string,input:{kind:'provider';category:'books';externalId:string}|{kind:'manual';category:'books';details:{title:string}},key:string,fetchCandidate:()=>Promise<BookCandidate>) {
+  async resolveBookEntity(accountId:string,input:{kind:'provider';category:'books';provider:'google_books'|'open_library';externalKind:'volume'|'edition';externalId:string}|{kind:'manual';category:'books';details:{title:string}},key:string,fetchCandidate:()=>Promise<BookCandidate>) {
     return this.command(accountId,'resolveBookEntity',input,key,async db=>{
       if(input.kind==='provider') {
         const candidate=await fetchCandidate();
-        await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[canonical(['google_books','volume',input.externalId])]);
-        const prior=(await db.query("SELECT entity_id FROM entity_identifiers WHERE provider='google_books' AND external_kind='volume' AND external_id=$1",[input.externalId])).rows[0];
+        await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[canonical([input.provider,input.externalKind,input.externalId])]);
+        const prior=(await db.query("SELECT entity_id FROM entity_identifiers WHERE provider=$1 AND external_kind=$2 AND external_id=$3",[input.provider,input.externalKind,input.externalId])).rows[0];
         if(prior)return readBookEntity(db,prior.entity_id);
         const entity=(await db.query("INSERT INTO entities(kind,title,origin,search_document) VALUES('book',$1,'provider',to_tsvector('simple',$1)) RETURNING id",[candidate.title])).rows[0];
         await insertBookDetails(db,entity.id,candidate.preview);
-        await db.query("INSERT INTO entity_identifiers(entity_id,provider,external_kind,external_id,fetched_at,source_url) VALUES($1,'google_books','volume',$2,$3,$4)",[entity.id,input.externalId,new Date(candidate.provenance.fetchedAt),candidate.provenance.sourceUrl]);
+        await db.query("INSERT INTO entity_identifiers(entity_id,provider,external_kind,external_id,fetched_at,source_url) VALUES($1,$2,$3,$4,$5,$6)",[entity.id,input.provider,input.externalKind,input.externalId,new Date(candidate.provenance.fetchedAt),candidate.provenance.sourceUrl]);
         return readBookEntity(db,entity.id);
       }
       const {title,...fields}=input.details;
@@ -233,7 +233,7 @@ export class ExplorersRecommendationRepository {
     await db.query(`INSERT INTO recommendation_display_overrides(recommendation_id,account_id,display_values) VALUES($1,$2,$3::jsonb)
       ON CONFLICT(recommendation_id) DO UPDATE SET display_values=excluded.display_values`,[id,accountId,JSON.stringify(values)]);
   }
-  async resolveProviderEntity(input:{kind:CatalogKind;title:string;provider:'tmdb'|'google_books'|'igdb'|'google_places';externalKind:string;externalId:string}) {
+  async resolveProviderEntity(input:{kind:CatalogKind;title:string;provider:'tmdb'|'google_books'|'open_library'|'igdb'|'google_places';externalKind:string;externalId:string}) {
     return this.transaction(async db=>{
       const identity=canonical([input.provider,input.externalKind,input.externalId]);
       await db.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[identity]);
