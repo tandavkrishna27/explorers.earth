@@ -1047,6 +1047,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/routes/PublicRoutes.tsx
 !explorers-earth/src/routes/StatePreservingRedirect.tsx
 !explorers-earth/src/routes/lazy.ts
+!explorers-earth/src/routes/publicRoutePreload.ts
 !explorers-earth/src/routes/validators/DashboardRouteValidator.tsx
 !explorers-earth/src/routes/validators/TabVisibilityGuard.tsx
 !explorers-earth/src/routes/validators/UsernameRootRedirect.tsx
