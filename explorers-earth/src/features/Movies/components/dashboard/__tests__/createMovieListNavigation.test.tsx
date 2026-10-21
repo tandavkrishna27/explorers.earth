@@ -197,3 +197,15 @@ it('themes the manual Type select and its options with the dashboard colours',as
  expect(type).toHaveClass('dt-input','bg-dashboard-muted','text-dashboard');
  for(const option of Array.from((type as HTMLSelectElement).options))expect(option).toHaveClass('bg-dashboard-sidebar','text-dashboard');
 });
+
+it('tells the owner when a provider title cannot be resolved instead of failing silently', async()=>{
+ loginSurface();vi.spyOn(explorersApiClient,'getMovieGenres').mockResolvedValue({items:[]} as never);
+ const {toast}=await import('sonner');const error=vi.spyOn(toast,'error');
+ vi.spyOn(explorersApiClient,'searchMovieCandidates').mockResolvedValue({version:'explorers-movie-candidates/v1',items:[{provider:'tmdb',externalKind:'movie',externalId:'370755',title:'Paterson',posterUrl:null,yearText:'2016'}],nextCursor:null,expiresAt:Date.now()+60000} as never);
+ const {ExplorersApiError}=await import('../../../../../lib/explorersApiClient');
+ vi.spyOn(explorersApiClient,'resolveMovieEntity').mockRejectedValue(new ExplorersApiError(502,'PROVIDER_INVALID_RESPONSE','Invalid Movie provider response'));
+ render(<MemoryRouter initialEntries={['/recommendations/movies/list/add']}><Routes><Route path="/recommendations/movies/:listId/add" element={<AddMoviePage/>}/></Routes></MemoryRouter>);
+ await userEvent.type(screen.getByPlaceholderText(/Search "Interstellar"/),'Paterson');
+ await userEvent.click(await screen.findByText('Paterson'));
+ await waitFor(()=>expect(error).toHaveBeenCalledWith(expect.stringMatching(/Provider details unavailable/)));expect(screen.getByRole('alert')).toHaveTextContent(/retry or add manually/);
+});

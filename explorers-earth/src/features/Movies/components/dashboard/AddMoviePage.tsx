@@ -14,6 +14,7 @@ import {
   Loader2, Check, Search, X, CheckCircle2, User, Upload,
 } from "lucide-react";
 import { toast } from "sonner";
+const PROVIDER_DETAILS_UNAVAILABLE='Provider details unavailable. Your draft is preserved; retry or add manually.';
 import { useTMDBSearch } from "../../hooks/useTMDBSearch";
 import type { WatchProvider, TMDBCastMember } from "../../types";
 import {
@@ -151,7 +152,7 @@ const AddMoviePage = () => {
  const commandKey=(operation:string,input:unknown)=>{const fingerprint=JSON.stringify([generation,listId,movieId,operation,input]);const existing=commandKeys.current.get(fingerprint);if(existing)return existing;const key=moviesCommandKey();commandKeys.current.set(fingerprint,key);return key;};
  const [selected,setSelected]=useState<MovieCandidate|null>(null),[manual,setManual]=useState(false),[entityId,setEntityId]=useState<string|null>(null);
  const [mediaType,setMediaType]=useState<'movie'|'tv'>('movie'),[posterPath,setPosterPath]=useState<string|null>(null),[backdropPath,setBackdropPath]=useState<string|null>(null);
- const [watchProviders,setWatchProviders]=useState<WatchProvider[]>([]),[castMembers,setCastMembers]=useState<TMDBCastMember[]>([]),[loadingDetails,setLoadingDetails]=useState(false),[saving,setSaving]=useState(false);
+ const [watchProviders,setWatchProviders]=useState<WatchProvider[]>([]),[castMembers,setCastMembers]=useState<TMDBCastMember[]>([]),[loadingDetails,setLoadingDetails]=useState(false),[selectError,setSelectError]=useState<string|null>(null),[saving,setSaving]=useState(false);
  const loadingProviders=false;
  const [existingSnapshots,setExistingSnapshots]=useState<{id:string;url:string}[]>([]),[newSnapshots,setNewSnapshots]=useState<File[]>([]),[formReady,setFormReady]=useState(!isEdit);
  const snapshotPreviews=useMemo(()=>newSnapshots.map(file=>({file,url:URL.createObjectURL(file)})),[newSnapshots]);
@@ -171,10 +172,10 @@ const AddMoviePage = () => {
   setForm({title:movie.title,originalTitle:movie.original_title??'',year:movie.year??'',director:movie.director??'',runtime:movie.runtime==null?'':String(movie.runtime),seasonCount:movie.season_count==null?'':String(movie.season_count),rating:movie.tmdb_rating==null?'':String(movie.tmdb_rating),overview:movie.overview??'',genres:getGenreNames(movie.genres).join(', '),note:extractNoteText(movie.user_recommendation_note),userRating:movie.user_rating??null,categoryIds:movie.movie_categories?.map(term=>term.documentId)??[]});setFormReady(true);
  },[generation,isEdit,listId,movieId,owner.data,observed]);
  const setField=(key:keyof FormState)=>(event:React.ChangeEvent<HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement>)=>setForm(previous=>({...previous,[key]:event.target.value}));
- const handleSelect=async(candidate:MovieCandidate)=>{selectionController.current?.abort();const controller=new AbortController();selectionController.current=controller;const attempt=++selectionAttempt.current;setLoadingDetails(true);
+ const handleSelect=async(candidate:MovieCandidate)=>{selectionController.current?.abort();const controller=new AbortController();selectionController.current=controller;const attempt=++selectionAttempt.current;setLoadingDetails(true);setSelectError(null);
   try{const entity=await explorersApiClient.resolveMovieEntity({kind:'provider',category:'movies',provider:'tmdb',externalKind:candidate.externalKind,externalId:candidate.externalId},commandKey('resolve-provider',[candidate.externalKind,candidate.externalId]),controller.signal);if(controller.signal.aborted||attempt!==selectionAttempt.current)return;const facts=entity.details;setSelected(candidate);setManual(false);setEntityId(entity.id);setMediaType(facts.mediaType);setPosterPath(facts.posterUrl);setBackdropPath(facts.backdropUrl);const region=facts.watchProviders.US,seen=new Set<number>();const offers=region?[...region.flatrate,...region.rent,...region.buy].filter(offer=>{if(seen.has(offer.providerId))return false;seen.add(offer.providerId);return true;}).sort((a,b)=>a.priority-b.priority).slice(0,8):[];setWatchProviders(offers.map(offer=>({provider_id:offer.providerId,provider_name:offer.name,logo_path:offer.logoUrl,...(region?.link?{link:region.link}:{})})));setCastMembers(facts.cast.slice(0,10).map(cast=>({id:cast.personId,name:cast.name,character:cast.character,profile_path:cast.profileUrl})));
   setForm(previous=>({...previous,title:entity.title,originalTitle:facts.originalTitle??'',year:facts.yearText??'',director:facts.director??'',runtime:facts.runtimeMinutes==null?'':String(facts.runtimeMinutes),seasonCount:facts.seasonCount==null?'':String(facts.seasonCount),rating:facts.providerRating==null?'':String(facts.providerRating),overview:facts.overview??'',genres:facts.genres.map(genre=>genre.name).join(', '),categoryIds:facts.genres.flatMap(genre=>{const term=categories.find(value=>value.genre_name.toLowerCase()===genre.name.toLowerCase());return term?[term.documentId]:[];})}));
-  }catch{if(!controller.signal.aborted&&attempt===selectionAttempt.current)toast.error('Provider details unavailable. Your draft is preserved; retry or add manually.');}finally{if(!controller.signal.aborted&&attempt===selectionAttempt.current)setLoadingDetails(false);}
+  }catch{if(!controller.signal.aborted&&attempt===selectionAttempt.current){toast.error(PROVIDER_DETAILS_UNAVAILABLE);setSelectError(PROVIDER_DETAILS_UNAVAILABLE);}}finally{if(!controller.signal.aborted&&attempt===selectionAttempt.current)setLoadingDetails(false);}
  };
  const handleClear=()=>{selectionController.current?.abort();selectionAttempt.current++;setSelected(null);setManual(false);setEntityId(null);setPosterPath(null);setBackdropPath(null);setWatchProviders([]);setCastMembers([]);setForm(emptyForm);setLoadingDetails(false);};
  const handleSave = async () => {
@@ -294,6 +295,7 @@ const AddMoviePage = () => {
             selectedTitle={selected ? (selected.title) : undefined}
           />
         )}
+        {!isEdit && selectError && <p role="alert" className="text-sm text-red-400 -mt-3">{selectError}</p>}
 
         {!isEdit && <button onClick={()=>{handleClear();setManual(true);}}>Add manually</button>}
         {manual && <label className="flex items-center gap-2 text-sm text-dashboard">Type <select value={mediaType} onChange={event=>setMediaType(event.target.value==='tv'?'tv':'movie')} className="dt-input bg-dashboard-muted text-dashboard border border-dashboard-border rounded-lg px-3 py-2"><option value="movie" className="bg-dashboard-sidebar text-dashboard">Movie</option><option value="tv" className="bg-dashboard-sidebar text-dashboard">TV show</option></select></label>}
