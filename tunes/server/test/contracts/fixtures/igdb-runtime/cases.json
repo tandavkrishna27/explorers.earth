@@ -67,9 +67,14 @@
       "status": 200
     },
     {
-      "id": "overmaximum",
+      "id": "overoneday",
       "expires": 86401,
-      "status": 502
+      "status": 200
+    },
+    {
+      "id": "twitch-app-token",
+      "expires": 5011271,
+      "status": 200
     }
   ],
   "catalogEnvelope": [

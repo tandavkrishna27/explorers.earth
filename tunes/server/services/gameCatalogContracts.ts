@@ -11,7 +11,29 @@ export function buildGameResolveQuery(id:string):string{return safe(()=>`fields 
 /** Allocation of native/concurrent representations is deliberately outside this pure64KiB profile. */
 function bounded(raw:unknown):void{const stack:{value:unknown;depth:number}[]=[{value:raw,depth:0}];let nodes=0;while(stack.length){const {value,depth}=stack.pop()!;if(++nodes>20000||depth>8)invalid();if(value&&typeof value==='object'){const descriptors=Object.getOwnPropertyDescriptors(value);if(!Array.isArray(value)&&Object.getPrototypeOf(value)!==Object.prototype&&Object.getPrototypeOf(value)!==null)invalid();const keys=Object.keys(descriptors);if(keys.length>20000-nodes)invalid();for(const key of keys){if(Array.isArray(value)&&key==='length')continue;const descriptor=descriptors[key];if(!('value' in descriptor))invalid();stack.push({value:descriptor.value,depth:depth+1});}}else if(typeof value==='number'&&!Number.isFinite(value))invalid();}}
 export function parseGameProviderJson(bytes:Uint8Array):readonly GameProviderRow[]{return safe(()=>{if(!(bytes instanceof Uint8Array)||bytes.byteLength>65536)invalid();const raw=parseStrictJson(new TextDecoder('utf-8',{fatal:true}).decode(bytes));return parseGameProviderPage(raw);});}
-export function parseGameProviderPage(raw:unknown):readonly GameProviderRow[]{return safe(()=>{bounded(raw);if(!Array.isArray(raw))return invalid();if(raw.length>24)return invalid();return raw.map((v:unknown)=>gameProviderRowSchema.parse(v));});}
+export function parseGameProviderPage(raw:unknown):readonly GameProviderRow[]{return safe(()=>{bounded(raw);if(!Array.isArray(raw))return invalid();if(raw.length>24)return invalid();const dropped=new Set<string>();let rows=0;const page=raw.flatMap((v:unknown)=>{const row=normalizeGameProviderRow(v,dropped);if(!row)rows++;return row?[row]:[];});if(dropped.size||rows)console.warn(`IGDB response: dropped ${rows} row(s) without id/name; dropped fields ${[...dropped].sort().join(',')||'none'}`);return page;});}
+const CONTROL=/[\u0000-\u001f\u007f]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+const clean=(v:unknown,max:number)=>typeof v==='string'?v.replace(CONTROL,'').replace(/\s+/g,' ').trim().slice(0,max):undefined;
+const LISTS=['genres','platforms','game_modes','involved_companies','screenshots','release_dates'] as const;
+/**
+ * Real IGDB rows omit optional fields, answer some with ids instead of objects and carry
+ * fields we never asked for. Only id and name are essential: a row without them is
+ * dropped, and any other field that does not fit is dropped (list items one by one)
+ * instead of rejecting the response. Field names go to `dropped`, never values.
+ */
+function normalizeGameProviderRow(raw:unknown,dropped:Set<string>):GameProviderRow|null{
+ if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;const r=raw as Record<string,unknown>;const name=clean(r.name,200);
+ if(typeof r.id!=='number'||!Number.isSafeInteger(r.id)||r.id<1||!name)return null;
+ const shape=gameProviderRowSchema.shape;const out:Record<string,unknown>={id:r.id,name};
+ const keep=(key:keyof typeof shape,value:unknown)=>{if(value===undefined||value===null)return;const ok=shape[key].safeParse(value);if(ok.success&&ok.data!=null)out[key]=ok.data;else dropped.add(key);};
+ keep('slug',r.slug);keep('summary',clean(r.summary,4000));keep('storyline',clean(r.storyline,4000));
+ keep('first_release_date',r.first_release_date);keep('total_rating',r.total_rating);keep('total_rating_count',r.total_rating_count);keep('url',r.url);
+ if(r.cover&&typeof r.cover==='object')keep('cover',{image_id:(r.cover as Record<string,unknown>).image_id});else keep('cover',r.cover);
+ for(const key of LISTS){const list=r[key];if(list==null)continue;if(!Array.isArray(list)){dropped.add(key);continue;}
+  const items:unknown[]=list.flatMap((item):unknown[]=>{const candidate=item&&typeof item==='object'&&!Array.isArray(item)?(key==='genres'||key==='platforms'||key==='game_modes'?{id:(item as Record<string,unknown>).id,name:clean((item as Record<string,unknown>).name,200)}:key==='screenshots'?{image_id:(item as Record<string,unknown>).image_id}:item):item;const ok=shape[key].safeParse([candidate]);if(!ok.success){dropped.add(key);return [];}return ok.data??[];});
+  if(items.length)out[key]=shape[key].parse(items);}
+ return gameProviderRowSchema.parse(out);
+}
 const formats:Record<string,GamePrecision>=Object.assign(Object.create(null),{YYYYMMMMDD:'day',YYYYMMMM:'month',YYYY:'year',YYYYQ1:'quarter',YYYYQ2:'quarter',YYYYQ3:'quarter',YYYYQ4:'quarter',TBD:'unknown'});
 const legacy=['YYYYMMMMDD','YYYYMMMM','YYYY','YYYYQ1','YYYYQ2','YYYYQ3','YYYYQ4','TBD'];
 const regions=['','europe','north_america','australia','new_zealand','japan','china','asia','worldwide','korea','brazil'];
