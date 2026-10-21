@@ -1,0 +1,230 @@
+{
+  "version": "explorers-taxonomy-import/v1",
+  "catalogVersion": 1,
+  "category": "people",
+  "defaultLocale": "en",
+  "terms": [
+    {
+      "id": "23368ff4-6566-56c2-9b26-684a5ac132db",
+      "category": "people",
+      "slug": "travel",
+      "parentId": null,
+      "position": 0,
+      "active": true,
+      "labels": {
+        "en": "Travel"
+      }
+    },
+    {
+      "id": "08852dd9-41e8-5b4a-a0a0-71f5272248d4",
+      "category": "people",
+      "slug": "food-and-drink",
+      "parentId": null,
+      "position": 1,
+      "active": true,
+      "labels": {
+        "en": "Food & Drink"
+      }
+    },
+    {
+      "id": "c6b83dac-3ef7-5ce5-8131-8c159d426f93",
+      "category": "people",
+      "slug": "tech",
+      "parentId": null,
+      "position": 2,
+      "active": true,
+      "labels": {
+        "en": "Tech"
+      }
+    },
+    {
+      "id": "b826caa4-9331-5a95-a117-f93e951f43dc",
+      "category": "people",
+      "slug": "design",
+      "parentId": null,
+      "position": 3,
+      "active": true,
+      "labels": {
+        "en": "Design"
+      }
+    },
+    {
+      "id": "4151ed33-7a86-58eb-8755-8ce6b3f74284",
+      "category": "people",
+      "slug": "music",
+      "parentId": null,
+      "position": 4,
+      "active": true,
+      "labels": {
+        "en": "Music"
+      }
+    },
+    {
+      "id": "6b42708c-a2eb-57db-800d-5a1a48c407d4",
+      "category": "people",
+      "slug": "film-and-tv",
+      "parentId": null,
+      "position": 5,
+      "active": true,
+      "labels": {
+        "en": "Film & TV"
+      }
+    },
+    {
+      "id": "43d90afa-f038-517c-9c88-451cb9b5580b",
+      "category": "people",
+      "slug": "books-and-writing",
+      "parentId": null,
+      "position": 6,
+      "active": true,
+      "labels": {
+        "en": "Books & Writing"
+      }
+    },
+    {
+      "id": "72afbf50-288e-50d0-9a17-d6cc0ec10b26",
+      "category": "people",
+      "slug": "sports-and-fitness",
+      "parentId": null,
+      "position": 7,
+      "active": true,
+      "labels": {
+        "en": "Sports & Fitness"
+      }
+    },
+    {
+      "id": "7cf6d2da-22ed-5aba-bbbd-36f95da2e4cf",
+      "category": "people",
+      "slug": "fashion",
+      "parentId": null,
+      "position": 8,
+      "active": true,
+      "labels": {
+        "en": "Fashion"
+      }
+    },
+    {
+      "id": "e01e3edb-3b26-5580-974e-cf28e46ae424",
+      "category": "people",
+      "slug": "photography",
+      "parentId": null,
+      "position": 9,
+      "active": true,
+      "labels": {
+        "en": "Photography"
+      }
+    },
+    {
+      "id": "43046654-fd5c-53d2-a6bf-0531dfc3a032",
+      "category": "people",
+      "slug": "education",
+      "parentId": null,
+      "position": 10,
+      "active": true,
+      "labels": {
+        "en": "Education"
+      }
+    },
+    {
+      "id": "bb51abd1-aa3e-5f18-b960-2f56acced0cf",
+      "category": "people",
+      "slug": "business",
+      "parentId": null,
+      "position": 11,
+      "active": true,
+      "labels": {
+        "en": "Business"
+      }
+    },
+    {
+      "id": "85b63617-4f2c-5cfa-8f9a-c7a5e9fb2f69",
+      "category": "people",
+      "slug": "science",
+      "parentId": null,
+      "position": 12,
+      "active": true,
+      "labels": {
+        "en": "Science"
+      }
+    },
+    {
+      "id": "cad0b6b8-7483-5599-b6ad-03cd90702b90",
+      "category": "people",
+      "slug": "health-and-wellness",
+      "parentId": null,
+      "position": 13,
+      "active": true,
+      "labels": {
+        "en": "Health & Wellness"
+      }
+    },
+    {
+      "id": "ffeddaff-32b3-5866-b409-1c652e39493c",
+      "category": "people",
+      "slug": "gaming",
+      "parentId": null,
+      "position": 14,
+      "active": true,
+      "labels": {
+        "en": "Gaming"
+      }
+    },
+    {
+      "id": "ead23e49-d488-57f7-a081-a1dd47278126",
+      "category": "people",
+      "slug": "art",
+      "parentId": null,
+      "position": 15,
+      "active": true,
+      "labels": {
+        "en": "Art"
+      }
+    },
+    {
+      "id": "de88189f-fcc8-559e-885f-d53751519c98",
+      "category": "people",
+      "slug": "comedy",
+      "parentId": null,
+      "position": 16,
+      "active": true,
+      "labels": {
+        "en": "Comedy"
+      }
+    },
+    {
+      "id": "4a5ef378-d8aa-5633-9389-2b005d6453b1",
+      "category": "people",
+      "slug": "news-and-politics",
+      "parentId": null,
+      "position": 17,
+      "active": true,
+      "labels": {
+        "en": "News & Politics"
+      }
+    },
+    {
+      "id": "e7c277ff-f62b-58fd-a5f7-ad631e95575a",
+      "category": "people",
+      "slug": "parenting",
+      "parentId": null,
+      "position": 18,
+      "active": true,
+      "labels": {
+        "en": "Parenting"
+      }
+    },
+    {
+      "id": "faafada3-96d7-533f-9e40-6ddd09911183",
+      "category": "people",
+      "slug": "other",
+      "parentId": null,
+      "position": 19,
+      "active": true,
+      "labels": {
+        "en": "Other"
+      }
+    }
+  ],
+  "sourceMappings": [],
+  "legacySlugMappings": []
+}
