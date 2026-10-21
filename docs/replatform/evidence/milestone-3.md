@@ -46,3 +46,14 @@ Proofs in every run:
 ## What the number means, and does not
 
 6.2 s is the recovery time **of this fixture** (two accounts, a 783 KB archive). It is dominated by fixed costs - starting a PostgreSQL container (2.0 s) and booting the application (1.7 s) - not by data. A production restore adds download time and a `pg_restore` that grows with the database. The number to carry is the method: rerun the drill against the newest production backup and read its receipt.
+
+## First production drill (2026-10-21)
+
+The first drill of a real production backup, which closes the "production backup from real S3" gap listed above.
+
+- Backup: the first manual production backup, taken on the host with `platform-backup.mjs --environment prod --reason manual` (run `808c707e`, 120 tables, 0 media objects, archive 787,336 bytes, 6 s). The nightly cron is installed.
+- Drill: `npm run platform:restore-drill -- --manifest <manifest.json> --identity <owner's age identity> --receipt %TEMP%/platform-restore-drill-<letters>`, on the owner's machine, from a clean checkout of `main` at `fbd13009`, with the owner's own read credentials for `prod/backups/`.
+- Result: **passed**, `recoveryMilliseconds` 7263 (download 1.3 s, decrypt 0.6 s, PostgreSQL start 2.0 s, `pg_restore` 1.0 s, boot 1.6 s).
+- Proofs: journal 62 rows, head `0062_explorers_handle_holds`; every table's row count matched; restricted-role attestation passed; the app booted on the restored database; cleanup dropped the database and removed the container. The database had no accounts yet, so the identity and media proofs were vacuous (0 users, 0 objects).
+- Receipt: `recovery-receipt.json`, SHA-256 `c6ff966caa51b7a0249d7af94296b6693bd038b0db21bcb867aa2b2409d23a7a`.
+- Windows note: two earlier attempts failed before any restore, at starting the temporary PostgreSQL container. The likely cause is the drill's random host port landing in one of this machine's many Windows-reserved TCP port ranges (`netsh interface ipv4 show excludedportrange protocol=tcp`). That is a harness issue on Windows, not a backup issue; the clean-tree run above passed.

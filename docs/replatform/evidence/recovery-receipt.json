@@ -1,25 +1,25 @@
 {
   "version": "explorers-platform-restore-drill/v1",
-  "runId": "0bd03e40f28327240268fd0469813b75",
+  "runId": "2d80efd25ed49affac59e925a643edae",
   "result": "passed",
-  "drilledAt": "2026-10-18T17:43:55.787Z",
-  "drillCommit": "5f21884b23eee5ded201abdaa63edd64235c3462",
-  "manifestDigest": "a12ce0e843fc062069cf177a7b1638490cc50854832e57556e7adcb7071d7066",
-  "migrationMarker": "0056_explorers_app_enrichment_jobs",
-  "schemaChecksum": "7ebfd573ffe446ed440fd81ccf83ac59986571299d97bb1a1189f9cc3187dcc2",
+  "drilledAt": "2026-10-21T10:49:02.347Z",
+  "drillCommit": "fbd130091282027e44b086ca77ee271cfa555a6d",
+  "manifestDigest": "a043b46f9ff5f8b4aeed78d04d3adb35ceb15da1f6af7ab92e861ba7b2912903",
+  "migrationMarker": "0062_explorers_handle_holds",
+  "schemaChecksum": "85891a3161cf43d96a69f5fa57a49fa5706d822dc65b74ac1cd014efeb6d1eae",
   "cleanup": "database-dropped-container-removed",
   "phases": [
     {
       "phase": "download",
-      "milliseconds": 1
+      "milliseconds": 1329
     },
     {
       "phase": "decrypt",
-      "milliseconds": 576
+      "milliseconds": 613
     },
     {
       "phase": "acquire-target",
-      "milliseconds": 2040
+      "milliseconds": 2035
     },
     {
       "phase": "bootstrap-roles",
@@ -27,59 +27,50 @@
     },
     {
       "phase": "pg-restore",
-      "milliseconds": 921
+      "milliseconds": 961
     },
     {
       "phase": "repair-known-drift",
-      "milliseconds": 9
+      "milliseconds": 10
     },
     {
       "phase": "attest-schema",
-      "milliseconds": 243
+      "milliseconds": 240
     },
     {
       "phase": "attest-runtime-role",
-      "milliseconds": 312
+      "milliseconds": 303
     },
     {
       "phase": "boot",
-      "milliseconds": 1746
+      "milliseconds": 1636
     },
     {
       "phase": "probe",
-      "milliseconds": 320
+      "milliseconds": 129
     },
     {
       "phase": "media",
-      "milliseconds": 43
+      "milliseconds": 0
     }
   ],
   "proofs": {
     "journal": {
-      "rows": 56,
-      "currentId": "0056_explorers_app_enrichment_jobs"
+      "rows": 62,
+      "currentId": "0062_explorers_handle_holds"
     },
     "identity": {
-      "authUsers": 2,
-      "authSessions": 2,
-      "creatorAccounts": 2
+      "authUsers": 0,
+      "authSessions": 0,
+      "creatorAccounts": 0
     },
-    "categories": {
-      "places": 1,
-      "movies": 1,
-      "books": 1,
-      "games": 1,
-      "guides": 0,
-      "apps": 1,
-      "products": 1,
-      "people": 1
-    },
+    "categories": {},
     "media": {
-      "objects": 2,
-      "hashesMatched": 2,
-      "gatedRouteResolved": 1
+      "objects": 0,
+      "hashesMatched": 0,
+      "gatedRouteResolved": 0
     },
     "rowCountsMatched": true
   },
-  "recoveryMilliseconds": 6218
+  "recoveryMilliseconds": 7263
 }
