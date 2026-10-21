@@ -8,6 +8,7 @@ import { buildLogoUrl, extractNoteText, getPriceTierColor, getPlatformColor } fr
 import MediaViewer from "../../../../components/ui/MediaViewer";
 import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
 import DialogPanel from "../../../../components/ui/DialogPanel";
+import { keyboardActivation } from "../../../../utils/keyboardActivation";
 
 interface AppDetailModalProps {
   app: RecommendedApp | null;
@@ -165,7 +166,7 @@ const AppDetailModal = ({ app, open, onClose }: AppDetailModalProps) => {
                 <div className="flex gap-4 px-5 -mt-16 relative z-10">
                   {/* Logo */}
                   <div 
-                    onClick={() => handleImageClick("logo")}
+                    {...keyboardActivation(() => handleImageClick("logo"))}
                     className="flex-shrink-0 w-28 h-28 rounded-2xl overflow-hidden ring-2 ring-[color:var(--category-border,rgba(255,255,255,0.1))] shadow-2xl bg-[var(--category-card,#1a2332)] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                   >
                     <img
@@ -258,7 +259,7 @@ const AppDetailModal = ({ app, open, onClose }: AppDetailModalProps) => {
                           {screenshots.map((url, i) => (
                             <div 
                               key={i} 
-                              onClick={() => handleImageClick("screenshot", i)}
+                              {...keyboardActivation(() => handleImageClick("screenshot", i))}
                               className="flex-shrink-0 w-56 aspect-video rounded-xl overflow-hidden border border-[color:var(--category-border,rgba(255,255,255,0.1))] bg-[var(--category-card,#1a2332)] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                             >
                               <img 

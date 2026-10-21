@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { FC, ReactNode } from "react";
+import { keyboardActivation } from "../../utils/keyboardActivation";
 
 interface CircularTab {
   id: string;
@@ -27,7 +28,7 @@ const CircularTabs: FC<CircularTabsProps> = ({
           <div
             key={tab.id}
             className="flex flex-col items-center cursor-pointer group flex-shrink-0"
-            onClick={() => onTabChange(tab.id)}
+            {...keyboardActivation(() => onTabChange(tab.id))}
           >
             {/* Circular Icon Container */}
             <motion.div

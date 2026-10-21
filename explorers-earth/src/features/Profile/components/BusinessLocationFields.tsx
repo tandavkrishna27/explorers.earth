@@ -4,6 +4,7 @@ import { Field, ErrorMessage } from "formik";
 import { AddIcon } from "../../../assets/icons/AddIcon";
 import CrossIcon from "../../../assets/icons/CrossIcon";
 import AddressInput from "./AddressInput";
+import { keyboardActivation } from "../../../utils/keyboardActivation";
 // toast not needed here anymore
 
 interface BusinessLocationFieldsProps {
@@ -150,10 +151,10 @@ const BusinessLocationFields: React.FC<BusinessLocationFieldsProps> = ({
                 {activeFields.includes(field.name) ? (
                   <span
                     className="absolute -right-1 bg-white -top-1 rounded-full text-sm cursor-pointer text-[hsl(var(--blue-cta))]"
-                    onClick={(e) => {
+                    {...keyboardActivation((e) => {
                       e.stopPropagation();
                       handleRemoveTag(field.name);
-                    }}
+                    })}
                   >
                     <CrossIcon size="4" stroke="hsl(var(--blue-cta))" />
                   </span>

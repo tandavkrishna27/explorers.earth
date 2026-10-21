@@ -1082,6 +1082,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/utils/googleMapsDirections.ts
 !explorers-earth/src/utils/guideDescriptionText.ts
 !explorers-earth/src/utils/imageFileValidation.ts
+!explorers-earth/src/utils/keyboardActivation.ts
 !explorers-earth/src/utils/listShareUrls.ts
 !explorers-earth/src/utils/mapAddress.ts
 !explorers-earth/src/utils/navPinning.ts

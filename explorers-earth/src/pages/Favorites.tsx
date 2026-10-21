@@ -36,6 +36,7 @@ import { calculateIsRecommendationsComplete } from "../utils/setupStatusCalculat
 import { CategoryEmptyState } from "../components/CategoryEmptyState";
 import { ListVisibilityModal } from "../components/ListVisibilityModal";
 import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
+import { keyboardActivation } from "../utils/keyboardActivation";
 export interface Recommendation {
   title: string;
   image: string;
@@ -827,10 +828,10 @@ const Favorites = memo(() => {
     return (
       <div
         key={city.documentId || idx}
-        onClick={() => {
+        {...keyboardActivation(() => {
           handleCitySelect(city);
           setStep(2);
-        }}
+        })}
         className="bg-dashboard-sidebar rounded-[14px] p-3 flex flex-col gap-2.5 cursor-pointer border border-white/5 md:border-dashboard-border/30 hover:border-dashboard-accent transition-all duration-300 relative group"
       >
         <div className="flex justify-between items-center gap-2">
@@ -1352,7 +1353,7 @@ const Favorites = memo(() => {
                       ) : (
                         /* Empty Placeholder banner */
                         <div
-                          onClick={() => setIsManageModalOpen(true)}
+                          {...keyboardActivation(() => setIsManageModalOpen(true))}
                           className="w-full flex items-center justify-between p-4 rounded-[14px] border border-amber-500/25 bg-amber-500/5 hover:bg-amber-500/10 transition-all duration-300 cursor-pointer mb-6"
                         >
                           <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-[#fbbf24]">
@@ -1378,7 +1379,7 @@ const Favorites = memo(() => {
 
                           {/* Add Location Card */}
                           <div
-                            onClick={() => setIsLocationModalOpen(true)}
+                            {...keyboardActivation(() => setIsLocationModalOpen(true))}
                             className="border-2 border-dashed border-dashboard-border rounded-[14px] flex flex-col items-center justify-center gap-1.5 p-4 min-h-[120px] cursor-pointer hover:border-dashboard-accent hover:bg-dashboard-accent/5 transition-all duration-300"
                           >
                             <span className="text-xl text-white/30 font-light">+</span>
@@ -1416,7 +1417,7 @@ const Favorites = memo(() => {
                       <div className="flex justify-between items-center mb-4 w-full">
                         <div className="flex flex-col items-start">
                           <div
-                            onClick={() => setStep(1)}
+                            {...keyboardActivation(() => setStep(1))}
                             className="text-[10px] text-white/55 font-semibold cursor-pointer flex items-center gap-1 mb-1 hover:text-white transition-colors"
                           >
                             <svg className="w-1.5 h-1.5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

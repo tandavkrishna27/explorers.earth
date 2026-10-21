@@ -9,6 +9,7 @@ import MediaViewer from "../../../../components/ui/MediaViewer";
 import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
 import { useFormatMoney } from "../../../../lib/money";
 import DialogPanel from "../../../../components/ui/DialogPanel";
+import { keyboardActivation } from "../../../../utils/keyboardActivation";
 
 interface ProductDetailModalProps {
   product: RecommendedProduct | null;
@@ -156,7 +157,7 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
                 <div className="flex gap-4 px-5 -mt-16 relative z-10">
                   {/* Primary product image container */}
                   <div 
-                    onClick={() => handleImageClick(0)}
+                    {...keyboardActivation(() => handleImageClick(0))}
                     className="flex-shrink-0 w-28 h-28 rounded-2xl overflow-hidden ring-2 ring-[color:var(--category-border,rgba(255,255,255,0.1))] shadow-2xl bg-[var(--category-card,#1a2332)] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                   >
                     <img

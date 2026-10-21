@@ -9,6 +9,7 @@ import MediaViewer from "../../../../components/ui/MediaViewer";
 import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
 import SafePublicRichText from "../../../PublicHome/components/SafePublicRichText";
 import DialogPanel from "../../../../components/ui/DialogPanel";
+import { keyboardActivation } from "../../../../utils/keyboardActivation";
 
 interface BookDetailModalProps {
   book: RecommendedBook | null;
@@ -181,7 +182,7 @@ const BookDetailModal = ({ book, open, onClose, onTrackClick }: BookDetailModalP
                 <div className="flex gap-4 px-5 -mt-28 relative z-10">
                   {/* Book cover (portrait) */}
                   <div
-                    onClick={() => handleImageClick("cover")}
+                    {...keyboardActivation(() => handleImageClick("cover"))}
                     className="flex-shrink-0 w-28 rounded-xl overflow-hidden ring-2 ring-[color:var(--category-border,rgba(255,255,255,0.1))] shadow-2xl self-end cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                   >
                     <img
@@ -292,7 +293,7 @@ const BookDetailModal = ({ book, open, onClose, onTrackClick }: BookDetailModalP
                           {snapshots.map((snap: any, i: number) => (
                             <div
                               key={snap.id}
-                              onClick={() => handleImageClick("snap", i)}
+                              {...keyboardActivation(() => handleImageClick("snap", i))}
                               className="flex-shrink-0 w-56 aspect-video rounded-xl overflow-hidden border border-[color:var(--category-border,rgba(255,255,255,0.1))] bg-[var(--category-card,#1a2332)] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                             >
                               <img
@@ -316,7 +317,7 @@ const BookDetailModal = ({ book, open, onClose, onTrackClick }: BookDetailModalP
                       <p className="text-xs font-semibold text-[color:var(--category-muted,rgba(255,255,255,0.5))] uppercase tracking-wider mb-3">Photos</p>
                       <div className="relative">
                         <div
-                          onClick={() => handleImageClick("photo", photoIndex)}
+                          {...keyboardActivation(() => handleImageClick("photo", photoIndex))}
                           className="aspect-video rounded-xl overflow-hidden bg-[var(--category-card,rgba(255,255,255,0.05))] cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-200"
                         >
                           <img src={photos[photoIndex]?.url} alt="" className="w-full h-full object-cover" />

@@ -29,6 +29,7 @@ import type {
   FeedAsyncOperation,
   FeedAsyncState,
 } from "../types/profileWorkspaces";
+import { keyboardActivation } from "../../../utils/keyboardActivation";
 
 export interface FeedFieldsProps {
   values: any;
@@ -730,11 +731,11 @@ const FeedFields: React.FC<FeedFieldsProps> = ({
                         />
                         <div
                           className="absolute top-2 right-2"
-                          onClick={(e) => {
+                          {...keyboardActivation((e) => {
                             e.preventDefault();
                             e.stopPropagation();
                             if (img.id) toggleSelect(img.id);
-                          }}
+                          })}
                         >
                           <div
                             className={`inline-flex items-center justify-center w-7 h-7 md:w-8 md:h-8 rounded-full text-sm md:text-base font-bold transition-all duration-200 shadow-lg border-2 cursor-pointer ${isSel

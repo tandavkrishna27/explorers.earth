@@ -32,6 +32,7 @@ import { useTrackAnalytics } from "../../../services/analyticsService";
 import { PublicScrollContinuation } from "./PublicScrollContinuation";
 import { usePublicCategoryThemeStyles } from "./PublicCategoryThemeContext";
 import { useFormatMoney } from "../../../lib/money";
+import { keyboardActivation } from "../../../utils/keyboardActivation";
 
 const hasNonEmptyString = (value: unknown): value is string => (
   typeof value === "string" && value.trim().length > 0
@@ -962,7 +963,7 @@ const PublicGuideDetailPage = memo(() => {
                     <div
                       key={tab.id}
                       className="flex flex-col items-center cursor-pointer group flex-shrink-0"
-                      onClick={() => handleTabChange(tab.id)}
+                      {...keyboardActivation(() => handleTabChange(tab.id))}
                     >
                       <motion.div
                         className={`

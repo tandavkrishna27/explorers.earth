@@ -29,6 +29,7 @@ import ProductTopPicksHero from "../public/ProductTopPicksHero";
 import ProductTopPicksMobileHero from "../public/ProductTopPicksMobileHero";
 import ProductTopPicksManager from "./ProductTopPicksManager";
 import DialogPanel from "../../../../components/ui/DialogPanel";
+import { keyboardActivation } from "../../../../utils/keyboardActivation";
 
 
 export const CreateProductListModal = ({
@@ -404,7 +405,7 @@ const ProductsHome = () => {
             /* Empty Placeholder banner */
             allProducts.length > 0 && (
               <div
-                onClick={() => setShowManageTopPicks(true)}
+                {...keyboardActivation(() => setShowManageTopPicks(true))}
                 className="w-full flex items-center justify-between p-4 rounded-[14px] border border-amber-500/25 bg-amber-500/5 hover:bg-amber-500/10 transition-all duration-300 cursor-pointer mb-6"
               >
                 <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-[#fbbf24] font-poppins">

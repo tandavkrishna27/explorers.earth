@@ -27,6 +27,7 @@ import { AddIcon } from "../../../../assets/icons/AddIcon";
 import HeroSkeleton from "../../../../components/ui/HeroSkeleton";
 import { CategoryEmptyState } from "../../../../components/CategoryEmptyState";
 import DialogPanel from "../../../../components/ui/DialogPanel";
+import { keyboardActivation } from "../../../../utils/keyboardActivation";
 
 // Create List Modal
 export const CreateGameListModal = ({
@@ -488,7 +489,7 @@ const GamesHome = () => {
             /* Empty Placeholder banner */
             allGames.length > 0 && (
               <div
-                onClick={() => setShowManageTopGames(true)}
+                {...keyboardActivation(() => setShowManageTopGames(true))}
                 className="w-full flex items-center justify-between p-4 rounded-[14px] border border-amber-500/25 bg-amber-500/5 hover:bg-amber-500/10 transition-all duration-300 cursor-pointer mb-6"
               >
                 <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-[#fbbf24] font-poppins">

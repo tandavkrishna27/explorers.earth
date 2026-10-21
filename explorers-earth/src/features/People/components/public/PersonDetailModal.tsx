@@ -10,6 +10,7 @@ import MediaViewer from "../../../../components/ui/MediaViewer";
 import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
 import SafePublicRichText from "../../../PublicHome/components/SafePublicRichText";
 import DialogPanel from "../../../../components/ui/DialogPanel";
+import { keyboardActivation } from "../../../../utils/keyboardActivation";
 
 interface PersonDetailModalProps {
   person: RecommendedPerson | null;
@@ -161,7 +162,7 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
                 {/* Avatar + Name row */}
                 <div className="flex gap-4 px-5 -mt-16 relative z-10 items-end">
                   <div 
-                    onClick={() => handleImageClick("avatar")}
+                    {...keyboardActivation(() => handleImageClick("avatar"))}
                     className="flex-shrink-0 w-28 h-28 rounded-full overflow-hidden ring-4 ring-[var(--category-panel,#0d1117)] shadow-2xl bg-[var(--category-card,#1a2332)] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                   >
                     <img
@@ -269,7 +270,7 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
                           {snapshots.map((snap: any, i: number) => (
                             <div
                               key={snap.id}
-                              onClick={() => handleImageClick("snap", i)}
+                              {...keyboardActivation(() => handleImageClick("snap", i))}
                               className="flex-shrink-0 w-56 aspect-video rounded-xl overflow-hidden border border-[color:var(--category-border,rgba(255,255,255,0.1))] bg-[var(--category-card,#1a2332)] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                             >
                               <img

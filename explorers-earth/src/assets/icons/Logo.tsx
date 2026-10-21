@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { useNavigate } from "react-router-dom";
 import useAuthStore from "../../store/store";
+import { keyboardActivation } from "../../utils/keyboardActivation";
 
 const Logo = memo(
   ({
@@ -18,7 +19,7 @@ const Logo = memo(
       <div
         className={` ${variant ? "dark:text-black" : "dark:text-white"
           } relative z-40 text-black cursor-pointer flex flex-row items-center gap-2`}
-        onClick={() => (isAuthenticated ? navigate("/home") : navigate("/"))}
+        {...keyboardActivation(() => (isAuthenticated ? navigate("/home") : navigate("/")))}
       >
         {/* PNG/JPEG logo first */}
         <img

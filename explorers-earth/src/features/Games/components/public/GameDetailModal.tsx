@@ -9,6 +9,7 @@ import MediaViewer from "../../../../components/ui/MediaViewer";
 import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaViewer";
 import SafePublicRichText from "../../../PublicHome/components/SafePublicRichText";
 import DialogPanel from "../../../../components/ui/DialogPanel";
+import { keyboardActivation } from "../../../../utils/keyboardActivation";
 
 interface GameDetailModalProps {
   game: RecommendedGame | null;
@@ -167,7 +168,7 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
                 <div className="flex gap-4 px-5 -mt-16 relative z-10">
                   {/* Poster */}
                   <div 
-                    onClick={() => handleImageClick("cover")}
+                    {...keyboardActivation(() => handleImageClick("cover"))}
                     className="flex-shrink-0 w-28 rounded-xl overflow-hidden ring-2 ring-[color:var(--category-border,rgba(255,255,255,0.1))] shadow-2xl bg-[var(--category-card,#161b22)] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                   >
                     <img
@@ -275,7 +276,7 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
                           {screenshots.map((url, i) => (
                             <div 
                               key={i} 
-                              onClick={() => handleImageClick("screenshot", i)}
+                              {...keyboardActivation(() => handleImageClick("screenshot", i))}
                               className="flex-shrink-0 w-64 aspect-video rounded-xl overflow-hidden border border-[color:var(--category-border,rgba(255,255,255,0.1))] bg-[var(--category-card,#1a2332)] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                             >
                               <img 

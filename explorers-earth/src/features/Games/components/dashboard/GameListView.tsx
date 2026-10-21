@@ -26,6 +26,7 @@ import GameDetailModal from "../public/GameDetailModal";
 import { ListVisibilityModal } from "../../../../components/ListVisibilityModal";
 import QrCardTagline from "../../../../components/QrCardTagline";
 import DialogPanel from "../../../../components/ui/DialogPanel";
+import { keyboardActivation } from "../../../../utils/keyboardActivation";
 
 interface GameRowProps {
   game: RecommendedGame;
@@ -44,7 +45,7 @@ const GameRow = ({ game, onPinToggle, onEdit, onDelete, onClick, isPinning }: Ga
   return (
     <div
       className="group flex items-center gap-3 p-3 bg-white/[0.03] border border-white/[0.05] hover:border-white/[0.08] hover:bg-white/[0.06] cursor-pointer rounded-xl transition-all mb-2"
-      onClick={() => onClick(game)}
+      {...keyboardActivation(() => onClick(game))}
     >
       <div className="w-10 h-14 flex-shrink-0 rounded overflow-hidden bg-white/5 shadow-sm">
         {coverUrl ? (
@@ -312,7 +313,7 @@ export const ManageTab = ({ list, onRefetch }: { list: GameList; onRefetch: () =
                 </span>
                 <span className="text-[11px] text-white/60 font-medium">Share</span>
               </button>
-              <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={handleCopyUrl}>
+              <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" {...keyboardActivation(handleCopyUrl)}>
                 <div className="p-2 bg-white/5 rounded-full flex items-center justify-center border border-white/10">
                   {copied ? <Check size={18} className="text-green-400" /> : <Copy size={18} className="text-white" />}
                 </div>

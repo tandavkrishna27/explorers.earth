@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Play, ChevronLeft, ChevronRight, Star } from "lucide-react";
 import type { RecommendedMovie } from "../../types";
 import { buildBackdropUrl, buildPosterUrl, formatRuntime, getGenreNames } from "../../utils/movieHelpers";
+import { keyboardActivation } from "../../../../utils/keyboardActivation";
 
 interface TopPicksHeroProps {
   movies: RecommendedMovie[];
@@ -106,7 +107,7 @@ const TopPicksHero = ({ movies, onMovieClick, showManageButton = false, onManage
           {/* Left Text Detail Section */}
           <div 
             className="w-full lg:w-1/2 flex flex-col gap-4 pointer-events-auto cursor-pointer"
-            onClick={() => onMovieClick(activeMovie)}
+            {...keyboardActivation(() => onMovieClick(activeMovie))}
           >
             <motion.h1 
               key={`title-${activeMovie.documentId}`}

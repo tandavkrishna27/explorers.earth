@@ -58,6 +58,7 @@ import { usePublicProfileDetail } from "../api/usePublicProfileDetail";
 import { PublicScrollContinuation } from "./PublicScrollContinuation";
 import PublicBlockingOverlay from "./PublicBlockingOverlay";
 import { useFormatMoney } from "../../../lib/money";
+import { keyboardActivation } from "../../../utils/keyboardActivation";
 
 type CardDataItem = {
   Media?: {
@@ -1526,7 +1527,7 @@ const PublicHome = memo(() => {
                             <div className="flex justify-between items-end">
                               <div className="flex flex-col gap-0.5 max-w-[75%]">
                                 <h2
-                                  onClick={() => navigate(`/${username}/places/${citySlug}`)}
+                                  {...keyboardActivation(() => navigate(`/${username}/places/${citySlug}`))}
                                   className="text-base font-extrabold text-[var(--category-text,#FFFFFF)] cursor-pointer hover:text-[var(--category-text,#3B82F6)] transition-colors duration-200 flex items-center gap-1.5"
                                 >
                                   <svg
@@ -1732,7 +1733,7 @@ const PublicHome = memo(() => {
                                 <div
                                   key={person.documentId || `linked-person-${index}`}
                                   className="bg-[var(--category-card,rgba(255,255,255,0.05))] border border-[var(--category-control-border,rgba(255,255,255,0.05))] rounded-xl p-4 flex flex-col gap-3 hover:border-[var(--category-control-border,rgba(59,130,246,0.4))] transition-all cursor-pointer"
-                                  onClick={() => setPersonSelection({ scope: linkedModalScope, documentId: person.documentId, listId: person._listId })}
+                                  {...keyboardActivation(() => setPersonSelection({ scope: linkedModalScope, documentId: person.documentId, listId: person._listId }))}
                                 >
                                   <div className="flex items-center gap-3">
                                     <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-violet-950/40 ring-2 ring-white/10">
@@ -1776,7 +1777,7 @@ const PublicHome = memo(() => {
                               <div
                                 key={product.documentId || `linked-product-${index}`}
                                 className="bg-[var(--category-card,rgba(255,255,255,0.05))] border border-[var(--category-control-border,rgba(255,255,255,0.05))] rounded-xl overflow-hidden hover:border-[var(--category-control-border,rgba(59,130,246,0.4))] transition-all cursor-pointer flex flex-col justify-between"
-                                onClick={() => setProductSelection({ scope: linkedModalScope, documentId: product.documentId, listId: product._listId })}
+                                {...keyboardActivation(() => setProductSelection({ scope: linkedModalScope, documentId: product.documentId, listId: product._listId }))}
                               >
                                 <div className="h-32 bg-[var(--category-card,rgba(0,0,0,0.4))] flex items-center justify-center overflow-hidden">
                                   {product.logo_url ? (

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Grid, ChevronLeft, ChevronRight, Star } from "lucide-react";
 import type { RecommendedGame } from "../../types";
 import { buildCoverUrl } from "../../utils/gameHelpers";
+import { keyboardActivation } from "../../../../utils/keyboardActivation";
 
 interface TopGamesHeroProps {
   games: RecommendedGame[];
@@ -103,7 +104,7 @@ const TopGamesHero = ({ games, onGameClick, showManageButton = false, onManageCl
           {/* Left Text Detail Section */}
           <div 
             className="w-full lg:w-1/2 flex flex-col gap-4 cursor-pointer pointer-events-auto"
-            onClick={() => onGameClick(activeGame)}
+            {...keyboardActivation(() => onGameClick(activeGame))}
           >
             <motion.h1 
               key={`title-${activeGame.documentId}`}

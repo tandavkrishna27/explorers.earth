@@ -1,6 +1,7 @@
 import { FC, memo } from "react";
 import type { Guide } from "../types";
 import { isDisplayableNumber, toDisplayNumber } from "../../../utils/rating";
+import { keyboardActivation } from "../../../utils/keyboardActivation";
 
 interface PublicGuideCardProps {
   guide: Guide;
@@ -88,7 +89,7 @@ const PublicGuideCard: FC<PublicGuideCardProps> = memo(
 
     return (
       <div
-        onClick={() => onClickHandler(guide)}
+        {...keyboardActivation(() => onClickHandler(guide))}
         className="bg-[var(--category-card,rgba(255,255,255,0.03))] border border-[var(--category-control-border,rgba(255,255,255,0.06))] rounded-2xl overflow-hidden relative flex flex-col min-h-[200px] cursor-pointer shadow-[0_4px_12px_rgba(0,0,0,0.15)] transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:border-[var(--category-control-border,rgba(255,255,255,0.15))]"
       >
         {/* Cover Image */}

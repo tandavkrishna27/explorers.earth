@@ -22,6 +22,7 @@ import type { Guide } from "./types";
 import SwitchButton from "../../components/ui/SwitchButton";
 import { AddIcon } from "../../assets/icons/AddIcon";
 import { CategoryEmptyState } from "../../components/CategoryEmptyState";
+import { keyboardActivation } from "../../utils/keyboardActivation";
 
 interface FilterState {
   guideType: string | null;
@@ -1100,7 +1101,7 @@ const GuidesPage: React.FC = () => {
                     )}
                     {/* Add Guide Dotted Card */}
                     <div
-                      onClick={() => navigate("/guides/new")}
+                      {...keyboardActivation(() => navigate("/guides/new"))}
                       className="border-2 border-dashed border-dashboard-border rounded-xl flex flex-col items-center justify-center gap-1.5 p-4 cursor-pointer hover:border-dashboard-accent hover:bg-dashboard-accent/5 transition-all duration-300 aspect-[16/9] md:aspect-[4/3] max-w-none w-full"
                     >
                       <span className="text-2xl text-white/30 font-light">+</span>

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, ChevronLeft, ChevronRight, Star } from "lucide-react";
 import type { RecommendedBook } from "../../types";
 import { buildCoverUrl, formatAuthors } from "../../utils/bookHelpers";
+import { keyboardActivation } from "../../../../utils/keyboardActivation";
 
 interface TopReadsHeroProps {
   books: RecommendedBook[];
@@ -140,7 +141,7 @@ const TopReadsHero = ({ books, onBookClick, showManageButton = false, onManageCl
           {/* Left Text Detail Section */}
           <div 
             className="w-full lg:w-1/2 flex flex-col gap-4 pointer-events-auto cursor-pointer"
-            onClick={() => onBookClick(activeBook)}
+            {...keyboardActivation(() => onBookClick(activeBook))}
           >
             <motion.h1 
               key={`title-${activeBook.documentId}`}

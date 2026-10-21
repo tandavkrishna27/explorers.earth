@@ -23,6 +23,7 @@ import { ListVisibilityModal } from "../../../../components/ListVisibilityModal"
 import QrCardTagline from "../../../../components/QrCardTagline";
 import { useFormatMoney } from "../../../../lib/money";
 import DialogPanel from "../../../../components/ui/DialogPanel";
+import { keyboardActivation } from "../../../../utils/keyboardActivation";
 
 interface ProductRowProps {
   product: RecommendedProduct;
@@ -43,7 +44,7 @@ const ProductRow = ({ product, onPinToggle, onEdit, onDelete, onClick, isPinning
   return (
     <div
       className="group flex items-center gap-3 p-3 bg-white/[0.03] border border-white/[0.05] hover:border-white/[0.08] hover:bg-white/[0.06] cursor-pointer rounded-xl transition-all mb-2"
-      onClick={() => onClick(product)}
+      {...keyboardActivation(() => onClick(product))}
     >
       <div className="w-12 h-12 flex-shrink-0 rounded-xl overflow-hidden bg-white/5 shadow-sm">
         {imgUrl ? (
@@ -481,27 +482,27 @@ const ProductListView = () => {
                 </div>
 
                 <div className="flex items-center justify-center gap-8 mt-5 mb-1 pt-4 border-t border-white/5">
-                  <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => {
+                  <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" {...keyboardActivation(() => {
                     if (navigator.share) {
                       navigator.share({ title: listData?.List_Name, url: publicUrl });
                     } else {
                       handleCopy();
                     }
-                  }}>
+                  })}>
                     <button className="p-0 bg-transparent rounded-full flex items-center justify-center">
                       <Share2 size={22} className="text-white" strokeWidth={1.5} />
                     </button>
                     <span className="font-poppins text-white text-xs">Share Link</span>
                   </div>
-                  <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={handleCopy}>
+                  <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" {...keyboardActivation(handleCopy)}>
                     <button className="p-0 bg-transparent rounded-full flex items-center justify-center">
                       {copied ? <Check size={22} className="text-white" strokeWidth={1.5} /> : <Copy size={22} className="text-white" strokeWidth={1.5} />}
                     </button>
                     <span className="font-poppins text-white text-xs whitespace-nowrap">{copied ? "Copied" : "Copy Link"}</span>
                   </div>
-                  <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => {
+                  <div className="flex flex-col items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" {...keyboardActivation(() => {
                      downloadQrSvgAsPng("list-qr-products", `QR_${listData?.List_Name || "List"}.png`);
-                  }}>
+                  })}>
                     <button className="p-0 bg-transparent rounded-full flex items-center justify-center">
                       <Download size={22} className="text-white" strokeWidth={1.5} />
                     </button>

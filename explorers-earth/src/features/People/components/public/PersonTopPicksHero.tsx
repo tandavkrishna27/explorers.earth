@@ -5,6 +5,7 @@ import { Users } from "lucide-react";
 import type { RecommendedPerson } from "../../types";
 import { buildImageUrl, getPlatformColor } from "../../utils/personHelpers";
 import PlatformIcon from "../PlatformIcon";
+import { keyboardActivation } from "../../../../utils/keyboardActivation";
 
 interface PersonTopPicksHeroProps {
   people: RecommendedPerson[];
@@ -97,7 +98,7 @@ const PersonTopPicksHero = ({ people, onPersonClick, showManageButton = false, o
           {/* Left side — avatar + info */}
           <div
             className="w-full lg:w-1/2 flex flex-col gap-4 pointer-events-auto cursor-pointer"
-            onClick={() => onPersonClick(activePerson)}
+            {...keyboardActivation(() => onPersonClick(activePerson))}
           >
             {/* Circular avatar */}
             <div className="flex items-center gap-4">

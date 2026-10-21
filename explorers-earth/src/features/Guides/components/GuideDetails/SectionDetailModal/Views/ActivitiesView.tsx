@@ -9,6 +9,7 @@ import DirectionIcon from "../../../../../../assets/icons/DirectionIcon";
 import MediaViewer from "../../../../../../components/ui/MediaViewer";
 import { useMediaViewer } from "../../../../../../hooks/useMediaViewer";
 import type { MediaItem } from "../../../../../../components/ui/MediaViewer";
+import { keyboardActivation } from "../../../../../../utils/keyboardActivation";
 
 interface ActivitiesViewProps {
   activities: any;
@@ -64,12 +65,12 @@ const ActivitiesView: React.FC<ActivitiesViewProps> = ({ activities }) => {
             return (
               <div
                 key={idx}
-                onClick={() => {
+                {...keyboardActivation(() => {
                   if (hasPhotos) {
                     setSelectedActivityId(activity.id);
                     openViewer(0);
                   }
-                }}
+                })}
                 className={`group relative bg-dashboard-bg rounded-lg border border-dashboard-muted hover:border-dashboard-accent/40 transition-all shadow-sm overflow-hidden ${
                   hasPhotos ? "cursor-pointer" : ""
                 }`}

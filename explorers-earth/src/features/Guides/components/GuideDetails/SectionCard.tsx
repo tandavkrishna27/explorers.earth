@@ -16,6 +16,7 @@ import TipsIcon from "../../../../assets/icons/TipsIcon";
 import { getAvailableTabs } from "../../utils/guideHelpers";
 import { parseTimeline } from "../../utils/guideDataParser";
 import { guideDescriptionText } from "../../../../utils/guideDescriptionText";
+import { keyboardActivation } from "../../../../utils/keyboardActivation";
 
 interface SectionCardProps {
   section: any;
@@ -116,7 +117,7 @@ const SectionCard: React.FC<SectionCardProps> = ({
 
   return (
     <div
-      onClick={onSelect}
+      {...keyboardActivation(onSelect)}
       className="group relative bg-gradient-to-br from-dashboard-sidebar to-dashboard-bg rounded-xl border border-dashboard-muted hover:border-dashboard-accent hover:shadow-lg transition-all duration-300 cursor-pointer"
     >
       {/* Accent line on left */}

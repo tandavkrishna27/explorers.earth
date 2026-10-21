@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import { formatFileSize } from "../../utils/fileValidation";
+import { keyboardActivation } from "../../utils/keyboardActivation";
 
 interface VerificationFileUploadProps {
   label: string;
@@ -110,7 +111,7 @@ const VerificationFileUpload: React.FC<VerificationFileUploadProps> = ({
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        onClick={handleClick}
+        {...keyboardActivation(handleClick)}
       >
         <input
           ref={fileInputRef}
