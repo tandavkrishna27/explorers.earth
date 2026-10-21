@@ -77,14 +77,20 @@ where to get it and the exact `gh` command.
 
 ### DNS and TLS
 
-- [ ] **Choose `www` or the apex** (P2 open question 4). It has to be one origin, and the other
-      must 301 to it. Every later value uses this one name: `<host>` below.
+- [x] **`www` or the apex** (P2 open question 4): decided, the apex `explorers.earth` is the one
+      origin. The deployed site file also serves `www.explorers.earth` and 301-redirects it to the
+      apex on ports 80 and 443, so no manual redirect is needed. Every later value uses the apex:
+      `<host>` below.
 - [ ] DNS for `<host>` points at the explorers host. If that host already serves the SPA today,
       DNS is already right and the cutover is the nginx switch in step 5.4. If it is a new
       machine, see [section 4](#4-the-dnstraffic-switch).
-- [ ] A **TLS certificate for `<host>`** on the host, e.g. from certbot, at
-      `/etc/letsencrypt/live/<host>/fullchain.pem` and `privkey.pem`. The deploy checks the site
-      over HTTPS on 127.0.0.1, so a certificate must exist before the first deploy.
+- [ ] DNS for `www.<host>` also points at the explorers host, so the redirect is reachable.
+- [ ] A **TLS certificate for `<host>` that also covers `www.<host>`** (both names on the
+      certificate) on the host, e.g. from certbot, at
+      `/etc/letsencrypt/live/<host>/fullchain.pem` and `privkey.pem`. The www redirect on 443 uses
+      the same certificate; without www on it, browsers fail the handshake instead of
+      redirecting. The deploy checks the site over HTTPS on 127.0.0.1, so a certificate must exist
+      before the first deploy.
 
 ### Google OAuth (production client)
 
