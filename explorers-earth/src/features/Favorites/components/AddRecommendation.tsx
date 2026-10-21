@@ -15,19 +15,19 @@ import { usePlacesOwner } from "../hooks/usePlacesOwner";
 import { Places } from "../../Profile/types/types";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { EarthLoader } from "../../../components/EarthLoader";
-import { useAddRecommendation } from "../hooks/useAddRecommendation";
+import { useAddRecommendation, PLACE_PHOTO_LIMIT } from "../hooks/useAddRecommendation";
 import axios from "axios";
 import { useRecommendationFields } from "../hooks/useRecommedationFields";
 import useAuthStore from "../../../store/store";
 import BackIcon from "../../../assets/icons/BackIcon";
 import Button from "../../../components/ui/Button";
-import { GOOGLE_PLACES_API_BASE_URL } from "../../../config";
 import DeleteIcon from "../../../assets/icons/DeleteIcon";
 import StarIcon from "../../../assets/icons/StarIcon";
 import Modal from "../../../components/ui/Modal";
 import { Tooltip } from "react-tooltip";
 import { useTranslation } from "react-i18next";
 import { PlacesClient } from "../api/placesClient";
+import { importGooglePlacePhotos } from "../api/googlePlacePhotos";
 import type { CompleteTaxonomyCatalog, RecommendationObservation } from "../../../lib/explorersApiClient";
 import { useLocation } from "react-router-dom";
 import {recordViewedObservation} from '../../../lib/viewedRevisions';
@@ -44,6 +44,8 @@ type CustomSearchImage = {
 
 type GoogleMedia = {
   photoBlob?: Blob;
+  /** Owned media the API imported from Google (PLC-02). */
+  mediaId?: string;
   fileName?: string;
   url?: string;
   isThumbnail?: boolean;
@@ -328,67 +330,18 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
         try {
           setIsImagesLoading(true);
           let photos: GoogleMedia[] = [];
+          let failed = 0;
 
+          // PLC-02. The API imports each Google photo into owned media (the browser only asks
+          // for its key-free URI): fetching the bytes here followed Google's redirect to
+          // googleusercontent.com, which CSP refuses, so no place ever got a photo.
           try {
-            // First attempt: Try to fetch from Places API
-            const placeDetails = await axios.get(
-              `${GOOGLE_PLACES_API_BASE_URL}/${places.place_id
-              }?fields=id,displayName,primaryType,primaryTypeDisplayName,priceRange,rating,userRatingCount,photos&key=${mapsBrowserKey()
-              }`
-            );
-
-            const photoReferences = placeDetails.data.photos.map(
-              (photo: { name: string }) =>
-                photo.name.split(`${places?.place_id}/`)[1]
-            );
-
-            const delay = (ms: number) =>
-              new Promise((resolve) => setTimeout(resolve, ms));
-
-            const fetchPhotosThrottled = async () => {
-              const photos: GoogleMedia[] = [];
-
-              for (let i = 0; i < photoReferences.length; i++) {
-                try {
-                  const reference = photoReferences[i];
-                  const url = `${GOOGLE_PLACES_API_BASE_URL}/${places.place_id
-                    }/${reference}/media?maxWidthPx=800&key=${mapsBrowserKey()
-                    }`;
-
-                  const response = await fetch(url);
-                  if (!response.ok) {
-                    if (response.status === 429) {
-                      throw new Error("RATE_LIMIT_EXCEEDED");
-                    }
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                  }
-
-                  const photoBlob = await response.blob();
-                  photos.push({
-                    isThumbnail: false,
-                    photoBlob,
-                    fileName: `${places.name}-${places.place_id}.jpg`,
-                    url: URL.createObjectURL(photoBlob),
-                  });
-
-                  await delay(300);
-                } catch (error) {
-                  console.error(`Error fetching photo ${i + 1}:`, error);
-                  if (
-                    error instanceof Error &&
-                    error.message === "RATE_LIMIT_EXCEEDED"
-                  ) {
-                    throw error;
-                  }
-                }
-              }
-
-              return photos;
-            };
-
-            photos = await fetchPhotosThrottled();
+            const imported = await importGooglePlacePhotos(places.place_id, PLACE_PHOTO_LIMIT);
+            failed = imported.failed;
+            photos = imported.photos.map(media => ({ isThumbnail: false, mediaId: media.id, url: media.url }));
           } catch (error) {
-            console.error("Error fetching photos from Places API:", error);
+            console.error("Error importing photos from Places API:", error);
+            failed = 1;
           }
 
           // Fallback to Custom Search API if Places API fails or returns no photos
@@ -400,6 +353,9 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
           if (photos.length > 0) {
             setFetchedGoogleMedia(photos);
             setShowGoogleMedia(true);
+          } else if (failed > 0) {
+            // The place still saves; the owner is told why it has no Google photos.
+            toast.error(t("toast.error.placePhotosImportFailed"));
           } else {
             toast.error(t("toast.error.noImagesFoundForPlace"));
           }

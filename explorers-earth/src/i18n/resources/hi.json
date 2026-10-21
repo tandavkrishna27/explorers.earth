@@ -2321,6 +2321,7 @@
       "mobileNumberTooShort": "मोबाइल नंबर बहुत छोटा है",
       "networkError": "नेटवर्क त्रुटि। कृपया अपना कनेक्शन जांचें।",
       "noImagesFoundForPlace": "इस स्थान के लिए कोई छवि नहीं मिली",
+      "placePhotosImportFailed": "Google photos for this place could not be imported. You can still save it and add your own photos.",
       "notificationSendFailed": "सूचना भेजने में विफल। कृपया पुनः प्रयास करें।",
       "noValidFilesSelected": "No valid files selected. Supported formats: {{formats}}",
       "onboardingAlreadyCompleted": "Onboarding already completed. Redirecting to home...",

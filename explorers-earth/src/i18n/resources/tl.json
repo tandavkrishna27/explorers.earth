@@ -2115,6 +2115,7 @@
       "mobileNumberTooShort": "Masyadong maikli ang mobile number",
       "networkError": "Error sa network. Pakitignan ang inyong connection.",
       "noImagesFoundForPlace": "No images found for this place",
+      "placePhotosImportFailed": "Google photos for this place could not be imported. You can still save it and add your own photos.",
       "notificationSendFailed": "Hindi matagumpay ang pagpapadala ng notification. Subukan ulit.",
       "noValidFilesSelected": "No valid files selected. Supported formats: {{formats}}",
       "onboardingAlreadyCompleted": "Onboarding already completed. Redirecting to home...",

@@ -2115,6 +2115,7 @@
       "mobileNumberTooShort": "Mobile number is too short",
       "networkError": "Mrežna greška. Provjerite svoju vezu.",
       "noImagesFoundForPlace": "No images found for this place",
+      "placePhotosImportFailed": "Google photos for this place could not be imported. You can still save it and add your own photos.",
       "notificationSendFailed": "Failed to send notification. Please try again.",
       "noValidFilesSelected": "No valid files selected. Supported formats: {{formats}}",
       "onboardingAlreadyCompleted": "Onboarding already completed. Redirecting to home...",

@@ -2115,6 +2115,7 @@
       "mobileNumberTooShort": "মোবাইল নম্বৰ বৰ চুটি",
       "networkError": "নেটৱৰ্ক ত্ৰুটি। অনুগ্ৰহ কৰি আপোনাৰ সংযোগ পৰীক্ষা কৰক।",
       "noImagesFoundForPlace": "No images found for this place",
+      "placePhotosImportFailed": "Google photos for this place could not be imported. You can still save it and add your own photos.",
       "notificationSendFailed": "বিজ্ঞাপন পঠোৱাত বিফল। অনুগ্ৰহ কৰি পুনৰ চেষ্টা কৰক।",
       "noValidFilesSelected": "No valid files selected. Supported formats: {{formats}}",
       "onboardingAlreadyCompleted": "Onboarding already completed. Redirecting to home...",

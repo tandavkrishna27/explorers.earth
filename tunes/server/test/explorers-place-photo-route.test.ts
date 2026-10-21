@@ -41,6 +41,14 @@ describe("place photo import route", () => {
     expect(createMedia).toHaveBeenCalledWith({ accountId: "acc_1" },
       expect.objectContaining({ purpose: "collection", mimeType: "image/jpeg", length: 4, bytes: jpeg }), expect.anything());
   });
+  // A place ITEM's gallery (PLC-02) imports through the same route; its photos are
+  // recommendation media, which is what recommendation_place_photos accepts.
+  it("stores a place item photo as recommendation media when asked", async () => {
+    const { instance, createMedia } = app();
+    expect((await post(instance, { photoUri, purpose: "recommendation" })).status).toBe(201);
+    expect(createMedia).toHaveBeenCalledWith({ accountId: "acc_1" },
+      expect.objectContaining({ purpose: "recommendation" }), expect.anything());
+  });
   it("refuses an untrusted origin before fetching", async () => {
     const { instance, fetch } = app();
     expect((await post(instance, { photoUri }, "https://evil.example")).status).toBe(403);
@@ -51,7 +59,7 @@ describe("place photo import route", () => {
     expect((await post(instance, { photoUri }, undefined, "")).status).toBe(401);
     expect(fetch).not.toHaveBeenCalled();
   });
-  it.each([[{}], [{ photoUri: 42 }], [{ photoUri, extra: 1 }]])("refuses a malformed body %j before fetching", async body => {
+  it.each([[{}], [{ photoUri: 42 }], [{ photoUri, extra: 1 }], [{ photoUri, purpose: "profile" }], [{ photoUri, purpose: "collection", extra: 1 }]])("refuses a malformed body %j before fetching", async body => {
     const { instance, fetch } = app();
     expect((await post(instance, body)).status).toBe(422);
     expect(fetch).not.toHaveBeenCalled();

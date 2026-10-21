@@ -2319,6 +2319,7 @@
       "mobileNumberTooShort": "Le numéro de portable est trop court",
       "networkError": "Erreur réseau. Veuillez vérifier votre connexion.",
       "noImagesFoundForPlace": "No images found for this place",
+      "placePhotosImportFailed": "Google photos for this place could not be imported. You can still save it and add your own photos.",
       "notificationSendFailed": "Échec de l'envoi de la notification. Veuillez réessayer.",
       "noValidFilesSelected": "No valid files selected. Supported formats: {{formats}}",
       "onboardingAlreadyCompleted": "Onboarding already completed. Redirecting to home...",

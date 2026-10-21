@@ -136,6 +136,25 @@ describe("useAddRecommendation selected-media persistence", () => {
     });
   });
 
+  // PLC-02. Google photos are imported by the API before the form is submitted, so they
+  // arrive as owned media ids: they attach as they are and are never uploaded again.
+  it("attaches already-imported Google photos by id without uploading them", async () => {
+    const { result } = renderMediaHook([
+      { mediaId: "imported-1", url: "/media/imported-1", isThumbnail: false },
+      { mediaId: "imported-2", url: "/media/imported-2", isThumbnail: false },
+    ]);
+
+    await act(async () => {
+      await result.current.handleSubmit(values as never);
+    });
+
+    expect(result.current.mediaStatus).toBe("saved");
+    expect(mocks.upload).not.toHaveBeenCalled();
+    expect(mocks.updatePlace).toHaveBeenCalledWith(created.id, {
+      placePhotos: { photoMediaIds: ["imported-1", "imported-2"] },
+    });
+  });
+
   // Creator uploads used to go to mediaIds, which no public Places projection reads, so
   // the owner saw them and the public never could.
   it("sends a creator-origin upload as a place photo, not as generic media", async () => {

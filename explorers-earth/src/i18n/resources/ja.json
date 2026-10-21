@@ -2121,6 +2121,7 @@
       "mobileNumberTooShort": "携帯電話番号が短すぎます",
       "networkError": "ネットワークエラー。接続を確認してください。",
       "noImagesFoundForPlace": "No images found for this place",
+      "placePhotosImportFailed": "Google photos for this place could not be imported. You can still save it and add your own photos.",
       "notificationSendFailed": "通知の送信に失敗しました。再試行してください。",
       "noValidFilesSelected": "No valid files selected. Supported formats: {{formats}}",
       "onboardingAlreadyCompleted": "Onboarding already completed. Redirecting to home...",

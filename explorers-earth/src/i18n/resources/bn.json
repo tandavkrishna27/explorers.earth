@@ -2121,6 +2121,7 @@
       "mobileNumberTooShort": "মোবাইল নম্বর খুবই ছোট",
       "networkError": "নেটওয়ার্ক ত্রুটি। অনুগ্রহ করে আপনার সংযোগ পরীক্ষা করুন।",
       "noImagesFoundForPlace": "No images found for this place",
+      "placePhotosImportFailed": "Google photos for this place could not be imported. You can still save it and add your own photos.",
       "notificationSendFailed": "বিজ্ঞপ্তি পাঠাতে ব্যর্থ। অনুগ্রহ করে আবার চেষ্টা করুন।",
       "noValidFilesSelected": "No valid files selected. Supported formats: {{formats}}",
       "onboardingAlreadyCompleted": "Onboarding already completed. Redirecting to home...",

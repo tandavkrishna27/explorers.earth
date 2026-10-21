@@ -2323,6 +2323,7 @@
       "mobileNumberTooShort": "رقم الهاتف المحمول قصير جداً",
       "networkError": "خطأ في الشبكة. يرجى التحقق من اتصالك.",
       "noImagesFoundForPlace": "No images found for this place",
+      "placePhotosImportFailed": "Google photos for this place could not be imported. You can still save it and add your own photos.",
       "notificationSendFailed": "فشل في إرسال الإشعار. يرجى المحاولة مرة أخرى.",
       "noValidFilesSelected": "No valid files selected. Supported formats: {{formats}}",
       "onboardingAlreadyCompleted": "Onboarding already completed. Redirecting to home...",

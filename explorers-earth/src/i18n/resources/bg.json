@@ -2115,6 +2115,7 @@
       "mobileNumberTooShort": "Мобилният номер е твърде кратък",
       "networkError": "Мрежова грешка. Моля, проверете връзката си.",
       "noImagesFoundForPlace": "No images found for this place",
+      "placePhotosImportFailed": "Google photos for this place could not be imported. You can still save it and add your own photos.",
       "notificationSendFailed": "Неуспешно изпращане на известие. Моля, опитайте отново.",
       "noValidFilesSelected": "No valid files selected. Supported formats: {{formats}}",
       "onboardingAlreadyCompleted": "Onboarding already completed. Redirecting to home...",
