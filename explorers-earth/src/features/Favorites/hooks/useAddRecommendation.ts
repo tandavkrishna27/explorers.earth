@@ -1,4 +1,5 @@
 import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
+import { normalizeSocialProfileUrl } from "../../../utils/url";
 import { validateImageFiles, maxImageMegabytes, type RejectedImage } from "../../../utils/imageFileValidation";
 import { useRef, useState } from "react";
 import { KeyValuePair } from "../components/RecommendForm";
@@ -185,6 +186,9 @@ export function recommendationContext(values: KeyValuePair, options: {
 }): PlaceRecommendationContext {
   const text = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
   const person = options.recommendationType === "person";
+  // "@handle" and "instagram.com/x" become the full URL the contract requires (PLC-05);
+  // the form's own validation has already refused anything that cannot.
+  const profile = (value: unknown) => { const raw = text(value); return raw === null ? null : normalizeSocialProfileUrl(raw) ?? raw; };
   return {
     ...emptyPlaceContext(),
     recommendationType: options.recommendationType,
@@ -198,9 +202,9 @@ export function recommendationContext(values: KeyValuePair, options: {
         : options.existing?.contactVisibility ?? "private",
     placeSocialUrl: person ? null : text(values.socialLink),
     placeWebsiteUrl: person ? text(values.socialLink) : null,
-    creatorSocialUrl: text(values.recommendationLink) ?? (person ? text(values.recommendation) : options.existing?.creatorSocialUrl ?? null),
+    creatorSocialUrl: text(values.recommendationLink) ?? (person ? profile(values.recommendation) : options.existing?.creatorSocialUrl ?? null),
     legacyPlaceNote: options.existing?.legacyPlaceNote ?? null,
-    personProfileUrl: person ? text(values.recommendation) ?? text(values.recommendationLink) : null,
+    personProfileUrl: person ? profile(values.recommendation) ?? text(values.recommendationLink) : null,
     personAddress: person ? text(values.address) : null,
   };
 }

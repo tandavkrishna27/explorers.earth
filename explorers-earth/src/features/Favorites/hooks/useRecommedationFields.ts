@@ -1,4 +1,5 @@
 import * as Yup from "yup";
+import { normalizeSocialProfileUrl } from "../../../utils/url";
 import { Places } from "../../Profile/types/types";
 import { useTranslation } from "react-i18next";
 import { useMemo } from "react";
@@ -112,29 +113,10 @@ export const useRecommendationFields = ({
     recommendation: recommendationType === "person"
       ? Yup.string()
         .required(t("dashboard.recommendations.addRecommendationForm.validationMessages.socialUrlRequired"))
-        .test('is-valid-social-url', 'Please enter a valid Instagram or LinkedIn URL or username (e.g., instagram.com/username, @username, or linkedin.com/in/username)', (value) => {
-          if (!value) return false;
-
-          // Normalize the value
-          const normalizedValue = value.trim();
-
-          // Check for full Instagram URL (with or without protocol)
-          const instagramUrlPattern = /^(https?:\/\/)?(www\.)?instagram\.com\/[\w.-]+\/?$/i;
-
-          // Check for full LinkedIn URL (with or without protocol)
-          const linkedinUrlPattern = /^(https?:\/\/)?(www\.)?linkedin\.com\/(in|company)\/[\w-]+\/?$/i;
-
-          // Accept Instagram usernames starting with @ (convert to URL format)
-          const instagramUsernamePattern = /^@([\w](?!.*?\.\.)[\w.]{0,28}[\w])$/;
-
-          // Accept plain usernames (alphanumeric, underscore, dot) for Instagram
-          const plainUsernamePattern = /^[\w](?!.*?\.\.)[\w.]{0,28}[\w]$/;
-
-          return instagramUrlPattern.test(normalizedValue) ||
-            linkedinUrlPattern.test(normalizedValue) ||
-            instagramUsernamePattern.test(normalizedValue) ||
-            plainUsernamePattern.test(normalizedValue);
-        })
+        // The same rule that turns the value into the stored URL, so nothing the form
+        // accepts can fail the contract afterwards (PLC-05).
+        .test('is-valid-social-url', 'Please enter a valid Instagram or LinkedIn URL or username (e.g., instagram.com/username, @username, or linkedin.com/in/username)',
+          (value) => normalizeSocialProfileUrl(value) !== undefined)
       : Yup.string(),
   }), [t, recommendationType]);
 

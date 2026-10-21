@@ -56,3 +56,20 @@ export function buildWhatsAppHref(raw?: string | null): string | undefined {
   // Fallback to https scheme
   return `https://${input}`;
 }
+
+const INSTAGRAM_HANDLE = /^@?([\w](?!.*?\.\.)[\w.]{0,28}[\w])$/;
+const SOCIAL_PROFILE = /^(?:https?:\/\/)?((?:www\.)?(?:instagram\.com\/[\w.-]+|linkedin\.com\/(?:in|company)\/[\w-]+)\/?)$/i;
+
+/**
+ * A person's Instagram or LinkedIn profile as a full https URL, or undefined when the input
+ * is neither a profile URL (with or without its scheme) nor an Instagram handle. The form
+ * offers "@username" and "instagram.com/username"; the stored context accepts only URLs.
+ */
+export function normalizeSocialProfileUrl(raw?: string | null): string | undefined {
+  const value = raw?.trim();
+  if (!value) return undefined;
+  const handle = INSTAGRAM_HANDLE.exec(value);
+  if (handle) return `https://www.instagram.com/${handle[1]}`;
+  const profile = SOCIAL_PROFILE.exec(value);
+  return profile ? `https://${profile[1]}` : undefined;
+}
