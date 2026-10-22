@@ -10,7 +10,7 @@ Paths: SPA = `explorers-earth/src/`, API = `tunes/server/`, contracts = `tunes/s
 
 - Branch from current `main`; one PR per package; **merge commits only**; no model names in commits; repo is public (no secrets, IPs or hostnames).
 - Stay inside the package's file list. If a change is needed outside it, stop and coordinate through the owning package rather than editing.
-- Migrations: numbers are **reserved below**; only the package that owns a number writes it. Follow the migration-chain checklist (runtime privilege matrix and function inventory for new tables/functions, no TRUNCATE triggers, OCI fixture regeneration, pinned migration-head strings in tests such as `games.integration.test.ts`). Migration PRs merge **one at a time, in number order**; a package whose predecessor is not merged rebases and keeps its reserved number.
+- Migrations: numbers are **reserved below** and written only by the schema PRs S1-S3. Follow the migration-chain checklist (runtime privilege matrix and function inventory for new tables/functions, no TRUNCATE triggers, OCI fixture regeneration, pinned migration-head strings in tests such as `games.integration.test.ts`). Migration PRs merge **one at a time, in number order**; a package whose predecessor is not merged rebases and keeps its reserved number.
 - Every package keeps both typechecks and the whole frontend unit lane green (the lane is the only cross-package gate for DTO shape changes):
 
 ```bash
@@ -32,62 +32,89 @@ cd tunes && npm run test:integration
 ```
 
 - Each package adds or updates UAT board cases (area per screen) for the flows it changes (DIR-09).
+- **New integration test files** must be registered in the explicit selector list in `.github/workflows/test.yml` (append at the **end** of the ordinary selector list) and the matching expectation in `tunes/server/test/deployment/music-image-ci-tests.test.ts` (precedent: 8bdc6a34). `tunes.yml` runs all integration files only on PRs to `main`; `test.yml` runs only what it names.
+- **New files under `tunes/shared/`** that the server imports: regenerate the root `.dockerignore` (it is GENERATED and default-deny) with `node scripts/generate-music-fixture-dockerignore.mjs --write`, and keep `scripts/dockerfile-shared-contract-closure.test.mjs` green. Otherwise the image build cannot see the file.
+- **Frozen-source seals** in root `scripts/` (e.g. `scripts/fixtures/place-links-atomic-diagnostic-frozen.json`) assert exact spec text and runner hashes. A package that edits a sealed spec or runner updates the seal in the same PR and says so in the PR body.
+
+### Migration marker bump checklist (applies to every schema PR)
+
+Adding 0064 touched about 50 files (commit 6253d6d2). Every new head must update the same marker set, in one PR:
+- migration-head pins: `.env.music.example`, `.env.music.test.example`, `.github/workflows/test.yml`, `.github/workflows/tunes.yml` (image file list), `deploy/platform.compose.yml`, `deploy/production.compose.yml` (`x-migration-marker`), `docker-compose.yml`, `docker-compose.music-test.yml`, `docker-compose.replatform.yml`, `docs/architecture/music-documentation-contract.json`, `fixtures/db/music-runtime-table-manifest.json`, `scripts/platform-runtime-smoke-contract.mjs`, `tunes/deployment/music-deploy-engine.sh` (marker ranks), `tunes/scripts/music-docker-release-rehearsal.ts`, `tunes/scripts/platform-proxy-browser-fixture.ts`, `tunes/shared/music-migration-contract.ts`;
+- OCI fixtures: `tunes/server/test/contracts/fixtures/platform-oci/{README.md,cases.json,generate.py,receipt.json}` (regenerate; gzip OS byte trap);
+- head-pinned tests: `music-e2e-state-restore`, `music-environment-contract`, `music-local-database`, `platform-runtime-smoke`, `public-parity-seed-contract`, `music-deploy-executable`, `music-deployment-files`, `music-readiness`, `explorers-manual-overrides.integration`, `games.integration`, `games`, `music-migration-contract`, `music-migration.integration`;
+- new tables/functions: `tunes/server/db/music-runtime-role.ts` privilege matrix, function inventory, runtime table manifest.
+
+Find the full current set with `git grep -l 0064_explorers_game_details` before starting. Because every schema PR rewrites these shared files, **schema changes are batched into three schema PRs** (S1-S3 below) owned by one lane; feature packages never add migrations themselves.
 
 ## Reserved migration numbers (head today: 0064)
 
-| No. | Package | Purpose |
+| No. | Schema PR | Purpose |
 |---|---|---|
-| 0065 | WP0 | Partial unique index on collections slug `WHERE archived_at IS NULL` (OWN-01) |
-| 0066 | WP3B | Slug redirects table (old slug → list) for LP-09 |
-| 0067 | WP7 | Curated taxonomy catalogs for movies, books, games, apps, products (DS-07) |
-| 0068 | WP8 | Products: single link + offer merge, specs cap; People: drop rating + follower count (DS-02..DS-06, DS-09) |
-| 0069 | WP9 | Guide items: ordered list per day + nullable `time_label`; migrate slot data (GD-23, GD-31) |
-| 0070 | WP10 | General list ↔ list links (replace Places-only place links) (LNK-01, LNK-09) |
-| 0071 | WP11 | `is_sample` on collections + sample seeding receipts (SMP-08) |
+| 0065 | S1 (inside WP0) | Partial unique index on collections slug `WHERE archived_at IS NULL` (OWN-01) |
+| 0066 | S1 (inside WP0) | Slug redirects table (old slug → list) for LP-09 |
+| 0067 | S2 | Curated taxonomy catalogs for movies, books, games, apps, products (DS-07) |
+| 0068 | S2 | Products single link + offer merge, specs cap; People stop using rating + follower count (columns kept, not dropped) (DS-02..DS-06, DS-09) |
+| 0069 | S3 | Guide items: ordered list per day + nullable `time_label`; migrate slot data (GD-23, GD-31) |
+| 0070 | S3 | General list ↔ list links with optional role (replace Places-only place links) (LNK-01, LNK-09) |
+| 0071 | S3 | `is_sample` on collections + sample seeding receipts (SMP-08) |
+
+Each schema PR ships the migrations, the contract/repository changes they need, their integration tests and the marker bump, and nothing else. Feature packages code against the merged contracts.
 
 ## Order and parallelism
 
 ```
-Wave 0 (serial)   WP0  P0 bugs
-Wave 1 (parallel) WP1 Shell+nav+loader | WP2 Publish pill+add button+nudge | WP3A Category page | WP3B List page | WP4 Add-item template | WP5 Performance
-Wave 2 (parallel) WP6 Places | WP7 Movies/Books/Games + taxonomies | WP8 Apps/Products/People + prefill
-Wave 3            WP9 Guides
+Wave 0 (serial)   WP0  P0 bugs + S1 (0065, 0066)
+                  WP0B Places navigation hotfix (OWN-05, OWN-18, OWN-06) — owns pages/Favorites.tsx
+  Deploy checkpoint A (drill at the LIVE head 0064, republish, deploy → DB at 0066; re-test OWN-01/05/06/11/18)
+Wave 1 (parallel) WP1 Shell+origin back+loader | WP2 Publish pill+add button+nudge | WP3A Category page (owns Favorites.tsx in this wave) | WP3B List page (7 non-Places categories) | WP4 Add-item template | WP5 Performance
+  Deploy checkpoint B (drill at the live head 0066, republish, deploy; re-test OWN-07/08/17/19)
+Wave 2            S2 (0067, 0068) → then parallel: WP6 Places | WP7 Movies/Books/Games | WP8 Apps/Products/People + prefill
+Wave 3            S3 (0069-0071) → WP9 Guides
 Wave 4            WP10 Linking
 Wave 5            WP11 First-visit samples
-Wave 6 (serial)   WP12 Local proof → deploy → live re-test
+Wave 6 (serial)   WP12 Local proof → drill at the live head (0066) → republish → deploy (runs 0067-0071) → live re-test
 ```
 
-Wave 1 packages touch disjoint files. WP3A/WP3B consume WP2's components through a stable props interface agreed up front (below), so they can start in parallel and wire in when WP2 merges.
+Verified file ownership (origin/main 8063651c): `pages/Favorites.tsx` (1921 lines) holds the Places category page, list page, Manage tab and publish prompt, so only one package owns it per wave (WP0B, then WP3A, then WP6). `useAddRecommendation.ts` is owned by WP0, then WP5 (save logic only), then WP6. WP3A/WP3B consume WP2's components through the props interface below and wire in once WP2 merges.
+
+Two intermediate deploys (A, B) split the risk: the owner sees the bug fixes and the speed work early, and the final deploy carries only the new-feature migrations.
 
 ---
 
-## WP0: P0 bugs (OWN-11, OWN-01)
+## WP0: P0 bugs + schema S1 (OWN-11, OWN-01, LP-09 schema)
 
-- **Files:** `features/Favorites/hooks/useAddRecommendation.ts`, its tests; `tunes/migrations/0065_*.sql`; `tunes/server/repositories/explorersRecommendationRepository.ts` (only if the archive path needs to stay consistent); migration integration test.
+- **Files:** `features/Favorites/hooks/useAddRecommendation.ts` (line 205), its tests; `tunes/migrations/0065_*.sql`, `0066_*.sql`; slug-redirect read/write in `tunes/server/repositories/explorersRecommendationRepository.ts` and the public slug resolver; the migration marker bump set (checklist above); migration integration tests (registered in `test.yml`).
 - **Changes:**
-  - OWN-11: `creatorSocialUrl: profile(values.recommendationLink) ?? …`; the form refuses values that still don't normalise.
-  - OWN-01: migration 0065 drops `UNIQUE(account_id,category,slug)` and creates a partial unique index `WHERE archived_at IS NULL`.
+  - OWN-11: line 205 today is `creatorSocialUrl: text(values.recommendationLink) ?? (person ? profile(values.recommendation) : …)`; wrap the first operand with `profile()`; the form refuses values that still don't normalise.
+  - OWN-01: 0065 drops `UNIQUE(account_id,category,slug)` (0029 line 33) and creates a partial unique index `WHERE archived_at IS NULL`. Before creating it, the migration checks for live duplicates and fails loudly with the offending ids rather than guessing.
+  - 0066: `collection_slug_redirects(account_id, category, old_slug → collection_id)`; renaming a slug records the old one; the resolver follows it; a new list may not claim a slug that is still a redirect of another live list. (UI in WP3B.)
 - **Depends on:** nothing.
-- **Acceptance:** a place with "recommended by" `@handle` or `instagram.com/x` saves; archiving "paris" then creating a new "paris" list succeeds; a duplicate among non-archived lists still returns 409 `listUrlTaken`.
-- **Tests:** unit case for `@handle` on a place; integration test for archived-slug reuse and live-slug conflict.
+- **Acceptance:** a place with "recommended by" `@handle` or `instagram.com/x` saves; archiving "paris" then creating a new "paris" list succeeds; a duplicate among non-archived lists still returns 409 `listUrlTaken`; restoring an archived list whose slug was reused returns a clear conflict asking for a new slug.
+- **Tests:** unit case for `@handle` on a place; integration tests for archived-slug reuse, live-slug conflict, restore-after-reuse conflict, and redirect resolution.
 
-## WP1: Shell, navigation, loaders, toasts (GL-02, GL-03, GL-05, OWN-05, OWN-18, OWN-06, OWN-08 loader part, SCR-03)
+## WP0B: Places navigation hotfix (OWN-05, OWN-18, OWN-06)
 
-- **Files:** `routes/ProtectedRoutes.tsx`, `routes/PublicRoutes.tsx` (loader only), `routes/validators/TabVisibilityGuard.tsx`, `layouts/PublicColdEntryBoundary.tsx`, `pages/Home.tsx`, `pages/Favorites.tsx` (routing/loading conditions only), `features/Favorites/hooks/usePlacesOwner.ts`, `components/EarthLoader/*`, `components/Loader.tsx`, `components/RouteLoader.tsx`, new `lib/navigation/originBack.ts`, toast modules (`LandingPage/hooks/use-toast.ts`, `hooks/useToast.ts` removed; callers moved to `sonner`).
+Small, early, and the single owner of `pages/Favorites.tsx` before Wave 1, so the owner sees the worst navigation bugs fixed at checkpoint A.
+
+- **Files:** `pages/Favorites.tsx`, `pages/Home.tsx` (line 1000), `features/Favorites/components/AddRecommendation.tsx` (line 577), `AddLinkedPeoplePage.tsx`, `AddLinkedProductsPage.tsx` (redirectBack), `features/Favorites/hooks/usePlacesOwner.ts`.
+- **Changes:** `?list=<id>` on `/recommendations/places`, read on mount (falls back to the first list only when absent); every return path carries it (OWN-05); Home navigates to `/recommendations/places?list=<id>` (OWN-18); line 1061 condition becomes `(loading && !cities) || !accountById` and the Manage click no longer calls `refetchCities()` (OWN-06).
+- **Depends on:** WP0.
+- **Acceptance / tests:** router tests for each return path; Home click test; tab-switch test asserting no `EarthLoader`.
+
+## WP1: Shell, origin back, loaders, toasts (GL-02, GL-03, GL-05, OWN-08 loader part, SCR-03 for 7 categories)
+
+- **Files:** `routes/ProtectedRoutes.tsx`, `routes/PublicRoutes.tsx` (loader only), `routes/validators/TabVisibilityGuard.tsx` (line 51), `layouts/PublicColdEntryBoundary.tsx` (line 130), `components/EarthLoader/*`, `components/Loader.tsx`, `components/RouteLoader.tsx`, new `lib/navigation/originBack.ts`; delete `features/LandingPage/hooks/use-toast.ts` and `hooks/useToast.ts` (verified: zero non-test importers on main, so this is dead-code removal with no caller edits). Not `pages/Favorites.tsx` (owned by WP3A this wave).
 - **Changes:**
-  - Addressable list routes `/recommendations/<category>/<listId>` for every category including Places; Places list selection read from the URL, not a store (OWN-05).
-  - `originBack` helper: navigations into list/add/guide pages pass `state.from`; Back uses it, falling back to the category page.
-  - Home place click navigates to the list route (OWN-18).
-  - Manage/tab switching: `(loading && !cities) || !accountById`, background-refresh indicator, no `refetchCities()` on tab click (OWN-06).
-  - One loader owner: globe splash only at boot with "Getting your recommendations ready…"; skeletons elsewhere; `TabVisibilityGuard` renders nothing while the cold-entry boundary is pending (OWN-08 loader part).
-  - Single toast system (`sonner`, bottom centre).
-- **Depends on:** WP0 merged (shares nothing, but keeps the chain simple).
-- **Acceptance:** from Home, a place opens its list; Back from add-item, linked list and add-linked pages returns to the origin list; Manage tab switch shows no full-screen loader; public list cold entry shows one loader; only `sonner` remains (grep).
-- **Tests:** router tests for origin back (deep link fallback), Home navigation test, loading-condition test, a grep test that the two old toast modules are gone.
+  - Addressable list routes `/recommendations/<category>/<listId>` for the seven non-Places categories (Places moves onto the shared route in WP6).
+  - `originBack` helper: navigations into list/add/guide pages pass `state.from`; Back uses it, falling back to the category page on deep links.
+  - One loader owner: globe splash only at boot with "Getting your recommendations ready…"; skeletons elsewhere; `TabVisibilityGuard` renders nothing while the cold-entry boundary is pending (OWN-08 loader part; badge and top nav stay in the public-pages phase).
+- **Depends on:** WP0B.
+- **Acceptance:** Back from add-item and linked pages returns to the origin list in all seven categories; public list cold entry shows one loader; only `sonner` remains.
+- **Tests:** router tests for origin back (incl. deep-link fallback and a browser-refresh case), loader single-owner test, grep test that the two toast modules are gone.
 
 ## WP2: Publish pill, phone bottom add button, publish nudge (GL-08, GL-04, OWN-02, CAT-08, PRIV-06, LP-10)
 
-- **Files (new):** `components/controls/PublishPill.tsx`, `components/controls/BottomAddButton.tsx`, `components/controls/PublishNudge.tsx`, `hooks/usePublishNudge.ts`, their tests and stories. Removes the category modal/`history.replaceState` nudge code in `pages/Favorites.tsx` L154-222 equivalent and per-category publish prompts (delete only; callers rewired in WP3A/WP3B).
+- **Files (new):** `components/controls/PublishPill.tsx`, `components/controls/BottomAddButton.tsx`, `components/controls/PublishNudge.tsx`, `hooks/usePublishNudge.ts`, their tests and stories. New files only: the old prompts (Places' `history.replaceState` nudge in `pages/Favorites.tsx`, per-category prompts and category modals) are removed by the package that adopts the new component on that screen (WP3A, WP3B, WP6), never by WP2.
 - **Interface (agreed now so WP3A/3B/9 can code against it):**
   - `<PublishPill kind="category" value="public|hidden" onChange />` and `<PublishPill kind="list|guide" value="draft|public" privateComingSoon onChange />`; menu ticks current, one-line explanation each; "👥 Private — coming soon" disabled.
   - `<BottomAddButton label onClick hidden />`: full width, ~56px, safe-area aware, shrinks on scroll down and restores on scroll up; renders only below the phone breakpoint.
@@ -101,19 +128,19 @@ Wave 1 packages touch disjoint files. WP3A/WP3B consume WP2's components through
 
 - **Files:** new `features/shared/category/CategoryPage.tsx`, `features/shared/category/ListCard.tsx`, `features/shared/topPicks/TopPicksHero.tsx`, `features/shared/topPicks/TopPicksManager.tsx`, `features/shared/lists/NewListDialog.tsx`; the eight `*Home.tsx` pages (`MoviesHome`, `BooksHome`, `GamesHome`, `AppsHome`, `ProductsHome`, `PeopleHome`, `GuidesPage` category part, Places category part of `pages/Favorites.tsx`) become thin wrappers; delete `TopPicksManager`, `TopReadsManager`, `TopGamesManager`, `AppTopPicksManager`, `ProductTopPicksManager`, `PersonTopPicksManager` and Places' Featured; per-category create-list modals and `useCreateLocation` UI.
 - **API:** collection create accepts Places location as optional data on a normal list (multiple lists per city, NL-04); social link + note move to collection update (NL-05). Changes in `tunes/server/application/recommendations.ts` create path and `explorersPlaceContract.ts` list snapshot only.
-- **Depends on:** WP2 interface (stub until merged), WP0 (0065 makes multiple same-city lists safe).
+- **Depends on:** WP0B (hands over `pages/Favorites.tsx`), WP2 interface (stub until merged), WP0 (0065 makes multiple same-city lists safe).
 - **Acceptance:** all 8 category pages render from one template; Top Picks always visible with empty and first-visit states; Manage Top Picks never disappears; list cards: no "Open", whole card clickable, names wrap, desktop compact toggle, phone ⋯ publish; drag-and-drop list-card reorder saves; New list popup identical everywhere, Places adds Location, lands on the new list.
 - **Tests:** template snapshot per category, Top Picks manager tests (pin/unpin/order), NewListDialog tests incl. Places location and duplicate-city allowed.
 
 ## WP3B: List page template, Share/QR, Manage, slug redirects (LP-01..10, OWN-07, OWN-14, GL-06 for items)
 
-- **Files:** new `features/shared/list/ListPage.tsx`, `ListTabs.tsx`, `RecommendationsTab.tsx`, `ShareTab.tsx`, `ManageTab.tsx`; `components/ShareModal.tsx` (QR capture moves into `ShareTab`; modal removed or thinned); the eight `*ListView.tsx` components become wrappers; `components/reorder/*` (drag-and-drop primary, arrows keyboard-only); API `tunes/server/application/recommendations.ts` (archive frees slug, delete), slug-redirect read in `tunes/server/application/ownerContent.ts` + public resolver; `tunes/migrations/0066_*.sql`.
+- **Files:** new `features/shared/list/ListPage.tsx`, `ListTabs.tsx`, `RecommendationsTab.tsx`, `ShareTab.tsx`, `ManageTab.tsx`; `components/ShareModal.tsx` (QR capture moves into `ShareTab`; modal removed or thinned); the seven non-Places `*ListView.tsx` components become wrappers (Places adopts the template in WP6); `components/reorder/*` (drag-and-drop primary, arrows keyboard-only); API `tunes/server/application/recommendations.ts` (archive frees slug, delete), slug rename UI on top of the WP0/S1 redirect table (no migration here).
 - **Changes:**
   - Three tabs mounted once (no remount on switch); pill top right (WP2).
   - Share: link, Copy, QR card with full-size Download (`toPng` with explicit width/height, no transform override, pixelRatio 2), social share.
   - Manage: name, description, cover, slug (editable; old slug stored in `collection_slug_redirects` and resolved to the list), Places social link + note, Archive (restorable via "Archived" filter) and Delete (in-page confirm). No duplicate Published toggle; no per-item Draft/Publish.
   - Items: drag handle reorder, ☆ pin, ⋯ menu.
-- **Depends on:** WP0 (0065), WP2 interface, WP1 routes (merge after WP1).
+- **Depends on:** WP0 (S1), WP2 interface, WP1 routes (merge after WP1).
 - **Acceptance:** downloaded QR is complete on 375px and desktop and scans; tab switch has no reload; renaming a slug keeps the old URL working; archive frees the slug; delete is permanent.
 - **Tests:** QR export test (image dimensions equal element size × ratio), slug redirect integration test, archive/delete integration tests, tab-mount test.
 
@@ -141,36 +168,36 @@ Wave 1 packages touch disjoint files. WP3A/WP3B consume WP2's components through
 
 ## WP6: Places on the new templates (ADD-06..10, ADD-09/DS-10, NL-03..05 UI, OWN-09, OWN-10, OWN-03)
 
-- **Files:** `features/Favorites/components/AddRecommendation.tsx`, `RecommendForm.tsx`, `AddPlaceOverlay` (deleted), `features/Favorites/hooks/useAddRecommendation.ts` (form parts; WP5 save logic kept), new `features/Favorites/components/PlaceSearchField.tsx` (name or `lat, lng` regex, ◎ my location, map icon), `PickOnMapSheet.tsx`, nearby lookup client with per-rounded-area cache; server nearby-search endpoint (basic fields only) in the existing places provider route; `explorersPlaceContract.ts` (remove `recommendationType: person` from new writes; keep reads of old rows).
+- **Files:** `pages/Favorites.tsx` (Places list view moves onto the WP3B list template and the shared route; old Places nudge removed), `features/Favorites/components/AddRecommendation.tsx`, `RecommendForm.tsx`, `AddPlaceOverlay` (deleted), `features/Favorites/hooks/useAddRecommendation.ts` (form parts; WP5 save logic kept), new `features/Favorites/components/PlaceSearchField.tsx` (name or `lat, lng` regex, ◎ my location, map icon), `PickOnMapSheet.tsx`, nearby lookup client with per-rounded-area cache; server nearby-search endpoint (basic fields only) in the existing places provider route; `explorersPlaceContract.ts` (remove `recommendationType: person` from new writes; keep reads of old rows).
 - **Changes:** Places add uses the WP4 template; coordinates resolve to a pin plus nearest named places; geolocation only on tap; OSM fallback; Instagram scraper off by default; legacy note left readable (data migration deferred, no new number needed).
-- **Depends on:** WP4, WP5, WP3A.
+- **Depends on:** WP3A, WP3B, WP4, WP5, S2.
 - **Acceptance:** add a place by name, by `15.49, 73.82`, by my-location and by map pin; category/subcategory picker works; no Person type; nearby lookup cached on repeat taps (network log).
 - **Tests:** coordinate parser table, nearby cache test, form tests for the four entry paths, contract test that person-type writes are refused.
 
 ## WP7: Movies, Books, Games + curated taxonomies (DS-07, DS-15, DS-01 display, UAT-01..04, Games developer)
 
-- **Files:** `features/Movies/components/dashboard/AddMoviePage.tsx` (form; WP5 save kept), `features/Books/**/AddBookPage.tsx`, `features/Games/**/AddGamePage.tsx`, their detail modals; `explorersMovieContract.ts`, `explorersBookContract.ts`, `explorersGameContract.ts`, `explorersGameOwnerContract.ts` (add `developer`), `explorersTaxonomyContract.ts` (allow the five new categories, flat), taxonomy fixtures + apply command inputs; `tunes/server/application/bookCoverImport.ts` (UAT-03); i18n `ar` "Itinerary" (UAT-04); `tunes/migrations/0067_*.sql`.
+- **Files:** `features/Movies/components/dashboard/AddMoviePage.tsx` (form; WP5 save kept), `features/Books/**/AddBookPage.tsx`, `features/Games/**/AddGamePage.tsx`, their detail modals; `explorersMovieContract.ts`, `explorersBookContract.ts`, `explorersGameContract.ts`, `explorersGameOwnerContract.ts` (add `developer`), `explorersTaxonomyContract.ts` (allow the five new categories, flat), taxonomy fixtures + apply command inputs; `tunes/server/application/bookCoverImport.ts` (UAT-03); i18n `ar` "Itinerary" (UAT-04). Schema 0067 comes from S2.
 - **Changes:** curated term lists drafted for Movies (genres mapped from TMDB), Books (~25 from subjects), Games (from IGDB genres), Apps (~20) and Products (~20); applied with the existing reviewed taxonomy-apply flow (receipts); `movieTerms` mapped onto the curated list; surface runtime/seasons; developer from IGDB `involved_companies`; stop fetching unused IGDB fields; provider rating as a source chip; game platform chips all shown (UAT-01); Enter triggers game search (UAT-02); book covers served from our stored copy (UAT-03).
-- **Depends on:** WP4, WP5. WP8 depends on 0067.
+- **Depends on:** WP4, WP5, S2.
 - **Acceptance:** each category's add flow on the template with search-first; every new item can carry a curated category; provider rating never appears on the owner's star scale.
 - **Tests:** taxonomy contract tests for the new categories, apply dry-run fixture tests, migration integration test, game platform/Enter tests, book cover source test.
 
 ## WP8: Apps, Products, People + paste-a-link prefill (DS-02..06, DS-08, DS-09, DS-11, DS-12, DS-14, ADD-11, ADD-12, ADD-14, OWN-15, OWN-20)
 
-- **Files:** `features/AppsAndTools/**/AddAppPage.tsx`, `features/Products/**/AddProductPage.tsx`, `ProductDetailModal.tsx`, `features/People/**/AddPersonPage.tsx`, person detail; `explorersAppContract.ts`, `explorersProductContract.ts`, `explorersPersonContract.ts`; `tunes/server/application/appEnrichmentWebsiteAdapter.ts` + `appEnrichmentProviderCore.mjs` generalised into a `linkPreview` service (`{title, description, imageUrl, siteName, product?, person?}`, OG/Twitter/JSON-LD + oEmbed, SSRF guard, timeout, size cap); `appEnrichmentAppleAdapter.ts` gains keyword search; `tunes/migrations/0068_*.sql`.
+- **Files:** `features/AppsAndTools/**/AddAppPage.tsx`, `features/Products/**/AddProductPage.tsx`, `ProductDetailModal.tsx`, `features/People/**/AddPersonPage.tsx`, person detail; `explorersAppContract.ts`, `explorersProductContract.ts`, `explorersPersonContract.ts`; `tunes/server/application/appEnrichmentWebsiteAdapter.ts` + `appEnrichmentProviderCore.mjs` generalised into a `linkPreview` service (`{title, description, imageUrl, siteName, product?, person?}`, OG/Twitter/JSON-LD + oEmbed, SSRF guard, timeout, size cap); `appEnrichmentAppleAdapter.ts` gains keyword search. Schema 0068 comes from S2; each new `tunes/shared` file triggers the `.dockerignore` regeneration.
 - **Changes:**
   - Products: "Product photo" (upload or from preview), brand, one "Where to buy" link (migration merges `productUrl` and `offer.buyUrl`, keeping old rows readable), price with inline currency selector defaulting to locale, ≤8 key specs, affiliate-disclosure toggle; brand-logo URL removed.
   - Apps: one link + optional other-platform links (merge `downloadUrl`), iTunes keyword search, preview fills icon/developer/screenshots; price model keeps four values.
-  - People: name, photo, headline, required sector, profile link with platform auto-detect, ≤4 extra social links, location; rating and follower count removed (existing values dropped by 0068 after a backup-verified deploy); skills as plain tags.
-- **Depends on:** WP4, WP7 (0067).
+  - People: name, photo, headline, required sector, profile link with platform auto-detect, ≤4 extra social links, location; rating and follower count no longer shown or written (0068 keeps the columns; dropping them is a later cleanup after the owner confirms); skills as plain tags.
+- **Depends on:** WP4, S2.
 - **Acceptance:** pasting a product page URL prefills photo/brand/price/currency where published; pasting a profile URL prefills name/photo/headline where public; Apps search returns iOS/macOS apps; the old two-URL rows still read.
 - **Tests:** link-preview parser fixtures (Product, Person JSON-LD, OG-only, blocked, oversize, SSRF), iTunes search adapter test, money semantics regression, migration integration test, form tests.
 
 ## WP9: Guides (GD-02..11, GD-16..31, CAT-09, LNK-08 UI shell, SMP-10 hook)
 
-- **Files:** `features/Guides/**` (GuidesPage category part via WP3A template, new `GuideEditor/` with `DayStrip.tsx`, `DayList.tsx`, `SmartAddBox.tsx`, `MyListsPanel.tsx`, `TimeLabelChip.tsx`, `PlanChips.tsx`), `NewGuideDialog.tsx` (replaces CreateGuideStep1-3), guide Share/Manage tabs from WP3B; `explorersGuideContract.ts`; `tunes/server/application/guides.ts`; `tunes/migrations/0069_*.sql`.
+- **Files:** `features/Guides/**` (GuidesPage category part via WP3A template, new `GuideEditor/` with `DayStrip.tsx`, `DayList.tsx`, `SmartAddBox.tsx`, `MyListsPanel.tsx`, `TimeLabelChip.tsx`, `PlanChips.tsx`), `NewGuideDialog.tsx` (replaces CreateGuideStep1-3), guide Share/Manage tabs from WP3B; `explorersGuideContract.ts`; `tunes/server/application/guides.ts`. Schema 0069 comes from S3.
 - **Data/API:**
-  - 0069: guide day items as an ordered list (`position`) with nullable `time_label` (enum label or `HH:MM`), item source (`list_item_ref` / `place` / `note`); migrate existing morning/afternoon/evening picks to ordered items with labels (GD-31); `numberOfDays` kept in sync.
+  - 0069 (in S3): guide day items as an ordered list (`position`) with nullable `time_label` (enum label or `HH:MM`), item source (`list_item_ref` / `place` / `note`); migrate existing morning/afternoon/evening picks to ordered items with labels (GD-31); `numberOfDays` kept in sync.
   - Commands: `addDay(at?)`, `moveDay(from,to)`, `duplicateDay`, `clearDay`, `deleteDay` (refuses the last day), `addDayItem(day, at?, source)`, `moveDayItem(itemId, toDay, toIndex)` (single command, Undo), `setTimeLabel`, `removeDayItem` (never touches the source list item). Each is one API call the plugin can reuse later (DIR-07).
   - Tags/best months/budget optional; 4-tag minimum removed; free-text categories → core picker.
 - **UI flow (GD-24..30):** day strip with "+ Day"; desktop dashed "+ Add to day" row, phone bottom button "+ Add to Day N"; smart box in place (saved items → Google → "Add as a note"), stays open for the next item; drag within/between days and onto day chips; "Move to day…" in the item menu; day grip drag or ⋯ Move earlier/later; time headings only when labels exist; Plan | Share | Manage; Itinerary always, Stay/Transport/Budget/Tips as "+ Add" chips; My lists panel (desktop) / bottom sheet (phone) with Map tab.
@@ -180,7 +207,7 @@ Wave 1 packages touch disjoint files. WP3A/WP3B consume WP2's components through
 
 ## WP10: Linking any list ↔ any list (LNK-01..09, OWN-13)
 
-- **Files:** `explorersPlaceLinkContract.ts` → new `explorersListLinkContract.ts`; link application/repository code; `tunes/migrations/0070_*.sql`; SPA `features/shared/list/LinkedListsSection.tsx`, `ManageTab` linked-lists panel (attach picker with "Create a new list" via `NewListDialog`), guide-level roles in Manage; remove `AddLinkedPeoplePage`/`AddLinkedProductsPage` and Places' People/Products tabs.
+- **Files:** `explorersPlaceLinkContract.ts` → new `explorersListLinkContract.ts`; link application/repository code (schema 0070 from S3); the place-links frozen seal `scripts/fixtures/place-links-atomic-diagnostic-frozen.json` and `scripts/place-links-atomic-diagnostic.test.mjs` are updated in the same PR; SPA `features/shared/list/LinkedListsSection.tsx`, `ManageTab` linked-lists panel (attach picker with "Create a new list" via `NewListDialog`), guide-level roles in Manage; remove `AddLinkedPeoplePage`/`AddLinkedProductsPage` and Places' People/Products tabs.
 - **Changes:** links between any two of the owner's own lists, one level deep, with an optional role label (used by guides); migrate existing place links; Detach with Undo; public projection only exposes links to publicly visible lists (public rendering itself is LATER).
 - **Depends on:** WP3B, WP9 (guide Manage tab), WP1 (origin back).
 - **Acceptance:** link Places ↔ Books/Apps/People/Products and Guide ↔ Products packing list; detach and undo; opening a linked list and Back returns; old Places links still present after migration; a draft linked list never appears in the public projection.
@@ -188,7 +215,7 @@ Wave 1 packages touch disjoint files. WP3A/WP3B consume WP2's components through
 
 ## WP11: First-visit samples (SMP-01..10)
 
-- **Files:** sample fixtures `tunes/server/fixtures/samples/{india,global}/v1/*.json` (drafted content), seeding in account onboarding completion (`tunes/server/application/accountLifecycle.ts` or the onboarding command), publish paths + public read model refuse `is_sample`, `makeItMine` and sample delete commands; `tunes/migrations/0071_*.sql`; SPA Sample badge on list cards and Top Picks (not on All Recommendations), "Make it mine" and delete actions, pill disabled with "Samples can't be published".
+- **Files:** sample fixtures `tunes/server/fixtures/samples/{india,global}/v1/*.json` (drafted content), seeding in account onboarding completion (`tunes/server/application/accountLifecycle.ts` or the onboarding command), publish paths + public read model refuse `is_sample`, `makeItMine` and sample delete commands (schema 0071 from S3); new `tunes/server/fixtures/` directory (does not exist today; add it to the `.dockerignore` allow-list via the generator); SPA Sample badge on list cards and Top Picks (not on All Recommendations), "Make it mine" and delete actions, pill disabled with "Samples can't be published".
 - **Changes:** country from onboarding picks India or Global; places samples resolved to real Google places at fixture-authoring time (stored ids, no runtime cost); deleted samples recorded so they never reseed.
 - **Depends on:** WP3A, WP3B, WP9 (sample guide), WP7/WP8 (field shapes).
 - **Acceptance:** a fresh account sees 2-3 samples per category localised by country; Make it mine converts in place to a draft; delete is permanent and never returns; samples never appear on the profile or public endpoints.
@@ -198,28 +225,114 @@ Wave 1 packages touch disjoint files. WP3A/WP3B consume WP2's components through
 
 1. Merge order check: all packages merged with merge commits; migration head is 0071; `main` CI green.
 2. **Local proof:** fresh worktree, `npm ci` in root, `tunes`, `explorers-earth`; run both typechecks, the frontend unit lane, the tunes unit and integration lanes and the Playwright dashboard flows; click through every flow in scope §3/§5/§6 at desktop and 375px on the local stack; record results on the UAT board (new and updated cases per DIR-09).
-3. **Restore drill at the new head (0071):** run the platform restore drill against the latest backup manifest with the backup identity and drill credentials (owner-held; never printed), commit the refreshed `docs/replatform/evidence/recovery-receipt.json` via PR, merge. A receipt at an older head fails the deploy with `DRILL_MARKER_MISMATCH`.
-4. **Re-publish the image** from that exact `main` commit: `tunes.yml` with `publish_image=true`, `deploy_music=false`; take the digest from the publish job. The deploy verifies the attestation against the commit, so any later commit needs a re-publish.
-5. **Deploy:** `explorers.yml` with `confirm_cutover=replace-explorers-host` and the digest; the owner approves the `explorers-production` environment. The deploy takes its own pre-deploy backup and runs 0065-0071.
+3. **Restore drill at the database's CURRENT head, not the new one.** The gate (`tunes/shared/platformRecoveryContract.ts:135`) compares the receipt's marker with the pre-deploy backup manifest's marker, which is the live head before migrating (0066 after checkpoint B). Run `npm run platform:restore-drill -- --manifest <latest prod manifest.json> --identity <owner age identity> --receipt <TEMP>/platform-restore-drill-<8+ letters>` on the latest `prod/backups/` manifest (owner-held credentials; never printed), commit the refreshed `docs/replatform/evidence/recovery-receipt.json` via PR, merge. The receipt must also be fresh (`DRILL_STALE`) and the backup fresh (`BACKUP_STALE`), so drill close to deploy day. A receipt at any other marker fails with `DRILL_MARKER_MISMATCH`.
+4. **Re-publish the image** from that exact `main` commit (the receipt commit changes `main`, so publish after it): `tunes.yml` with `publish_image=true`, `deploy_music=false`; take the digest from the publish job. The deploy verifies the attestation against the commit, so any later commit needs a re-publish.
+5. **Deploy:** `explorers.yml` with `confirm_cutover=replace-explorers-host` and the digest; the owner approves the `explorers-production` environment. The deploy takes its own pre-deploy backup and runs 0067-0071 (0065-0066 shipped at checkpoint A).
 6. **Taxonomy apply** for the five new catalogs (dry run, then apply, receipts recorded) via the owner's server agent.
 7. **Live re-test** on https://explorers.earth with the test account: every OWN case, UAT leftovers (UAT-01..04, clean up UAT-07), every new dashboard case; measure OWN-17 timings against the WP5 targets; record on the board; the owner runs the 55 owner-only cases (UAT-08).
 8. Hand over to the public-pages phase.
 
+## Design acceptance (applies to every UI package)
+
+The approved mocks are the visual spec; packages build to them, not to this text.
+
+- **Fidelity check:** each UI PR attaches screenshots at 1280px and 375px next to the matching mock screen (v3 dashboard, v4/v4.2 Guides, v5 controls), and lists any deliberate difference.
+- **States per screen** (every screen must design all five; the PR shows each):
+
+| Screen | Loading | Empty | Error | Partial / offline | Success feedback |
+|---|---|---|---|---|---|
+| Category page | card + Top Picks skeleton | "Create your first list" CTA; Top Picks "Pin items to feature them here" | inline retry row | cached cards + "Refreshing…" | toast on create/reorder |
+| List page | item skeleton, tabs usable | large centred "+ Add item" CTA (no bottom button) | retry row; a failed list read shows an error row, never disappears (OWN-19) | keep data, background-refresh dot | "Order saved", publish pill updates in place |
+| Add/edit item | spinner inside Save only | no results → "Add manually" button | inline field errors (URL normalisation, prefill failed: "Couldn't read that link, fill in manually") | prefill partial: filled fields marked, rest editable | "Saved" toast; Save and add another clears the form |
+| Places search | — | coordinates with no nearby place → pin only | geolocation denied → hint to type or use the map; no re-prompt | Google quota/offline → OSM fallback note | — |
+| Guide editor | day skeletons | empty day: dashed "+ Add to day" | move/reorder failure → item snaps back + toast with Retry | — | Undo toast on move/delete |
+| Samples | — | after deleting all samples nothing returns | publish attempt on a sample → pill disabled with "Samples can't be published" | — | "Now yours" after Make it mine |
+
+- **Accessibility:** touch targets ≥ 44px (bottom add button 56px); every drag action has a keyboard path (Space to pick up, arrows, Space to drop) and a menu path ("Move to day…", "Move earlier/later"); the publish pill is a menu button with `aria-haspopup` and announces the current state; contrast on the one-colour All Recommendations cards checked against WCAG AA; focus returns to the trigger when a sheet or dialog closes.
+- **Edge content:** list and guide names up to the 500-char limit wrap to two lines then truncate with a tooltip; 47+ char names tested; RTL (Arabic) checked on the pill, bottom button and day strip.
+
 ## Package summary
 
-| Package | Wave | Migration | Depends on |
+| Package | Wave | Schema | Depends on |
 |---|---|---|---|
-| WP0 P0 bugs | 0 | 0065 | — |
-| WP1 Shell, navigation, loaders, toasts | 1 | — | WP0 |
+| WP0 P0 bugs + S1 | 0 | 0065, 0066 | — |
+| WP0B Places navigation hotfix | 0 | — | WP0 |
+| Deploy checkpoint A | 0 | — | WP0, WP0B |
+| WP1 Shell, origin back, loaders, toasts | 1 | — | WP0B |
 | WP2 Publish pill, bottom add, nudge | 1 | — | WP0 |
-| WP3A Category page + Top Picks + New list | 1 | — | WP0, WP2 iface |
-| WP3B List page + Share/QR + Manage | 1 | 0066 | WP0, WP1, WP2 iface |
+| WP3A Category page + Top Picks + New list (owns Favorites.tsx) | 1 | — | WP0B, WP2 iface |
+| WP3B List page + Share/QR + Manage (7 categories) | 1 | — | WP0, WP1, WP2 iface |
 | WP4 Add-item template | 1 | — | WP0 |
 | WP5 Performance | 1 | — | WP0 |
-| WP6 Places | 2 | — | WP3A, WP4, WP5 |
-| WP7 Movies/Books/Games + taxonomies | 2 | 0067 | WP4, WP5 |
-| WP8 Apps/Products/People + prefill | 2 | 0068 | WP4, WP7 |
-| WP9 Guides | 3 | 0069 | WP2, WP3A, WP3B, WP4, WP6 |
-| WP10 Linking | 4 | 0070 | WP1, WP3B, WP9 |
-| WP11 First-visit samples | 5 | 0071 | WP3A, WP3B, WP7, WP8, WP9 |
+| Deploy checkpoint B | 1 | — | Wave 1 |
+| S2 schema | 2 | 0067, 0068 | Wave 1 |
+| WP6 Places (owns Favorites.tsx) | 2 | — | WP3A, WP3B, WP4, WP5, S2 |
+| WP7 Movies/Books/Games + taxonomies | 2 | — | WP4, WP5, S2 |
+| WP8 Apps/Products/People + prefill | 2 | — | WP4, S2 |
+| S3 schema | 3 | 0069, 0070, 0071 | Wave 2 |
+| WP9 Guides | 3 | — | WP2, WP3A, WP3B, WP4, WP6, S3 |
+| WP10 Linking | 4 | — | WP1, WP3B, WP9, S3 |
+| WP11 First-visit samples | 5 | — | WP3A, WP3B, WP7, WP8, WP9, S3 |
 | WP12 Local proof, drill, publish, deploy, live re-test | 6 | — | all |
+
+## Review findings (2026-10-23)
+
+Engineering review (gstack `plan-eng-review`) and design review (gstack `plan-design-review`) of the first version of this plan, run for an owner who delegated decisions; the recommended option was adopted each time. Every claim was checked against `origin/main` @ 8063651c.
+
+### Verified correct
+- All cited existing paths exist (29 checked). `tunes/server/fixtures/` does not exist and is now marked as new.
+- OWN root-cause lines match main: `useAddRecommendation.ts:205`, `0029:33`, `Home.tsx:1000`, `ShareModal.tsx:95`, `Favorites.tsx:1061` and `:1461-1462`, `AddRecommendation.tsx:577`, `movieMediaImport.ts:98`, `placesCommands.ts:41`, `explorersRecommendationRepository.ts:59-62`, `placesViewModel.ts:167`, `PublicColdEntryBoundary.tsx:130`, `TabVisibilityGuard.tsx:51`.
+- Migration head is 0064; 0065-0071 are free.
+- `npm run platform:restore-drill`, `tunes.yml` `publish_image`/`deploy_music`, and `explorers.yml` `confirm_cutover=replace-explorers-host` match the runbook.
+
+### Findings and changes, by severity
+
+| Sev | Finding | Change made |
+|---|---|---|
+| P1 | **Drill step was wrong.** The plan said "drill at the new head (0071)". The gate compares the receipt marker with the pre-deploy backup's marker, i.e. the live head before migrating (`platformRecoveryContract.ts:135`). A 0071 receipt would be refused with `DRILL_MARKER_MISMATCH`. | WP12 step 3 and both checkpoints now drill at the live head, then republish from the receipt commit; freshness limits noted. |
+| P1 | **Seven migrations in parallel packages collide.** Each new head rewrites ~25 marker-pinned files plus OCI fixtures and head-pinned tests (0064 touched ~50 files). Parallel schema PRs would conflict on all of them every time. | Schema batched into three schema PRs (S1 in WP0, S2, S3) with a written marker-bump checklist; feature packages no longer own migrations. |
+| P1 | **Wave 1 was not disjoint.** `pages/Favorites.tsx` (1921 lines: Places category page, list page, Manage, nudge) was edited by WP1, WP2, WP3A and WP3B in the same wave; `useAddRecommendation.ts` by WP0/WP5/WP6. | One owner per wave: new WP0B (Places nav hotfix) → WP3A → WP6. WP1 drops Favorites/usePlacesOwner; WP2 creates new files only; WP3B covers the 7 non-Places categories; Places list moves in WP6. |
+| P1 | **CI selector registration missing.** `test.yml` runs only the integration files it names; new ones must be appended to the ordinary selector list and `music-image-ci-tests.test.ts` updated (precedent 8bdc6a34), or they never run in the required lane. | Added to the rules for every package. |
+| P2 | **Generated `.dockerignore` is default-deny.** New `tunes/shared/` contracts (e.g. the list-link contract) and the new `tunes/server/fixtures/` would be invisible to the image build. | Rule added: regenerate with `scripts/generate-music-fixture-dockerignore.mjs --write`; named in WP8, WP10, WP11. |
+| P2 | **Frozen seal on place links.** WP10 replaces place links, which `scripts/fixtures/place-links-atomic-diagnostic-frozen.json` pins. | WP10 updates the seal in the same PR; general rule added. |
+| P2 | **Destructive data loss in 0068.** Dropping People rating/follower columns is irreversible and only a delegated decision. | 0068 keeps the columns (stops reading/writing); the drop is a later cleanup after owner confirmation. |
+| P2 | **One big-bang deploy at the end.** All fixes and seven migrations would ship at once. | Two earlier deploy checkpoints (A after Wave 0, B after Wave 1) so bug fixes and speed reach the owner sooner and risk is split. |
+| P2 | **OWN-01 edge cases.** Creating the partial index could fail on existing live duplicates; restoring an archived list whose slug was reused was unspecified. | 0065 checks for live duplicates first; restore-after-reuse returns a clear conflict; tests added. |
+| P2 | **Design states unspecified.** The first version named screens but not loading/empty/error/partial states, accessibility or edge content. | New "Design acceptance" section: per-screen state table, a11y rules, edge content, and a screenshot-vs-mock fidelity check per UI PR. |
+| P3 | Toast consolidation was scoped as a caller migration. Verified zero non-test importers of the two old toast modules. | WP1 now deletes them as dead code (no caller edits). |
+
+### Design review scores (plan vs approved mocks)
+
+| Dimension | Before | After |
+|---|---|---|
+| Information architecture | 8 | 9 |
+| Interaction states | 3 | 8 |
+| User journey / navigation | 7 | 9 |
+| AI-slop risk (mocks are the spec) | 7 | 9 |
+| Design-system alignment (today's look, one pill, one add button) | 8 | 9 |
+| Responsive + accessibility | 4 | 8 |
+| Unresolved design decisions | 8 | 9 |
+
+No new mockups were generated: the owner already approved v3, v4/v4.2 and v5, which are the visual source of truth.
+
+### NOT in scope (unchanged)
+Public pages, private sharing (invites), saving others' lists, the plugin, monetisation, the Topic guide template, product search (DS-13), dropping the People rating/follower columns.
+
+### Owner-only items
+- Approve the two extra production deploys (checkpoints A and B) in GitHub, and run the drill each time with your backup identity (the credentials never pass through a session).
+- Run the five new taxonomy applies on the server (dry run, then apply) via your laptop server agent after the final deploy.
+- Run the 55 owner-only UAT cases at sign-off.
+
+## GSTACK REVIEW REPORT
+
+| Review | Trigger | Why | Runs | Status | Findings |
+|--------|---------|-----|------|--------|----------|
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | CLEAR (PLAN) | 10 issues, 0 critical gaps open (all folded into the plan) |
+| Design Review | `/plan-design-review` | UI/UX gaps | 1 | CLEAR (PLAN) | score: 6/10 → 9/10, 4 decisions (delegated, recommended options) |
+| CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | — | — |
+| Codex Review | `/codex review` | Independent 2nd opinion | 0 | — | — |
+| DX Review | `/plan-devex-review` | Developer experience gaps | 0 | — | — |
+
+- **VERDICT:** ENG + DESIGN CLEARED — ready for the detailed implementation plans.
+
+NO UNRESOLVED DECISIONS
