@@ -35,7 +35,7 @@ const PublicProducts = () => {
   const query = usePublicRecommendationCategory(username, "products", accountData?.public_products === "Yes");
   const { data, loading: productsLoading, error: productsError, refetch: refetchProducts } = query;
 
-  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const accountHandle = typeof accountData?.username === "string" ? accountData.username : undefined;
   const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
 
   const loading = userLoading || productsLoading;
@@ -57,11 +57,11 @@ const PublicProducts = () => {
   }, [hasUsableData, loading, outletContext]);
 
   const handleRetry = useCallback(async () => {
-    await settlePublicRouteRetries(refetchUser, accountDocumentId ? refetchProducts : undefined);
-  }, [accountDocumentId, refetchProducts, refetchUser]);
+    await settlePublicRouteRetries(refetchUser, accountHandle ? refetchProducts : undefined);
+  }, [accountHandle, refetchProducts, refetchUser]);
 
   const analytics = useTrackAnalytics(
-    createAnalyticsOptions.products(accountDocumentId || "", username),
+    createAnalyticsOptions.products(accountHandle || "", username),
   );
 
   const owningListByProductId = useMemo(() => {

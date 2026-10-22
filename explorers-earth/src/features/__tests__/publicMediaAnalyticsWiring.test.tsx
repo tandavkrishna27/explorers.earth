@@ -34,7 +34,7 @@ vi.mock('../../services/analyticsService', async (importOriginal) => {
 });
 vi.mock('../PublicHome/api/usePublicProfileShell', () => ({
   usePublicProfileShell: () => ({
-    data: { documentId: 'account-1', Account_Name: 'TK', public_games: 'Yes', public_movie: 'Yes' },
+    data: { username: 'tk2727', Account_Name: 'TK', public_games: 'Yes', public_movie: 'Yes' },
     loading: false, error: null, refetch: vi.fn(),
   }),
 }));
@@ -100,7 +100,7 @@ describe('public media analytics wiring', () => {
     renderAt('/tk2727/movies/weekend', '/:username/movies/:listSlug', <PublicMovieList />);
 
     expect(mocks.hookOptions).toHaveBeenLastCalledWith(expect.objectContaining({
-      accountId: 'account-1', pageName: 'public-movies', pageUsername: 'tk2727',
+      accountId: 'tk2727', pageName: 'public-movies', pageUsername: 'tk2727',
       locationId: 'movie-list-1', autoTrackView: true,
     }));
     fireEvent.click(screen.getByRole('button', { name: 'Heat' }));
@@ -114,7 +114,7 @@ describe('public media analytics wiring', () => {
     renderAt('/tk2727/movies/genre/drama', '/:username/movies/genre/:genreSlug', <PublicMovieGenre />);
 
     expect(mocks.hookOptions).toHaveBeenLastCalledWith(expect.objectContaining({
-      accountId: 'account-1', pageName: 'public-movies', pageUsername: 'tk2727', autoTrackView: true, ready: true,
+      accountId: 'tk2727', pageName: 'public-movies', pageUsername: 'tk2727', autoTrackView: true, ready: true,
     }));
     fireEvent.click(screen.getByRole('button', { name: 'Heat' }));
     expect(mocks.trackClick).toHaveBeenCalledWith('movie-card', expect.objectContaining({
@@ -127,7 +127,7 @@ describe('public media analytics wiring', () => {
     renderAt('/tk2727/games/backlog', '/:username/games/:listSlug', <PublicGamesList />);
 
     expect(mocks.hookOptions).toHaveBeenLastCalledWith(expect.objectContaining({
-      accountId: 'account-1', pageName: 'public-games', pageUsername: 'tk2727',
+      accountId: 'tk2727', pageName: 'public-games', pageUsername: 'tk2727',
       locationId: 'game-list-1', autoTrackView: true,
     }));
     fireEvent.click(screen.getByRole('button', { name: 'Elden Ring' }));
@@ -141,7 +141,7 @@ describe('public media analytics wiring', () => {
     renderAt('/tk2727/games/genre/rpg', '/:username/games/genre/:genreSlug', <PublicGamesGenre />);
 
     expect(mocks.hookOptions).toHaveBeenLastCalledWith(expect.objectContaining({
-      accountId: 'account-1', pageName: 'public-games', pageUsername: 'tk2727', autoTrackView: true, ready: true,
+      accountId: 'tk2727', pageName: 'public-games', pageUsername: 'tk2727', autoTrackView: true, ready: true,
     }));
     fireEvent.click(screen.getByRole('button', { name: 'Elden Ring' }));
     expect(mocks.trackClick).toHaveBeenCalledWith('game-card', expect.objectContaining({
@@ -153,7 +153,7 @@ describe('public media analytics wiring', () => {
     mocks.category = { recommendationLists: [] };
     renderAt('/tk2727/places/map', '/:username/places/map', <MapView />);
     expect(mocks.hookOptions).toHaveBeenCalledWith(expect.objectContaining({
-      accountId: 'account-1', pageName: 'public-home', pageUsername: 'tk2727', autoTrackView: true,
+      accountId: 'tk2727', pageName: 'public-home', pageUsername: 'tk2727', autoTrackView: true,
     }));
   });
 
@@ -161,7 +161,7 @@ describe('public media analytics wiring', () => {
     mocks.category = { recommendationLists: [{ documentId: 'city-1', slug: 'goa', List_Name: 'Goa', recommended_places: [] }] };
     renderAt('/tk2727/places/goa/placesmap', '/:username/places/:place/placesmap', <PlaceMapView />);
     expect(mocks.hookOptions).toHaveBeenCalledWith(expect.objectContaining({
-      accountId: 'account-1', pageName: 'public-home', pageUsername: 'tk2727',
+      accountId: 'tk2727', pageName: 'public-home', pageUsername: 'tk2727',
       locationId: 'city-1', waitForLocation: true,
     }));
   });

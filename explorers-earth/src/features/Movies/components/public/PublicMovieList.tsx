@@ -40,9 +40,9 @@ const PublicMovieList = () => {
 
   const movies: RecommendedMovie[] = deduplicateMovies(list?.recommended_movies ?? []);
 
-  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const accountHandle = typeof accountData?.username === "string" ? accountData.username : undefined;
   const analytics = useTrackAnalytics({
-    ...createAnalyticsOptions.movies(accountDocumentId || "", username, list?.documentId),
+    ...createAnalyticsOptions.movies(accountHandle || "", username, list?.documentId),
     waitForLocation: true,
   });
 

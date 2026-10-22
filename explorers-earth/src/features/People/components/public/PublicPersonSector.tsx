@@ -26,10 +26,10 @@ const PublicPersonSector = () => {
   const [selectedPerson, setSelectedPerson] = useState<RecommendedPerson | null>(null);
 
   const { data: accountData, loading: userLoading, error: userError, refetch: refetchUser } = usePublicProfileShell(username);
-  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const accountHandle = typeof accountData?.username === "string" ? accountData.username : undefined;
   const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
   const analytics = useTrackAnalytics(
-    createAnalyticsOptions.people(accountDocumentId || "", username),
+    createAnalyticsOptions.people(accountHandle || "", username),
   );
 
   const eligible = accountData?.public_people === "Yes";
@@ -51,8 +51,8 @@ const PublicPersonSector = () => {
   }, [hasUsableData, loading, outletContext]);
 
   const handleRetry = useCallback(async () => {
-    await settlePublicRouteRetries(refetchUser, accountDocumentId ? refetchPeople : undefined);
-  }, [accountDocumentId, refetchPeople, refetchUser]);
+    await settlePublicRouteRetries(refetchUser, accountHandle ? refetchPeople : undefined);
+  }, [accountHandle, refetchPeople, refetchUser]);
 
   const sectorPeople = useMemo(() => (data?.recommended_people ?? []).map(publicPersonViewModel),[data]);
 

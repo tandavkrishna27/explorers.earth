@@ -50,7 +50,7 @@ const PublicBookList = () => {
   } : undefined);
   const books: RecommendedBook[] = deduplicateBooks(rawList?.recommended_books);
 
-  const analytics = useTrackAnalytics({ ...createAnalyticsOptions.books(rawList?.account?.documentId || '', username, rawList?.documentId), ready: hasUsableData });
+  const analytics = useTrackAnalytics({ ...createAnalyticsOptions.books(rawList?.account?.username || '', username, rawList?.documentId), ready: hasUsableData });
   const handleBookClick = useCallback((book: RecommendedBook) => {
     setModalState({ open: true, book });
     analytics.trackClick('book-card', { id: book.documentId, listId: book.book_list?.documentId || rawList?.documentId, listName: book.book_list?.List_Name || rawList?.List_Name, title: book.title });

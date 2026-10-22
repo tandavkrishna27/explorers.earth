@@ -1,3 +1,4 @@
+import {publicAccountRefSchema} from '../publicProfile/publicAccountRef';
 import {createHash,createHmac,timingSafeEqual} from 'node:crypto';
 import {z} from 'zod/v3';
 import type {Pool,PoolClient} from 'pg';
@@ -89,7 +90,7 @@ export function publicPlaceReadFailure(error:unknown):unknown {return (error as 
 export class PublicPlaceCursorError extends Error {constructor(){super('Invalid Places continuation');}}
 export class PublicPlaceRestartConflict extends Error {constructor(){super('Places changed; restart pagination');}}
 const digits=z.string().regex(/^\d+$/);
-const bindingSchema=z.object({account:z.string().uuid(),username:z.string().max(64),collection:z.string().uuid(),slug:z.string().max(200),limit:z.number().int().min(1).max(24),collectionRevision:digits,categoryRevision:digits,accountRevision:digits,catalogVersion:z.string().max(256),eligibilityFingerprint:z.string().regex(/^[a-f0-9]{64}$/)}).strict();
+const bindingSchema=z.object({account:z.union([publicAccountRefSchema,z.string().uuid()]),username:z.string().max(64),collection:z.string().uuid(),slug:z.string().max(200),limit:z.number().int().min(1).max(24),collectionRevision:digits,categoryRevision:digits,accountRevision:digits,catalogVersion:z.string().max(256),eligibilityFingerprint:z.string().regex(/^[a-f0-9]{64}$/)}).strict();
 const tupleSchema=z.object({pinBucket:z.union([z.literal(0),z.literal(1)]),sortPosition:z.number().int().min(0).max(Number.MAX_SAFE_INTEGER-1).safe(),id:z.string().uuid()}).strict();
 const cursorSchema=z.object({v:z.literal('places-pins/2'),binding:bindingSchema,tuple:tupleSchema}).strict();
 export type PlacePinsCursorBinding=z.infer<typeof bindingSchema>;
