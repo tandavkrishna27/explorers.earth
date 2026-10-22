@@ -28,6 +28,16 @@ Mocks v4: https://claude.ai/artifact/EQhDwNgFuhBnYM94xs964Q (private). Model dec
   The setting appears in both Share and Manage.
 - **Make it mine:** the entry point to copy a public guide into your own drafts sits on the public guide page. Public pages are out of scope for this round.
 
+### v4.2: Day structure (SETTLED by owner, 2026-10-23)
+
+These rules replace the fixed Morning/Afternoon/Evening slots in v4 and v4.1. Everything else in v4 is approved.
+
+- **Each day is one ordered list.** Users add items and drag to reorder, within a day and across days. "+ Add to Day N" opens the smart box at the end of the day.
+- **Optional time label per item:** Morning, Afternoon, Evening, Night, or an exact time (e.g. 9:30). It is set from a small chip on the item or from the item menu.
+- **Headings only when labels exist.** When a day's items carry labels, small time headings appear automatically. Otherwise the day is a plain numbered list. The mock shows Day 1 with labels and Day 2 without.
+- **Imports** from ChatGPT and other sources keep their time labels.
+- **Data model:** item order plus one nullable `time_label` field (a label or a time). There are no slot entities.
+
 ### v4.1: Guides editor revision (owner discussion, 2026-10-22)
 
 These changes replace the v4 "Add to slot" popup. Mock: same v4 link, "Day editor" and "Topic guide" screens.
@@ -36,7 +46,7 @@ These changes replace the v4 "Add to slot" popup. Mock: same v4 link, "Day edito
   - **Trip** is built first and is the full trip planner: days, Morning/Afternoon/Evening, optional dates.
   - **Topic guide** comes later: the user names the sections (gift guides, learning paths, setups and routines, city or area guides), with no slots or dates.
   - Both use the same editor and the same data. The New Guide popup offers the template choice, with Topic marked "Later".
-- **In-page editor, no popup.** "+ Add to <slot>" opens one **smart box inside the slot**. Suggestions come in this order:
+- **In-page editor, no popup.** "+ Add" opens one **smart box in place** (slots superseded by v4.2). Suggestions come in this order:
   1. the user's saved items, across categories;
   2. Google results, with the location and map buttons;
   3. "Add as a note: …".
