@@ -1,4 +1,3 @@
-import i18n from "i18next";
 import { ACCEPTED_IMAGE_TYPES } from "./imageFileValidation";
 
 export type MediaPurpose = "profile" | "background" | "feed" | "recommendation" | "collection" | "guide";
@@ -9,10 +8,10 @@ const limitFor = (purpose: MediaPurpose) => (purpose === "feed" ? 10 : 5) * MB;
 const typesFor = (purpose: MediaPurpose): readonly string[] =>
   purpose === "feed" ? [...ACCEPTED_IMAGE_TYPES, "video/mp4"] : ACCEPTED_IMAGE_TYPES;
 
-const tr = (key: string, defaultValue: string, options: Record<string, unknown> = {}) =>
-  i18n.isInitialized
-    ? String(i18n.t(key, { defaultValue, ...options }))
-    : defaultValue.replace(/\{\{(\w+)\}\}/g, (_, name: string) => String(options[name] ?? ""));
+// No i18next here: the tunes integration lane runs this client in Node, where i18next is not
+// installed. The message mirrors the server's English text.
+const tr = (_key: string, defaultValue: string, options: Record<string, unknown> = {}) =>
+  defaultValue.replace(/\{\{(\w+)\}\}/g, (_, name: string) => String(options[name] ?? ""));
 
 /** Why the media service would refuse this file, checked before any bytes are sent (UAT MED-X01). */
 export function mediaUploadProblem(file: File, purpose: MediaPurpose): { code: string; message: string } | null {
