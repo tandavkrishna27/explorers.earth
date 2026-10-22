@@ -4,6 +4,30 @@ Status: **v2, awaiting owner decisions.** No app code changes.
 Mocks v2: https://claude.ai/artifact/TmMMFzJnW2cEtmUE7vVF7k (private, clickable, desktop + mobile).
 v1 mocks (https://claude.ai/artifact/MjTwMPH2QyCkQB6ZHaV2zx) were rejected by the owner: built from code only, merged the two public screens, dropped Top Picks, ignored visibility toggles and Manage/QR. v2 replaces them.
 
+## v4: dashboard Guides (proposal for owner review)
+
+Mocks v4: https://claude.ai/artifact/EQhDwNgFuhBnYM94xs964Q (private). Model decisions are in PR #190 (scope doc).
+
+- **Guides page:** same template as every category. "Show Guides on my profile" sits on the left, "New Guide" on the right, then the "Top Picks" hero (today it says "Featured"). Location chips replace Filters. Guide cards carry a Public/Draft badge, can be dragged to reorder, and end with a "+ New guide" card.
+- **New Guide popup:** title, destination, number of days, optional dates, optional tags. Today's 3-step page requires 4 tags; the popup replaces it. The guide is created as a Draft and the user lands straight in the day editor.
+- **Guide page:** Back, the Published toggle and its badge sit on the left. There are three tabs, **Plan | Share | Manage**, the same pattern as lists. Today's 5 round tabs become chips inside Plan:
+  - Itinerary (today's Journey) is always there.
+  - Stay, Transport, Budget and Tips start as "+ Add" chips and appear once they have content.
+- **Day editor:** each day has Morning, Afternoon and Evening slots holding **single items**. Each item is tagged with where it came from: a list, a search, or a note. "Add to …" opens one sheet with three tabs:
+  - **From my lists:** a multi-select picker across all categories.
+  - **Search:** Google, with the location and map buttons from v3.
+  - **Free text:** a note.
+
+  Items drag to reorder, and can move between slots and days. Days drag by their grip. Items picked from lists stay in those lists; the guide references them.
+- **Linked lists:** whole lists attach at guide level, each with a role such as "Places to choose from" or "Packing list". They can come from any category. Attach and detach live in Manage; the Plan tab shows them read-only. Visitors see only the public ones.
+- **Privacy:**
+  - **Draft:** only the owner.
+  - **Public:** anyone with the link, plus the profile when Guides is shown.
+  - **Private:** invite by email. Marked "Coming soon".
+
+  The setting appears in both Share and Manage.
+- **Make it mine:** the entry point to copy a public guide into your own drafts sits on the public guide page. Public pages are out of scope for this round.
+
 ## v3 (dashboard only): decisions, final after owner review 2026-10-22
 
 Mocks v3: https://claude.ai/artifact/D89UZnowRi1R9veMbYeWtb (private). The owner approved v2's category page and list page as they are. Public category and public list screens are out of scope here and will be discussed separately.
