@@ -7,6 +7,8 @@
 #   <release-dir>/dist/              the build, with the rendered index.html,
 #                                    runtime-config.json, robots.txt, sitemap.xml
 #   <release-dir>/runtime/headers.conf   included by nginx, outside the served root
+#   <release-dir>/runtime/shell/{head,tail}.html   the shell halves nginx SSI wraps around
+#                                    the API's per-page head, also outside the root
 #
 # render-platform-runtime.mjs writes every output with flag 'wx', and vite has
 # already put index.html, robots.txt and sitemap.xml into dist/. Rendering straight
@@ -37,7 +39,7 @@ if ! node "$renderer" "$public_json" "$vite_dist/index.html" "$rendered_out"; th
   echo "assemble-release: render-platform-runtime.mjs rejected the input (check public.json against publicRuntimeContract.ts)" >&2
   exit 1
 fi
-for name in index.html runtime-config.json robots.txt sitemap.xml headers.conf; do
+for name in index.html runtime-config.json robots.txt sitemap.xml headers.conf shell-head.html shell-tail.html; do
   [ -s "$rendered_out/$name" ] || { echo "assemble-release: renderer did not produce $name" >&2; exit 1; }
 done
 
@@ -48,6 +50,11 @@ for name in index.html runtime-config.json robots.txt sitemap.xml; do
   cp -f "$rendered_out/$name" "$release/dist/$name"
 done
 cp "$rendered_out/headers.conf" "$release/runtime/headers.conf"
+# The two halves of the shell nginx's SSI wraps around the API's per-page head
+# (location @share). Outside the served root, like headers.conf.
+mkdir -p "$release/runtime/shell"
+cp "$rendered_out/shell-head.html" "$release/runtime/shell/head.html"
+cp "$rendered_out/shell-tail.html" "$release/runtime/shell/tail.html"
 
 if [ -e "$release/dist/headers.conf" ]; then
   echo "assemble-release: headers.conf must never sit inside the served root" >&2
