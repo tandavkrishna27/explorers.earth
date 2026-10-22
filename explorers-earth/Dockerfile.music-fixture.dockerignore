@@ -593,6 +593,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Books/types/index.ts
 !explorers-earth/src/features/Books/utils/bookHelpers.ts
 !explorers-earth/src/features/Favorites/api/explorersAdapter.ts
+!explorers-earth/src/features/Favorites/api/googlePlacePhotos.ts
 !explorers-earth/src/features/Favorites/api/placesClient.ts
 !explorers-earth/src/features/Favorites/api/placesCommands.ts
 !explorers-earth/src/features/Favorites/api/placesViewModel.ts
@@ -601,7 +602,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Favorites/components/AddPlaceOverlay.tsx
 !explorers-earth/src/features/Favorites/components/AddRecommendation.tsx
 !explorers-earth/src/features/Favorites/components/LinksAndQR.tsx
-!explorers-earth/src/features/Favorites/components/ListForm.tsx
 !explorers-earth/src/features/Favorites/components/MediaItem.tsx
 !explorers-earth/src/features/Favorites/components/QRSticker.tsx
 !explorers-earth/src/features/Favorites/components/RecommendForm.tsx

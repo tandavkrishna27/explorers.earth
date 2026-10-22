@@ -96,6 +96,13 @@ export const useDistanceValidation = () => {
               return;
             }
 
+            // No driving route (an island, across water) is not a connection failure: the
+            // place is judged by straight-line distance against the same limit (PLC-04).
+            if (element.status === "ZERO_RESULTS") {
+              resolve(fallbackDistanceValidation(originCoords, destinationCoords));
+              return;
+            }
+
             if (element.status !== google.maps.DistanceMatrixElementStatus.OK) {
               resolve({
                 isValid: false,

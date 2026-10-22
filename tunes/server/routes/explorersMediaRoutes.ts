@@ -85,11 +85,11 @@ export function setupExplorersMediaRoutes(app: Express, pool: Pool, auth: Explor
     catch (error) { sendActorError(request, response, error); }
   }, express.json({ limit: "4kb" }), ...(beforeMediaCommand?[beforeMediaCommand]:[]), async (request, response) => {
     try {
-      const body = request.body as unknown;
-      if (!body || typeof body !== "object" || Object.keys(body).length !== 1 || typeof (body as { photoUri?: unknown }).photoUri !== "string")
+      const body = request.body as { photoUri?: unknown; purpose?: unknown } | null, purpose = body?.purpose ?? "collection"; // a list cover; a place item's gallery photo (PLC-02) is "recommendation"
+      if (!body || typeof body !== "object" || Object.keys(body).some(key => key !== "photoUri" && key !== "purpose") || typeof body.photoUri !== "string" || (purpose !== "collection" && purpose !== "recommendation"))
         throw new MediaInputError("Invalid place photo");
-      const photo = await placePhotos.fetch((body as { photoUri: string }).photoUri);
-      const media = await service.createMedia(request.explorersActor!, { purpose: "collection", filename: "place-photo",
+      const photo = await placePhotos.fetch(body.photoUri);
+      const media = await service.createMedia(request.explorersActor!, { purpose, filename: "place-photo",
         mimeType: photo.mimeType, length: photo.bytes.length, bytes: photo.bytes }, { requestId: randomUUID() });
       return response.status(201).json({ media });
     } catch (error) {

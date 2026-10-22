@@ -741,10 +741,10 @@ export const explorersApiClient = {
   },
   /** A Google place photo, fetched and stored as owned list-cover media by the API. Only the
    * key-free photoUri is sent; the bytes never pass through the browser. */
-  async importPlacePhoto(photoUri: string, signal?: AbortSignal): Promise<MediaDto> {
+  async importPlacePhoto(photoUri: string, purpose: "collection" | "recommendation" = "collection", signal?: AbortSignal): Promise<MediaDto> {
     const generation = useAuthStore.getState().generation;
     const response = await fetch("/api/explorers/v1/media/place-photo", { method: "POST", credentials: "include", signal,
-      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ photoUri }) });
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify(purpose === "collection" ? { photoUri } : { photoUri, purpose }) });
     return (await responseBody<{ media: MediaDto }>(response, generation)).media;
   },
   /** Imports the signed-in user's Google profile photo as profile media; the server reads the URL from the session. */
