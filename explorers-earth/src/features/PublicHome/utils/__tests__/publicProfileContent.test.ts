@@ -132,6 +132,11 @@ it('adapts strictly bounded public manual Games without synthetic provider ident
  const value=adaptPublicGamesPage({version:'explorers-manual-games-page/v1',gameLists:[{id,title:'Games',description:null,slug:'games',heading:null,displayOrder:0,coverMediaId:null,coverUrl:null,recommendations:[row,{...row,id:other}],nextCursor:'signed'}],topPicks:[row],nextCursor:null},'reader');
  expect(value.gameLists[0].recommended_games).toHaveLength(2);expect(value.gameLists[0].recommended_games[0]).toMatchObject({igdb_id:null,igdb_rating:null,release_date:null,pin_order:0});expect(value.gameLists[0].nextCursor).toBe('signed');
 });
+it('shows a public game's stored year, platforms and genres (GMS-X01)',()=>{
+ const id='00000000-0000-4000-8000-000000000001';const row={id,entityId:id,kind:'game',collection:{id,title:'Games',slug:'games'},title:'Celeste',userRating:null,note:null,gamePresentation:{version:'explorers-manual-game/v1',origin:'manual',providerExternalId:null,providerFacts:null,images:[],coverMediaId:null,details:{releaseYear:2018,platforms:['Nintendo Switch'],genres:['Platform','Indie']}},displayOrder:0,pinPosition:null};
+ const value=adaptPublicGamesPage({version:'explorers-manual-games-page/v1',gameLists:[{id,title:'Games',description:null,slug:'games',heading:null,displayOrder:0,coverMediaId:null,coverUrl:null,recommendations:[row],nextCursor:null}],topPicks:[],nextCursor:null},'reader');
+ expect(value.gameLists[0].recommended_games[0]).toMatchObject({release_year:'2018',platforms:['Nintendo Switch'],genres:['Platform','Indie']});
+});
 it('public shared recommendation pin preserves selected collection ancestry',()=>{
  const id='00000000-0000-4000-8000-000000000001',a='00000000-0000-4000-8000-000000000002',b='00000000-0000-4000-8000-000000000003';
  const row={id,entityId:id,kind:'game',collection:{id:a,title:'A',slug:'a'},title:'Shared',userRating:null,note:null,gamePresentation:{version:'explorers-manual-game/v1',origin:'manual',providerExternalId:null,providerFacts:null,images:[],coverMediaId:null},displayOrder:0,pinPosition:0};

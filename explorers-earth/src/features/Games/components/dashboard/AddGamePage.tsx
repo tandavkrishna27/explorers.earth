@@ -13,6 +13,9 @@ import { invalidateGames, useGamesOwner } from '../../hooks/useGamesOwner';
 import { richNoteFromEditor } from '../../../../../../tunes/shared/explorersRichNoteContract';
 import TiptapEditor from '../../../Favorites/components/TiptapEditor';
 
+/** A comma-separated field as at most 12 trimmed, non-empty labels. */
+const labels = (value: string) => value.split(',').map(item => item.trim()).filter(Boolean).slice(0, 12);
+
 export default function AddGamePage() {
  const { listId, gameId } = useParams<{ listId: string; gameId?: string }>();
  const location = useLocation(), navigate = useNavigate();
@@ -25,6 +28,8 @@ export default function AddGamePage() {
  const existingGames = [...new Map((owner.content?.view.lists.flatMap(list => list.recommended_games) ?? []).filter(game => !owner.content?.view.lists.find(list => list.documentId === listId)?.recommended_games.some(member => member.documentId === game.documentId)).map(game => [game.documentId, game])).values()];
  const attachExisting = async () => { const captured = scope; try { await commands.membership(existingId, listId!, true); if (valid(captured)) navigate(`/recommendations/games/${listId}`); } catch (failure) { if (valid(captured)) setError(friendlyErrorMessage(failure, 'Game could not be added')); } };
  const [title, setTitle] = useState(''), [note, setNote] = useState(''), [rating, setRating] = useState<number | null>(null);
+ // Year, platforms and genres (GMS-X01): filled from an IGDB hit or typed; lists are comma-separated.
+ const [year, setYear] = useState(''), [platforms, setPlatforms] = useState(''), [genres, setGenres] = useState('');
  const [media, setMedia] = useState<{ id: string; url: string }[]>([]), [pending, setPending] = useState(0);
  const [saving, setSaving] = useState(false), [error, setError] = useState(''), [query, setQuery] = useState(''), [searchError, setSearchError] = useState('');
  const [candidates, setCandidates] = useState<GameCandidate[]>([]), [searching, setSearching] = useState(false);
@@ -33,7 +38,7 @@ export default function AddGamePage() {
  const updateKey = useRef<{ signature: string; key: string }>();
  const mounted = useRef(true);
  useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.abort(); active.current++; }; }, []);
- useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setTitle(''); setNote(''); setRating(null); setMedia([]); setPending(0); setSaving(false); setError(''); setSearchError(''); setCandidates([]); setSearching(false); setExistingId(''); }, [scope]);
+ useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setTitle(''); setNote(''); setRating(null); setYear(''); setPlatforms(''); setGenres(''); setMedia([]); setPending(0); setSaving(false); setError(''); setSearchError(''); setCandidates([]); setSearching(false); setExistingId(''); }, [scope]);
  useEffect(() => {
   if (!gameId || !owner.content || initialized.current === scope) return;
   const game = owner.content.view.lists.find(list => list.documentId === listId)?.recommended_games.find(row => row.documentId === gameId);
@@ -58,7 +63,7 @@ export default function AddGamePage() {
   const captured = scope, operation = ++active.current; controller.current?.abort(); controller.current = new AbortController(); const signal = controller.current.signal;
   setSaving(true); setError('');
   try {
-   const draft = { title, note: richNoteFromEditor(note), userRating: rating, mediaIds: media.map(item => item.id) }, signature = JSON.stringify(draft);
+   const draft = { title, note: richNoteFromEditor(note), userRating: rating, mediaIds: media.map(item => item.id), ...(gameId ? {} : { releaseYear: year.trim() ? Number(year) : null, platforms: labels(platforms), genres: labels(genres) }) }, signature = JSON.stringify(draft);
    assertCurrent(captured, operation);
    if (gameId) {
     const observed = owner.content?.details.get(gameId);
@@ -85,7 +90,7 @@ export default function AddGamePage() {
  };
  // The hit's cover is imported by the API (no hot-link) and becomes the first snapshot.
  const choose = async (candidate: GameCandidate) => {
-  const captured = scope; setTitle(candidate.title); setCandidates([]);
+  const captured = scope; setTitle(candidate.title); setCandidates([]); setYear(candidate.year ? String(candidate.year) : ''); setPlatforms(candidate.platforms.join(', ')); setGenres(candidate.genres.join(', '));
   const imageId = candidate.coverUrl?.match(/\/t_cover_big\/([A-Za-z0-9_-]+)\.jpg$/)?.[1];
   if (!imageId) return;
   setPending(value => value + 1);
@@ -113,6 +118,11 @@ export default function AddGamePage() {
    <section className="rounded-2xl border border-dashboard-border bg-dashboard-sidebar p-5 space-y-5"><h2 className="font-semibold flex gap-2"><Gamepad2 size={18} />{gameId ? 'My Game' : 'Add manually'}</h2>
     {gameId && owner.loading && <p>Loading game…</p>}{owner.error && <p role="alert">{owner.error.message}</p>}
     <label className="block">Game title<input value={title} onChange={event => setTitle(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
+    {!gameId && <div className="grid gap-3 sm:grid-cols-3">
+     <label className="block">Release year<input type="number" inputMode="numeric" min={1900} max={2100} value={year} onChange={event => setYear(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
+     <label className="block sm:col-span-2">Platforms<input value={platforms} onChange={event => setPlatforms(event.target.value)} placeholder="PC, Nintendo Switch" disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
+     <label className="block sm:col-span-3">Genres<input value={genres} onChange={event => setGenres(event.target.value)} placeholder="Platform, Indie" disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
+    </div>}
     <label className="block">Your rating<select value={rating ?? ''} onChange={event => setRating(event.target.value ? Number(event.target.value) : null)} disabled={saving} className="block bg-dashboard-muted p-2"><option value="">No rating</option>{Array.from({ length: 10 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}</select></label>
     <div><h3>My Thoughts</h3><TiptapEditor value={note} onChange={setNote} placeholder="Why do you recommend this game?" /></div>
     <label className="block">Snapshots<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple disabled={saving || pending > 0} onChange={event => { void upload(Array.from(event.target.files ?? [])); event.target.value = ''; }} /></label>

@@ -21,7 +21,7 @@ describe('native manual Games', () => {
  afterEach(() => { cleanup(); useAuthStore.getState().logout(); });
  it('creates a native manual title/rating/note without fabricating a provider ID', async () => {
   mount(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Manual adventure' } }); fireEvent.change(screen.getByLabelText('Your rating'), { target: { value: '8' } }); fireEvent.change(screen.getByLabelText('Note'), { target: { value: '<p>A personal note</p>' } }); fireEvent.click(screen.getByRole('button', { name: 'Save game' }));
-  await screen.findByText('Saved list'); expect(GamesClient.prepareManualIntent).toHaveBeenCalledWith(expect.anything(), { title: 'Manual adventure', note: { version: 1, format: 'quill-html', html: '<p>A personal note</p>' }, userRating: 8, mediaIds: [] }); expect(GamesClient.createManual).toHaveBeenCalledTimes(1); expect(GamesClient.search).not.toHaveBeenCalled();
+  await screen.findByText('Saved list'); expect(GamesClient.prepareManualIntent).toHaveBeenCalledWith(expect.anything(), { title: 'Manual adventure', note: { version: 1, format: 'quill-html', html: '<p>A personal note</p>' }, userRating: 8, mediaIds: [], releaseYear: null, platforms: [], genres: [] }); expect(GamesClient.createManual).toHaveBeenCalledTimes(1); expect(GamesClient.search).not.toHaveBeenCalled();
  });
  it('waits for actual uploaded media readiness before saving', async () => {
   const upload = deferred<{ id: string }>(); vi.mocked(GamesClient.upload).mockReturnValue(upload.promise as never); mount(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Uploaded game' } }); fireEvent.change(screen.getByLabelText('Snapshots'), { target: { files: [new File(['bytes'], 'snapshot.png', { type: 'image/png' })] } }); expect(screen.getByRole('button', { name: 'Save game' })).toBeDisabled(); expect(GamesClient.createManual).not.toHaveBeenCalled(); await act(async () => upload.resolve({ id: 'media-1' })); await waitFor(() => expect(screen.getByRole('button', { name: 'Save game' })).toBeEnabled()); fireEvent.click(screen.getByRole('button', { name: 'Save game' })); await screen.findByText('Saved list'); expect(GamesClient.prepareManualIntent).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ mediaIds: ['media-1'] }));
@@ -62,10 +62,18 @@ describe('native manual Games', () => {
   mount(); fireEvent.change(await screen.findByLabelText('Search for a game'), { target: { value: 'celeste' } }); fireEvent.click(screen.getByRole('button', { name: 'Search' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Use Celeste (2018)' }));
   await waitFor(() => expect(GamesClient.importCover).toHaveBeenCalledWith('co3byy'));
+  expect(screen.getByLabelText('Release year')).toHaveValue(2018); expect(screen.getByLabelText('Platforms')).toHaveValue('PC (Microsoft Windows)'); expect(screen.getByLabelText('Genres')).toHaveValue('Platform');
   expect(await screen.findByAltText('Game snapshot')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Save game' }));
   await screen.findByText('Saved list');
-  expect(GamesClient.prepareManualIntent).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ title: 'Celeste', mediaIds: ['cover-1'] }));
+  expect(GamesClient.prepareManualIntent).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ title: 'Celeste', mediaIds: ['cover-1'], releaseYear: 2018, platforms: ['PC (Microsoft Windows)'], genres: ['Platform'] }));
+ });
+ it('saves typed year, platforms and genres for a manual game, trimming blanks', async () => {
+  vi.mocked(GamesClient.prepareManualIntent).mockReturnValue({} as never); vi.mocked(GamesClient.createManual).mockResolvedValue({ id: 'game-1' } as never);
+  mount(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Home-made' } });
+  fireEvent.change(screen.getByLabelText('Release year'), { target: { value: '1999' } }); fireEvent.change(screen.getByLabelText('Platforms'), { target: { value: ' PC ,, Amiga ' } }); fireEvent.change(screen.getByLabelText('Genres'), { target: { value: '' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save game' })); await screen.findByText('Saved list');
+  expect(GamesClient.prepareManualIntent).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ title: 'Home-made', releaseYear: 1999, platforms: ['PC', 'Amiga'], genres: [] }));
  });
  it('says search is not available when the deployment has no IGDB credentials', async () => {
   vi.mocked(GamesClient.search).mockRejectedValue(new ExplorersApiError(503, 'PROVIDER_NOT_CONFIGURED', 'Game search is not available. Add the game manually.'));

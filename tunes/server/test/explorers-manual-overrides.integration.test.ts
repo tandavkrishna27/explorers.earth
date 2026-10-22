@@ -36,7 +36,7 @@ it.each([['books','book'],['movies','movie'],['games','game'],['apps','app'],['p
  expect((await command(a,'post','/entities/resolve',{...input,details:{title:'😀 Canonical',...required}},key)).body).toEqual(one.body);
  expect((await command(a,'post','/entities/resolve',{...input,details:{title:'Changed',...required}},key)).status).toBe(409);
  const distinct=await command(a,'post','/entities/resolve',input);expect(distinct.body.entity.id).not.toBe(one.body.entity.id);
- const typedOperation=category==='movies'?'resolveMovieEntity':category==='apps'?'resolveAppEntity':category==='products'?'resolveProductEntity':category==='people'?'resolvePersonEntity':undefined;
+ const typedOperation=category==='movies'?'resolveMovieEntity':category==='apps'?'resolveAppEntity':category==='products'?'resolveProductEntity':category==='people'?'resolvePersonEntity':category==='games'?'resolveGameEntity':undefined;
  if(typedOperation) {
   expect((await pool.query("SELECT count(*)::int n FROM application_command_receipts WHERE account_id=$1 AND operation=$2 AND status='completed'",[a.accountId,typedOperation])).rows[0].n).toBe(2);
   expect((await pool.query("SELECT count(*)::int n FROM application_command_receipts WHERE account_id=$1 AND operation='resolveManualEntity'",[a.accountId])).rows[0].n).toBe(0);

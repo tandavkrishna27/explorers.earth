@@ -2,7 +2,7 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0063_explorers_open_library_books",
+    "expectedId": "0064_explorers_game_details",
     "files": [
       "0001_runtime_baseline.sql",
       "0002_identity_lifecycle.sql",
@@ -66,7 +66,8 @@
       "0060_explorers_guide_budget_tier.sql",
       "0061_explorers_product_spec_order_budget_scale.sql",
       "0062_explorers_handle_holds.sql",
-      "0063_explorers_open_library_books.sql"
+      "0063_explorers_open_library_books.sql",
+      "0064_explorers_game_details.sql"
     ],
     "controlTables": [
       "music_schema_migrations",
@@ -374,6 +375,12 @@
     {
       "name": "entity_identifiers",
       "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "retain-shared-catalog"
+    },
+    {
+      "name": "game_entity_details",
+      "managedBy": "unmanaged-raw-sql",
       "family": "user-content",
       "lifecycle": "retain-shared-catalog"
     },

@@ -1,5 +1,5 @@
 import {z} from 'zod/v3';
-import {gameSearchInputSchema} from './explorersGameContract';
+import {gameSearchInputSchema,gameDetailsSchema,emptyGameDetails} from './explorersGameContract';
 import {richNoteSchema} from './explorersRichNoteContract';
 import {collectionCoreDtoSchema,recommendationCoreDtoSchema} from './explorersContract';
 export const gameMembershipCommandSchema=z.object({expectedCollectionRevision:z.number().int().positive().safe(),expectedRecommendationRevision:z.number().int().positive().safe()}).strict();
@@ -11,6 +11,7 @@ export const manualGamePresentationSchema=z.object({
  providerExternalId:z.null(),providerFacts:z.null(),
  images:z.array(z.object({mediaId:uuid,url:z.string().max(128)}).strict()).max(20),
  coverMediaId:uuid.nullable(),
+ details:gameDetailsSchema.default(()=>({...emptyGameDetails,platforms:[],genres:[]})),
 }).strict().superRefine((value,ctx)=>{
  if(value.coverMediaId!==(value.images[0]?.mediaId??null)||new Set(value.images.map(image=>image.mediaId)).size!==value.images.length||value.images.some(image=>image.url!==`/api/explorers/v1/media/${image.mediaId}/content`))
   ctx.addIssue({code:'custom',message:'Inconsistent manual Game media'});

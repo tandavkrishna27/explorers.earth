@@ -159,6 +159,17 @@ export class ExplorersRecommendationRepository {
       return result.rows[0] as {id:string;kind:CatalogKind;title:string};
     });
   }
+  /** A manual game with its year, platforms and genres (GMS-X01). The details row is written
+   * only for the game entity just created, and only when something was given. */
+  async resolveGameEntity(accountId:string,input:{details:{title:string;releaseYear?:number|null;platforms?:string[];genres?:string[]}},key:string) {
+    return this.command(accountId,'resolveGameEntity',input,key,async db=>{
+      const {title,releaseYear=null,platforms=[],genres=[]}=input.details;
+      const entity=(await db.query("INSERT INTO entities(kind,title,origin,search_document) VALUES('game',$1,'manual',to_tsvector('simple',$1)) RETURNING id,kind,title",[title])).rows[0] as {id:string;kind:CatalogKind;title:string};
+      if(releaseYear!==null||platforms.length||genres.length)
+        await db.query("INSERT INTO game_entity_details(entity_id,release_year,platforms,genres) SELECT id,$2,$3,$4 FROM entities WHERE id=$1 AND kind='game'",[entity.id,releaseYear,platforms,genres]);
+      return entity;
+    });
+  }
   /**
    * Apps and Products have no provider, so there is only a manual path - but the details
    * are typed, and before this they were silently discarded: resolveEntity fell through
