@@ -215,7 +215,7 @@ jobs:
     # `playwright` version; scripts/ci-playwright-image.test.cjs pins that. --user 1001 is the
     # hosted runner's uid, so checkout and setup-node can write the mounted workspace.
     container:
-      image: mcr.microsoft.com/playwright:v1.61.1-noble
+      image: mcr.microsoft.com/playwright:v0.0.0-noble
       options: --user 1001
     timeout-minutes: 45
     needs: [changes]
