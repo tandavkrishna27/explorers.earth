@@ -4,25 +4,24 @@ Status: **v2, awaiting owner decisions.** No app code changes.
 Mocks v2: https://claude.ai/artifact/TmMMFzJnW2cEtmUE7vVF7k (private, clickable, desktop + mobile).
 v1 mocks (https://claude.ai/artifact/MjTwMPH2QyCkQB6ZHaV2zx) were rejected by the owner: built from code only, merged the two public screens, dropped Top Picks, ignored visibility toggles and Manage/QR. v2 replaces them.
 
-## v5: controls placement (PROPOSED, 2026-10-23)
+## v5: controls placement (PROPOSED, revised 2026-10-23)
 
-Mocks v5: https://claude.ai/artifact/UDhwrVqLBNh8xKtZpppf6v (private; desktop and 375px phone). Status: **PROPOSED**, awaiting the owner's decision.
+Mocks v5: https://claude.ai/artifact/UDhwrVqLBNh8xKtZpppf6v (private; desktop and 375px phone). Status: **PROPOSED**. This revision applies two owner decisions.
 
-- **Rule:** the top right holds status and publish. Add lives in the content. The floating + appears on phones only.
-- **Category page:**
-  - Header right: an "On profile ✓ / Hidden" chip (the category master switch), then the primary "+ New list".
-  - The first grid card is a dashed "+ New list".
-  - Phone: the header keeps only the chip, and the floating + means New list.
-- **List page:**
-  - Header right holds only the publish control. A draft shows a solid "Publish"; a published list shows a "🌐 Public ▾" pill whose menu offers Public / Private (invite, coming soon) / Unpublish to draft.
-  - This replaces the left-side Published toggle from earlier mocks.
-  - Tab row: Recommendations | Share | Manage, with "+ Add item" at the right end, shown on Recommendations only.
-  - A dashed "+ Add item" row sits at the end of the items. An empty list shows one large centred "+ Add item".
-  - Phone: the header keeps the pill, and the floating + means Add item.
-- **Guide page:**
-  - The same Publish / Public pill sits in the header.
-  - A dashed "+ Add to day" row ends each day.
-  - Phone: the floating + adds to the selected day.
+- **Rule:** the top right holds status and publish. Add lives in the content. On phones, Add is a full-width sticky button at the bottom.
+- **One publish pill everywhere.** The category, list and guide pages use the same component in the same spot (header, top right), with the same look and the same menu.
+  - Category: "🌐 Public ▾" or "🔒 Hidden ▾".
+  - List or guide: "✎ Draft ▾" or "🌐 Public ▾", with "👥 Private" in the menu marked coming soon.
+  - Clicking the pill opens a small menu of the options. The current one is ticked, and each has a one-line explanation.
+  - This replaces the separate "On profile / Hidden" chip, the separate "Publish" button, and the earlier left-side toggle.
+- **Desktop Add:**
+  - Category page: a "+ New list" header button and a dashed "+ New list" first card.
+  - List page: "+ Add item" at the right end of the tab row (Recommendations only), a dashed "+ Add item" row after the items, and a large centred CTA when the list is empty.
+  - Guide page: a dashed "+ Add to day" row per day.
+- **Phone Add:** a full-width sticky bottom button, about 56px tall, above the safe area. It shrinks slightly on scroll down and restores on scroll up. It replaces the floating +.
+  - Category page: "+ New list".
+  - List page: "+ Add item", on the Recommendations tab only. It is hidden on Share and Manage and on an empty list, which has its own large button.
+  - Guide page: "+ Add to Day N" for the selected day.
 
 ## v4: dashboard Guides (proposal for owner review)
 
