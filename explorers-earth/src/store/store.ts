@@ -57,13 +57,20 @@ const initialLogoutAttempt = pendingServerLogout();
 // only while someone is signed in. persist() writes after every set(), so the store's state
 // here is already the new one: signing out removes the record instead of rewriting it.
 let hasSession = () => false;
+// Storage may be absent (Node, the SPA client under server tests) or throw (blocked site
+// data); either way the store keeps working in memory.
+const localStore = (): Storage | undefined => {
+  try { return typeof localStorage === "undefined" ? undefined : localStorage; } catch { return undefined; }
+};
 const sessionGatedStorage: StateStorage = {
-  getItem: (name) => localStorage.getItem(name),
+  getItem: (name) => { try { return localStore()?.getItem(name) ?? null; } catch { return null; } },
   setItem: (name, value) => {
-    if (hasSession()) localStorage.setItem(name, value);
-    else localStorage.removeItem(name);
+    try {
+      if (hasSession()) localStore()?.setItem(name, value);
+      else localStore()?.removeItem(name);
+    } catch { /* persistence is best-effort */ }
   },
-  removeItem: (name) => localStorage.removeItem(name),
+  removeItem: (name) => { try { localStore()?.removeItem(name); } catch { /* best-effort */ } },
 };
 
 const useAuthStore = create<AuthState>()(
