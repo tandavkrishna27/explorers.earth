@@ -40,6 +40,7 @@ Each item has an ID, a status and a source.
 | O11 | Owner approving the Guides proposals: sections + templates (Trip first), in-page editor, day strip (2026-10-22) |
 | O12 | Owner decision on Guides v4 day structure: one ordered list per day, optional time labels (2026-10-23) |
 | O13 | Owner request: mock the placement of the publish and add controls (2026-10-23) |
+| O14 | Owner decisions on v5: one publish pill everywhere; phone full-width bottom add button (2026-10-23) |
 | P187 / P188 / P189 | The three docs PRs |
 | UAT | Live UAT re-test of 2026-10-22 and its board |
 | MEM | Recorded UX decisions of 2026-10-22 |
@@ -92,7 +93,7 @@ Use these names everywhere (code, docs, tickets). "Category hub" is not a screen
 | GL-05 | One toast system (`sonner`), past-tense verbs, Undo on removals; remove the other two toast systems. | OPEN (proposal, not discussed) | P188 v1 §2.8 |
 | GL-06 | Drag-and-drop reorder everywhere (list cards and items), replacing "Reorder lists" mode and arrow buttons; keyboard reorder kept for accessibility. | SETTLED | WT, O2 |
 | GL-07 | Saves and loads must feel fast (see BUG OWN-17). | SETTLED | WT |
-| GL-08 | **Controls placement:** the top right holds status and publish; Add lives in the content; the floating + appears on phones only. Category page: an "On profile ✓ / Hidden" chip and "+ New list" at the top right, plus a dashed "+ New list" first card. List page: the top right holds only the publish control (a solid "Publish" for a draft, a "🌐 Public ▾" pill with Public / Private (invite, coming soon) / Unpublish to draft once published), replacing the left-side toggle; "+ Add item" at the right end of the tab row on Recommendations only; a dashed "+ Add item" row after the items; a large centred CTA when the list is empty. Guide page: the same pill, plus a dashed "+ Add to day" row per day. On phones, the floating + means New list / Add item / Add to the selected day. Mocks v5: https://claude.ai/artifact/UDhwrVqLBNh8xKtZpppf6v | PROPOSED | O13 |
+| GL-08 | **Controls placement:** the top right holds status and publish; Add lives in the content. **One publish pill** on the category, list and guide pages, with the same component, spot and menu. Category: "🌐 Public ▾" / "🔒 Hidden ▾". List or guide: "✎ Draft ▾" / "🌐 Public ▾", with "👥 Private" (coming soon) in the menu. The menu ticks the current option and gives a one-line explanation for each. This replaces the On profile chip, the separate Publish button and the left toggle. Desktop: "+ New list" in the header plus a dashed first card; "+ Add item" at the right of the tab row (Recommendations only) plus a dashed end row; a large CTA on an empty list; a dashed "+ Add to day" per day. **Phones:** a full-width sticky bottom button (about 56px, above the safe area, shrinks on scroll down, restores on scroll up) reading "+ New list", "+ Add item" or "+ Add to Day N"; it replaces the floating +. Mocks v5: https://claude.ai/artifact/UDhwrVqLBNh8xKtZpppf6v | PROPOSED | O13, O14 |
 
 ### 3.1 All Recommendations
 
