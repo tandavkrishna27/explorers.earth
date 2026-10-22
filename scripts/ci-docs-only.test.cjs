@@ -1,5 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+test('wpci canary: must turn music-required red', () => { throw new Error('wpci canary'); });
 const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
