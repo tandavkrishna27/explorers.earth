@@ -4,27 +4,34 @@ Status: **v2, awaiting owner decisions.** No app code changes.
 Mocks v2: https://claude.ai/artifact/TmMMFzJnW2cEtmUE7vVF7k (private, clickable, desktop + mobile).
 v1 mocks (https://claude.ai/artifact/MjTwMPH2QyCkQB6ZHaV2zx) were rejected by the owner: built from code only, merged the two public screens, dropped Top Picks, ignored visibility toggles and Manage/QR. v2 replaces them.
 
-## v3 (dashboard only): decisions
+## v3 (dashboard only): decisions, final after owner review 2026-10-22
 
 Mocks v3: https://claude.ai/artifact/D89UZnowRi1R9veMbYeWtb (private). The owner approved v2's category page and list page as they are. Public category and public list screens are out of scope here and will be discussed separately.
 
-1. **All Recommendations cards**: one brand colour for all 8 (today's dark card plus the existing blue accent). No per-category tints, so option B is dropped. Categories are told apart by icon and illustration only. Today's animations and motion stay exactly as they are.
-2. **First visit: sample lists.**
-   - Each category shows 2-3 sample lists as normal list cards with a **Sample** badge and realistic generic content (e.g. Places "Weekend in Goa", Movies "Comfort movies"). Top Picks shows sample picks with the same badge.
-   - Samples are fully browsable: opening one shows its items read-only, exactly like a real list.
-   - Each sample has **Use as a starting point**, which confirms, then copies it into a private, editable draft list.
-   - Samples are never public and never on the profile.
-   - In a category, samples disappear once the first real list exists there. A **Hide samples** control is also available (with Show samples to undo).
+1. **All Recommendations cards**: one brand colour, in shades of today's dark card plus the blue accent. No per-category tints. Icons, illustrations, animations and features stay exactly as today. **No sample badges or notes on the hub**: a new account's cards look like anyone's.
+2. **Sample lists for new accounts.**
+   - Each category starts with 2-3 sample lists. They are the user's own lists, marked **Sample**, shown as normal list cards. Top Picks shows their picks with the same badge.
+   - They open as full list pages with all item details, and can be browsed and reordered.
+   - A sample can't be published and never appears on the profile.
+   - **Make it mine** turns a sample into a normal draft list in place, with no copy. It can then be edited and published.
+   - Each sample can be **deleted** (card ⋯ menu, or on the list page). Deleted samples don't come back, even if all real lists are deleted later.
+   - Samples stay until the user deletes them. Creating a real list does not remove them. There is no "Hide samples" control.
+   - **Localisation**: the sample set is chosen from the country captured at onboarding.
+     - Places samples are local.
+     - Movies, books and games are mostly global.
+     - Apps and products are a global standard set with some local flavour.
+     - Start with two sets, India and Global. More countries can be added later as data.
 3. **Add item.**
-   - A **Search | Add manually** switch sits at the top, so both paths are visible from the start. Text typed in search carries into the manual Name field.
-   - Places has one field that takes a name or coordinates; placeholder "Search a place or paste coordinates". Coordinates such as `15.49, 73.82` are detected automatically and resolve to a pin plus the nearest named places.
-   - Places has two icon buttons in the field: ◎ use my current location, which suggests nearby places, and a map icon that opens a pick-on-map sheet to drop a pin. "Use this pin" continues in the manual form with the pin set.
-   - Other categories get the same switch without the location tools.
+   - No Search/Manual tabs. The search bar takes the full row, and a small **"Can't find it? Add manually"** link sits above it on the right.
+   - When a search has no results, a clear "Add manually" button appears in the empty state.
+   - Typed text carries into the manual Name field, and "Back to search" returns.
+   - Places has one field that takes a name or coordinates; placeholder "Search a place or paste coordinates". `15.49, 73.82` is detected automatically and resolves to a pin plus the nearest named places.
+   - Places has two icon buttons in the field: ◎ use my location, which suggests nearby places, and a map icon that opens a pick-on-map sheet. "Use this pin" continues in the manual form.
+   - **Location cost.** Browser geolocation is free, and the browser remembers the permission after the first grant, so there is no re-prompting. Only the nearby-places lookup costs a Google Places call. That call runs only on tap, results are cached per rounded area, and it asks for basic fields only. OpenStreetMap is a free fallback, but its data for Indian food places is thinner.
 
 Implementation notes for later:
-- Samples should be static per-category fixtures served by the app, not rows in the user's data, so they can never be published. Copying creates a normal draft list.
-- Coordinate detection needs a regex for decimal lat,lng, plus a reverse-geocode or nearby search.
-- "Use my location" needs browser geolocation and a nearby search, and costs one Places API call per tap (see launch economics).
+- Sample lists are seeded per new account from versioned per-country fixtures, with an `is_sample` flag. The publish paths and the public read model must refuse `is_sample` lists. "Make it mine" clears the flag. Delete is a normal delete with no resurrection.
+- Coordinate detection is a decimal lat,lng regex, followed by a pin and a nearby lookup.
 
 ## v2: live walkthrough notes (2026-10-22, smoketest1021, read-only)
 
