@@ -27,7 +27,7 @@ const RULES={
  // PublicContentService.page(): the category content revision on its own.
  publicCategoryState:(s:string)=>s.includes('FROM account_category_content_state WHERE account_id=$1 AND category=$2')&&!s.includes('account_category_pin_state'),
  ownerCollectionParent:(s:string)=>s.includes('FROM collections WHERE id=$1 AND account_id=$2 AND category=$3'),
- publicCollectionBySlug:(s:string)=>s.includes('FROM collections WHERE account_id=$1 AND category=$2 AND slug=$3'),
+ publicCollectionBySlug:(s:string)=>s.includes('FROM collections c WHERE c.account_id=$1 AND c.category=$2 AND (c.slug=$3 OR'),
  publicAccountScope:(s:string)=>s.includes('FROM creator_accounts a JOIN account_category_settings s')&&s.includes('a.handle_key=$1'),
  publicEligibilityAggregate:(s:string)=>s.includes('/* public_places_eligibility_aggregate */'),
  publicCurrentList:(s:string)=>s.includes('/* public_places_current_list */'),
