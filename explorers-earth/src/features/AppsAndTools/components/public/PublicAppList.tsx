@@ -32,11 +32,11 @@ const PublicAppList = () => {
   const list = (Array.isArray(data?.appLists) ? data.appLists : []).find(isRenderableAppList);
   const hasUsableData = Boolean(list);
   const apps = deduplicateApps<RecommendedApp>(list?.recommended_apps ?? []);
-  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const accountHandle = typeof accountData?.username === "string" ? accountData.username : undefined;
   const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
   const analytics = useTrackAnalytics(
     {
-      ...createAnalyticsOptions.apps(accountDocumentId || "", username, list?.documentId),
+      ...createAnalyticsOptions.apps(accountHandle || "", username, list?.documentId),
       waitForLocation: true,
     },
   );

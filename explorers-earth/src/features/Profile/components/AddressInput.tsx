@@ -409,7 +409,7 @@ const GoogleAddressInput: FC<AddressInputProps> = ({
           disabled={disabled || isDetectingLocation}
           value={address}
           onChange={(e) => handleManualChange(e.target.value)}
-          placeholder={placeHolder || t("dashboard.profile.account.fields.addressPlaceholder")}
+          placeholder={placeHolder || t("auth.onboarding.addressDetails.addressPlaceholder")}
           className={`w-full placeholder:text-dashboard-muted outline-none p-3 border border-dashboard bg-dashboard-muted font-poppins rounded-md text-sm text-dashboard focus:outline-none focus:ring-2 focus:ring-dashboard-accent hover:border-dashboard-accent focus:bg-dashboard-muted ${showDetectLocation ? 'pr-12' : ''
             } ${className || ''}`}
         />
@@ -422,7 +422,7 @@ const GoogleAddressInput: FC<AddressInputProps> = ({
                 ? 'bg-dashboard-accent/20 cursor-wait'
                 : 'hover:bg-dashboard-accent/10 active:bg-dashboard-accent/20'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
-            title={t("dashboard.profile.account.fields.detectLocation")}
+            title={t("auth.onboarding.addressDetails.detectLocation")}
           >
             <div className={isDetectingLocation ? 'animate-pulse' : ''}>
               <CurrLocation size="20" />
@@ -479,7 +479,7 @@ const OwnedAddressInput: FC<AddressInputProps> = ({ value = "", initalValue, onC
     {label && <label className="block text-sm font-poppins text-white font-semibold mb-1">{label}</label>}
     <div className="relative w-full">
       <input type="text" disabled={disabled} value={address} onChange={e => void input(e.target.value)}
-        placeholder={placeHolder || t("dashboard.profile.account.fields.addressPlaceholder")}
+        placeholder={placeHolder || t("auth.onboarding.addressDetails.addressPlaceholder")}
         className={`w-full placeholder:text-dashboard-muted outline-none p-3 border border-dashboard bg-dashboard-muted font-poppins rounded-md text-sm text-dashboard ${className || ""}`} />
       {results.length > 0 && <ul aria-label="Place suggestions">{results.map(result => <li key={result.id}>
         <button type="button" disabled={disabled} onClick={() => void select(result.id)}>{result.label}</button>

@@ -44,6 +44,7 @@ import { setupCanonicalRetiredSurfaces } from "../routes/canonicalRetiredSurface
 import { setupExplorersSeoRoutes } from "../routes/explorersSeoRoutes";
 import { SharePageService, setupExplorersSharePageRoutes } from "../routes/explorersSharePageRoutes";
 import { checkMusicDatabaseReadiness } from "../db/readiness";
+import { logServerErrorResponses } from "../http/unexpectedError";
 
 function errorResponse(res: Response, status: number, code: ApiError["error"]["code"], message: string): void {
   res.status(status).json({ error: { code, message, requestId: randomUUID() } } satisfies ApiError);
@@ -60,6 +61,8 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   // (canonicalHandlerCustody.ts:63) overrides only route-registration methods,
   // so `app.set` would work too; actualApp makes that independence explicit.
   actualApp.set("trust proxy", resolveTrustedProxy(process.env));
+  // PROD-06. First, so every 5xx below is logged with its request id.
+  if(!instrument)app.use(logServerErrorResponses);
   if(admission)app.use(admission.beforeDispatch);
   const auth = createExplorersAuth(pool, config, appsInput?{appsReadOnlySessionFixture:true}:undefined);
 

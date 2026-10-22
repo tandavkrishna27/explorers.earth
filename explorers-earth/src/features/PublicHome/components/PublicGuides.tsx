@@ -31,7 +31,7 @@ interface FilterState {
 }
 
 type PublicGuideAccount = {
-  documentId?: string;
+  username?: string;
   Account_Name?: string;
   public_guides?: string;
   profile_picture?: { url?: string } | null;
@@ -83,7 +83,7 @@ const PublicGuides = memo(() => {
 
   const { data: rawAccount, loading: accountLoading, error: accountError, refetch: refetchAccount } = usePublicProfileShell(username);
   const account = rawAccount as PublicGuideAccount | undefined;
-  const accountDocumentId = typeof account?.documentId === "string" ? account.documentId : undefined;
+  const accountHandle = typeof account?.username === "string" ? account.username : undefined;
   const query = usePublicRecommendationCategory(username, "guides", account?.public_guides === "Yes");
   const { data: guidesData, loading: guidesLoading, error: guidesError, refetch: refetchGuides } = query;
   const loading = Boolean(accountLoading || guidesLoading);
@@ -94,7 +94,7 @@ const PublicGuides = memo(() => {
   const hasUsableData = queryError ? allGuides.length > 0 : completeCollection;
 
   const handleRetry = async () => {
-    await settlePublicRouteRetries(refetchAccount, accountDocumentId ? refetchGuides : undefined);
+    await settlePublicRouteRetries(refetchAccount, accountHandle ? refetchGuides : undefined);
   };
   usePublicHeaderDescriptor({
     navigationKey: location.key,
@@ -111,7 +111,7 @@ const PublicGuides = memo(() => {
   }, [hasUsableData, loading, outletContext]);
 
   const analytics = useTrackAnalytics({
-    accountId: account?.documentId || "",
+    accountId: account?.username || "",
     pageName: "public-guides",
     pageUsername: username,
     autoTrackView: true,

@@ -30,7 +30,7 @@ const PublicMovies = () => {
   const outletContext = useOutletContext<{ isShellRevealed?: boolean; setIsPageLoaded?: (val: boolean) => void } | null>();
 
   const { data: accountData, loading: userLoading, error: userError, refetch: refetchUser } = usePublicProfileShell(username);
-  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const accountHandle = typeof accountData?.username === "string" ? accountData.username : undefined;
   const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
   const query = usePublicRecommendationCategory(username, "movies", accountData?.public_movie === "Yes");
   const { data: movieData, loading: moviesLoading, error: moviesError, refetch: refetchMovies } = query;
@@ -54,13 +54,13 @@ const PublicMovies = () => {
   }, [hasUsableData, loading, outletContext]);
 
   const handleRetry = useCallback(async () => {
-    await settlePublicRouteRetries(refetchUser, accountDocumentId ? refetchMovies : undefined);
-  }, [accountDocumentId, refetchMovies, refetchUser]);
+    await settlePublicRouteRetries(refetchUser, accountHandle ? refetchMovies : undefined);
+  }, [accountHandle, refetchMovies, refetchUser]);
 
 
   // Step 3: Initialize analytics — auto-tracks the page view once accountId resolves
   const analytics = useTrackAnalytics(
-    createAnalyticsOptions.movies(accountDocumentId || '', username)
+    createAnalyticsOptions.movies(accountHandle || '', username)
   );
 
   // Collect all movies across all published lists

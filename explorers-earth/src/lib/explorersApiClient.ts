@@ -15,7 +15,7 @@ import { ownerCollectionPageSchema, ownerRecommendationPageSchema, ownerCollecti
   ownerCollectionsRequestSchema, ownerRecommendationsRequestSchema, ownerMembershipPageSchema, ownerSnapshotSchema,
   type OwnerSnapshot, type OwnerMembershipDto,
   type OwnerCollectionsRequest, type OwnerRecommendationsRequest, type OwnerCollectionDto, type OwnerRecommendationDto } from '../../../tunes/shared/explorersOwnerContentContract';
-import {ownerTopPicksRequestSchema,ownerTopPickPageSchema,type OwnerTopPicksRequest} from '../../../tunes/shared/explorersOwnerContentContract';
+import {ownerTopPicksRequestSchema,ownerTopPickPageSchema,ownerContentSummarySchema,type OwnerTopPicksRequest,type OwnerContentSummary} from '../../../tunes/shared/explorersOwnerContentContract';
 import { z } from 'zod/v3';
 import {taxonomyCatalogQuerySchema,taxonomyCatalogPageSchema,type TaxonomyCatalogPage} from '../../../tunes/shared/explorersTaxonomyContract';
 import { createCollectionSchema,createCollectionResultSchema,type CreateCollectionResult,updateCollectionSchema,createRecommendationObjectSchema,createRecommendationSchema,updateRecommendationSchema,reorderCollectionSchema,collectionCoreDtoSchema,recommendationCoreDtoSchema,apiErrorSchema,contentIdSchema,type CreateCollectionInput,type UpdateCollectionInput,type CreateRecommendationInput,type UpdateRecommendationInput } from '../../../tunes/shared/explorersContract';
@@ -581,6 +581,8 @@ export const explorersApiClient = {
    if(entity.kind!==kinds[body.category]||entity.title!==body.details.title)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid resolved catalog identity');
    return entity;
   },
+  /** HUB-X02. Per-category counts for Home in one read. */
+  getMyContentSummary:async(signal?:AbortSignal):Promise<OwnerContentSummary>=>(await ownerRead('/content-summary',{},z.object({summary:ownerContentSummarySchema}).strict(),signal)).summary,
   getMyEditableCollection:(id:string,signal?:AbortSignal)=>editableDetail('collection',id,signal),
   getMyEditableRecommendation:(id:string,signal?:AbortSignal)=>editableDetail('recommendation',id,signal),
   async createMyCollection(input:CreateCollectionInput,key:string,signal?:AbortSignal,parentObservation?:CollectionObservation):Promise<DeepReadonly<CreateCollectionResult>> {
@@ -744,10 +746,10 @@ export const explorersApiClient = {
   },
   /** A Google place photo, fetched and stored as owned list-cover media by the API. Only the
    * key-free photoUri is sent; the bytes never pass through the browser. */
-  async importPlacePhoto(photoUri: string, signal?: AbortSignal): Promise<MediaDto> {
+  async importPlacePhoto(photoUri: string, purpose: "collection" | "recommendation" = "collection", signal?: AbortSignal): Promise<MediaDto> {
     const generation = useAuthStore.getState().generation;
     const response = await fetch("/api/explorers/v1/media/place-photo", { method: "POST", credentials: "include", signal,
-      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ photoUri }) });
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify(purpose === "collection" ? { photoUri } : { photoUri, purpose }) });
     return (await responseBody<{ media: MediaDto }>(response, generation)).media;
   },
   /** Imports the signed-in user's Google profile photo as profile media; the server reads the URL from the session. */

@@ -31,11 +31,11 @@ const PublicPersonList = () => {
   const list = (Array.isArray(data?.personLists) ? data.personLists : []).find(isRenderablePersonList);
   const hasUsableData = Boolean(list);
   const people = deduplicatePeople<RecommendedPerson>(list?.recommended_people ?? []);
-  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const accountHandle = typeof accountData?.username === "string" ? accountData.username : undefined;
   const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
   const analytics = useTrackAnalytics(
     {
-      ...createAnalyticsOptions.people(accountDocumentId || "", username, list?.documentId),
+      ...createAnalyticsOptions.people(accountHandle || "", username, list?.documentId),
       waitForLocation: true,
     },
   );

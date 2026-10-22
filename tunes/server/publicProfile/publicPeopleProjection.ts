@@ -1,3 +1,4 @@
+import {publicAccountRef} from './publicAccountRef';
 import type {Pool,PoolClient} from 'pg';
 import {publicAssignedTaxonomy,publicCatalogFence,samePublicCatalog,resolvePublicSector} from './publicTaxonomyProjection';
 import {publicPeopleSectorPageSchema} from '../../shared/explorersPublicPeopleSectorContract';
@@ -162,7 +163,7 @@ export async function publicPeopleSectorProjection(pool:Pool,username:string,sec
   await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');await db.query("SET LOCAL statement_timeout='2000ms'");
   observed=await publicPeopleScope(db,username);resolved=await resolvePublicSector(db,sectorSlug);
   if(!observed||!resolved){await db.query('COMMIT');return undefined;}
-  const binding={v:1,account:observed.id,username:username.toLowerCase(),category:'people',operation:'sector',term:resolved.sector.id,slug:resolved.sector.slug,catalogVersion:resolved.catalog.version,defaultLocale:resolved.catalog.default_locale,accountRevision:observed.account_revision,contentRevision:observed.content_revision,limit};
+  const binding={v:1,account:publicAccountRef(observed.id),username:username.toLowerCase(),category:'people',operation:'sector',term:resolved.sector.id,slug:resolved.sector.slug,catalogVersion:resolved.catalog.version,defaultLocale:resolved.catalog.default_locale,accountRevision:observed.account_revision,contentRevision:observed.content_revision,limit};
   const after=sectorAfter(secret,binding,cursor);
   const rows=(await db.query(`WITH eligible AS (
    SELECT r.id,r.account_id,r.entity_id,r.user_rating,CASE WHEN octet_length(r.note::text)<=8192 THEN r.note END AS note,octet_length(r.note::text) AS note_bytes,

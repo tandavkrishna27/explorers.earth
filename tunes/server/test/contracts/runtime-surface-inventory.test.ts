@@ -36,7 +36,8 @@ describe("runtime route/event/job inventory", () => {
     // which fetches the Google photo server-side so the browser CSP need not allow it.
     // 195 = 194 + the public share page host nginx asks for every HTML route
     // (GET /api/explorers/v1/share-page, explorersSharePageRoutes.ts).
-    expect(inventory.routes).toHaveLength(195);
+    // 197 = 195 + Home's content summary GET and its fail-closed method boundary (HUB-X02).
+    expect(inventory.routes).toHaveLength(197);
     expect(inventory.events).toHaveLength(15);
     // 38 = 37 + the Google profile photo fetch deadline (googleAvatarFetch.ts).
     // 39 = 38 + the place photo fetch deadline (tunes/server/services/placePhotoFetch.ts).
@@ -139,6 +140,8 @@ describe("runtime route/event/job inventory", () => {
       ['GET','/api/explorers/v1/collections'], ['GET','/api/explorers/v1/collections/:id'],
       ['GET','/api/explorers/v1/recommendations'], ['GET','/api/explorers/v1/recommendations/:id'],
       ['GET','/api/explorers/v1/recommendations/search'],
+      // HUB-X02. Home's per-category counts.
+      ['GET','/api/explorers/v1/content-summary'],
       ['GET','/api/explorers/v1/collections/:id/editable'], ['GET','/api/explorers/v1/recommendations/:id/editable'],
       ['GET','/api/explorers/v1/categories/:category/content-snapshot'],
       ['GET','/api/explorers/v1/categories/:category/content-snapshot/validate'],
@@ -156,7 +159,7 @@ describe("runtime route/event/job inventory", () => {
       ['DELETE','/api/explorers/v1/collections/:id/guide/sections/:sectionId'],
       ['PUT','/api/explorers/v1/collections/:id/guide/cover'],
     ];
-    const methodBoundaries=['/api/explorers/v1/entities/resolve','/api/explorers/v1/collections',
+    const methodBoundaries=['/api/explorers/v1/entities/resolve','/api/explorers/v1/collections','/api/explorers/v1/content-summary',
       '/api/explorers/v1/collections/:id/memberships/:recommendationId',
       '/api/explorers/v1/collections/:id/location',
       '/api/explorers/v1/collections/:id','/api/explorers/v1/collections/:id/order',

@@ -114,7 +114,7 @@ const PlaceMapView = memo(() => {
   // Page view for the single-list map; the matched list is the analytics location.
   useTrackAnalytics({
     ...createAnalyticsOptions.home(
-      typeof accountData?.documentId === "string" ? accountData.documentId : "",
+      typeof accountData?.username === "string" ? accountData.username : "",
       username,
       (Array.isArray(rawRecommendationLists) ? rawRecommendationLists : [])
         .map((list: unknown) => (isNonNullObject(list) && typeof list.documentId === "string" ? list.documentId : undefined))

@@ -20,7 +20,7 @@ export class DiscoveryService {
  listCreatorRecommendations(handle:string,input:Omit<Extract<SearchInput,{scope:'public'}>,'scope'|'creatorHandle'>){return this.public.searchRecommendations({...input,scope:'public',creatorHandle:handle});}
  async getCreatorProfile(handle:string){
   const parsed=publicSearchRequestSchema.pick({creatorHandle:true}).safeParse({creatorHandle:handle});if(!parsed.success||!parsed.data.creatorHandle)throw new SearchFailure(400);
-  const shell=await this.profiles.shell(parsed.data.creatorHandle,{bypassCache:true});return shell?creatorProfileSchema.parse({id:shell.documentId,handle:shell.username,displayName:shell.Account_Name,accountType:shell.Account_Type}):undefined;
+  const shell=await this.profiles.shell(parsed.data.creatorHandle,{bypassCache:true});return shell?creatorProfileSchema.parse({handle:shell.username,displayName:shell.Account_Name,accountType:shell.Account_Type}):undefined;
  }
  getCollection(actor:Actor|null,id:string){return actor?this.owner.getCollection(actor,id):this.public.getCollectionById(id);}
 }

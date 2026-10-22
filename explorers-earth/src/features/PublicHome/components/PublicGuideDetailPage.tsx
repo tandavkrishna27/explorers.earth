@@ -126,7 +126,7 @@ const PublicGuideDetailPage = memo(() => {
   const loadingState = accountLoading || loading;
   // A guide reached straight from a shared link or QR code never passes through the list's
   // guide-card click, so the open is recorded here, once per guide per page load.
-  const shellAccountId = isNonNullObject(shellAccount) && hasNonEmptyString(shellAccount.documentId) ? shellAccount.documentId : "";
+  const shellAccountId = isNonNullObject(shellAccount) && hasNonEmptyString(shellAccount.username) ? shellAccount.username : "";
   const analytics = useTrackAnalytics({
     accountId: shellAccountId,
     pageName: "public-guides",

@@ -25,7 +25,7 @@ const PublicMovieGenre = () => {
   const [modalOpen, setModalOpen] = useState(false);
 
   const { data: accountData } = usePublicProfileShell(username);
-  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const accountHandle = typeof accountData?.username === "string" ? accountData.username : undefined;
   const page=usePublicMovieGenre(username,genreSlug,{enabled:true});
   const {data:moviesData,loading,error:queryError,refetch}=page;
   const genreName=isNonNullObject(moviesData?.genre)&&typeof moviesData.genre.genre_name==='string'?moviesData.genre.genre_name:slugToGenreName(genreSlug??'');
@@ -35,7 +35,7 @@ const PublicMovieGenre = () => {
   useEffect(()=>{if(!loading||hasUsableData)outletContext?.setIsPageLoaded?.(true);},[hasUsableData,loading,outletContext]);
   const handleRetry=()=>refetch();
   const analytics = useTrackAnalytics({
-    ...createAnalyticsOptions.movies(accountDocumentId || "", username),
+    ...createAnalyticsOptions.movies(accountHandle || "", username),
     ready: hasUsableData,
   });
   const handleMovieClick = useCallback((movie: RecommendedMovie) => {

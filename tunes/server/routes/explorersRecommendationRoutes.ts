@@ -59,6 +59,8 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
     return {...(query as object),category:request.params.category};
   };
   routes.get('/api/explorers/v1/collections',read((a,_id,q)=>ownerContent.listCollections(a,q)));
+  routes.get('/api/explorers/v1/content-summary',read((a,_id,q)=>ownerContent.getContentSummary(a,q),'summary'));
+  routes.all('/api/explorers/v1/content-summary',unsupported);
   routes.post('/api/explorers/v1/collections/:id/memberships/:recommendationId',async(req,res)=>mutation((a,id,b,c)=>service.gameMembership(a,id,String(req.params.recommendationId),b,c,true),'membership')(req,res));
   routes.delete('/api/explorers/v1/collections/:id/memberships/:recommendationId',async(req,res)=>mutation((a,id,b,c)=>service.gameMembership(a,id,String(req.params.recommendationId),b,c,false),'membership')(req,res));
   routes.all('/api/explorers/v1/collections/:id/memberships/:recommendationId',unsupported);

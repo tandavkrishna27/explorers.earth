@@ -80,7 +80,12 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
 
   // Validation schema
   const validationSchema = Yup.object({
-    listName: Yup.string().required('List Name is Required'),
+    // PLC-01. A new location must come from a Google suggestion. Typing a name and pressing
+    // Add Location used to end in a toast that could sit behind the modal, so it read as
+    // "nothing happens"; the field now says what is missing.
+    listName: isEditing
+      ? Yup.string().required('List Name is Required')
+      : Yup.string().test('picked-suggestion', t("toast.error.pickPlaceFromSuggestions"), () => Boolean(places?.place_id)),
     recommendationSocialLink: Yup.string(),
     note: Yup.string(),
     placeUrl: Yup.string().required('Url name is Required'),
@@ -254,7 +259,7 @@ const AddLocationModal: React.FC<AddLocationModalProps> = ({
                   </div>
                 )}
                 {errors.listName && touched.listName && (
-                  <span className="text-xs font-poppins text-dashboard-danger">
+                  <span role="alert" className="text-xs font-poppins text-dashboard-danger">
                     {typeof errors.listName === 'string' ? errors.listName : String(errors.listName)}
                   </span>
                 )}

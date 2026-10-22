@@ -1,3 +1,4 @@
+import {publicAccountRef,publicAccountRefSchema} from './publicAccountRef';
 import type {Pool,PoolClient} from 'pg';
 import {createHash,createHmac,timingSafeEqual} from 'node:crypto';
 import {z} from 'zod/v3';
@@ -99,10 +100,10 @@ export async function prepareGamePublicReply(value:unknown):Promise<string|undef
 const listGate="c.archived_at IS NULL AND c.visibility='public' AND c.publication_state='published'";
 const recommendationGate="r.archived_at IS NULL AND r.publication_state='published'";
 export class PublicGameCursorError extends Error {constructor(){super('Invalid Games continuation');}}
-const payloadSchema=z.object({v:z.literal(1),purpose:z.enum(['games-category','games-list']),category:z.literal('games'),username:z.string().max(64),accountId:z.string().uuid(),accountRevision:z.string().regex(/^\d+$/),categoryRevision:z.string().regex(/^\d+$/),listId:z.string().uuid().nullable(),listRevision:z.string().regex(/^\d+$/).nullable(),limit:z.number().int().min(1).max(24),expiresAt:z.number().int().positive().safe(),after:z.object({displayOrder:z.number().int().nonnegative().safe(),id:z.string().uuid()}).strict()}).strict();
+const payloadSchema=z.object({v:z.literal(1),purpose:z.enum(['games-category','games-list']),category:z.literal('games'),username:z.string().max(64),accountId:publicAccountRefSchema,accountRevision:z.string().regex(/^\d+$/),categoryRevision:z.string().regex(/^\d+$/),listId:z.string().uuid().nullable(),listRevision:z.string().regex(/^\d+$/).nullable(),limit:z.number().int().min(1).max(24),expiresAt:z.number().int().positive().safe(),after:z.object({displayOrder:z.number().int().nonnegative().safe(),id:z.string().uuid()}).strict()}).strict();
 type Cursor=z.infer<typeof payloadSchema>;
 type Binding=Omit<Cursor,'after'|'expiresAt'>;
-function binding(observed:any,username:string,limit:number,list?:any):Binding{return {v:1,purpose:list?'games-list':'games-category',category:'games',username:username.toLowerCase(),accountId:observed.id,accountRevision:observed.account_revision,categoryRevision:observed.content_revision,listId:list?.id??null,listRevision:list?.revision??null,limit};}
+function binding(observed:any,username:string,limit:number,list?:any):Binding{return {v:1,purpose:list?'games-list':'games-category',category:'games',username:username.toLowerCase(),accountId:publicAccountRef(observed.id),accountRevision:observed.account_revision,categoryRevision:observed.content_revision,listId:list?.id??null,listRevision:list?.revision??null,limit};}
 function key(secret:string){if(secret.length<32)throw new Error('Games continuation key unavailable');return createHash('sha256').update('explorers-public-games/v1\0').update(secret).digest();}
 function sign(secret:string,value:Cursor){const part=Buffer.from(JSON.stringify(payloadSchema.parse(value))).toString('base64url');const token=part+'.'+createHmac('sha256',key(secret)).update(part).digest('base64url');if(Buffer.byteLength(token)>2048)throw new PublicGameCursorError();return token;}
 function decode(cursor:string|undefined,secret:string,expected:Binding):Cursor|undefined{

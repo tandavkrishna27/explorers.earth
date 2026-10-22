@@ -1,4 +1,5 @@
 import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
+import { normalizeSocialProfileUrl } from "../../../utils/url";
 import { validateImageFiles, maxImageMegabytes, type RejectedImage } from "../../../utils/imageFileValidation";
 import { useRef, useState } from "react";
 import { KeyValuePair } from "../components/RecommendForm";
@@ -67,6 +68,8 @@ const determineRecommendationSource = (searchParams: URLSearchParams): Recommend
 
 type GoogleMedia = {
   photoBlob?: Blob;
+  /** A provider photo the API already imported into owned media (PLC-02). */
+  mediaId?: string;
   fileName?: string;
   url?: string;
   documentId?: string;
@@ -81,7 +84,9 @@ export type RecommendationMediaStatus =
 
 type PendingRecommendationMedia = {
   key: string;
-  blob: Blob;
+  /** Exactly one of these: bytes still to upload, or media the API already imported. */
+  blob?: Blob;
+  mediaId?: string;
   fileName?: string;
   isThumbnail: boolean;
   /** Provider imagery becomes the place's gallery; the creator's own becomes their media. */
@@ -181,6 +186,9 @@ export function recommendationContext(values: KeyValuePair, options: {
 }): PlaceRecommendationContext {
   const text = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
   const person = options.recommendationType === "person";
+  // "@handle" and "instagram.com/x" become the full URL the contract requires (PLC-05);
+  // the form's own validation has already refused anything that cannot.
+  const profile = (value: unknown) => { const raw = text(value); return raw === null ? null : normalizeSocialProfileUrl(raw) ?? raw; };
   return {
     ...emptyPlaceContext(),
     recommendationType: options.recommendationType,
@@ -194,9 +202,9 @@ export function recommendationContext(values: KeyValuePair, options: {
         : options.existing?.contactVisibility ?? "private",
     placeSocialUrl: person ? null : text(values.socialLink),
     placeWebsiteUrl: person ? text(values.socialLink) : null,
-    creatorSocialUrl: text(values.recommendationLink) ?? (person ? text(values.recommendation) : options.existing?.creatorSocialUrl ?? null),
+    creatorSocialUrl: text(values.recommendationLink) ?? (person ? profile(values.recommendation) : options.existing?.creatorSocialUrl ?? null),
     legacyPlaceNote: options.existing?.legacyPlaceNote ?? null,
-    personProfileUrl: person ? text(values.recommendation) ?? text(values.recommendationLink) : null,
+    personProfileUrl: person ? profile(values.recommendation) ?? text(values.recommendationLink) : null,
     personAddress: person ? text(values.address) : null,
   };
 }
@@ -253,7 +261,7 @@ export const useAddRecommendation = ({
   const existingPlacePhotoIds = (): string[] =>
     savedPhotoArrangement && savedPhotoArrangement.observation === editObservation ? savedPhotoArrangement.ids : observedPlacePhotoIds();
   const otherPhotoCount = (): number => type === "edit" ? existingPlacePhotoIds().length
-    : (Array.isArray(fetchedGoogleMedia) ? fetchedGoogleMedia : []).filter(media => media.photoBlob instanceof Blob).length
+    : (Array.isArray(fetchedGoogleMedia) ? fetchedGoogleMedia : []).filter(media => media.photoBlob instanceof Blob || media.mediaId).length
       + (Array.isArray(instagramMedia) ? instagramMedia : []).filter(media => media.photoBlob instanceof Blob).length;
   const refusePhotoOverflow = (total: number): boolean => {
     if (total <= PLACE_PHOTO_LIMIT) return false;
@@ -284,12 +292,17 @@ export const useAddRecommendation = ({
 
   const snapshotSelectedMedia = (): PendingRecommendationMedia[] => {
     const google = (Array.isArray(fetchedGoogleMedia) ? fetchedGoogleMedia : [])
-      .flatMap((media, index) => media.photoBlob instanceof Blob ? [{
+      .flatMap((media, index): PendingRecommendationMedia[] => media.mediaId ? [{
+        key: `google-${index}-${media.mediaId}`,
+        mediaId: media.mediaId,
+        isThumbnail: media.isThumbnail === true,
+        origin: "provider",
+      }] : media.photoBlob instanceof Blob ? [{
         key: `google-${index}-${media.fileName || "media"}`,
         blob: media.photoBlob,
         fileName: media.fileName,
         isThumbnail: media.isThumbnail === true,
-        origin: "provider" as const,
+        origin: "provider",
       }] : []);
     const userMedia = uploadedUserMedia.map(({ file, fileName }, index) => ({
       key: `user-${index}-${file.name}`,
@@ -361,7 +374,10 @@ export const useAddRecommendation = ({
     while (attempt.pending.length > 0) {
       const media = attempt.pending[0];
       try {
-        const file = new File([media.blob], media.fileName || "recommendation", { type: media.blob.type || "image/jpeg" });
+        // Imported provider photos are owned media already; only bytes are uploaded.
+        if (media.mediaId) { attempt.photoMediaIds.push(media.mediaId); attempt.pending = attempt.pending.slice(1); continue; }
+        const blob = media.blob as Blob;
+        const file = new File([blob], media.fileName || "recommendation", { type: blob.type || "image/jpeg" });
         const uploaded = await commands.upload(file, "recommendation");
         // Creator and provider uploads share the one typed, publicly projected photo
         // path. The generic recommendation_media leg had no public Places reader.

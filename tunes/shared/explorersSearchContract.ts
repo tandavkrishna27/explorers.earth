@@ -18,6 +18,6 @@ export const ownerSearchPageSchema=z.object({...base,scope:z.literal('owner'),sn
 export const publicSearchPageSchema=z.object({...base,scope:z.literal('public'),consistency:z.enum(['live','category-fenced']),items:z.array(publicSearchItemSchema).max(100)}).strict();
 export const searchPageSchema=z.discriminatedUnion('scope',[ownerSearchPageSchema,publicSearchPageSchema]);
 export const publicCollectionByIdSchema=z.object({id:contentIdSchema,category:contentCategorySchema,title:z.string().min(1).max(200),slug:z.string().max(200),description:z.string().max(5000).nullable(),heading:z.string().max(200).nullable()}).strict();
-export const creatorProfileSchema=z.object({id:contentIdSchema,handle:z.string().max(30),displayName:z.string().max(200),accountType:z.string().max(100)}).strict();
+export const creatorProfileSchema=z.object({handle:z.string().max(30),displayName:z.string().max(200),accountType:z.string().max(100)}).strict();
 export const ownerSearchErrorSchema=z.object({error:z.object({code:z.enum(['UNAUTHENTICATED','FORBIDDEN','NOT_FOUND','CONFLICT','RESOURCE_TOO_LARGE','INVALID_INPUT','UNAVAILABLE']),message:z.string(),requestId:z.string(),retryable:z.literal(true).optional()}).strict()}).strict();
 export const publicSearchErrorSchema=z.object({version:z.literal('explorers-public-error/v1'),error:z.object({code:z.enum(['NOT_FOUND','PAGE_CHANGED','RESOURCE_TOO_LARGE','UNAVAILABLE','BAD_REQUEST']),retryable:z.literal(true).optional(),restart:z.literal(true).optional()}).strict()}).strict();

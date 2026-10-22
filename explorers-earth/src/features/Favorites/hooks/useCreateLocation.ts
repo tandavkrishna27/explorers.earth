@@ -128,7 +128,8 @@ export const useCreateLocation = ({
 
       const created = await commands.createList({
         title: values.listName,
-        slug: toUrlSlug(values.listName),
+        // The share-link field the owner can edit wins; the name is only its default (PLC-01).
+        slug: toUrlSlug(typeof values.placeUrl === "string" && values.placeUrl.trim() ? values.placeUrl.trim() : values.listName),
         // The list's own note, which the city surfaces read back as List_Name_Details.note.
         description: typeof values.note === "string" && values.note ? values.note : null,
         ...(coverMediaId === undefined ? {} : { coverMediaId }),

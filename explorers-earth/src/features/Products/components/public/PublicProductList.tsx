@@ -32,11 +32,11 @@ const PublicProductList = () => {
   const list = (Array.isArray(data?.productLists) ? data.productLists : []).find(isRenderableProductList);
   const hasUsableData = Boolean(list);
   const products = deduplicateProducts<RecommendedProduct>(list?.recommended_products ?? []);
-  const accountDocumentId = typeof accountData?.documentId === "string" ? accountData.documentId : undefined;
+  const accountHandle = typeof accountData?.username === "string" ? accountData.username : undefined;
   const creatorName = typeof accountData?.Account_Name === "string" ? accountData.Account_Name : username;
   const analytics = useTrackAnalytics(
     {
-      ...createAnalyticsOptions.products(accountDocumentId || "", username, list?.documentId),
+      ...createAnalyticsOptions.products(accountHandle || "", username, list?.documentId),
       waitForLocation: true,
     },
   );
