@@ -93,7 +93,9 @@
     "0061_explorers_product_spec_order_budget_scale",
     "0062_explorers_handle_holds",
     "0063_explorers_open_library_books",
-    "0064_explorers_game_details"
+    "0064_explorers_game_details",
+    "0065_explorers_collection_live_slug",
+    "0066_explorers_list_redirects_and_delete"
   ],
   "nonHttpErrorCodes": [
     "RESOURCE_FORBIDDEN",
