@@ -1,5 +1,46 @@
 # Unified UX across categories (2026-10)
 
+Status: **v2, awaiting owner decisions.** No app code changes.
+Mocks v2: https://claude.ai/artifact/TmMMFzJnW2cEtmUE7vVF7k (private, clickable, desktop + mobile).
+v1 mocks (https://claude.ai/artifact/MjTwMPH2QyCkQB6ZHaV2zx) were rejected by the owner: built from code only, merged the two public screens, dropped Top Picks, ignored visibility toggles and Manage/QR. v2 replaces them.
+
+## v2: live walkthrough notes (2026-10-22, smoketest1021, read-only)
+
+Look of today's app, reproduced in v2: near-black page, `#14171f` sidebar/top bar, Poppins (900 uppercase on All Recommendations), blue `#60a5fa` 12px-radius buttons, list cards `#151a25` (Places uses `#1a2332`) with a 1px white/10% border and 16px radius, green `PUBLIC` badge, yellow bar before section titles, globe splash loader with a rotating tagline.
+
+Observed differences:
+- All Recommendations: badges differ (green "Public" with icon vs outlined "Hidden"), ⋯ menu styles vary.
+- Category page, Movies: "Public Visibility" toggle top-left, "New List" top-right, Top Picks hero (black box while loading/empty), "Reorder lists" button, cards with truncated names ("Smoke Test …"), toggle on card, "Open ›" link, "1 pinned", dashed "Add new list".
+- Category page, Places: hero titled **Featured**, button **Add Location**, cards have ⋮ menu instead of a toggle, image-strip covers.
+- List page (Movies): Back + name top-left, **Published toggle top-right**, two tabs. Manage holds Archive, Edit, a **second Published toggle**, and the QR card with Share link / Copy / Download QR.
+- Public category `/<handle>/places`: Featured hero (empty black box showing "3 saved places"), one row per list with See All, green **Map View** pill above a bottom tab dock. A category whose visibility is off redirects to the profile.
+- Public list `/<handle>/places/goa`: back link, name, a "Places 1" filter chip, card grid, same Map View pill.
+
+## v2 decisions encoded in the mocks
+1. **All Recommendations**: keep the 8 cards; one badge style (● Public / outlined Hidden) and one ⋯ style; owner picks colour option A (one brand colour + icons) or B (subtle per-category tints).
+2. **Category page** (one template, all 8): top-left toggle "Show <Category> on my profile"; top-right "New List" (Places too); "Top Picks" hero everywhere, always visible, with an empty state ("Pin items to feature them here") and a first-visit explainer; list cards as today, but names wrap to two lines, no "Open", whole card clickable, public toggle on every card; drag-and-drop replaces "Reorder lists"; "+ Add new list" card.
+3. **List page**: Back, Published toggle and name on the left; tabs **Recommendations** (add, drag reorder, ☆ pin to Top Picks, ⋯ item menu), **Share** (link, Copy, QR card with full-size Download, social), **Manage** (name, description, cover, URL slug; linked lists attach/detach on Place lists; Archive/Delete). Duplicate Published toggle removed; **per-item Draft/Publish removed** (items in a published list are public).
+4. **Add/edit item**: full page, sticky action bar, search first then manual, one 5-star rating. Places: place types only (no Person). Products: product photo, one price field with inline currency. People: sector picker, no rating (pending confirmation).
+5. **Public category** and **public list** stay two screens. Map toggle (List | Map) only on Places.
+6. **Publish nudge**: after the 3rd item, or when leaving a draft list with items; never on an empty list.
+7. **Loaders**: globe splash only at app start ("Getting your recommendations ready…"); skeletons elsewhere; no full-screen saving overlay.
+8. **Back** always returns to the origin.
+
+## Open questions (v2)
+1. Hub colour: option A or B?
+2. On mobile, keep the public toggle on each list card, or move it into the card ⋯ menu?
+3. 5-star migration: halve existing 10-point ratings, rounding to half stars?
+4. People: confirm no rating.
+5. Public category page with no Top Picks: hide the hero for visitors (proposed)?
+6. Show a Place list's linked People/Products lists to visitors ("Also on this list")?
+7. Archive vs Delete: keep both?
+8. Should the URL slug stay editable after publishing (breaks printed QR codes)? Proposed: editable, with a redirect from the old slug.
+
+---
+
+# v1 (superseded): code audit
+
+
 Status: **proposal, awaiting owner decisions.** No app code changes yet.
 Mocks: https://claude.ai/artifact/MjTwMPH2QyCkQB6ZHaV2zx (private; clickable, desktop and mobile).
 Source: owner walkthrough 2026-10-22 (UAT board area OWN, OWN-01..OWN-20) plus a code read of `fork/main` @ 8063651c.
