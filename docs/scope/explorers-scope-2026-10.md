@@ -39,6 +39,7 @@ Each item has an ID, a status and a source.
 | O10 | Owner on phase order, invite-by-email, saving lists, monetisation |
 | O11 | Owner approving the Guides proposals: sections + templates (Trip first), in-page editor, day strip (2026-10-22) |
 | O12 | Owner decision on Guides v4 day structure: one ordered list per day, optional time labels (2026-10-23) |
+| O13 | Owner request: mock the placement of the publish and add controls (2026-10-23) |
 | P187 / P188 / P189 | The three docs PRs |
 | UAT | Live UAT re-test of 2026-10-22 and its board |
 | MEM | Recorded UX decisions of 2026-10-22 |
@@ -91,6 +92,7 @@ Use these names everywhere (code, docs, tickets). "Category hub" is not a screen
 | GL-05 | One toast system (`sonner`), past-tense verbs, Undo on removals; remove the other two toast systems. | OPEN (proposal, not discussed) | P188 v1 §2.8 |
 | GL-06 | Drag-and-drop reorder everywhere (list cards and items), replacing "Reorder lists" mode and arrow buttons; keyboard reorder kept for accessibility. | SETTLED | WT, O2 |
 | GL-07 | Saves and loads must feel fast (see BUG OWN-17). | SETTLED | WT |
+| GL-08 | **Controls placement:** the top right holds status and publish; Add lives in the content; the floating + appears on phones only. Category page: an "On profile ✓ / Hidden" chip and "+ New list" at the top right, plus a dashed "+ New list" first card. List page: the top right holds only the publish control (a solid "Publish" for a draft, a "🌐 Public ▾" pill with Public / Private (invite, coming soon) / Unpublish to draft once published), replacing the left-side toggle; "+ Add item" at the right end of the tab row on Recommendations only; a dashed "+ Add item" row after the items; a large centred CTA when the list is empty. Guide page: the same pill, plus a dashed "+ Add to day" row per day. On phones, the floating + means New list / Add item / Add to the selected day. Mocks v5: https://claude.ai/artifact/UDhwrVqLBNh8xKtZpppf6v | PROPOSED | O13 |
 
 ### 3.1 All Recommendations
 
