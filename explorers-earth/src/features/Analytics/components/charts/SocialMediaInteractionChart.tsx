@@ -3,6 +3,9 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 import { PublicPageAnalyticsData } from '../../api/queries';
 import { useResponsiveChart } from '../../../../hooks/useResponsiveChart';
 import EmptyState from '../EmptyState';
+import { useTranslation } from 'react-i18next';
+
+const SM = 'analytics.dashboard.charts.socialMedia.';
 
 interface SocialMediaInteractionChartProps {
   rawAnalyticsData: PublicPageAnalyticsData[];
@@ -16,6 +19,7 @@ interface SocialMediaData {
 
 const SocialMediaInteractionChart: React.FC<SocialMediaInteractionChartProps> = ({ rawAnalyticsData }) => {
   const { chartConfig } = useResponsiveChart();
+  const { t } = useTranslation();
   // Process social media data from raw analytics data
   const socialMediaData = useMemo(() => {
     // Filter for click events on social links from public-profile page only
@@ -81,7 +85,7 @@ const SocialMediaInteractionChart: React.FC<SocialMediaInteractionChartProps> = 
       return (
         <div className="dt-surface p-3 rounded-lg border border-dashboard shadow-dashboard-elevated">
           <p className="dt-label mb-1">{data.name}</p>
-          <p className="dt-subtext text-xs">Clicks: {data.value}</p>
+          <p className="dt-subtext text-xs">{t(`${SM}tooltip.clicks`, { count: data.value })}</p>
         </div>
       );
     }
@@ -102,24 +106,24 @@ const SocialMediaInteractionChart: React.FC<SocialMediaInteractionChartProps> = 
         <div className="flex flex-col items-center justify-center py-12 px-4">
           <EmptyState 
             icon="share"
-            message="No Social Media Interaction Data"
-            description="No social media click data available from your public profile page."
+            message={t(`${SM}noDataTitle`)}
+            description={t(`${SM}noDataMessage`)}
           />
           
           <div className="space-y-2 text-left mt-4">
             <div className="p-3 bg-dashboard-muted rounded-lg">
               <p className="dt-subtext text-sm">
-                <strong>Analytics Summary:</strong>
+                <strong>{t(`${SM}analyticsSummary`)}</strong>
               </p>
               <ul className="dt-subtext text-xs mt-1 space-y-1">
-                <li>• {totalSocialClicks} total social media clicks</li>
-                <li>• {socialMediaData.length} unique platforms</li>
-                <li>• Only tracking clicks from public-profile page</li>
+                <li>{t(`${SM}totalSocialClicks`, { count: totalSocialClicks })}</li>
+                <li>{t(`${SM}uniquePlatforms`, { count: socialMediaData.length })}</li>
+                <li>{t(`${SM}trackingNote`)}</li>
               </ul>
             </div>
             
             <p className="dt-subtext text-xs opacity-75">
-              Social media interaction data will appear once users click on your social media links.
+              {t(`${SM}willAppear`)}
             </p>
           </div>
         </div>
@@ -164,19 +168,19 @@ const SocialMediaInteractionChart: React.FC<SocialMediaInteractionChartProps> = 
           <p className={`${chartData.length > 3 ? 'text-base' : 'text-lg'} font-bold text-dashboard-accent`}>
             {chartData.length}
           </p>
-          <p className="dt-subtext text-xs sm:text-sm">Platforms</p>
+          <p className="dt-subtext text-xs sm:text-sm">{t(`${SM}stats.platforms`)}</p>
         </div>
         <div className="dt-surface p-3 sm:p-4 rounded-lg text-center">
           <p className={`${chartData.length > 3 ? 'text-base' : 'text-lg'} font-bold text-dashboard-accent`}>
             {chartData.reduce((sum, platform) => sum + platform.value, 0)}
           </p>
-          <p className="dt-subtext text-xs sm:text-sm">Total Clicks</p>
+          <p className="dt-subtext text-xs sm:text-sm">{t(`${SM}stats.totalClicks`)}</p>
         </div>
         <div className="dt-surface p-3 sm:p-4 rounded-lg text-center">
           <p className={`${chartData.length > 3 ? 'text-base' : 'text-lg'} font-bold text-dashboard-accent`}>
             {chartData.length > 0 ? Math.round(chartData.reduce((sum, platform) => sum + platform.value, 0) / chartData.length) : 0}
           </p>
-          <p className="dt-subtext text-xs sm:text-sm">Avg Clicks/Platform</p>
+          <p className="dt-subtext text-xs sm:text-sm">{t(`${SM}stats.avgClicks`)}</p>
         </div>
       </div>
     </div>

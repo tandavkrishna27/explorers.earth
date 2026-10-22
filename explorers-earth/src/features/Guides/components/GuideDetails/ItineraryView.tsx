@@ -26,6 +26,7 @@ import { guideDescriptionText } from "../../../../utils/guideDescriptionText";
 import MultiCityJourneyDisplay from "./MultiCityJourneyDisplay";
 import type { Guide } from "../../types";
 import DayOrderPanel from "./DayOrderPanel";
+import DayTravelLegs from "../Shared/DayTravelLegs";
 import { keyboardActivation } from "../../../../utils/keyboardActivation";
 
 interface ItineraryViewProps {
@@ -429,6 +430,8 @@ const ItineraryView: React.FC<ItineraryViewProps> = ({
                       </div>
                     )}
 
+                    <DayTravelLegs section={section} />
+
                     {/* Available Tab Icons */}
                     {availableTabs.length > 0 && (
                       <div className="flex items-center gap-2 mt-3">
@@ -679,6 +682,7 @@ const ItineraryView: React.FC<ItineraryViewProps> = ({
                       );
                     })}
                   </div>
+                  <DayTravelLegs section={section} className="mt-4" />
                 </div>
               </motion.div>
             );

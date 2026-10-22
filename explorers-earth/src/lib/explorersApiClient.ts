@@ -1,3 +1,4 @@
+import { mediaUploadProblem, safeMediaFileName } from "../utils/mediaUploadCheck";
 import {announceRevisionConflict} from './revisionConflict';
 import {changedSinceViewed,isViewObservation,markCommandSent,settleViewedAccount,settleViewedRevision,viewedAccountRevision,wasCommandSent} from './viewedRevisions';
 import {gameCatalogRequestSchema,gameMembershipCommandSchema,gameMembershipResultSchema} from '../../../tunes/shared/explorersGameOwnerContract';
@@ -736,9 +737,11 @@ export const explorersApiClient = {
     } catch (error) { throw announceRevisionConflict(error); }
   },
   async createMedia(file: File, purpose: "profile" | "background" | "feed" | "recommendation" | "collection" | "guide", signal?: AbortSignal): Promise<MediaDto> {
+    const problem = mediaUploadProblem(file, purpose);
+    if (problem) throw new ExplorersApiError(422, problem.code, problem.message);
     const generation = useAuthStore.getState().generation;
     const response = await fetch("/api/explorers/v1/media", { method: "POST", credentials: "include", signal,
-      headers: { "Content-Type": file.type, "X-Media-Purpose": purpose, "X-File-Name": file.name }, body: file });
+      headers: { "Content-Type": file.type, "X-Media-Purpose": purpose, "X-File-Name": safeMediaFileName(file.name) }, body: file });
     return (await responseBody<{ media: MediaDto }>(response, generation)).media;
   },
   /** A Google place photo, fetched and stored as owned list-cover media by the API. Only the

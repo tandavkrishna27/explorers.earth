@@ -22,7 +22,7 @@ import EmptyState from '../EmptyState';
 interface MediaListEngagementChartProps {
   events: AnalyticsEvent[];
   pageName: string;   // e.g. 'public-movies'
-  pageLabel: string;  // e.g. 'Movies'
+  category: 'movies' | 'books' | 'games'; // selects the translated copy
   elementPrefix: string; // e.g. 'movie-card'
   color: string;
   icon: string;
@@ -36,9 +36,11 @@ const CHART_COLORS = [
 const formatDate = (iso: string) => iso.split('T')[0];
 
 const MediaListEngagementChart: React.FC<MediaListEngagementChartProps> = ({
-  events, pageName, pageLabel, elementPrefix, color, icon,
+  events, pageName, category, elementPrefix, color, icon,
 }) => {
   const { t } = useTranslation();
+  const M = `analytics.dashboard.media.${category}.`;
+  const C = 'analytics.dashboard.common.';
   const untitledList = t('analytics.dashboard.untitledList');
   const [selectedList, setSelectedList] = useState<string>('all');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -124,7 +126,7 @@ const MediaListEngagementChart: React.FC<MediaListEngagementChartProps> = ({
 
   /** Bar chart: clicks per list (for overview mode) */
   const listClicksData = useMemo(
-    () => listOptions.map(l => ({ name: l.name, Clicks: l.clickCount })),
+    () => listOptions.map(l => ({ name: l.name, clicks: l.clickCount })),
     [listOptions]
   );
 
@@ -132,16 +134,16 @@ const MediaListEngagementChart: React.FC<MediaListEngagementChartProps> = ({
   if (viewEvents.length === 0 && clickEvents.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-10 px-4">
-        <EmptyState icon="line-chart" message={`No ${pageLabel.toLowerCase()} engagement data yet`} />
+        <EmptyState icon="line-chart" message={t(`${M}noEngagement`)} />
         <p className="dt-subtext text-xs mt-3 opacity-70 text-center">
-          {icon} Views and item clicks from your {pageLabel.toLowerCase()} page will appear here.
+          {icon} {t(`${M}engagementHint`)}
         </p>
       </div>
     );
   }
 
   const selectedListLabel = selectedList === 'all'
-    ? 'All Lists'
+    ? t(`${C}allLists`)
     : selectedList;
 
   const totalPageViews = viewEvents.length;
@@ -151,7 +153,7 @@ const MediaListEngagementChart: React.FC<MediaListEngagementChartProps> = ({
     <div className="w-full space-y-6">
       {/* ── List selector dropdown ───────────────────────────────────── */}
       <div>
-        <label className="dt-label block mb-2">Select List:</label>
+        <label className="dt-label block mb-2">{t(`${C}selectList`)}</label>
         <div className="w-full sm:max-w-xs relative" ref={dropdownRef}>
           <button
             type="button"
@@ -174,7 +176,7 @@ const MediaListEngagementChart: React.FC<MediaListEngagementChartProps> = ({
                 onClick={() => { setSelectedList('all'); setIsDropdownOpen(false); }}
                 className={`w-full px-3 py-2 text-left dt-label hover:bg-dashboard-muted transition-colors ${selectedList === 'all' ? 'bg-dashboard-muted text-dashboard-accent' : ''}`}
               >
-                All Lists
+                {t(`${C}allLists`)}
               </button>
               {listOptions.map(list => (
                 <button
@@ -183,7 +185,7 @@ const MediaListEngagementChart: React.FC<MediaListEngagementChartProps> = ({
                   onClick={() => { setSelectedList(list.name); setIsDropdownOpen(false); }}
                   className={`w-full px-3 py-2 text-left dt-label hover:bg-dashboard-muted transition-colors ${selectedList === list.name ? 'bg-dashboard-muted text-dashboard-accent' : ''}`}
                 >
-                  {list.name} ({list.clickCount} clicks)
+                  {t(`${C}listClicks`, { name: list.name, count: list.clickCount })}
                 </button>
               ))}
             </div>
@@ -214,11 +216,11 @@ const MediaListEngagementChart: React.FC<MediaListEngagementChartProps> = ({
                   borderRadius: '8px',
                   fontSize: '12px',
                 }}
-                labelFormatter={(l) => `Date: ${l}`}
+                labelFormatter={(l) => t(`${C}date`, { date: l })}
               />
               <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-              <Line type="monotone" dataKey="views" stroke={color} strokeWidth={2} dot={{ r: 3 }} name="Page Views" />
-              <Line type="monotone" dataKey="clicks" stroke={CHART_COLORS[1]} strokeWidth={2} dot={{ r: 3 }} name={`${selectedList === 'all' ? 'All' : selectedListLabel} Clicks`} />
+              <Line type="monotone" dataKey="views" stroke={color} strokeWidth={2} dot={{ r: 3 }} name={t(`${C}pageViews`)} />
+              <Line type="monotone" dataKey="clicks" stroke={CHART_COLORS[1]} strokeWidth={2} dot={{ r: 3 }} name={selectedList === 'all' ? t(`${C}allClicksSeries`) : t(`${C}listClicksSeries`, { list: selectedListLabel })} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -227,7 +229,7 @@ const MediaListEngagementChart: React.FC<MediaListEngagementChartProps> = ({
       {/* ── Clicks-per-list bar chart (only in "All Lists" mode) ──── */}
       {selectedList === 'all' && listClicksData.length > 0 && (
         <div>
-          <p className="text-xs font-semibold dt-label uppercase tracking-wider mb-3">Clicks by List</p>
+          <p className="text-xs font-semibold dt-label uppercase tracking-wider mb-3">{t(`${C}clicksByList`)}</p>
           <ResponsiveContainer width="100%" height={Math.max(160, listClicksData.length * 38)} minWidth={0} initialDimension={{ width: 1, height: 1 }}>
             <BarChart data={listClicksData} layout="vertical" margin={{ left: 8, right: 32, top: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
@@ -239,9 +241,9 @@ const MediaListEngagementChart: React.FC<MediaListEngagementChartProps> = ({
               />
               <Tooltip
                 contentStyle={{ backgroundColor: 'var(--color-surface, #1e293b)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '12px' }}
-                formatter={(v) => [`${v} click${v !== 1 ? 's' : ''}`, 'Clicks']}
+                formatter={(v) => [t(`${C}clickCount`, { count: Number(v) }), t(`${C}clicks`)]}
               />
-              <Bar dataKey="Clicks" radius={[0, 4, 4, 0]}>
+              <Bar dataKey="clicks" name={t(`${C}clicks`)} radius={[0, 4, 4, 0]}>
                 {listClicksData.map((_, i) => (
                   <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                 ))}
@@ -255,15 +257,15 @@ const MediaListEngagementChart: React.FC<MediaListEngagementChartProps> = ({
       <div className="grid grid-cols-3 gap-3">
         <div className="dt-surface p-3 sm:p-4 rounded-lg text-center">
           <p className="text-lg font-bold text-dashboard-accent">{listOptions.length}</p>
-          <p className="dt-subtext text-xs sm:text-sm">Total Lists</p>
+          <p className="dt-subtext text-xs sm:text-sm">{t(`${C}totalLists`)}</p>
         </div>
         <div className="dt-surface p-3 sm:p-4 rounded-lg text-center">
           <p className="text-lg font-bold text-dashboard-accent">{totalPageViews}</p>
-          <p className="dt-subtext text-xs sm:text-sm">Total Views</p>
+          <p className="dt-subtext text-xs sm:text-sm">{t(`${C}totalViews`)}</p>
         </div>
         <div className="dt-surface p-3 sm:p-4 rounded-lg text-center">
           <p className="text-lg font-bold text-dashboard-accent">{totalClicks}</p>
-          <p className="dt-subtext text-xs sm:text-sm">Total Item Clicks</p>
+          <p className="dt-subtext text-xs sm:text-sm">{t(`${C}totalItemClicks`)}</p>
         </div>
       </div>
     </div>

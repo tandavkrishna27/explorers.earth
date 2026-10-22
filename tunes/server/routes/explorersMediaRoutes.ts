@@ -38,7 +38,7 @@ export function setupExplorersMediaRoutes(app: Express, pool: Pool, auth: Explor
         length: Number(request.get("content-length")), bytes: request.body } , { requestId: randomUUID() });
       return response.status(201).json({ media });
     } catch (error) {
-      if (error instanceof MediaInputError) { const result = failure(422, "INVALID_INPUT", error.message); return response.status(result.status).json(result.body); }
+      if (error instanceof MediaInputError) { const result = failure(422, error.code, error.message); return response.status(result.status).json(result.body); }
       sendActorError(request, response, error);
     }
   });
@@ -68,7 +68,7 @@ export function setupExplorersMediaRoutes(app: Express, pool: Pool, auth: Explor
         mimeType: photo.mimeType, length: photo.bytes.length, bytes: photo.bytes }, { requestId: randomUUID() });
       return response.status(201).json({ media });
     } catch (error) {
-      if (error instanceof MediaInputError) { const result = failure(422, "INVALID_INPUT", error.message); return response.status(result.status).json(result.body); }
+      if (error instanceof MediaInputError) { const result = failure(422, error.code, error.message); return response.status(result.status).json(result.body); }
       sendActorError(request, response, error);
     }
   });

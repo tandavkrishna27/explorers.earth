@@ -7,6 +7,8 @@ import { useResponsiveChart } from '../../../../hooks/useResponsiveChart';
 import EmptyState from '../EmptyState';
 import { buildListNameMap } from '../../utils/listNames';
 
+const LE = 'analytics.dashboard.charts.locationEngagement.';
+
 interface LocationEngagementChartProps {
   rawAnalyticsData: PublicPageAnalyticsData[];
 }
@@ -198,10 +200,10 @@ const LocationEngagementChart: React.FC<LocationEngagementChartProps> = ({ rawAn
     if (active && payload && payload.length) {
       return (
         <div className="dt-surface p-3 rounded-lg border border-dashboard shadow-dashboard-elevated">
-          <p className="dt-label mb-2">{`Date: ${label}`}</p>
+          <p className="dt-label mb-2">{t(`${LE}tooltip.date`, { date: label })}</p>
           {payload.map((entry: any, index: number) => (
             <p key={index} className="dt-subtext" style={{ color: entry.color }}>
-              {`${entry.name}: ${entry.value} views`}
+              {t(`${LE}tooltip.locationViews`, { location: entry.name, value: entry.value })}
             </p>
           ))}
         </div>
@@ -222,23 +224,23 @@ const LocationEngagementChart: React.FC<LocationEngagementChartProps> = ({ rawAn
         <div className="flex flex-col items-center justify-center py-12 px-4">
           <EmptyState 
             icon="line-chart"
-            message="No location view data available"
+            message={t(`${LE}noLocationData`)}
           />
           
           <div className="space-y-2 text-left mt-4">
             <div className="p-3 bg-dashboard-muted rounded-lg">
               <p className="dt-subtext text-sm">
-                <strong>Analytics Summary:</strong>
+                <strong>{t('analytics.dashboard.common.analyticsSummary')}</strong>
               </p>
               <ul className="dt-subtext text-xs mt-1 space-y-1">
-                <li>• {viewEvents.length} total view events</li>
-                <li>• {recordsWithLocationId} records with Location ID</li>
-                <li>• {locationData.length} unique locations</li>
+                <li>{t(`${LE}totalViewEvents`, { count: viewEvents.length })}</li>
+                <li>{t(`${LE}recordsWithLocationId`, { count: recordsWithLocationId })}</li>
+                <li>{t(`${LE}uniqueLocations`, { count: locationData.length })}</li>
               </ul>
             </div>
             
             <p className="dt-subtext text-xs opacity-75">
-              Location engagement data will appear once users view your location pages.
+              {t(`${LE}willAppear`)}
             </p>
           </div>
         </div>
@@ -251,7 +253,7 @@ const LocationEngagementChart: React.FC<LocationEngagementChartProps> = ({ rawAn
       {/* Location Selector */}
       <div className="mb-4">
         <label className="dt-label block mb-2">
-          Select Location:
+          {t(`${LE}selectLocation`)}
         </label>
         <div className="w-full sm:max-w-xs relative" ref={dropdownRef}>
           <button
@@ -261,8 +263,8 @@ const LocationEngagementChart: React.FC<LocationEngagementChartProps> = ({ rawAn
           >
             <span>
               {selectedLocation === 'all' 
-                ? 'All Locations' 
-                : locationData.find(loc => loc.id === selectedLocation)?.name || 'Select Location'
+                ? t(`${LE}allLocations`)
+                : locationData.find(loc => loc.id === selectedLocation)?.name || t(`${LE}selectLocationPlaceholder`)
               }
             </span>
             <svg 
@@ -287,7 +289,7 @@ const LocationEngagementChart: React.FC<LocationEngagementChartProps> = ({ rawAn
                   selectedLocation === 'all' ? 'bg-dashboard-muted text-dashboard-accent' : ''
                 }`}
               >
-                All Locations
+                {t(`${LE}allLocations`)}
               </button>
               {locationData.map((location) => (
                 <button
@@ -301,7 +303,7 @@ const LocationEngagementChart: React.FC<LocationEngagementChartProps> = ({ rawAn
                     selectedLocation === location.id ? 'bg-dashboard-muted text-dashboard-accent' : ''
                   }`}
                 >
-                  {location.name} ({location.viewCount} views)
+                  {t(`${LE}locationViews`, { location: location.name, count: location.viewCount })}
                 </button>
               ))}
             </div>
@@ -362,7 +364,7 @@ const LocationEngagementChart: React.FC<LocationEngagementChartProps> = ({ rawAn
                 stroke={colors[0]}
                 strokeWidth={2}
                 dot={{ r: 4 }}
-                name={locationData.find(loc => loc.id === selectedLocation)?.name || 'Location'}
+                name={locationData.find(loc => loc.id === selectedLocation)?.name || t(`${LE}location`)}
               />
             )}
           </LineChart>
@@ -375,19 +377,19 @@ const LocationEngagementChart: React.FC<LocationEngagementChartProps> = ({ rawAn
           <p className={`${locationData.length > 3 ? 'text-base' : 'text-lg'} font-bold text-dashboard-accent`}>
             {locationData.length}
           </p>
-          <p className="dt-subtext text-xs sm:text-sm">Total Locations</p>
+          <p className="dt-subtext text-xs sm:text-sm">{t(`${LE}stats.totalLocations`)}</p>
         </div>
         <div className="dt-surface p-3 sm:p-4 rounded-lg text-center">
           <p className={`${locationData.length > 3 ? 'text-base' : 'text-lg'} font-bold text-dashboard-accent`}>
             {locationData.reduce((sum, loc) => sum + loc.viewCount, 0)}
           </p>
-          <p className="dt-subtext text-xs sm:text-sm">Total Views</p>
+          <p className="dt-subtext text-xs sm:text-sm">{t(`${LE}stats.totalViews`)}</p>
         </div>
         <div className="dt-surface p-3 sm:p-4 rounded-lg text-center">
           <p className={`${locationData.length > 3 ? 'text-base' : 'text-lg'} font-bold text-dashboard-accent`}>
             {locationData.length > 0 ? Math.round(locationData.reduce((sum, loc) => sum + loc.viewCount, 0) / locationData.length) : 0}
           </p>
-          <p className="dt-subtext text-xs sm:text-sm">Avg Views/Location</p>
+          <p className="dt-subtext text-xs sm:text-sm">{t(`${LE}stats.avgViews`)}</p>
         </div>
       </div>
     </div>

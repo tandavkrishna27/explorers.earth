@@ -681,6 +681,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Guides/components/PlaceMoveButtons.tsx
 !explorers-earth/src/features/Guides/components/PlaceholderTab.tsx
 !explorers-earth/src/features/Guides/components/PublicGuideCard.tsx
+!explorers-earth/src/features/Guides/components/Shared/DayTravelLegs.tsx
 !explorers-earth/src/features/Guides/components/Shared/DescriptionRenderer.tsx
 !explorers-earth/src/features/Guides/components/Shared/DistanceConnector.tsx
 !explorers-earth/src/features/Guides/components/Shared/PlaceCardTimeline.tsx
@@ -707,6 +708,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Guides/utils/guideHelpers.ts
 !explorers-earth/src/features/Guides/utils/placeIconMapper.tsx
 !explorers-earth/src/features/Guides/utils/priceLevelUtils.ts
+!explorers-earth/src/features/Guides/utils/travelLegs.ts
 !explorers-earth/src/features/Guides/utils/travelModeConfig.tsx
 !explorers-earth/src/features/LandingPage/components/Analytics.tsx
 !explorers-earth/src/features/LandingPage/components/BackgroundPatterns.tsx
@@ -1088,6 +1090,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/utils/keyboardActivation.ts
 !explorers-earth/src/utils/listShareUrls.ts
 !explorers-earth/src/utils/mapAddress.ts
+!explorers-earth/src/utils/mediaUploadCheck.ts
 !explorers-earth/src/utils/navPinning.ts
 !explorers-earth/src/utils/notePreviewText.ts
 !explorers-earth/src/utils/passwordValidator.ts
@@ -1099,6 +1102,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/utils/qrDownload.ts
 !explorers-earth/src/utils/rating.ts
 !explorers-earth/src/utils/resizeMediaToAspectRatio.ts
+!explorers-earth/src/utils/richTextHtml.ts
 !explorers-earth/src/utils/safeInternalPath.ts
 !explorers-earth/src/utils/setupStatusCalculations.ts
 !explorers-earth/src/utils/strapiBlocksConverter.ts

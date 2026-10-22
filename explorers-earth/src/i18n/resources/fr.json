@@ -84,7 +84,11 @@
             "date": "Date : {{date}}",
             "locationViews": "{{location}}: {{value}} vues"
           },
-          "unknownLocation": "Lieu Inconnu"
+          "unknownLocation": "Lieu Inconnu",
+          "totalViewEvents": "• {{count}} événements de vue totaux",
+          "recordsWithLocationId": "• {{count}} enregistrements avec un ID de lieu",
+          "uniqueLocations": "• {{count}} lieux distincts",
+          "willAppear": "Les données d’engagement par lieu apparaîtront dès que des utilisateurs consulteront vos pages de lieux."
         },
         "recommendedPlaces": {
           "analyticsSummary": "Résumé Analytics:",
@@ -195,7 +199,36 @@
           },
           "totalViewEvents": "• {{count}} événements de vue totaux",
           "unableToResolve": "Impossible de résoudre les adresses IP en pays pour le moment. Cela peut être dû à des restrictions réseau ou des limitations de service.",
-          "willAppear": "Les données de pays apparaîtront automatiquement une fois que les services de géolocalisation IP seront disponibles."
+          "willAppear": "Les données de pays apparaîtront automatiquement une fois que les services de géolocalisation IP seront disponibles.",
+          "noGeographicDescription": "Les données géographiques apparaîtront dès que des visiteurs de différents endroits interagiront avec votre contenu."
+        },
+        "contentEngagement": {
+          "title": "Performance des pages de contenu",
+          "subtitle": "Vues et clics sur les pages Films, Livres, Jeux et Guides.",
+          "empty": "Aucune activité sur les pages de contenu pour le moment.",
+          "emptyHint": "Les vues des pages Films, Livres, Jeux et Guides apparaîtront ici.",
+          "mediaViews": "Vues du contenu",
+          "viewsAndClicksByPage": "Vues et clics par page",
+          "mostClickedItems": "Éléments les plus cliqués",
+          "pageBreakdown": "Répartition par page",
+          "pageCounts": "{{views}} vues · {{clicks}} clics"
+        },
+        "guides": {
+          "title": "Guides de voyage",
+          "subtitle": "Vues et ouvertures de guides depuis votre page publique de guides.",
+          "empty": "Aucune activité sur la page des guides pour le moment.",
+          "emptyHint": "Les vues et ouvertures de guides apparaîtront ici dès que des visiteurs parcourront vos guides.",
+          "guideOpens": "Ouvertures de guides",
+          "uniqueGuides": "Guides distincts",
+          "mostOpened": "Guides les plus ouverts (top {{count}})",
+          "allOpened": "Tous les guides ouverts ({{count}})",
+          "viewsNoOpens_one": "{{count}} vue enregistrée — aucune ouverture de guide pour le moment.",
+          "viewsNoOpens_other": "{{count}} vues enregistrées — aucune ouverture de guide pour le moment."
+        },
+        "pageViewsTrend": {
+          "title": "Tendance quotidienne des vues par section",
+          "subtitle": "L’évolution de chaque section de contenu (Lieux, Profil, Films, Livres, Jeux, Guides) au fil du temps.",
+          "empty": "Pas assez de données pour afficher des tendances."
         }
       },
       "comingSoon": {
@@ -214,13 +247,17 @@
       },
       "dateRange": {
         "from": "De:",
-        "to": "À:"
+        "to": "À:",
+        "maxRange": "Choisissez une période de 93 jours maximum.",
+        "endBeforeStart": "La date de fin ne peut pas précéder la date de début. Choisissez une date de fin identique ou postérieure à la date de début."
       },
       "emptyState": {
         "customRange": {
           "bothMissing": "Veuillez sélectionner les dates de début et de fin pour la plage personnalisée pour voir les données analytics.",
           "endMissing": "Veuillez sélectionner une date de fin pour la plage personnalisée pour voir les données analytics.",
-          "startMissing": "Veuillez sélectionner une date de début pour la plage personnalisée pour voir les données analytics."
+          "startMissing": "Veuillez sélectionner une date de début pour la plage personnalisée pour voir les données analytics.",
+          "endBeforeStart": "La date de fin ne peut pas précéder la date de début. Choisissez une date de fin identique ou postérieure à la date de début.",
+          "tooLong": "Choisissez une période de 93 jours maximum."
         },
         "howToStart": {
           "askFriends": "• Demandez à des amis de scanner vos codes QR",
@@ -237,12 +274,15 @@
           "today": "Aucune donnée analytics disponible pour aujourd'hui. Veuillez sélectionner une plage de temps différente pour voir vos données."
         },
         "noDataMessage": "Aucune donnée analytics trouvée pour votre compte. Les analytics apparaîtront ici une fois que les gens commenceront à voir et interagir avec vos codes QR.",
-        "title": "Aucune Donnée Analytics"
+        "title": "Aucune Donnée Analytics",
+        "unavailableTitle": "Statistiques détaillées indisponibles",
+        "unavailableMessage": "Les statistiques détaillées sont temporairement indisponibles pendant que nous migrons ce tableau de bord vers notre nouvelle plateforme. Cela ne signifie pas que vos pages n’ont reçu aucune visite : votre activité est toujours enregistrée et apparaîtra ici une fois la migration terminée."
       },
       "error": {
         "errorLabel": "Erreur:",
         "message": "Impossible de récupérer les données analytics. Veuillez réessayer plus tard.",
-        "title": "Erreur lors du Chargement des Analytics"
+        "title": "Erreur lors du Chargement des Analytics",
+        "retry": "Réessayer"
       },
       "loading": {
         "loadingData": "Chargement des données analytics...",
@@ -264,7 +304,104 @@
       },
       "timePeriod": "Période:",
       "title": "Tableau de Bord Analytics",
-      "countsNote": "Les totaux comptent les visites, pas les visiteurs uniques. Les pages publiques sont mesurées de façon anonyme, sans cookies."
+      "countsNote": "Les totaux comptent les visites, pas les visiteurs uniques. Les pages publiques sont mesurées de façon anonyme, sans cookies.",
+      "common": {
+        "analyticsSummary": "Résumé Analytics:",
+        "totalViews": "Vues Totales",
+        "totalClicks": "Clics Totaux",
+        "views": "Vues",
+        "date": "Date : {{date}}",
+        "clicksValue": "Clics: {{count}}",
+        "selectList": "Sélectionner une liste :",
+        "selectListPlaceholder": "Sélectionnez une liste",
+        "allLists": "Toutes les listes",
+        "listClicks_one": "{{name}} ({{count}} clic)",
+        "listClicks_other": "{{name}} ({{count}} clics)",
+        "clicksByList": "Clics par liste",
+        "totalLists": "Total des listes",
+        "totalItemClicks": "Total des clics sur les éléments",
+        "itemClicks": "Clics sur les éléments",
+        "pageViews": "Pages vues",
+        "clicks": "Clics",
+        "opens": "Ouvertures",
+        "allClicksSeries": "Tous les clics",
+        "listClicksSeries": "Clics sur {{list}}",
+        "noClickDataForList": "Aucune donnée de clic pour cette liste pour le moment.",
+        "listsWithClickData": "• {{count}} listes avec des données de clic",
+        "clickCount_one": "{{count}} clic",
+        "clickCount_other": "{{count}} clics",
+        "openCount_one": "{{count}} ouverture",
+        "openCount_other": "{{count}} ouvertures",
+        "unknown": "Inconnu"
+      },
+      "categories": {
+        "places": "Lieux",
+        "profile": "Profil",
+        "movies": "Films",
+        "books": "Livres",
+        "games": "Jeux",
+        "guides": "Guides de voyage"
+      },
+      "untitledList": "Liste sans titre",
+      "media": {
+        "movies": {
+          "listsTitle": "Engagement avec les listes de films",
+          "listsSubtitle": "Suivez les vues et les clics au fil du temps pour chacune de vos listes de films.",
+          "itemsTitle": "Films cliqués dans une liste",
+          "itemsSubtitle": "Sélectionnez une liste pour voir les films les plus cliqués par les visiteurs.",
+          "noEngagement": "Aucune donnée d’engagement pour les films pour le moment",
+          "engagementHint": "Les vues et clics de votre page Films apparaîtront ici.",
+          "noClickData": "Aucune donnée de clic sur les films disponible",
+          "clickEvents": "• {{count}} clics sur des films",
+          "itemsHint": "Les clics sur les films apparaîtront ici dès que des visiteurs ouvriront des films depuis vos listes.",
+          "shown": "Films affichés",
+          "avgClicks": "Clics moyens / film",
+          "noActivity": "Aucune activité sur la page Films pour le moment.",
+          "unique": "Films distincts",
+          "topClicked": "Top {{count}} des films les plus cliqués",
+          "allClicked": "Tous les films cliqués ({{count}})",
+          "viewsNoClicks_one": "{{count}} vue enregistrée — aucun clic sur les films pour le moment.",
+          "viewsNoClicks_other": "{{count}} vues enregistrées — aucun clic sur les films pour le moment."
+        },
+        "books": {
+          "listsTitle": "Engagement avec les listes de livres",
+          "listsSubtitle": "Suivez les vues et les clics au fil du temps pour chacune de vos listes de livres.",
+          "itemsTitle": "Livres cliqués dans une liste",
+          "itemsSubtitle": "Sélectionnez une liste pour voir les livres les plus cliqués par les visiteurs.",
+          "noEngagement": "Aucune donnée d’engagement pour les livres pour le moment",
+          "engagementHint": "Les vues et clics de votre page Livres apparaîtront ici.",
+          "noClickData": "Aucune donnée de clic sur les livres disponible",
+          "clickEvents": "• {{count}} clics sur des livres",
+          "itemsHint": "Les clics sur les livres apparaîtront ici dès que des visiteurs ouvriront des livres depuis vos listes.",
+          "shown": "Livres affichés",
+          "avgClicks": "Clics moyens / livre",
+          "noActivity": "Aucune activité sur la page Livres pour le moment.",
+          "unique": "Livres distincts",
+          "topClicked": "Top {{count}} des livres les plus cliqués",
+          "allClicked": "Tous les livres cliqués ({{count}})",
+          "viewsNoClicks_one": "{{count}} vue enregistrée — aucun clic sur les livres pour le moment.",
+          "viewsNoClicks_other": "{{count}} vues enregistrées — aucun clic sur les livres pour le moment."
+        },
+        "games": {
+          "listsTitle": "Engagement avec les listes de jeux",
+          "listsSubtitle": "Suivez les vues et les clics au fil du temps pour chacune de vos listes de jeux.",
+          "itemsTitle": "Jeux cliqués dans une liste",
+          "itemsSubtitle": "Sélectionnez une liste pour voir les jeux les plus cliqués par les visiteurs.",
+          "noEngagement": "Aucune donnée d’engagement pour les jeux pour le moment",
+          "engagementHint": "Les vues et clics de votre page Jeux apparaîtront ici.",
+          "noClickData": "Aucune donnée de clic sur les jeux disponible",
+          "clickEvents": "• {{count}} clics sur des jeux",
+          "itemsHint": "Les clics sur les jeux apparaîtront ici dès que des visiteurs ouvriront des jeux depuis vos listes.",
+          "shown": "Jeux affichés",
+          "avgClicks": "Clics moyens / jeu",
+          "noActivity": "Aucune activité sur la page Jeux pour le moment.",
+          "unique": "Jeux distincts",
+          "topClicked": "Top {{count}} des jeux les plus cliqués",
+          "allClicked": "Tous les jeux cliqués ({{count}})",
+          "viewsNoClicks_one": "{{count}} vue enregistrée — aucun clic sur les jeux pour le moment.",
+          "viewsNoClicks_other": "{{count}} vues enregistrées — aucun clic sur les jeux pour le moment."
+        }
+      }
     }
   },
   "auth": {

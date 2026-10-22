@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { useTranslation } from 'react-i18next';
 import { AnalyticsEvent } from '../../api/queries';
 
 interface PageViewsTrendChartProps {
@@ -7,13 +8,13 @@ interface PageViewsTrendChartProps {
 }
 
 // Colour palette per page group
-const PAGE_GROUPS: Record<string, { label: string; color: string; pages: string[] }> = {
-  places:   { label: 'Places',  color: '#3b82f6', pages: ['public-home', 'recommendation-detail'] },
-  profile:  { label: 'Profile', color: '#ec4899', pages: ['public-profile'] },
-  guides:   { label: 'Guides',  color: '#f97316', pages: ['public-guides'] },
-  movies:   { label: 'Movies',  color: '#60a5fa', pages: ['public-movies'] },
-  books:    { label: 'Books',   color: '#f59e0b', pages: ['public-books'] },
-  games:    { label: 'Games',   color: '#34d399', pages: ['public-games'] },
+const PAGE_GROUPS: Record<string, { color: string; pages: string[] }> = {
+  places:   { color: '#3b82f6', pages: ['public-home', 'recommendation-detail'] },
+  profile:  { color: '#ec4899', pages: ['public-profile'] },
+  guides:   { color: '#f97316', pages: ['public-guides'] },
+  movies:   { color: '#60a5fa', pages: ['public-movies'] },
+  books:    { color: '#f59e0b', pages: ['public-books'] },
+  games:    { color: '#34d399', pages: ['public-games'] },
 };
 
 const formatDate = (dateStr: string) => {
@@ -22,6 +23,9 @@ const formatDate = (dateStr: string) => {
 };
 
 const PageViewsTrendChart: React.FC<PageViewsTrendChartProps> = ({ events }) => {
+  const { t } = useTranslation();
+  // Each group key is also its translated label key.
+  const groupLabel = (key: string) => t(`analytics.dashboard.categories.${key}`);
   // Only view events
   const viewEvents = useMemo(() => events.filter(e => e.type === 'view'), [events]);
 
@@ -59,7 +63,7 @@ const PageViewsTrendChart: React.FC<PageViewsTrendChartProps> = ({ events }) => 
       <div className="flex items-center justify-center h-32 text-dashboard/40">
         <div className="text-center">
           <div className="text-2xl mb-1">📈</div>
-          <p className="text-sm">Not enough data to show trends.</p>
+          <p className="text-sm">{t('analytics.dashboard.charts.pageViewsTrend.empty')}</p>
         </div>
       </div>
     );
@@ -82,7 +86,7 @@ const PageViewsTrendChart: React.FC<PageViewsTrendChartProps> = ({ events }) => 
               className="inline-block w-2 h-2 rounded-full"
               style={{ backgroundColor: PAGE_GROUPS[key].color }}
             />
-            {PAGE_GROUPS[key].label}
+            {groupLabel(key)}
           </span>
         ))}
       </div>
@@ -123,7 +127,7 @@ const PageViewsTrendChart: React.FC<PageViewsTrendChartProps> = ({ events }) => 
                 key={key}
                 type="monotone"
                 dataKey={key}
-                name={PAGE_GROUPS[key].label}
+                name={groupLabel(key)}
                 stroke={PAGE_GROUPS[key].color}
                 strokeWidth={2}
                 dot={false}
@@ -143,7 +147,7 @@ const PageViewsTrendChart: React.FC<PageViewsTrendChartProps> = ({ events }) => 
               />
               <div>
                 <p className="text-sm font-bold text-dashboard-accent">{chartData[0][key]}</p>
-                <p className="text-xs dt-subtext">{PAGE_GROUPS[key].label}</p>
+                <p className="text-xs dt-subtext">{groupLabel(key)}</p>
               </div>
             </div>
           ))}

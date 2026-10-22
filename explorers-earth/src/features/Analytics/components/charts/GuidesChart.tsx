@@ -1,6 +1,9 @@
 import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { useTranslation } from 'react-i18next';
 import { AnalyticsEvent } from '../../api/queries';
+
+const G = 'analytics.dashboard.charts.guides.';
 
 interface GuidesChartProps {
   events: AnalyticsEvent[];
@@ -12,6 +15,7 @@ const BAR_COLORS = [
 ];
 
 const GuidesChart: React.FC<GuidesChartProps> = ({ events }) => {
+  const { t } = useTranslation();
   const guideEvents = useMemo(
     () => events.filter(e => e.page === 'public-guides'),
     [events]
@@ -55,9 +59,9 @@ const GuidesChart: React.FC<GuidesChartProps> = ({ events }) => {
       <div className="flex items-center justify-center h-28 text-dashboard/40">
         <div className="text-center">
           <div className="text-2xl mb-1">🗺️</div>
-          <p className="text-sm">No guides page activity yet.</p>
+          <p className="text-sm">{t(`${G}empty`)}</p>
           <p className="text-xs mt-1 opacity-60">
-            Views and guide opens will appear here once visitors browse your guides.
+            {t(`${G}emptyHint`)}
           </p>
         </div>
       </div>
@@ -73,15 +77,15 @@ const GuidesChart: React.FC<GuidesChartProps> = ({ events }) => {
       <div className="grid grid-cols-3 gap-3">
         <div className="dt-surface rounded-lg p-3 text-center">
           <p className="text-xl font-bold" style={{ color }}>{totalViews}</p>
-          <p className="text-xs dt-subtext mt-0.5">Page Views</p>
+          <p className="text-xs dt-subtext mt-0.5">{t('analytics.dashboard.common.pageViews')}</p>
         </div>
         <div className="dt-surface rounded-lg p-3 text-center">
           <p className="text-xl font-bold" style={{ color }}>{guideClicks.length}</p>
-          <p className="text-xs dt-subtext mt-0.5">Guide Opens</p>
+          <p className="text-xs dt-subtext mt-0.5">{t(`${G}guideOpens`)}</p>
         </div>
         <div className="dt-surface rounded-lg p-3 text-center">
           <p className="text-xl font-bold" style={{ color }}>{guideRanking.length}</p>
-          <p className="text-xs dt-subtext mt-0.5">Unique Guides</p>
+          <p className="text-xs dt-subtext mt-0.5">{t(`${G}uniqueGuides`)}</p>
         </div>
       </div>
 
@@ -89,7 +93,7 @@ const GuidesChart: React.FC<GuidesChartProps> = ({ events }) => {
       {top10.length > 0 && (
         <div>
           <p className="text-xs font-semibold dt-label uppercase tracking-wider mb-3">
-            Most Opened Guides (Top {top10.length})
+            {t(`${G}mostOpened`, { count: top10.length })}
           </p>
           <ResponsiveContainer width="100%" height={Math.max(200, top10.length * 36)} minWidth={0} initialDimension={{ width: 1, height: 1 }}>
             <BarChart data={top10} layout="vertical" margin={{ left: 8, right: 32, top: 0, bottom: 0 }}>
@@ -118,10 +122,10 @@ const GuidesChart: React.FC<GuidesChartProps> = ({ events }) => {
                   color: 'var(--color-text, #f1f5f9)',
                   fontSize: '12px',
                 }}
-                formatter={(value) => [`${Number(value)} open${Number(value) !== 1 ? 's' : ''}`, 'Opens']}
+                formatter={(value) => [t('analytics.dashboard.common.openCount', { count: Number(value) }), t('analytics.dashboard.common.opens')]}
                 labelFormatter={(label) => label}
               />
-              <Bar dataKey="count" name="Opens" radius={[0, 4, 4, 0]}>
+              <Bar dataKey="count" name={t('analytics.dashboard.common.opens')} radius={[0, 4, 4, 0]}>
                 {top10.map((_, i) => (
                   <Cell key={i} fill={BAR_COLORS[i % BAR_COLORS.length]} />
                 ))}
@@ -135,7 +139,7 @@ const GuidesChart: React.FC<GuidesChartProps> = ({ events }) => {
       {guideRanking.length > 0 && (
         <div>
           <p className="text-xs font-semibold dt-label uppercase tracking-wider mb-3">
-            All Opened Guides ({guideRanking.length})
+            {t(`${G}allOpened`, { count: guideRanking.length })}
           </p>
           <div className="space-y-2 max-h-64 overflow-y-auto scrollbar-hide pr-1">
             {guideRanking.map((guide, index) => {
@@ -154,7 +158,7 @@ const GuidesChart: React.FC<GuidesChartProps> = ({ events }) => {
                         )}
                       </div>
                       <span className="text-xs dt-subtext ml-2 flex-shrink-0">
-                        {guide.count} open{guide.count !== 1 ? 's' : ''}
+                        {t('analytics.dashboard.common.openCount', { count: guide.count })}
                       </span>
                     </div>
                     <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
@@ -173,7 +177,7 @@ const GuidesChart: React.FC<GuidesChartProps> = ({ events }) => {
 
       {guideClicks.length === 0 && totalViews > 0 && (
         <p className="text-xs dt-subtext text-center py-4">
-          🗺️ {totalViews} view{totalViews !== 1 ? 's' : ''} recorded — no guide opens tracked yet.
+          🗺️ {t(`${G}viewsNoOpens`, { count: totalViews })}
         </p>
       )}
     </div>

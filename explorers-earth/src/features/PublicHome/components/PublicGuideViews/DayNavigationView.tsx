@@ -3,7 +3,8 @@ import { memo, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { parseTimeline } from "../../../Guides/utils/guideDataParser";
 import { getTransportSegments } from "../../../Guides/utils/guideHelpers";
-import { getTravelModeConfig } from "../../../Guides/utils/travelModeConfig";
+import { formatTravelTime, getTravelModeConfig } from "../../../Guides/utils/travelModeConfig";
+import { travelLegBetween } from "../../../Guides/utils/travelLegs";
 import DayDetailModal from "./DayDetailModal";
 import PlaceOverview from "../PlaceDetails/PlaceOverview";
 import GooglePlaceModal from "./GooglePlaceModal";
@@ -506,13 +507,9 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
 
                         // Get transport info FROM previous place TO current place
                         const prevPlace = placeIndex > 0 ? allPlaces[placeIndex - 1] : null;
-                        const transportInfo = prevPlace
-                          ? transportSegments.find(
-                            (seg) =>
-                              seg.fromPlaceId === prevPlace.place_id &&
-                              seg.toPlaceId === place.place_id
-                          )
-                          : null;
+                        // Saved segments are keyed by the day-place id the form writes; travelLegBetween
+                        // also matches the Google id and estimates when nothing was saved (GDE-X05).
+                        const transportInfo = prevPlace ? travelLegBetween(prevPlace, place, transportSegments) : null;
 
                         // Get travel mode config for dynamic icon
                         const modeConfig = transportInfo ? getTravelModeConfig(transportInfo.mode) : null;
@@ -533,9 +530,7 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                   </svg>
-                                  {transportInfo.distanceKm !== null && (
-                                    <span className="whitespace-nowrap">{transportInfo.distanceKm.toFixed(1)} km</span>
-                                  )}
+                                  <span className="whitespace-nowrap">{transportInfo.distanceKm.toFixed(1)} km</span>
                                 </div>
 
                                 {/* Center - Dynamic Transport Icon */}
@@ -558,7 +553,7 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
                                   <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0 text-[var(--category-accent,hsl(var(--blue-cta)))]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                   </svg>
-                                  <span className="whitespace-nowrap">{transportInfo.estimatedMinutes} min</span>
+                                  <span className="whitespace-nowrap">{formatTravelTime(transportInfo.minutes)}</span>
                                 </div>
                               </motion.div>
                             )}

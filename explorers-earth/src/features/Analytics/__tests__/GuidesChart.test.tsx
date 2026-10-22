@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import '../../../test/englishI18n';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('recharts', async importOriginal => ({

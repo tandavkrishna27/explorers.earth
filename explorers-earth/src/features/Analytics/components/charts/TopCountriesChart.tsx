@@ -4,6 +4,9 @@ import { AnalyticsEvent } from '../../api/queries';
 import { useResponsiveChart } from '../../../../hooks/useResponsiveChart';
 import { getCountryName, normalizeCountryKey } from '../../utils/countryMapping';
 import EmptyState from '../EmptyState';
+import { useTranslation } from 'react-i18next';
+
+const TC = 'analytics.dashboard.charts.topCountries.';
 
 /**
  * Props interface for TopCountriesChart component
@@ -28,6 +31,7 @@ interface CountryDataPoint {
  */
 const TopCountriesChart: React.FC<TopCountriesChartProps> = ({ events, isResolvingCountries = false }) => {
   const { chartConfig } = useResponsiveChart();
+  const { t } = useTranslation();
 
   // Transform events into chart-ready data
   const chartData = useMemo(() => {
@@ -58,9 +62,9 @@ const TopCountriesChart: React.FC<TopCountriesChartProps> = ({ events, isResolvi
     if (active && payload && payload.length) {
       return (
         <div className="dt-surface p-3 rounded-lg border border-dashboard shadow-dashboard-elevated">
-          <p className="dt-label mb-1">{`Country: ${label}`}</p>
+          <p className="dt-label mb-1">{t(`${TC}tooltip.country`, { country: label })}</p>
           <p className="dt-subtext text-dashboard-accent">
-            Views: {payload[0]?.value || 0}
+            {t(`${TC}tooltip.views`, { count: payload[0]?.value || 0 })}
           </p>
         </div>
       );
@@ -77,7 +81,7 @@ const TopCountriesChart: React.FC<TopCountriesChartProps> = ({ events, isResolvi
             <span className="inline-block w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
           </div>
           <p className="dt-subtext text-sm">
-            Resolving country data...
+            {t('analytics.dashboard.loading.resolvingCountry')}
           </p>
         </div>
       </div>
@@ -94,24 +98,24 @@ const TopCountriesChart: React.FC<TopCountriesChartProps> = ({ events, isResolvi
         <div className="flex flex-col items-center justify-center py-12 px-4">
           <EmptyState
             icon="globe"
-            message="Country Data Unavailable"
-            description="Unable to resolve IP addresses to countries at this time. This may be due to network restrictions or service limitations."
+            message={t(`${TC}countryDataUnavailable`)}
+            description={t(`${TC}unableToResolve`)}
           />
 
           <div className="space-y-2 text-left mt-4">
             <div className="p-3 bg-dashboard-muted rounded-lg">
               <p className="dt-subtext text-sm">
-                <strong>Analytics Summary:</strong>
+                <strong>{t(`${TC}analyticsSummary`)}</strong>
               </p>
               <ul className="dt-subtext text-xs mt-1 space-y-1">
-                <li>• {viewEvents.length} total view events</li>
-                <li>• {eventsWithCountry.length} events with country data</li>
-                <li>• {viewEvents.length - eventsWithCountry.length} events pending geolocation</li>
+                <li>{t(`${TC}totalViewEvents`, { count: viewEvents.length })}</li>
+                <li>{t(`${TC}eventsWithCountry`, { count: eventsWithCountry.length })}</li>
+                <li>{t(`${TC}eventsPending`, { count: viewEvents.length - eventsWithCountry.length })}</li>
               </ul>
             </div>
 
             <p className="dt-subtext text-xs opacity-75">
-              Country data will appear automatically once IP geolocation services are available.
+              {t(`${TC}willAppear`)}
             </p>
           </div>
         </div>
@@ -161,7 +165,7 @@ const TopCountriesChart: React.FC<TopCountriesChartProps> = ({ events, isResolvi
             dataKey="views"
             fill="var(--dash-accent)"
             radius={[4, 4, 0, 0]}
-            name="Views"
+            name={t(`${TC}legend`)}
           />
         </BarChart>
       </ResponsiveContainer>
