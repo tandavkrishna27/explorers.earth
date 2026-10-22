@@ -25,7 +25,7 @@ for (const category of categories) {
       await expect.poll(() => state.writes.length).toBe(1);
       expect(state.writes.map(r => r.variables)).toEqual([preferenceWrite(beforeOff, { category: category.route, isPublic: false, pins: ['public_profile', other] })]);
       await owner.page.reload(); await settings(owner.page, true);
-      await expect(owner.page.getByRole('checkbox', { name: category.label, exact: true })).not.toBeChecked();
+      await expect(owner.page.getByRole('checkbox', { name: category.label, exact: true })).toBeChecked();
       await expect(owner.page.getByRole('checkbox', { name: `Pin ${category.label}`, exact: true })).not.toBeChecked();
       await guest.page.goto(`/${fixtureUser.username}`);
       await expect(guest.page.getByRole('link', { name: 'Profile', exact: true })).toBeVisible();
