@@ -4,6 +4,28 @@ Status: **v2, awaiting owner decisions.** No app code changes.
 Mocks v2: https://claude.ai/artifact/TmMMFzJnW2cEtmUE7vVF7k (private, clickable, desktop + mobile).
 v1 mocks (https://claude.ai/artifact/MjTwMPH2QyCkQB6ZHaV2zx) were rejected by the owner: built from code only, merged the two public screens, dropped Top Picks, ignored visibility toggles and Manage/QR. v2 replaces them.
 
+## v3 (dashboard only): decisions
+
+Mocks v3: https://claude.ai/artifact/D89UZnowRi1R9veMbYeWtb (private). The owner approved v2's category page and list page as they are. Public category and public list screens are out of scope here and will be discussed separately.
+
+1. **All Recommendations cards**: one brand colour for all 8 (today's dark card plus the existing blue accent). No per-category tints, so option B is dropped. Categories are told apart by icon and illustration only. Today's animations and motion stay exactly as they are.
+2. **First visit: sample lists.**
+   - Each category shows 2-3 sample lists as normal list cards with a **Sample** badge and realistic generic content (e.g. Places "Weekend in Goa", Movies "Comfort movies"). Top Picks shows sample picks with the same badge.
+   - Samples are fully browsable: opening one shows its items read-only, exactly like a real list.
+   - Each sample has **Use as a starting point**, which confirms, then copies it into a private, editable draft list.
+   - Samples are never public and never on the profile.
+   - In a category, samples disappear once the first real list exists there. A **Hide samples** control is also available (with Show samples to undo).
+3. **Add item.**
+   - A **Search | Add manually** switch sits at the top, so both paths are visible from the start. Text typed in search carries into the manual Name field.
+   - Places has one field that takes a name or coordinates; placeholder "Search a place or paste coordinates". Coordinates such as `15.49, 73.82` are detected automatically and resolve to a pin plus the nearest named places.
+   - Places has two icon buttons in the field: ◎ use my current location, which suggests nearby places, and a map icon that opens a pick-on-map sheet to drop a pin. "Use this pin" continues in the manual form with the pin set.
+   - Other categories get the same switch without the location tools.
+
+Implementation notes for later:
+- Samples should be static per-category fixtures served by the app, not rows in the user's data, so they can never be published. Copying creates a normal draft list.
+- Coordinate detection needs a regex for decimal lat,lng, plus a reverse-geocode or nearby search.
+- "Use my location" needs browser geolocation and a nearby search, and costs one Places API call per tap (see launch economics).
+
 ## v2: live walkthrough notes (2026-10-22, smoketest1021, read-only)
 
 Look of today's app, reproduced in v2: near-black page, `#14171f` sidebar/top bar, Poppins (900 uppercase on All Recommendations), blue `#60a5fa` 12px-radius buttons, list cards `#151a25` (Places uses `#1a2332`) with a 1px white/10% border and 16px radius, green `PUBLIC` badge, yellow bar before section titles, globe splash loader with a rotating tagline.
