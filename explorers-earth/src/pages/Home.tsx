@@ -34,6 +34,7 @@ import { getAllUserLocations } from "../utils/geoHelpers";
 const InteractiveMap = lazy(() => import("../components/InteractiveMap"));
 import { calculateIsRecommendationsComplete } from "../utils/setupStatusCalculations";
 import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
+import { useContentSummary } from "../features/Profile/api/useContentSummary";
 import { toProfileViewModel } from "../features/Profile/api/profileClient";
 import { useCreateLocation } from "../features/Favorites/hooks/useCreateLocation";
 
@@ -190,6 +191,7 @@ const Home = memo(() => {
   const sessionGeneration = useAuthStore((state) => state.generation);
   const nativeAccountId = useAuthStore((state) => state.accountId);
   const canonicalAccount = useCanonicalAccount();
+  const contentSummary = useContentSummary();
   const canonicalHandle = canonicalAccount.data?.handle ?? "";
   const token = useAuthStore((state) => state.token);
   const { setSelectedCity } = useCityStore();
@@ -461,29 +463,10 @@ const Home = memo(() => {
     return bothComplete;
   }, [isProfileComplete, isRecommendationsComplete, canonicalAccount.data, canonicalAccount.isPending]);
 
-  const totalActiveListsCount = useMemo(() => {
-    const activePlaces = listNames?.filter((list: any) => list.Visibility === true)?.length || 0;
-    const activeMovies = movieLists?.filter((list: any) => list.Visibility === true)?.length || 0;
-    const activeBooks = bookLists?.filter((list: any) => list.visibility === true)?.length || 0;
-    const activeGames = gameLists?.filter((list: any) => list.Visibility === true)?.length || 0;
-    const activeGuides = allGuides?.filter((guide: any) => guide.Visibility === true)?.length || 0;
-    const activeApps = appLists?.filter((list: any) => list.Visibility === true)?.length || 0;
-    const activeProducts = productLists?.filter((list: any) => list.Visibility === true)?.length || 0;
-    const activePeople = personLists?.filter((list: any) => list.Visibility === true)?.length || 0;
-    return activePlaces + activeMovies + activeBooks + activeGames + activeGuides + activeApps + activeProducts + activePeople;
-  }, [listNames, movieLists, bookLists, gameLists, allGuides, appLists, productLists, personLists]);
-
-  const totalRecommendationsCount = useMemo(() => {
-    const placesRecs = listNames?.filter((list: any) => list.Visibility === true)?.reduce((total: number, list: any) => total + (list?.recommended_places?.length || 0), 0) || 0;
-    const moviesRecs = movieLists?.filter((list: any) => list.Visibility === true)?.reduce((total: number, list: any) => total + (list?.recommended_movies?.length || 0), 0) || 0;
-    const booksRecs = bookLists?.filter((list: any) => list.visibility === true)?.reduce((total: number, list: any) => total + (list?.recommended_books?.length || 0), 0) || 0;
-    const gamesRecs = gameLists?.filter((list: any) => list.Visibility === true)?.reduce((total: number, list: any) => total + (list?.recommended_games?.length || 0), 0) || 0;
-    const guidesRecs = allGuides?.filter((guide: any) => guide.Visibility === true)?.length || 0;
-    const appsRecs = appLists?.filter((list: any) => list.Visibility === true)?.reduce((total: number, list: any) => total + (list?.recommended_apps?.length || 0), 0) || 0;
-    const productsRecs = productLists?.filter((list: any) => list.Visibility === true)?.reduce((total: number, list: any) => total + (list?.recommended_products?.length || 0), 0) || 0;
-    const peopleRecs = personLists?.filter((list: any) => list.Visibility === true)?.reduce((total: number, list: any) => total + (list?.recommended_people?.length || 0), 0) || 0;
-    return placesRecs + moviesRecs + booksRecs + gamesRecs + guidesRecs + appsRecs + productsRecs + peopleRecs;
-  }, [listNames, movieLists, bookLists, gameLists, allGuides, appLists, productLists, personLists]);
+  // HUB-X02. One server summary, not a sum over eight category lists that load lazily:
+  // a dash until it lands, so Home never shows 0/0 or a partial total.
+  const totalActiveListsCount = contentSummary.totals?.activeLists ?? "–";
+  const totalRecommendationsCount = contentSummary.totals?.activeItems ?? "–";
 
   const recentViewsCard = useMemo(
     () => getHomeAnalyticsCard(analyticsState, analyticsData, {

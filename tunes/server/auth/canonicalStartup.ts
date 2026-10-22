@@ -53,7 +53,13 @@ export async function startCanonicalServer(
   if (!pool) {
     const connection = await resolveMusicDatabaseConnection(environment, "runtime");
     await verifyMusicRuntimeDatabaseConnection(connection, environment.MUSIC_DATABASE_MIGRATOR_USER ?? "");
-    pool = new pg.Pool({ connectionString: connection.connectionString, max: 10 });
+    // PROD-06. A bounded acquire wait turns pool exhaustion into a classified, retryable
+    // 429 (explorersPrincipal.ts) instead of an unbounded hang, and an idle client that
+    // PostgreSQL drops is logged rather than left as an unhandled 'error' event.
+    const max = Number(environment.EXPLORERS_DB_POOL_MAX ?? "10");
+    if (!Number.isInteger(max) || max < 2 || max > 50) throw new Error("EXPLORERS_DB_POOL_MAX must be an integer from 2 to 50");
+    pool = new pg.Pool({ connectionString: connection.connectionString, max, connectionTimeoutMillis: 5_000, idleTimeoutMillis: 30_000 });
+    pool.on("error", (error) => console.error(JSON.stringify({ event: "db_pool_idle_error", code: (error as { code?: string }).code ?? null })));
   }
   /** Declared outside the try so the catch can close a listener the try opened. */
   let listening: Server | undefined;

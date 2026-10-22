@@ -56,6 +56,15 @@ export interface ExplorersAuthFixtureOptions {
   appsReadOnlySessionFixture?: boolean;
 }
 
+// PROD-06. The default logger prints a failed query with its params, which for a session
+// lookup is the session token. Keep only the level, the first message line and the
+// innermost SQLSTATE; never the SQL params or the stack.
+const redactingAuthLogger = { log: (level: string, message: string, ...args: unknown[]) => {
+  const cause = args.find((arg) => arg instanceof Error) as (Error & { cause?: { code?: unknown } }) | undefined;
+  const code = typeof cause?.cause?.code === "string" ? cause.cause.code : null;
+  console.error(JSON.stringify({ event: "auth_log", level, message: String(message).split(/\r?\n/)[0].slice(0, 200), pgCode: code }));
+} };
+
 export function createExplorersAuth(pool: Pool, config: ExplorersAuthConfig, fixtureOptions?: ExplorersAuthFixtureOptions) {
   const database = drizzle(pool, { schema: authSchema });
   const recoveryHooks = createRecoveryOAuthHooks(pool, config);
@@ -65,6 +74,7 @@ export function createExplorersAuth(pool: Pool, config: ExplorersAuthConfig, fix
     trustedOrigins: config.trustedOrigins,
     secret: config.secret,
     database: drizzleAdapter(database, { provider: "pg", schema: authSchema }),
+    logger: redactingAuthLogger,
     user: { modelName: "auth_user" },
     session: {
       modelName: "auth_session",

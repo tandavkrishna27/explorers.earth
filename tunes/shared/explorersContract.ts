@@ -150,12 +150,14 @@ export const resolveProviderGameSchema=z.object({kind:z.literal('provider'),cate
 export const resolveEntitySchema=z.union([resolveExistingEntitySchema,resolveManualEntitySchema,resolveProviderBookSchema,resolveManualBookSchema,resolveProviderMovieSchema,resolveManualMovieSchema,resolveProviderGameSchema,resolveManualAppSchema,resolveManualProductSchema,resolveManualPersonSchema,resolveManualPlaceSchema]);
 export type ResolveManualEntityInput=z.input<typeof resolveManualEntitySchema>;
 
-export const apiErrorCodes = ["UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "CONFLICT", "INVALID_INPUT", "RATE_LIMITED", "RESOURCE_TOO_LARGE", "READ_LIMIT", "CONTINUATION_LIMIT", "CURSOR_EXPIRED", "PROVIDER_UNAVAILABLE", "PROVIDER_INVALID_RESPONSE"] as const;
+export const apiErrorCodes = ["UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "CONFLICT", "INVALID_INPUT", "RATE_LIMITED", "RESOURCE_TOO_LARGE", "READ_LIMIT", "CONTINUATION_LIMIT", "CURSOR_EXPIRED", "PROVIDER_UNAVAILABLE", "PROVIDER_INVALID_RESPONSE", "UNAVAILABLE"] as const;
 export const apiErrorSchema = z.object({
   error: z.object({
     code: z.enum(apiErrorCodes),
     message: z.string(),
     requestId: z.string(),
+    // PROD-06. Set on a transient failure the same request can retry after Retry-After.
+    retryable: z.literal(true).optional(),
   }).strict(),
 }).strict();
 export type ApiError = z.infer<typeof apiErrorSchema>;
