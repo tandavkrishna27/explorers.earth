@@ -827,6 +827,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Profile/api/profileClient.ts
 !explorers-earth/src/features/Profile/api/query.ts
 !explorers-earth/src/features/Profile/api/useCanonicalAccount.ts
+!explorers-earth/src/features/Profile/api/useContentSummary.ts
 !explorers-earth/src/features/Profile/components/AddressInput.tsx
 !explorers-earth/src/features/Profile/components/BusinessLocationFields.tsx
 !explorers-earth/src/features/Profile/components/FeedFields.tsx
