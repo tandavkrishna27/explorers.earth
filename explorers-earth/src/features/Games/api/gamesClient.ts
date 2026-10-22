@@ -49,6 +49,8 @@ export const GamesClient={
  reorderCollection(observed:CompleteGamesOwnerContent,id:string,ids:string[],commandKey:string,signal?:AbortSignal){complete(observed);return explorersApiClient.reorderMyCollection(observed,id,ids,commandKey,signal);},
  setTopPicks(observed:CompleteGamesOwnerContent,pins:Parameters<typeof explorersApiClient.setMyCategoryTopPicks>[1],commandKey:string,signal?:AbortSignal){complete(observed);return explorersApiClient.setMyCategoryTopPicks(observed,pins,commandKey,signal);},
  async upload(file:File,_commandKey:string,signal?:AbortSignal){const state=useAuthStore.getState(),scope={accountId:state.accountId,generation:state.generation,route:route()};current(scope,signal);const media=await explorersApiClient.createMedia(file,'recommendation',signal);current(scope,signal);return media;},
+ /** A search hit's IGDB cover as owned snapshot media, from the cover URL the hit carries. */
+ async importCover(imageId:string,signal?:AbortSignal){const state=useAuthStore.getState(),scope={accountId:state.accountId,generation:state.generation,route:route()};current(scope,signal);const media=await explorersApiClient.importGameCover(imageId,signal);current(scope,signal);return media;},
  search:explorersApiClient.searchGames,
  resolveProvider:explorersApiClient.resolveGameProvider,
 };

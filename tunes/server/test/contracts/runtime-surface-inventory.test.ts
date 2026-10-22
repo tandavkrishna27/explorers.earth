@@ -37,7 +37,8 @@ describe("runtime route/event/job inventory", () => {
     // 195 = 194 + the public share page host nginx asks for every HTML route
     // (GET /api/explorers/v1/share-page, explorersSharePageRoutes.ts).
     // 197 = 195 + Home's content summary GET and its fail-closed method boundary (HUB-X02).
-    expect(inventory.routes).toHaveLength(197);
+    // 198 = 197 + the IGDB game cover import (POST /api/explorers/v1/media/game-cover, GMS-X01).
+    expect(inventory.routes).toHaveLength(198);
     expect(inventory.events).toHaveLength(15);
     // 38 = 37 + the Google profile photo fetch deadline (googleAvatarFetch.ts).
     // 39 = 38 + the place photo fetch deadline (tunes/server/services/placePhotoFetch.ts).

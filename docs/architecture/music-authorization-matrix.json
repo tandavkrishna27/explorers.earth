@@ -1051,6 +1051,25 @@
       }
     },
     {
+      "method": "POST",
+      "path": "/api/explorers/v1/media/game-cover",
+      "source": "tunes/server/routes/explorersMediaRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
       "method": "DELETE",
       "path": "/api/explorers/v1/media/:id",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",

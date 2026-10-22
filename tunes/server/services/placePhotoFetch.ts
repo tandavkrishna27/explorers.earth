@@ -28,9 +28,9 @@ function connect(target:Target):Promise<Response>{return new Promise((resolve,re
 function sniff(b:Buffer){if(b.length>=8&&b.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))return 'image/png';if(b.length>=3&&b[0]===255&&b[1]===216&&b[2]===255)return 'image/jpeg';if(b.length>=12&&b.toString('ascii',0,4)==='RIFF'&&b.toString('ascii',8,12)==='WEBP')return 'image/webp';if(b.length>=6&&/^GIF8[79]a$/.test(b.toString('ascii',0,6)))return 'image/gif';return undefined;}
 /** The fixture seam replaces DNS/socket I/O only; every policy check remains above it. */
 export class PlacePhotoFetcher {
- constructor(private readonly fixture?:Fixture){if(fixture&&fixture.mode!=='deterministic-fixture')throw new PlacePhotoFetchFailure();}
+ constructor(private readonly fixture?:Fixture,private readonly host:RegExp=HOST){if(fixture&&fixture.mode!=='deterministic-fixture')throw new PlacePhotoFetchFailure();}
  async fetch(raw:string):Promise<{bytes:Buffer;mimeType:string}>{
-  let u:URL;try{u=new URL(raw);if(raw.length>2048||u.protocol!=='https:'||!HOST.test(u.hostname)||u.username||u.password||u.port&&u.port!=='443')throw Error();}catch{throw new PlacePhotoFetchFailure();}
+  let u:URL;try{u=new URL(raw);if(raw.length>2048||u.protocol!=='https:'||!this.host.test(u.hostname)||u.username||u.password||u.port&&u.port!=='443')throw Error();}catch{throw new PlacePhotoFetchFailure();}
   const controller=new AbortController();let timer:ReturnType<typeof setTimeout>|undefined;
   const timeout=new Promise<never>((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(new PlacePhotoFetchFailure());},this.fixture?.deadlineMs??5000);});
   try{return await Promise.race([(async()=>{

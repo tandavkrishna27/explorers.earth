@@ -83,7 +83,16 @@ export default function AddGamePage() {
   catch (failure) { if (valid(captured)) setSearchError(failure instanceof ExplorersApiError && failure.code === 'PROVIDER_NOT_CONFIGURED' ? 'Game search is not available yet. Add the game manually below.' : friendlyErrorMessage(failure, 'Provider search unavailable')); }
   finally { if (valid(captured)) setSearching(false); }
  };
- const choose = (candidate: GameCandidate) => { setTitle(candidate.title); setCandidates([]); };
+ // The hit's cover is imported by the API (no hot-link) and becomes the first snapshot.
+ const choose = async (candidate: GameCandidate) => {
+  const captured = scope; setTitle(candidate.title); setCandidates([]);
+  const imageId = candidate.coverUrl?.match(/\/t_cover_big\/([A-Za-z0-9_-]+)\.jpg$/)?.[1];
+  if (!imageId) return;
+  setPending(value => value + 1);
+  try { const cover = await GamesClient.importCover(imageId); if (!valid(captured)) return; const item = { id: cover.id, url: `/api/explorers/v1/media/${cover.id}/content` }; setMedia(value => value.some(existing => existing.id === item.id) ? value : [item, ...value]); }
+  catch (failure) { if (valid(captured)) setError(friendlyErrorMessage(failure, 'The game cover could not be added. You can upload one below.')); }
+  finally { if (valid(captured)) setPending(value => value - 1); }
+ };
  // Edit controls require the actual complete owner observation. A loaded draft
  // stays owned by its original observation across refreshes and never rebases.
  if (gameId && initialized.current !== scope) {
@@ -96,7 +105,7 @@ export default function AddGamePage() {
  return <div className="min-h-screen text-dashboard"><header className="border-b border-dashboard-border px-4 md:px-6 py-3 flex items-center gap-3"><button aria-label="Back to game list" onClick={() => navigate(`/recommendations/games/${listId}`)}><ArrowLeft size={20} /></button><h1 className="font-semibold">{gameId ? 'Edit Game' : 'Add Game'}</h1></header>
   <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-6" style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom))" }}>
    {!gameId && <section className="rounded-2xl border border-dashboard-border bg-dashboard-sidebar p-5 space-y-3"><h2 className="font-semibold flex gap-2"><Search size={18} />Find a game</h2><input aria-label="Search for a game" placeholder="Search for a game..." value={query} onChange={event => setQuery(event.target.value)} className="w-full bg-dashboard-muted rounded-xl p-3" /><button disabled={!query.trim() || searching} onClick={search}>Search</button>{searching && <Loader2 className="inline animate-spin ml-2" size={16} aria-hidden />}{searchError && <p role="status">{searchError}</p>}
-    {candidates.length > 0 && <ul className="space-y-2">{candidates.map(candidate => { const label = candidate.year ? `${candidate.title} (${candidate.year})` : candidate.title; return <li key={candidate.externalId}><button type="button" aria-label={`Use ${label}`} onClick={() => choose(candidate)} className="flex w-full items-center gap-3 rounded-xl bg-dashboard-muted p-2 text-left">
+    {candidates.length > 0 && <ul className="space-y-2">{candidates.map(candidate => { const label = candidate.year ? `${candidate.title} (${candidate.year})` : candidate.title; return <li key={candidate.externalId}><button type="button" aria-label={`Use ${label}`} onClick={() => { void choose(candidate); }} className="flex w-full items-center gap-3 rounded-xl bg-dashboard-muted p-2 text-left">
      {candidate.coverUrl ? <img src={candidate.coverUrl} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-16 w-12 shrink-0 rounded object-cover" /> : <span className="flex h-16 w-12 shrink-0 items-center justify-center rounded bg-dashboard-sidebar"><Gamepad2 size={18} aria-hidden /></span>}
      <span className="min-w-0"><span className="block font-medium truncate">{label}</span>{candidate.platforms.length > 0 && <span className="block text-sm text-dashboard-muted truncate">{candidate.platforms.join(' · ')}</span>}{candidate.genres.length > 0 && <span className="block text-xs text-dashboard-muted truncate">{candidate.genres.join(', ')}</span>}</span>
     </button></li>; })}</ul>}<p className="text-sm text-dashboard-muted">You can add your own game below.</p></section>}

@@ -6,7 +6,7 @@ import { requireActor, sendActorError } from "../middleware/explorersPrincipal";
 import { MediaService, MediaInputError, MediaUnavailable, type MediaUploadInput } from "../application/media";
 import { fromNodeHeaders } from "#auth-runtime";
 import { GoogleAvatarFetcher } from "../services/googleAvatarFetch";
-import { PlacePhotoFetcher, PlacePhotoFetchFailure } from "../services/placePhotoFetch";
+import { PlacePhotoFetcher, PlacePhotoFetchFailure } from "../services/placePhotoFetch"; import { GameCoverFetcher } from "../services/gameCoverFetch";
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /**
@@ -22,7 +22,7 @@ const failure = (status: number, code: string, message: string) => ({ status, bo
 
 export function setupExplorersMediaRoutes(app: Express, pool: Pool, auth: ExplorersAuth, config: ExplorersAuthConfig,
   service = new MediaService(pool),beforeMediaCommand?:express.RequestHandler,avatarFetcher = new GoogleAvatarFetcher(),
-  placePhotos = new PlacePhotoFetcher()): void {
+  placePhotos = new PlacePhotoFetcher(), gameCovers = new GameCoverFetcher()): void {
   app.post("/api/explorers/v1/media", async (request, response, next) => {
     if (request.get("origin") !== config.baseURL) {
       const result = failure(403, "FORBIDDEN", "Origin is not trusted");
@@ -95,6 +95,32 @@ export function setupExplorersMediaRoutes(app: Express, pool: Pool, auth: Explor
     } catch (error) {
       if (error instanceof MediaInputError || error instanceof PlacePhotoFetchFailure) {
         const result = failure(422, "INVALID_INPUT", error.message); return response.status(result.status).json(result.body);
+      }
+      sendActorError(request, response, error);
+    }
+  });
+
+  // An IGDB search hit's cover (GMS-X01), fetched here by image id so the saved game keeps
+  // it as its first snapshot; owner checked before any outbound request, as above.
+  app.post("/api/explorers/v1/media/game-cover", async (request, response, next) => {
+    if (request.get("origin") !== config.baseURL) {
+      const result = failure(403, "FORBIDDEN", "Origin is not trusted");
+      return response.status(result.status).json(result.body);
+    }
+    try { request.explorersActor = await requireActor(request, auth, pool); next(); }
+    catch (error) { sendActorError(request, response, error); }
+  }, express.json({ limit: "1kb" }), ...(beforeMediaCommand?[beforeMediaCommand]:[]), async (request, response) => {
+    try {
+      const body = request.body as { imageId?: unknown } | null;
+      if (!body || typeof body !== "object" || Object.keys(body).some(key => key !== "imageId") || typeof body.imageId !== "string" || !/^[A-Za-z0-9_-]{1,200}$/.test(body.imageId))
+        throw new MediaInputError("Invalid game cover");
+      const cover = await gameCovers.fetch(body.imageId);
+      const media = await service.createMedia(request.explorersActor!, { purpose: "recommendation", filename: "game-cover",
+        mimeType: cover.mimeType, length: cover.bytes.length, bytes: cover.bytes }, { requestId: randomUUID() });
+      return response.status(201).json({ media });
+    } catch (error) {
+      if (error instanceof MediaInputError || error instanceof PlacePhotoFetchFailure) {
+        const result = failure(422, "INVALID_INPUT", "Game cover unavailable"); return response.status(result.status).json(result.body);
       }
       sendActorError(request, response, error);
     }

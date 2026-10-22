@@ -752,6 +752,13 @@ export const explorersApiClient = {
       headers: { "Content-Type": "application/json" }, body: JSON.stringify(purpose === "collection" ? { photoUri } : { photoUri, purpose }) });
     return (await responseBody<{ media: MediaDto }>(response, generation)).media;
   },
+  /** An IGDB search hit's cover, fetched by the API from images.igdb.com and stored as game snapshot media. */
+  async importGameCover(imageId: string, signal?: AbortSignal): Promise<MediaDto> {
+    const generation = useAuthStore.getState().generation;
+    const response = await fetch("/api/explorers/v1/media/game-cover", { method: "POST", credentials: "include", signal,
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageId }) });
+    return (await responseBody<{ media: MediaDto }>(response, generation)).media;
+  },
   /** Imports the signed-in user's Google profile photo as profile media; the server reads the URL from the session. */
   async importProviderAvatar(signal?: AbortSignal): Promise<MediaDto> {
     const generation = useAuthStore.getState().generation;
