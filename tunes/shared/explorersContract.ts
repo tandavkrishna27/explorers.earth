@@ -1,5 +1,5 @@
 import {placesTaxonomyAssignmentSchema,peopleSectorAssignmentSchema} from './explorersTaxonomyContract';
-import {gameExternalIdSchema} from './explorersGameContract';
+import {gameExternalIdSchema,gameDetailsSchema} from './explorersGameContract';
 import {movieContextSchema,movieDisplayFieldsSchema,resolveProviderMovieSchema,resolveManualMovieSchema} from './explorersMovieContract';
 import { z } from "zod/v3";
 import { richNoteSchema } from './explorersRichNoteContract';
@@ -146,8 +146,10 @@ export type RecommendationCoreDto = z.infer<typeof recommendationCoreDtoSchema>;
 export const resolveExistingEntitySchema = z.object({entityId:contentIdSchema,category:recommendationCategorySchema}).strict();
 export const entityCoreDtoSchema = z.object({id:contentIdSchema,kind:catalogKindSchema,title:catalogTitleSchema}).strict();
 export const resolveManualEntitySchema=z.object({kind:z.literal('manual'),category:topPickCategorySchema,details:z.object({title:displayTitleWriteSchema}).strict()}).strict();
+/** A manual game with its details; a title-only game still matches resolveManualEntitySchema. */
+export const resolveManualGameSchema=z.object({kind:z.literal('manual'),category:z.literal('games'),details:gameDetailsSchema.partial().extend({title:displayTitleWriteSchema}).strict()}).strict();
 export const resolveProviderGameSchema=z.object({kind:z.literal('provider'),category:z.literal('games'),provider:z.literal('igdb'),externalKind:z.literal('game'),externalId:gameExternalIdSchema}).strict();
-export const resolveEntitySchema=z.union([resolveExistingEntitySchema,resolveManualEntitySchema,resolveProviderBookSchema,resolveManualBookSchema,resolveProviderMovieSchema,resolveManualMovieSchema,resolveProviderGameSchema,resolveManualAppSchema,resolveManualProductSchema,resolveManualPersonSchema,resolveManualPlaceSchema]);
+export const resolveEntitySchema=z.union([resolveExistingEntitySchema,resolveManualEntitySchema,resolveManualGameSchema,resolveProviderBookSchema,resolveManualBookSchema,resolveProviderMovieSchema,resolveManualMovieSchema,resolveProviderGameSchema,resolveManualAppSchema,resolveManualProductSchema,resolveManualPersonSchema,resolveManualPlaceSchema]);
 export type ResolveManualEntityInput=z.input<typeof resolveManualEntitySchema>;
 
 export const apiErrorCodes = ["UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "CONFLICT", "INVALID_INPUT", "RATE_LIMITED", "RESOURCE_TOO_LARGE", "READ_LIMIT", "CONTINUATION_LIMIT", "CURSOR_EXPIRED", "PROVIDER_UNAVAILABLE", "PROVIDER_INVALID_RESPONSE", "UNAVAILABLE"] as const;

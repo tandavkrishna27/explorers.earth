@@ -53,6 +53,7 @@ const expectedRuntimeTables = [
   "entities",
   "entity_identifiers",
   "explorers_analytics_receipts",
+  "game_entity_details",
   "guest_interactions",
   "guide_collection_details",
   "guide_section_photos",

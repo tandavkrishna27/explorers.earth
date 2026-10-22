@@ -45,7 +45,7 @@ describe("owned image CI PostgreSQL wiring", () => {
       run: "node node_modules/tsx/dist/cli.mjs scripts/music-image-ci-tests.ts --cleanup" });
   });
 
-  it("preserves all fifty ordinary database selectors on their existing service", () => {
+  it("preserves all fifty-one ordinary database selectors on their existing service", () => {
     const ordinary = load(read(".github/workflows/test.yml"));
     const job = Object.values(ordinary.jobs).find((job: any) => job.env?.DATABASE_URL_TEST) as any;
     expect(job.env.DATABASE_URL_TEST).toBe("postgresql://music_migrator:music@127.0.0.1:55432/music_fixture");
@@ -132,6 +132,8 @@ describe("owned image CI PostgreSQL wiring", () => {
       "server/test/explorers-reorder.integration.test.ts",
       "server/test/explorers-search.integration.test.ts",
       "server/test/explorers/category-write-path.integration.test.ts",
+      // GMS-X01. 0064's game year/platforms/genres through resolve, owner and public read.
+      "server/test/explorers/game-details.integration.test.ts",
       "server/test/explorers/guides.integration.test.ts",
       "server/test/explorers/people.integration.test.ts",
       "server/test/explorers/placeLinks.integration.test.ts",
@@ -154,8 +156,8 @@ describe("owned image CI PostgreSQL wiring", () => {
        */
       "server/test/user-leak.integration.test.ts",
     ]);
-    expect(selectors).toHaveLength(50);
-    expect(new Set(selectors).size).toBe(50);
+    expect(selectors).toHaveLength(51); // 51 = 50 + game-details (0064, GMS-X01)
+    expect(new Set(selectors).size).toBe(51);
   });
 
   /*

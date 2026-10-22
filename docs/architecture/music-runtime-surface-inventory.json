@@ -877,6 +877,16 @@
       "line": 79
     },
     {
+      "method": "POST",
+      "path": "/api/explorers/v1/media/game-cover",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersMediaRoutes.ts",
+      "line": 105
+    },
+    {
       "method": "DELETE",
       "path": "/api/explorers/v1/media/:id",
       "classification": "canonical-explorers-owner",
@@ -884,7 +894,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "delete",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",
-      "line": 103
+      "line": 129
     },
     {
       "method": "GET",
@@ -894,7 +904,7 @@
       "policy": "ready-media+owner-or-live-public-profile-or-book-recommendation-attachment",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",
-      "line": 165
+      "line": 191
     },
     {
       "method": "HEAD",
@@ -904,7 +914,7 @@
       "policy": "ready-media+owner-or-live-public-profile-or-book-recommendation-attachment",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersMediaRoutes.ts",
-      "line": 166
+      "line": 192
     },
     {
       "method": "POST",

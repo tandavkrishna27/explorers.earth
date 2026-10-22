@@ -28,3 +28,8 @@ export const gameCandidateSchema=z.object({externalId:gameExternalIdSchema,title
 export type GameCandidate=z.infer<typeof gameCandidateSchema>;
 export const gameCandidatePageSchema=z.object({version:z.literal('explorers-game-candidates/v1'),items:z.array(gameCandidateSchema).max(24),nextCursor:z.string().regex(/^[A-Za-z0-9_-]{1,512}$/).nullable()}).strict();
 export type GameCandidatePage=z.infer<typeof gameCandidatePageSchema>;
+/** A game's year, platforms and genres (GMS-X01), filled from an IGDB hit or typed by the owner. */
+const detailLabel=text(100).transform(v=>v.trim()).refine(v=>v.length>0);
+export const gameDetailsSchema=z.object({releaseYear:z.number().int().min(1900).max(2100).nullable(),platforms:z.array(detailLabel).max(12),genres:z.array(detailLabel).max(12)}).strict();
+export type GameDetails=z.infer<typeof gameDetailsSchema>;
+export const emptyGameDetails:GameDetails=Object.freeze({releaseYear:null,platforms:[],genres:[]}) as GameDetails;

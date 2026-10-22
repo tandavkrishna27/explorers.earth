@@ -20,7 +20,7 @@ import { z } from 'zod/v3';
 import {taxonomyCatalogQuerySchema,taxonomyCatalogPageSchema,type TaxonomyCatalogPage} from '../../../tunes/shared/explorersTaxonomyContract';
 import { createCollectionSchema,createCollectionResultSchema,type CreateCollectionResult,updateCollectionSchema,createRecommendationObjectSchema,createRecommendationSchema,updateRecommendationSchema,reorderCollectionSchema,collectionCoreDtoSchema,recommendationCoreDtoSchema,apiErrorSchema,contentIdSchema,type CreateCollectionInput,type UpdateCollectionInput,type CreateRecommendationInput,type UpdateRecommendationInput } from '../../../tunes/shared/explorersContract';
 import { editableOwnerCollectionSchema,editableOwnerRecommendationSchema,type EditableOwnerCollection,type EditableOwnerRecommendation } from '../../../tunes/shared/explorersOwnerContentContract';
-import { resolveManualEntitySchema,entityCoreDtoSchema,type ResolveManualEntityInput } from '../../../tunes/shared/explorersContract';
+import { resolveManualEntitySchema,resolveManualGameSchema,entityCoreDtoSchema,type ResolveManualEntityInput } from '../../../tunes/shared/explorersContract';
 import {bookCandidateRequestSchema,bookCandidatesSchema,bookEntityDtoSchema,resolveProviderBookSchema,resolveManualBookSchema,replaceRecommendationEntitySchema} from '../../../tunes/shared/explorersBookContract';
 import {attachLocationLinkSchema,detachLocationLinkSchema} from '../../../tunes/shared/explorersPlaceLinkContract';
 import {appEntityDtoSchema,resolveManualAppSchema} from '../../../tunes/shared/explorersAppContract';
@@ -574,6 +574,13 @@ export const explorersApiClient = {
    const generation=useAuthStore.getState().generation,response=await fetch('/api/explorers/v1/entities/resolve',{method:'POST',credentials:'include',signal,headers:{'Content-Type':'application/json','Idempotency-Key':key},body:JSON.stringify(input)});
    await responseBody<never>(response,generation);throw new ExplorersApiError(503,'PROVIDER_INVALID_RESPONSE','Games provider is unavailable');
   },
+  /** A manual game with its year, platforms and genres (GMS-X01). */
+  async resolveManualGame(details:{title:string;releaseYear:number|null;platforms:string[];genres:string[]},key:string,signal?:AbortSignal) {
+   const body=commandInput(resolveManualGameSchema,{kind:'manual',category:'games',details});
+   const entity=await contentCommand('/entities/resolve','POST',body,key,'entity',entityCoreDtoSchema,signal);
+   if(entity.kind!=='game'||entity.title!==body.details.title)throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid resolved catalog identity');
+   return entity;
+  },
   async resolveManualEntity(input:ResolveManualEntityInput,key:string,signal?:AbortSignal) {
    const body=commandInput(resolveManualEntitySchema,input);
    const entity=await contentCommand('/entities/resolve','POST',body,key,'entity',entityCoreDtoSchema,signal);
@@ -750,6 +757,13 @@ export const explorersApiClient = {
     const generation = useAuthStore.getState().generation;
     const response = await fetch("/api/explorers/v1/media/place-photo", { method: "POST", credentials: "include", signal,
       headers: { "Content-Type": "application/json" }, body: JSON.stringify(purpose === "collection" ? { photoUri } : { photoUri, purpose }) });
+    return (await responseBody<{ media: MediaDto }>(response, generation)).media;
+  },
+  /** An IGDB search hit's cover, fetched by the API from images.igdb.com and stored as game snapshot media. */
+  async importGameCover(imageId: string, signal?: AbortSignal): Promise<MediaDto> {
+    const generation = useAuthStore.getState().generation;
+    const response = await fetch("/api/explorers/v1/media/game-cover", { method: "POST", credentials: "include", signal,
+      headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageId }) });
     return (await responseBody<{ media: MediaDto }>(response, generation)).media;
   },
   /** Imports the signed-in user's Google profile photo as profile media; the server reads the URL from the session. */

@@ -11,7 +11,7 @@ import { ExplorersApiError } from '../../../../../lib/explorersApiClient';
 
 const fixture = vi.hoisted(() => ({ content: { view: { lists: [] }, details: new Map(), observation: {} }, loading: false, error: undefined as Error | undefined, refetch: vi.fn() }));
 vi.mock('../../../hooks/useGamesOwner', () => ({ useGamesOwner: () => ({ content: fixture.content, data: { gameLists: fixture.content.view.lists }, loading: fixture.loading, error: fixture.error, refetch: fixture.refetch }), invalidateGames: vi.fn() }));
-vi.mock('../../../api/gamesClient', () => ({ GamesClient: { observeCollection: vi.fn(), prepareManualIntent: vi.fn(), createManual: vi.fn(), upload: vi.fn(), search: vi.fn(), updateRecommendation: vi.fn(), observeRecommendation: vi.fn(), updateCollection: vi.fn(), createCollection: vi.fn(), readCompleteOwner: vi.fn(), setTopPicks: vi.fn() } }));
+vi.mock('../../../api/gamesClient', () => ({ GamesClient: { observeCollection: vi.fn(), prepareManualIntent: vi.fn(), createManual: vi.fn(), upload: vi.fn(), importCover: vi.fn(), search: vi.fn(), updateRecommendation: vi.fn(), observeRecommendation: vi.fn(), updateCollection: vi.fn(), createCollection: vi.fn(), readCompleteOwner: vi.fn(), setTopPicks: vi.fn() } }));
 vi.mock('../../../../Favorites/components/TiptapEditor', () => ({ default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => <textarea aria-label="Note" value={value} onChange={event => onChange(event.target.value)} /> }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 function mount() { return render(<MockedProvider><MemoryRouter initialEntries={['/games/list-1/add']}><Routes><Route path="/games/:listId/add" element={<AddGamePage />} /><Route path="/recommendations/games/:listId" element={<p>Saved list</p>} /></Routes></MemoryRouter></MockedProvider>); }
@@ -21,7 +21,7 @@ describe('native manual Games', () => {
  afterEach(() => { cleanup(); useAuthStore.getState().logout(); });
  it('creates a native manual title/rating/note without fabricating a provider ID', async () => {
   mount(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Manual adventure' } }); fireEvent.change(screen.getByLabelText('Your rating'), { target: { value: '8' } }); fireEvent.change(screen.getByLabelText('Note'), { target: { value: '<p>A personal note</p>' } }); fireEvent.click(screen.getByRole('button', { name: 'Save game' }));
-  await screen.findByText('Saved list'); expect(GamesClient.prepareManualIntent).toHaveBeenCalledWith(expect.anything(), { title: 'Manual adventure', note: { version: 1, format: 'quill-html', html: '<p>A personal note</p>' }, userRating: 8, mediaIds: [] }); expect(GamesClient.createManual).toHaveBeenCalledTimes(1); expect(GamesClient.search).not.toHaveBeenCalled();
+  await screen.findByText('Saved list'); expect(GamesClient.prepareManualIntent).toHaveBeenCalledWith(expect.anything(), { title: 'Manual adventure', note: { version: 1, format: 'quill-html', html: '<p>A personal note</p>' }, userRating: 8, mediaIds: [], releaseYear: null, platforms: [], genres: [] }); expect(GamesClient.createManual).toHaveBeenCalledTimes(1); expect(GamesClient.search).not.toHaveBeenCalled();
  });
  it('waits for actual uploaded media readiness before saving', async () => {
   const upload = deferred<{ id: string }>(); vi.mocked(GamesClient.upload).mockReturnValue(upload.promise as never); mount(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Uploaded game' } }); fireEvent.change(screen.getByLabelText('Snapshots'), { target: { files: [new File(['bytes'], 'snapshot.png', { type: 'image/png' })] } }); expect(screen.getByRole('button', { name: 'Save game' })).toBeDisabled(); expect(GamesClient.createManual).not.toHaveBeenCalled(); await act(async () => upload.resolve({ id: 'media-1' })); await waitFor(() => expect(screen.getByRole('button', { name: 'Save game' })).toBeEnabled()); fireEvent.click(screen.getByRole('button', { name: 'Save game' })); await screen.findByText('Saved list'); expect(GamesClient.prepareManualIntent).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ mediaIds: ['media-1'] }));
@@ -53,6 +53,27 @@ describe('native manual Games', () => {
   expect(screen.getByRole('button', { name: 'Use Zelda fan game' })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Use The Legend of Zelda: Breath of the Wild (2017)' }));
   expect(screen.getByLabelText('Game title')).toHaveValue('The Legend of Zelda: Breath of the Wild'); expect(screen.getByLabelText('Your rating')).toHaveValue('9');
+ });
+ it('picking a hit imports its IGDB cover as the first snapshot and saves it with the game (GMS-X01)', async () => {
+  vi.mocked(GamesClient.search).mockResolvedValue({ version: 'explorers-game-candidates/v1', nextCursor: null, items: [
+   { externalId: '26226', title: 'Celeste', year: 2018, coverUrl: 'https://images.igdb.com/igdb/image/upload/t_cover_big/co3byy.jpg', platforms: ['PC (Microsoft Windows)'], genres: ['Platform'] }] } as never);
+  vi.mocked(GamesClient.importCover).mockResolvedValue({ id: 'cover-1', url: '/api/explorers/v1/media/cover-1/content' } as never);
+  vi.mocked(GamesClient.prepareManualIntent).mockReturnValue({} as never); vi.mocked(GamesClient.createManual).mockResolvedValue({ id: 'game-1' } as never);
+  mount(); fireEvent.change(await screen.findByLabelText('Search for a game'), { target: { value: 'celeste' } }); fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Use Celeste (2018)' }));
+  await waitFor(() => expect(GamesClient.importCover).toHaveBeenCalledWith('co3byy'));
+  expect(screen.getByLabelText('Release year')).toHaveValue(2018); expect(screen.getByLabelText('Platforms')).toHaveValue('PC (Microsoft Windows)'); expect(screen.getByLabelText('Genres')).toHaveValue('Platform');
+  expect(await screen.findByAltText('Game snapshot')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Save game' }));
+  await screen.findByText('Saved list');
+  expect(GamesClient.prepareManualIntent).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ title: 'Celeste', mediaIds: ['cover-1'], releaseYear: 2018, platforms: ['PC (Microsoft Windows)'], genres: ['Platform'] }));
+ });
+ it('saves typed year, platforms and genres for a manual game, trimming blanks', async () => {
+  vi.mocked(GamesClient.prepareManualIntent).mockReturnValue({} as never); vi.mocked(GamesClient.createManual).mockResolvedValue({ id: 'game-1' } as never);
+  mount(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Home-made' } });
+  fireEvent.change(screen.getByLabelText('Release year'), { target: { value: '1999' } }); fireEvent.change(screen.getByLabelText('Platforms'), { target: { value: ' PC ,, Amiga ' } }); fireEvent.change(screen.getByLabelText('Genres'), { target: { value: '' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save game' })); await screen.findByText('Saved list');
+  expect(GamesClient.prepareManualIntent).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ title: 'Home-made', releaseYear: 1999, platforms: ['PC', 'Amiga'], genres: [] }));
  });
  it('says search is not available when the deployment has no IGDB credentials', async () => {
   vi.mocked(GamesClient.search).mockRejectedValue(new ExplorersApiError(503, 'PROVIDER_NOT_CONFIGURED', 'Game search is not available. Add the game manually.'));

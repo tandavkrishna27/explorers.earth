@@ -7,7 +7,7 @@ import {toGameCandidate} from '../services/gameCatalogContracts';
 import type {GameCandidatePage} from '../../shared/explorersGameContract';
 import {movieEntityDtoSchema,resolveManualMovieSchema} from '../../shared/explorersMovieContract';
 import type { Pool } from 'pg';
-import { entityCoreDtoSchema, resolveEntitySchema,commandKeySchema,type RequestContext } from '../../shared/explorersContract';
+import { entityCoreDtoSchema, resolveEntitySchema,resolveManualGameSchema,commandKeySchema,type RequestContext } from '../../shared/explorersContract';
 import type { Actor } from './actor';
 import { authorizeOperation,AuthorizationError } from './authorization';
 import { parseContent } from './recommendations';
@@ -72,6 +72,7 @@ export class CatalogService {
       const key=parseContent(commandKeySchema,context?.idempotencyKey),repository=new ExplorersRecommendationRepository(this.db);
       // Apps and Products carry typed details with their manual resolve. Without these
       // branches the details were dropped and only the entities row was written.
+      if(parsed.kind==='manual'&&parsed.category==='games')return entityCoreDtoSchema.parse(await repository.resolveGameEntity(actor.accountId,parseContent(resolveManualGameSchema,parsed),key));
       if(parsed.kind==='manual'&&parsed.category==='apps')return appEntityDtoSchema.parse(await repository.resolveAppEntity(actor.accountId,parseContent(resolveManualAppSchema,parsed),key));
       if(parsed.kind==='manual'&&parsed.category==='products')return productEntityDtoSchema.parse(await repository.resolveProductEntity(actor.accountId,parseContent(resolveManualProductSchema,parsed),key));
       if(parsed.kind==='manual'&&parsed.category==='people')return personEntityDtoSchema.parse(await repository.resolvePersonEntity(actor.accountId,parseContent(resolveManualPersonSchema,parsed),key));
