@@ -7,7 +7,12 @@ export function renderRuntimeFiles(input, template) {
   if (typeof template !== 'string' || template.length > 1024*1024 || !template.includes('</head>')) throw new Error('PUBLIC_RUNTIME_TEMPLATE_INVALID');
   const qa = config.environment === 'qa';
   const escaped = config.origin.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-  const canonical = `<link rel="canonical" href="${escaped}/" /><meta name="robots" content="${qa ? 'noindex,nofollow':'index,follow'}" />`;
+  const robots = `<meta name="robots" content="${qa ? 'noindex,nofollow':'index,follow'}" />`;
+  const canonical = `<link rel="canonical" href="${escaped}/" />${robots}`;
+  // The shell host nginx wraps around the API's per-page head (explorersSharePageRoutes.ts):
+  // the API supplies <title> and the canonical link, so the shell carries neither.
+  const page = template.replace(/<title>[^<]*<\/title>/, '').replace('</head>', robots+'</head>');
+  const split = page.indexOf('</head>');
   const origin = config.origin;
   const maps = config.mapsBrowserKey ? ' https://maps.googleapis.com https://maps.gstatic.com https://places.googleapis.com' : '';
   const analytics = config.analytics?.enabled ? ' https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com' : '';
@@ -15,6 +20,8 @@ export function renderRuntimeFiles(input, template) {
   return {
     'runtime-config.json':JSON.stringify(config),
     'index.html':template.replace('</head>',canonical+'</head>'),
+    'shell-head.html':page.slice(0,split),
+    'shell-tail.html':page.slice(split),
     'robots.txt':qa ? 'User-agent: *\nDisallow: /\n' : `User-agent: *\nDisallow: /api/\nDisallow: /settings\nDisallow: /onboarding\nSitemap: ${origin}/sitemap.xml\n`,
     'sitemap.xml':`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${qa?'':['/','/about','/use-cases','/contact','/privacy','/terms','/cookies'].map(path=>`<url><loc>${escaped}${path}</loc></url>`).join('')}</urlset>`,
     'headers.conf':`add_header X-Content-Type-Options "nosniff" always;\nadd_header Referrer-Policy "strict-origin-when-cross-origin" always;\nadd_header Content-Security-Policy "${csp}" always;\n${qa?'add_header X-Robots-Tag "noindex,nofollow" always;\n':''}`,
