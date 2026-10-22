@@ -38,6 +38,7 @@ Each item has an ID, a status and a source.
 | O9 | Owner on privacy model + plugin direction |
 | O10 | Owner on phase order, invite-by-email, saving lists, monetisation |
 | O11 | Owner approving the Guides proposals: sections + templates (Trip first), in-page editor, day strip (2026-10-22) |
+| O12 | Owner decision on Guides v4 day structure: one ordered list per day, optional time labels (2026-10-23) |
 | P187 / P188 / P189 | The three docs PRs |
 | UAT | Live UAT re-test of 2026-10-22 and its board |
 | MEM | Recorded UX decisions of 2026-10-22 |
@@ -317,12 +318,13 @@ Guides is the one category that differs: a day-by-day plan, not a list of recomm
 | GD-14 | Guides built in ChatGPT: arrive in explorers as **Draft**, places matched to real ones where possible, anything unmatched marked "check this"; never published automatically. Pasting a plan from elsewhere uses the same path. | LATER | O8, O9 |
 | GD-15 | The public guide UI from the Strapi era was "pretty neat and nice": check whether it still exists and reuse its strengths. | OPEN | O10 |
 | GD-16 | Can anyone use Guides for their own planning? Today: partly (private day plan with budget; no dates, no pulling saved places). GD-05/GD-07 close the gap. | OPEN | O6 |
-| GD-17 | **A guide is a set of sections**, each holding items from any category plus notes. A **template** defines the sections: **Trip**, built first as a full trip planner (days with Morning/Afternoon/Evening, optional dates), and **Topic guide**, later, with sections the user names (gift guides, learning paths, setups and routines, city or area guides) and no slots or dates. Same editor and same data for both. | SETTLED (Trip now, Topic later) | O11 |
-| GD-18 | **In-page editor, no popup.** "+ Add" opens a smart box inside the slot: the user's saved items first (any category), then Google results (with location and map buttons), then "Add as a note". | SETTLED | O11 |
-| GD-19 | **My lists panel**: on desktop, beside the plan, with drag into any slot or tap +, and a Map tab showing days as pins. On mobile, a bottom sheet used for browsing only. | SETTLED | O11 |
+| GD-17 | **A guide is a set of sections**, each holding items from any category plus notes. A **template** defines the sections: **Trip**, built first as a full trip planner (days, optional dates; day structure per GD-23), and **Topic guide**, later, with sections the user names (gift guides, learning paths, setups and routines, city or area guides) and no slots or dates. Same editor and same data for both. | SETTLED (Trip now, Topic later) | O11 |
+| GD-18 | **In-page editor, no popup.** "+ Add" opens a smart box in place at the end of the day: the user's saved items first (any category), then Google results (with location and map buttons), then "Add as a note". | SETTLED | O11 |
+| GD-19 | **My lists panel**: on desktop, beside the plan, with drag into any day or tap +, and a Map tab showing days as pins. On mobile, a bottom sheet used for browsing only. | SETTLED | O11 |
 | GD-20 | **Day strip** at the top, showing dates when set, otherwise Day N; "+ Day" appends a day. Each day's ⋯ menu offers insert before/after, duplicate, clear and delete. Days reorder by drag, and the day count stays in sync. | SETTLED | O11 |
 | GD-21 | Guide status shown like lists: the Published toggle and badge top-left, with Draft labelled "Only you can see this". The full privacy choice lives in Share/Manage (§7). | SETTLED | O11 |
 | GD-22 | Guide page tabs follow the list pattern: **Plan \| Share \| Manage**. Today's Journey/Transport/Stay/Budget/Tips become optional chips inside Plan; Itinerary is always shown, and the others appear once they have content. | OPEN (proposed in v4 mock) | v4 |
+| GD-23 | **Each day is one ordered list.** Items are added and dragged to reorder within and across days. Each item has an optional **time label**: Morning, Afternoon, Evening, Night, or an exact time (e.g. 9:30), set from a chip or the item menu. Small time headings appear automatically only when items carry labels; otherwise the day is a plain numbered list. Imports from ChatGPT and elsewhere keep their labels. Data: item order plus one nullable `time_label`; no slot entities. This replaces the fixed Morning/Afternoon/Evening slots. | SETTLED | O12 |
 
 ## 7. Privacy model
 
