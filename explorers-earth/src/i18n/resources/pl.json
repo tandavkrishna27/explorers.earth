@@ -1123,6 +1123,7 @@
           "categoryRequired": "Kategoria jest wymagana",
           "socialUrlInvalid": "Wprowadź prawidłowy URL Instagram lub LinkedIn",
           "socialUrlRequired": "URL Instagram lub LinkedIn jest wymagany dla rekomendacji osób",
+          "recommendationLinkInvalid": "Enter a link (https://…), an Instagram @handle or a LinkedIn profile URL",
           "titleRequired": "Tytuł jest wymagany"
         }
       },

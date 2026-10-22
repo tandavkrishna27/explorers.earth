@@ -1123,6 +1123,7 @@
           "categoryRequired": "Kategoria on pakollinen",
           "socialUrlInvalid": "Syötä kelvollinen Instagram tai LinkedIn URL",
           "socialUrlRequired": "Instagram tai LinkedIn URL vaaditaan henkilösuosituksille",
+          "recommendationLinkInvalid": "Enter a link (https://…), an Instagram @handle or a LinkedIn profile URL",
           "titleRequired": "Otsikko on pakollinen"
         }
       },

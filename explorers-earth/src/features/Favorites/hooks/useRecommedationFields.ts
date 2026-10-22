@@ -1,5 +1,5 @@
 import * as Yup from "yup";
-import { normalizeSocialProfileUrl } from "../../../utils/url";
+import { normalizeRecommendationLink, normalizeSocialProfileUrl } from "../../../utils/url";
 import { Places } from "../../Profile/types/types";
 import { useTranslation } from "react-i18next";
 import { useMemo } from "react";
@@ -95,7 +95,13 @@ export const useRecommendationFields = ({
   // validation schema for recommended Place - memoized to update when language changes
   const validationSchema = useMemo(() => Yup.object({
     subcategory: Yup.string(),
-    recommendationLink: Yup.string(),
+    // OWN-11. The same rule that builds creatorSocialUrl, so the form never accepts a
+    // value the contract will refuse on save.
+    recommendationLink: Yup.string().test(
+      "is-valid-recommendation-link",
+      t("dashboard.recommendations.addRecommendationForm.validationMessages.recommendationLinkInvalid"),
+      (value) => !value?.trim() || normalizeRecommendationLink(value) !== undefined,
+    ),
     reason: Yup.string(),
     // A person is shown publicly by name, so a person recommendation needs one.
     contactName: recommendationType === "person"

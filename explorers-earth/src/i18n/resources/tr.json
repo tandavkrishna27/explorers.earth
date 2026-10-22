@@ -1123,6 +1123,7 @@
           "categoryRequired": "Kategori gerekli",
           "socialUrlInvalid": "Lütfen geçerli bir Instagram veya LinkedIn URL'si girin",
           "socialUrlRequired": "Kişi önerileri için Instagram veya LinkedIn URL'si gereklidir",
+          "recommendationLinkInvalid": "Enter a link (https://…), an Instagram @handle or a LinkedIn profile URL",
           "titleRequired": "Başlık gerekli"
         }
       },

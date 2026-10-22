@@ -1446,6 +1446,7 @@
           "categoryRequired": "श्रेणी आवश्यक है",
           "socialUrlInvalid": "कृपया एक वैध Instagram या LinkedIn URL दर्ज करें",
           "socialUrlRequired": "व्यक्ति की सिफारिशों के लिए Instagram या LinkedIn URL आवश्यक है",
+          "recommendationLinkInvalid": "Enter a link (https://…), an Instagram @handle or a LinkedIn profile URL",
           "titleRequired": "शीर्षक आवश्यक है"
         }
       },

@@ -1123,6 +1123,7 @@
           "categoryRequired": "카테고리는 필수입니다",
           "socialUrlInvalid": "유효한 Instagram 또는 LinkedIn URL을 입력하세요",
           "socialUrlRequired": "사람 추천에는 Instagram 또는 LinkedIn URL이 필요합니다",
+          "recommendationLinkInvalid": "Enter a link (https://…), an Instagram @handle or a LinkedIn profile URL",
           "titleRequired": "제목은 필수입니다"
         }
       },

@@ -1446,6 +1446,7 @@
           "categoryRequired": "La categoria è obbligatoria",
           "socialUrlInvalid": "Inserisci un URL valido di Instagram o LinkedIn",
           "socialUrlRequired": "L'URL di Instagram o LinkedIn è richiesto per le raccomandazioni di persone",
+          "recommendationLinkInvalid": "Enter a link (https://…), an Instagram @handle or a LinkedIn profile URL",
           "titleRequired": "Il titolo è obbligatorio"
         }
       },

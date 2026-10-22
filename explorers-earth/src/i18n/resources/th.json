@@ -1123,6 +1123,7 @@
           "categoryRequired": "ต้องการหมวดหมู่",
           "socialUrlInvalid": "กรุณาใส่ URL Instagram หรือ LinkedIn ที่ถูกต้อง",
           "socialUrlRequired": "ต้องการ URL Instagram หรือ LinkedIn สำหรับคำแนะนำเกี่ยวกับบุคคล",
+          "recommendationLinkInvalid": "Enter a link (https://…), an Instagram @handle or a LinkedIn profile URL",
           "titleRequired": "ต้องการชื่อเรื่อง"
         }
       },

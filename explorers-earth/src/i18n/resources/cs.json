@@ -1123,6 +1123,7 @@
           "categoryRequired": "Kategorie je povinná",
           "socialUrlInvalid": "Zadejte prosím platnou URL Instagram nebo LinkedIn",
           "socialUrlRequired": "URL Instagram nebo LinkedIn je vyžadováno pro doporučení osob",
+          "recommendationLinkInvalid": "Enter a link (https://…), an Instagram @handle or a LinkedIn profile URL",
           "titleRequired": "Název je povinný"
         }
       },

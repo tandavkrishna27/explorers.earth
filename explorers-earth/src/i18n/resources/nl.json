@@ -1123,6 +1123,7 @@
           "categoryRequired": "Categorie is verplicht",
           "socialUrlInvalid": "Voer een geldige Instagram of LinkedIn URL in",
           "socialUrlRequired": "Instagram of LinkedIn URL is vereist voor persoonaanbevelingen",
+          "recommendationLinkInvalid": "Enter a link (https://…), an Instagram @handle or a LinkedIn profile URL",
           "titleRequired": "Titel is verplicht"
         }
       },

@@ -1123,6 +1123,7 @@
           "categoryRequired": "Kategori krävs",
           "socialUrlInvalid": "Vänligen ange en giltig Instagram eller LinkedIn URL",
           "socialUrlRequired": "Instagram eller LinkedIn URL krävs för personrekommendationer",
+          "recommendationLinkInvalid": "Enter a link (https://…), an Instagram @handle or a LinkedIn profile URL",
           "titleRequired": "Titel krävs"
         }
       },

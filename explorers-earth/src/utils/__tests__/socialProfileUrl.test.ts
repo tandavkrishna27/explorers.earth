@@ -52,3 +52,22 @@ describe("normalizeRecommendationLink", () => {
       expect(normalizeRecommendationLink(input)).toBeUndefined();
     });
 });
+
+// OWN-11. A place saved with a handle in "Recommended by" must pass the real contract.
+describe("place recommendationContext creatorSocialUrl", () => {
+  it.each([
+    ["@explorer.one", "https://www.instagram.com/explorer.one"],
+    ["instagram.com/x", "https://instagram.com/x"],
+    ["https://example.com/blog", "https://example.com/blog"],
+  ])("stores %j as %j and passes the contract", (link, expected) => {
+    const context = recommendationContext({ recommendationLink: link, address: "Somewhere" }, { recommendationType: "place", source: "self" });
+    expect(context.creatorSocialUrl).toBe(expected);
+    expect(placeRecommendationContextSchema.safeParse(context).success).toBe(true);
+  });
+
+  it("keeps an existing creatorSocialUrl when the field is blank", () => {
+    const existing = recommendationContext({ recommendationLink: "@kept" }, { recommendationType: "place", source: "self" });
+    const edited = recommendationContext({ recommendationLink: "  " }, { recommendationType: "place", source: "self", existing });
+    expect(edited.creatorSocialUrl).toBe("https://www.instagram.com/kept");
+  });
+});
