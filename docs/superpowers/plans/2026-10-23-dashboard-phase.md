@@ -87,7 +87,9 @@ Two intermediate deploys (A, B) split the risk: the owner sees the bug fixes and
 - **Changes:**
   - OWN-11: line 205 today is `creatorSocialUrl: text(values.recommendationLink) ?? (person ? profile(values.recommendation) : …)`; wrap the first operand with `profile()`; the form refuses values that still don't normalise.
   - OWN-01: 0065 drops `UNIQUE(account_id,category,slug)` (0029 line 33) and creates a partial unique index `WHERE archived_at IS NULL`. Before creating it, the migration checks for live duplicates and fails loudly with the offending ids rather than guessing.
-  - 0066: `collection_slug_redirects(account_id, category, old_slug → collection_id)`; renaming a slug records the old one; the resolver follows it; a new list may not claim a slug that is still a redirect of another live list. (UI in WP3B.)
+  - 0066: `collection_slug_redirects(account_id, category, old_slug → collection_id)`; renaming a slug records the old one; **all 8 public slug lookups follow redirects** (R9; WP3B removes the two rename refusals and adds the rename UI); a new list may not claim a slug that is still a redirect of another live list. (UI in WP3B.)
+  - **`analytics_events` foreign key** (moved here from S2, R10): change RESTRICT to SET NULL or CASCADE and add the runtime-role privilege, so permanent list delete can ship in WP3B.
+  - Restore command for archived lists, if WP0 ships it (otherwise WP3B, R8).
 - **Depends on:** nothing.
 - **Acceptance:** a place with "recommended by" `@handle` or `instagram.com/x` saves; archiving "paris" then creating a new "paris" list succeeds; a duplicate among non-archived lists still returns 409 `listUrlTaken`; restoring an archived list whose slug was reused returns a clear conflict asking for a new slug.
 - **Tests:** unit case for `@handle` on a place; integration tests for archived-slug reuse, live-slug conflict, restore-after-reuse conflict, and redirect resolution.
@@ -114,7 +116,7 @@ Small, early, and the single owner of `pages/Favorites.tsx` before Wave 1, so th
 
 ## WP2: Publish pill, phone bottom add button, publish nudge (GL-08, GL-04, OWN-02, CAT-08, PRIV-06, LP-10)
 
-- **Files (new):** `components/controls/PublishPill.tsx`, `components/controls/BottomAddButton.tsx`, `components/controls/PublishNudge.tsx`, `hooks/usePublishNudge.ts`, their tests and stories. New files only: the old prompts (Places' `history.replaceState` nudge in `pages/Favorites.tsx`, per-category prompts and category modals) are removed by the package that adopts the new component on that screen (WP3A, WP3B, WP6), never by WP2.
+- **Files (new):** `components/controls/PublishPill.tsx`, `components/controls/BottomAddButton.tsx`, `components/controls/PublishNudge.tsx`, `hooks/usePublishNudge.ts`, their state tests (no Storybook, R13). New files only: the old prompts (Places' `history.replaceState` nudge in `pages/Favorites.tsx`, per-category prompts and category modals) are removed by the package that adopts the new component on that screen (WP3A, WP3B, WP6), never by WP2.
 - **Interface (agreed now so WP3A/3B/9 can code against it):**
   - `<PublishPill kind="category" value="public|hidden" onChange />` and `<PublishPill kind="list|guide" value="draft|public" privateComingSoon onChange />`; menu ticks current, one-line explanation each; "👥 Private — coming soon" disabled.
   - `<BottomAddButton label onClick hidden />`: full width, ~56px, safe-area aware, shrinks on scroll down and restores on scroll up; renders only below the phone breakpoint.
@@ -134,7 +136,7 @@ Small, early, and the single owner of `pages/Favorites.tsx` before Wave 1, so th
 
 ## WP3B: List page template, Share/QR, Manage, slug redirects (LP-01..10, OWN-07, OWN-14, GL-06 for items)
 
-- **Files:** new `features/shared/list/ListPage.tsx`, `ListTabs.tsx`, `RecommendationsTab.tsx`, `ShareTab.tsx`, `ManageTab.tsx`; `components/ShareModal.tsx` (QR capture moves into `ShareTab`; modal removed or thinned); the seven non-Places `*ListView.tsx` components become wrappers (Places adopts the template in WP6); `components/reorder/*` (drag-and-drop primary, arrows keyboard-only); API `tunes/server/application/recommendations.ts` (archive frees slug, delete), slug rename UI on top of the WP0/S1 redirect table (no migration here).
+- **Files:** new `features/shared/list/ListPage.tsx`, `ListTabs.tsx`, `RecommendationsTab.tsx`, `ShareTab.tsx`, `ManageTab.tsx`; `components/ShareModal.tsx` (QR capture moves into `ShareTab`; modal removed or thinned); the six `*ListView.tsx` components (Guides has none, R14) become wrappers (Places adopts the template in WP6); `components/reorder/*` (drag-and-drop primary, arrows keyboard-only); API `tunes/server/application/recommendations.ts` (archive frees slug, delete), slug rename UI on top of the WP0/S1 redirect table (no migration here).
 - **Changes:**
   - Three tabs mounted once (no remount on switch); pill top right (WP2).
   - Share: link, Copy, QR card with full-size Download (`toPng` with explicit width/height, no transform override, pixelRatio 2), social share.
@@ -149,12 +151,12 @@ Small, early, and the single owner of `pages/Favorites.tsx` before Wave 1, so th
 - **Files:** new `features/shared/addItem/AddItemPage.tsx`, `StickyActionBar.tsx`, `ItemSearch.tsx` (search + "Can't find it? Add manually" link + empty-state button + Back to search, typed text carried), `PickedItemCard.tsx`, `components/StarRating.tsx` (5 stars, half-steps, value 1-10, tap to clear, arrows), `components/TaxonomyCombobox.tsx` (searchable, two-level for Places).
 - **Changes:** template only; categories adopt it in Wave 2. Save spinner inside the button; no full-screen saving overlay; actions Cancel / Save and add another / Save.
 - **Depends on:** WP0.
-- **Acceptance:** template story renders search, manual, picked and saving states on 375px and desktop; StarRating round-trips 1-10 ↔ half stars; combobox filters 335 terms quickly and never overlaps text.
+- **Acceptance:** state tests cover search, manual, picked and saving states (no Storybook, R13) on 375px and desktop; StarRating round-trips 1-10 ↔ half stars; combobox filters 335 terms quickly and never overlaps text.
 - **Tests:** StarRating mapping table, ItemSearch carry-over, combobox keyboard tests, sticky bar visibility test.
 
 ## WP5: Performance (OWN-17, OWN-19, GL-07)
 
-- **Files:** `tunes/server/application/movieMediaImport.ts`, `tunes/server/application/media.ts` (batching only), `tunes/server/repositories/explorersRecommendationRepository.ts` media INSERT loop (`:59-62`), a background job hook for movie imports (reuse the existing worker pattern used by app enrichment); SPA `features/Favorites/api/placesCommands.ts`, `features/Favorites/api/explorersAdapter.ts`, `features/Favorites/api/placesViewModel.ts`, `features/Movies/api/moviesClient.ts`, the `/me` query hook (single query key).
+- **Files:** `tunes/server/application/movieMediaImport.ts`, `tunes/server/application/media.ts` (batching only), the media INSERT batching in a **new module** called from `explorersRecommendationRepository.ts` with a minimal call-site change after WP3B merges (R1), a background job hook for movie imports (reuse the existing worker pattern used by app enrichment); SPA `features/Favorites/api/placesCommands.ts`, `features/Favorites/api/explorersAdapter.ts`, `features/Favorites/api/placesViewModel.ts`, `features/Movies/api/moviesClient.ts`, the `/me` query hook (single query key, R12). The background image import needs no job table (approved, R12).
 - **Changes:**
   - Movies: navigate when the create returns; TMDB image import runs async with 3-4 parallel fetches and one progress write per image; drop the discarded GET.
   - Places: `refresh=false` on intermediate commands, invalidate once at the end (or patch the cache); upload photos in parallel (cap 3) before create and send ids on create (removes PATCH + GET).
@@ -168,7 +170,7 @@ Small, early, and the single owner of `pages/Favorites.tsx` before Wave 1, so th
 
 ## WP6: Places on the new templates (ADD-06..10, ADD-09/DS-10, NL-03..05 UI, OWN-09, OWN-10, OWN-03)
 
-- **Files:** `pages/Favorites.tsx` (Places list view moves onto the WP3B list template and the shared route; old Places nudge removed), `features/Favorites/components/AddRecommendation.tsx`, `RecommendForm.tsx`, `AddPlaceOverlay` (deleted), `features/Favorites/hooks/useAddRecommendation.ts` (form parts; WP5 save logic kept), new `features/Favorites/components/PlaceSearchField.tsx` (name or `lat, lng` regex, ◎ my location, map icon), `PickOnMapSheet.tsx`, nearby lookup client with per-rounded-area cache; server nearby-search endpoint (basic fields only) in the existing places provider route; `explorersPlaceContract.ts` (remove `recommendationType: person` from new writes; keep reads of old rows).
+- **Files:** `pages/Favorites.tsx` (Places list view moves onto the WP3B list template and the shared route; old Places nudge removed), `features/Favorites/components/AddRecommendation.tsx`, `RecommendForm.tsx`, `AddPlaceOverlay` (deleted), `features/Favorites/hooks/useAddRecommendation.ts` (form parts; WP5 save logic kept), the SPA Places location, coordinate and map parts (`PlaceSearchField`, `PickOnMapSheet`, nearby client cache) are built in **WP4** (R11), WP6 wires them in; WP6 keeps the server nearby-search endpoint and provider clients (basic fields only) in the existing places provider route; `explorersPlaceContract.ts` (remove `recommendationType: person` from new writes; keep reads of old rows).
 - **Changes:** Places add uses the WP4 template; coordinates resolve to a pin plus nearest named places; geolocation only on tap; OSM fallback; Instagram scraper off by default; legacy note left readable (data migration deferred, no new number needed).
 - **Depends on:** WP3A, WP3B, WP4, WP5, S2.
 - **Acceptance:** add a place by name, by `15.49, 73.82`, by my-location and by map pin; category/subcategory picker works; no Person type; nearby lookup cached on repeat taps (network log).
@@ -324,7 +326,7 @@ Every package names its tests up front; a package is not done until these exist 
 | WP3B | (a) tabs + Recommendations tab; (b) Share tab/QR; (c) Manage tab; (d) drag-and-drop reorder |
 | WP4 | (a) StarRating; (b) ItemSearch + PickedItemCard; (c) TaxonomyCombobox; (d) StickyActionBar |
 | WP5 | (a) server movie import job; (b) places command batching + view model; (c) `/me` dedupe; (d) media INSERT batch |
-| WP6 | (a) PlaceSearchField + coordinates; (b) PickOnMapSheet + nearby endpoint; (c) Places list onto template |
+| WP6 | (a) server nearby endpoint + provider clients; (b) wire WP4's Places search into the add flow; (c) Places list onto template |
 | WP7 | one sub-agent per category (Movies, Books, Games) + one for taxonomy term lists |
 | WP8 | (a) link-preview service; (b) Apps + iTunes search; (c) Products form; (d) People form |
 | WP9 | (a) guide commands/API; (b) day strip + day list + drag; (c) smart box + My lists panel; (d) New guide dialog + Plan chips |
@@ -341,14 +343,40 @@ Every package names its tests up front; a package is not done until these exist 
 | `components/controls/*` (new) | | **owner** | | | | | |
 | `features/shared/category/*`, `topPicks/*`, `lists/NewListDialog` (new) | | | **owner** | | | | |
 | `features/*/components/dashboard/*Home.tsx` (7) | | | **owner** | | | | |
-| `features/shared/list/*` (new), `*ListView.tsx` (7), `components/ShareModal.tsx`, `components/reorder/*` | | | | **owner** | | | |
+| `features/shared/list/*` (new), `*ListView.tsx` (6; Guides has none, R14), `components/ShareModal.tsx`, `components/reorder/*` | | | | **owner** | | | |
 | `features/shared/addItem/*`, `components/StarRating`, `TaxonomyCombobox` (new) | | | | | **owner** | | |
 | `features/Favorites/api/*`, `Movies/api/moviesClient.ts`, `tunes/server/application/movieMediaImport.ts`, `media.ts`, recommendation repository media loop | | | | | | **owner** | |
-| `AddMoviePage.tsx` save function only | | | | | | **owner** | |
+| `Add*Page.tsx` (all categories) | | | | | **owner** | | |
+| `AddMoviePage.tsx` save function | | | | | (owner) | after WP4 | |
+| `tunes/server/repositories/explorersRecommendationRepository.ts` | | | | **owner** (WP0 in Wave 0) | | new module only, after WP3B | |
+| `tunes/server/routes/*recommendations*` | | | | **owner** (registers any new route file WP3A needs) | | | |
+| `explorers-earth/src/lib/explorersApiClient.ts` | | | | **owner** | | | |
+| `GuideDetailsPage.tsx`, `main.tsx` (navigation + loaders only) | **owner** | | | | | | |
+| `GuidesPage.tsx` (incl. Top Picks manager deletion, after WP3B) | | | **owner** | | | | |
+| `.github/workflows/test.yml` | append only | append only | append only | append only | append only | append only | **owner** |
 | loaders, `TabVisibilityGuard`, `PublicColdEntryBoundary`, `lib/navigation/*` | **owner** | | | | | | |
 | `.github/workflows/*`, playwright config | | | | | | | **owner** |
 
-Verified on main: no file appears in two columns. Waves 2-5 have at most three parallel packages whose areas are per category (WP6 Places, WP7 Movies/Books/Games, WP8 Apps/Products/People) and do not overlap.
+Ownership follows the orchestrator rulings R1-R14 below; where a later package touches an owner's file (WP5 call site, AddMoviePage save, test.yml appends), it merges later and resolves the conflict. Waves 2-5 have at most three parallel packages whose areas are per category (WP6 Places, WP7 Movies/Books/Games, WP8 Apps/Products/People) and do not overlap.
+
+### Orchestrator ownership rulings (Wave 0/1, 2026-10-23)
+
+| # | Ruling |
+|---|---|
+| R1 | `explorersRecommendationRepository.ts`: WP0 in Wave 0, then WP3B in Wave 1. WP5 puts its logic in a new module with a minimal call-site change, after WP3B. |
+| R2 | `recommendations.ts` routes: WP3B. WP3A makes no route edits; it gets what it needs from WP3B or from a new route file that WP3B registers. |
+| R3 | `lib/explorersApiClient.ts`: WP3B. |
+| R4 | `.github/workflows/test.yml`: WPCI. Others only append selectors and bump the count; the later merger resolves. |
+| R5 | `Add*Page.tsx`: WP4. `AddMoviePage` is shared with WP5, which merges after WP4. |
+| R6 | `GuideDetailsPage` and `main.tsx`: WP1, navigation and loaders only. |
+| R7 | `GuidesPage.tsx`: WP3A; its Top Picks manager deletion lands in WP3A after WP3B. |
+| R8 | WP3B ships `RestoreListButton` and the restore command (unless WP0 already did); WP3A places it. |
+| R9 | S1/WP0 adds the redirect table and makes all 8 public slug lookups follow redirects; WP3B removes the two rename refusals and adds the rename UI. |
+| R10 | The `analytics_events` foreign-key fix (RESTRICT → SET NULL/CASCADE + runtime-role privilege) moves from S2 into S1, so permanent delete ships in WP3B. |
+| R11 | WP4 owns the SPA Places location, map and coordinate parts; WP6 keeps the server nearby endpoint and provider clients. |
+| R12 | WP5's background image import without a job table is approved; the `/me` dedupe is in WP5's file list. |
+| R13 | No Storybook; WP4 (and WP2) use state tests. |
+| R14 | There are 6 `*ListView` files (Guides has none). |
 
 ### Shared files: single owner or sequenced
 
@@ -364,7 +392,7 @@ Verified on main: no file appears in two columns. Waves 2-5 have at most three p
 
 ### Merge order and branch rules
 
-1. Within a wave, merge in this order: schema PR first (if any), then shared-component PRs (WP2, WP4, WPCI), then consumers (WP1, WP3A, WP3B, WP5), then category packages.
+1. Within a wave, merge in a fixed order, with update-branch on all open PRs after each merge. **Wave 1: WPCI → WP1 → WP2 → WP3B → WP3A → WP4 → WP5.** Builds run in parallel; when two packages touch one file, the later merger resolves the conflict. Other waves: schema PR first, then shared components, then consumers, then category packages.
 2. Merge commits only, one PR at a time. After every merge the orchestrator runs update-branch on every open PR of the wave (`gh pr update-branch <n>`), and each package session re-runs its local checks if the update touched its area.
 3. A PR whose head looks stale after update-branch (status UNKNOWN, or "out of date" refused although just updated) is fixed by close and reopen, then re-run.
 4. Append-only shared lists (selectors, i18n, `.dockerignore`) are re-generated or re-appended by the later PR after its rebase, never edited by hand in conflict resolution.
