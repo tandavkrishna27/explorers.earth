@@ -1,4 +1,5 @@
 import type {Pool, PoolClient} from 'pg';
+import {listSlugPredicate} from '../application/collectionSlug';
 import {publicProfileCursorStart} from './publicProfileContract';
 import {GUIDE_BUDGET_TIER_LABELS, GUIDE_SECTION_BLOCK_VERSION, GUIDE_TYPE_LABELS, guideSectionBlocksSchema} from '../../shared/explorersGuideContract';
 
@@ -142,7 +143,7 @@ export async function publicGuidesProjection(pool: Pool, username: string, limit
   observed = await scope(db, username);
   if (!observed) {await db.query('COMMIT'); return undefined;}
   const rows = (await db.query(`SELECT ${GUIDE_COLUMNS} ${GUIDE_JOIN}
-   WHERE a.id=$1 AND c.category='guides' AND ${gate} AND ${guideGate} AND ($2::text IS NULL OR c.slug=$2)
+   WHERE a.id=$1 AND c.category='guides' AND ${gate} AND ${guideGate} AND ($2::text IS NULL OR ${listSlugPredicate('c','$2')})
    ORDER BY c.pin_order NULLS LAST,c.display_order,c.id LIMIT $3 OFFSET $4`,
    [observed.id, slug ?? null, slug ? 1 : limit + 1, slug ? 0 : offset])).rows;
   if (slug && !rows.length) {await db.query('COMMIT'); return undefined;}

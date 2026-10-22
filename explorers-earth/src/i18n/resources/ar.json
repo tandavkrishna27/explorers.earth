@@ -1478,6 +1478,7 @@
           "categoryRequired": "الفئة مطلوبة",
           "socialUrlInvalid": "يرجى إدخال رابط Instagram أو LinkedIn صالح",
           "socialUrlRequired": "يُطلب رابط Instagram أو LinkedIn لتوصيات الأشخاص",
+          "recommendationLinkInvalid": "Enter a link (https://…), an Instagram @handle or a LinkedIn profile URL",
           "titleRequired": "العنوان مطلوب"
         }
       },

@@ -1123,6 +1123,7 @@
           "categoryRequired": "Категория обязательна",
           "socialUrlInvalid": "Пожалуйста, введите действительный URL Instagram или LinkedIn",
           "socialUrlRequired": "URL Instagram или LinkedIn требуется для рекомендаций людей",
+          "recommendationLinkInvalid": "Enter a link (https://…), an Instagram @handle or a LinkedIn profile URL",
           "titleRequired": "Заголовок обязателен"
         }
       },

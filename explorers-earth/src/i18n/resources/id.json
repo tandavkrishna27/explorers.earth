@@ -1123,6 +1123,7 @@
           "categoryRequired": "Kategori wajib diisi",
           "socialUrlInvalid": "Silakan masukkan URL Instagram atau LinkedIn yang valid",
           "socialUrlRequired": "URL Instagram atau LinkedIn diperlukan untuk rekomendasi orang",
+          "recommendationLinkInvalid": "Enter a link (https://…), an Instagram @handle or a LinkedIn profile URL",
           "titleRequired": "Judul wajib diisi"
         }
       },

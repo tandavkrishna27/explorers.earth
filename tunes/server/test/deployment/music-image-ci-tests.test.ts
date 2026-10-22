@@ -132,9 +132,13 @@ describe("owned image CI PostgreSQL wiring", () => {
       "server/test/explorers-reorder.integration.test.ts",
       "server/test/explorers-search.integration.test.ts",
       "server/test/explorers/category-write-path.integration.test.ts",
+      // OWN-01/LP-09. 0065 live-slug index and 0066 slug redirects through HTTP.
+      "server/test/explorers/collection-slug.integration.test.ts",
       // GMS-X01. 0064's game year/platforms/genres through resolve, owner and public read.
       "server/test/explorers/game-details.integration.test.ts",
       "server/test/explorers/guides.integration.test.ts",
+      // R10. 0066 list delete keeps analytics; runtime DELETE on collections only.
+      "server/test/explorers/list-delete-analytics.integration.test.ts",
       "server/test/explorers/people.integration.test.ts",
       "server/test/explorers/placeLinks.integration.test.ts",
       "server/test/explorers/places.integration.test.ts",
@@ -156,8 +160,8 @@ describe("owned image CI PostgreSQL wiring", () => {
        */
       "server/test/user-leak.integration.test.ts",
     ]);
-    expect(selectors).toHaveLength(51); // 51 = 50 + game-details (0064, GMS-X01)
-    expect(new Set(selectors).size).toBe(51);
+    expect(selectors).toHaveLength(53); // 53 = 51 + collection-slug + list-delete-analytics (0065/0066)
+    expect(new Set(selectors).size).toBe(53);
   });
 
   /*

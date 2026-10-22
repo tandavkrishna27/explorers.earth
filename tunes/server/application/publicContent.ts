@@ -1,4 +1,5 @@
 import {handleRuleViolations} from '../../shared/explorersReservedHandles';
+import {listSlugPredicate} from './collectionSlug';
 import {publicPlaceReadFailure,readPublicPlaceEligibility,PublicPlaceRestartConflict,placePinsReadInteger,publicPlaceSuppressionGate,publicPlaceRowsStillEligible,placePinJoin,placePinBucket,placeSortPosition} from './placePinsRead';
 import {readManualGamePresentation} from '../repositories/gameManualRepository';
 import {readMovieProviderMedia} from '../repositories/movieMedia';
@@ -134,7 +135,7 @@ export class PublicContentService {
       const eligible=`FROM recommendations r JOIN collection_items ci ON ci.recommendation_id=r.id AND ci.account_id=r.account_id AND ci.category=r.category
         JOIN collections c ON c.id=ci.collection_id AND c.account_id=ci.account_id AND c.category=ci.category
         JOIN creator_accounts a ON a.id=r.account_id JOIN account_category_settings s ON s.account_id=a.id AND s.category=r.category
-        JOIN entities e ON e.id=r.entity_id ${overrideJoin} WHERE a.handle_key=$1 AND r.category=$2 AND c.slug=$3 AND r.id=$4
+        JOIN entities e ON e.id=r.entity_id ${overrideJoin} WHERE a.handle_key=$1 AND r.category=$2 AND ${listSlugPredicate('c','$3')} AND r.id=$4
         AND a.status='active' AND a.onboarding_status='complete' AND a.public_profile AND s.is_public
         AND c.archived_at IS NULL AND c.visibility='public' AND c.publication_state='published'
         AND r.archived_at IS NULL AND r.publication_state='published'`;
@@ -163,8 +164,8 @@ export class PublicContentService {
       if(cursor&&cursor.account!==account.id) throw new PublicContentFailure(400);
       let revision:string|null=null,rows:any[],placePins:PublicContentPage<never>['placePins'];
       if(input.slug!==undefined) {
-        const collection=(await db.query(`SELECT id,revision::text FROM collections WHERE account_id=$1 AND category=$2 AND slug=$3
-          AND archived_at IS NULL AND visibility='public' AND publication_state='published'`,[account.id,input.category,input.slug])).rows[0];
+        const collection=(await db.query(`SELECT c.id,c.revision::text FROM collections c WHERE c.account_id=$1 AND c.category=$2 AND ${listSlugPredicate('c','$3')}
+          AND c.archived_at IS NULL AND c.visibility='public' AND c.publication_state='published'`,[account.id,input.category,input.slug])).rows[0];
         if(!collection) {await db.query('COMMIT');return undefined;}
         const categoryState=(await db.query("SELECT coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category=$2),'0') revision",[account.id,input.category])).rows[0];
         revision=`${collection.revision}:${categoryState.revision}`;if(cursor&&cursor.revision!==revision) throw new PublicContentFailure(409);

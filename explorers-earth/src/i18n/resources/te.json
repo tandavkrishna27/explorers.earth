@@ -1123,6 +1123,7 @@
           "categoryRequired": "వర్గం అవసరం",
           "socialUrlInvalid": "Please enter a valid Instagram or LinkedIn URL",
           "socialUrlRequired": "Instagram or LinkedIn URL is required for person recommendations",
+          "recommendationLinkInvalid": "Enter a link (https://…), an Instagram @handle or a LinkedIn profile URL",
           "titleRequired": "శీర్షిక అవసరం"
         }
       },

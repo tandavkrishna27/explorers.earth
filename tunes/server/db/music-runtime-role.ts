@@ -44,6 +44,7 @@ const expectedRuntimeTables = [
   "collection_location_links",
   "collection_media",
   "collection_place_pins",
+  "collection_slug_redirects",
   "collections",
   "creator_accounts",
   "deletion_feedback",
@@ -741,7 +742,9 @@ export async function provisionMusicRuntimeLogin(
     await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON application_command_receipts,deletion_feedback,account_lifecycle_operations FROM ${capabilityRole}`);
     await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
-      ON entities,collections,recommendations,account_category_pin_state FROM ${capabilityRole}`);
+      ON entities,recommendations,account_category_pin_state FROM ${capabilityRole}`);
+    // R10 (0066). A list may be deleted permanently; its dependents CASCADE or SET NULL.
+    await client.query(`REVOKE TRUNCATE,REFERENCES,TRIGGER ON collections FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER
       ON entity_identifiers,book_entity_details,app_entity_details,product_entity_details,person_entity_details,place_entity_details,movie_entity_details,movie_entity_provider_genres FROM ${capabilityRole}`);
     await client.query(`REVOKE ALL ON taxonomy_catalogs,taxonomy_source_mappings,taxonomy_legacy_slug_mappings,taxonomy_import_receipts FROM ${capabilityRole}`);
@@ -1011,7 +1014,6 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
           || row.object_name === "deletion_feedback"
           || row.object_name === "account_lifecycle_operations"
           || row.object_name === "entities"
-          || row.object_name === "collections"
           || row.object_name === "recommendations"
           || row.object_name === "account_category_pin_state"
           ? [true, true, true, false]
