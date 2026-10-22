@@ -209,6 +209,14 @@ jobs:
   e2e-category-a:
     name: 🎭 E2E Category A
     runs-on: ubuntu-latest
+    # Official Playwright image: browsers and their system packages are preinstalled, so the
+    # lane no longer runs `playwright install --with-deps`, whose apt download from the hosted
+    # mirror cost 5-16 minutes at random (WPCI, 2026-10-23). The tag must equal the locked
+    # `playwright` version; scripts/ci-playwright-image.test.cjs pins that. --user 1001 is the
+    # hosted runner's uid, so checkout and setup-node can write the mounted workspace.
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
+      options: --user 1001
     timeout-minutes: 45
     needs: [changes]
     if: needs.changes.outputs.docs_only != 'true'
@@ -225,7 +233,10 @@ jobs:
       - name: Install Music fixture dependencies
         run: npm ci --prefix ../tunes --legacy-peer-deps
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        # A no-op when the image tag matches the lockfile (the browsers are already in
+        # PLAYWRIGHT_BROWSERS_PATH). It is kept so that a drift downloads the right browser
+        # instead of failing obscurely.
+        run: npx playwright install chromium
       - name: Run Playwright E2E tests
         run: |
           npx playwright test --config=playwright.contained-auth-session.config.ts
@@ -273,6 +284,14 @@ jobs:
   e2e-category-b:
     name: 🎭 E2E Category B
     runs-on: ubuntu-latest
+    # Official Playwright image: browsers and their system packages are preinstalled, so the
+    # lane no longer runs `playwright install --with-deps`, whose apt download from the hosted
+    # mirror cost 5-16 minutes at random (WPCI, 2026-10-23). The tag must equal the locked
+    # `playwright` version; scripts/ci-playwright-image.test.cjs pins that. --user 1001 is the
+    # hosted runner's uid, so checkout and setup-node can write the mounted workspace.
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
+      options: --user 1001
     timeout-minutes: 45
     needs: [changes]
     if: needs.changes.outputs.docs_only != 'true'
@@ -289,7 +308,10 @@ jobs:
       - name: Install Music fixture dependencies
         run: npm ci --prefix ../tunes --legacy-peer-deps
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        # A no-op when the image tag matches the lockfile (the browsers are already in
+        # PLAYWRIGHT_BROWSERS_PATH). It is kept so that a drift downloads the right browser
+        # instead of failing obscurely.
+        run: npx playwright install chromium
       - name: Run Playwright E2E tests
         run: npx playwright test --config=playwright.category-navigation-b.config.ts
         env:
@@ -335,6 +357,14 @@ jobs:
   e2e-public-shell:
     name: 🎭 E2E Public shell
     runs-on: ubuntu-latest
+    # Official Playwright image: browsers and their system packages are preinstalled, so the
+    # lane no longer runs `playwright install --with-deps`, whose apt download from the hosted
+    # mirror cost 5-16 minutes at random (WPCI, 2026-10-23). The tag must equal the locked
+    # `playwright` version; scripts/ci-playwright-image.test.cjs pins that. --user 1001 is the
+    # hosted runner's uid, so checkout and setup-node can write the mounted workspace.
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
+      options: --user 1001
     timeout-minutes: 45
     needs: [changes]
     if: needs.changes.outputs.docs_only != 'true'
@@ -351,7 +381,10 @@ jobs:
       - name: Install Music fixture dependencies
         run: npm ci --prefix ../tunes --legacy-peer-deps
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        # A no-op when the image tag matches the lockfile (the browsers are already in
+        # PLAYWRIGHT_BROWSERS_PATH). It is kept so that a drift downloads the right browser
+        # instead of failing obscurely.
+        run: npx playwright install chromium
       - name: Run Playwright E2E tests
         run: npx playwright test --config=playwright.public-shell-continuity.config.ts --project=chromium
         env:
@@ -397,6 +430,14 @@ jobs:
   e2e-music-account:
     name: 🎭 E2E Music and account
     runs-on: ubuntu-latest
+    # Official Playwright image: browsers and their system packages are preinstalled, so the
+    # lane no longer runs `playwright install --with-deps`, whose apt download from the hosted
+    # mirror cost 5-16 minutes at random (WPCI, 2026-10-23). The tag must equal the locked
+    # `playwright` version; scripts/ci-playwright-image.test.cjs pins that. --user 1001 is the
+    # hosted runner's uid, so checkout and setup-node can write the mounted workspace.
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
+      options: --user 1001
     timeout-minutes: 45
     needs: [changes]
     if: needs.changes.outputs.docs_only != 'true'
@@ -413,7 +454,10 @@ jobs:
       - name: Install Music fixture dependencies
         run: npm ci --prefix ../tunes --legacy-peer-deps
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        # A no-op when the image tag matches the lockfile (the browsers are already in
+        # PLAYWRIGHT_BROWSERS_PATH). It is kept so that a drift downloads the right browser
+        # instead of failing obscurely.
+        run: npx playwright install chromium
       - name: Run Playwright E2E tests
         # This lane passes no --config, so it inherits the root playwright.config.ts.
         # retries and the reporter are therefore set explicitly here: without them it

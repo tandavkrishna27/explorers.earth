@@ -118,7 +118,10 @@ jobs:
       # sets `ignore-scripts`, so the tunes install above already covers it.
       #
       # `git show HEAD:` works on the default shallow checkout, which one case relies on.
-      - run: npx --prefix explorers-earth playwright install --with-deps chromium
+      # No --with-deps: ubuntu-24.04 runner images already carry Chromium's shared libraries
+      # (they ship Google Chrome), and the two cases that launch a browser only call page.goto.
+      # The apt font download --with-deps added cost up to 7 minutes on the hosted mirror (WPCI).
+      - run: npx --prefix explorers-earth playwright install chromium
       - run: node --test "scripts/*.test.mjs" "scripts/*.test.cjs"
 
   unit-coverage:
@@ -333,7 +336,8 @@ jobs:
           cache: npm
           cache-dependency-path: explorers-earth/package-lock.json
       - run: npm ci --prefix explorers-earth
-      - run: npx --prefix explorers-earth playwright install --with-deps chromium
+      # No --with-deps, for the same reason as `static` above (WPCI).
+      - run: npx --prefix explorers-earth playwright install chromium
       - name: Run account lifecycle E2E contract
         env:
           VITE_API_URL: http://localhost:5173/graphql
