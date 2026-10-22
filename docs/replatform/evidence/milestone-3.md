@@ -57,3 +57,11 @@ The first drill of a real production backup, which closes the "production backup
 - Proofs: journal 62 rows, head `0062_explorers_handle_holds`; every table's row count matched; restricted-role attestation passed; the app booted on the restored database; cleanup dropped the database and removed the container. The database had no accounts yet, so the identity and media proofs were vacuous (0 users, 0 objects).
 - Receipt: `recovery-receipt.json`, SHA-256 `c6ff966caa51b7a0249d7af94296b6693bd038b0db21bcb867aa2b2409d23a7a`.
 - Windows note: two earlier attempts failed before any restore, at starting the temporary PostgreSQL container. The likely cause is the drill's random host port landing in one of this machine's many Windows-reserved TCP port ranges (`netsh interface ipv4 show excludedportrange protocol=tcp`). That is a harness issue on Windows, not a backup issue; the clean-tree run above passed.
+
+## Production drill at 0063 (2026-10-22)
+
+- Backup: the deploy's own pre-deploy backup (run `2a6a56cb`, reason `pre-deploy`), migration head `0063_explorers_open_library_books`.
+- Drill: `npm run platform:restore-drill` on the owner's machine from a clean checkout of `main` at `e14ac5fc`.
+- Result: **passed**, `recoveryMilliseconds` 9902. Journal 63 rows, head 0063; every row count matched; restricted-role attestation passed; the app booted on the restored database. This time the proofs carry real data: 1 account with an authenticated restored session, and 23 media objects whose hashes all matched, with the gated route resolving.
+- Receipt: `recovery-receipt.json`, SHA-256 `7faae0189d16f4f3653bacae0d383cc18bf7f71bdc28a10a3550dd17ede2a9bc`.
+- Why it was needed: the deploy of `e14ac5fc` was refused with `DRILL_MARKER_MISMATCH` because the database had moved to 0063 (from #176) while the committed receipt was at 0062. Any deploy that follows a migration needs a fresh drill at the new head.

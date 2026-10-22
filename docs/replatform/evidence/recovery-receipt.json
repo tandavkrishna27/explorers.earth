@@ -1,33 +1,33 @@
 {
   "version": "explorers-platform-restore-drill/v1",
-  "runId": "2d80efd25ed49affac59e925a643edae",
+  "runId": "24f68d7d868f22e7ea8731784682b5c8",
   "result": "passed",
-  "drilledAt": "2026-10-21T10:49:02.347Z",
-  "drillCommit": "fbd130091282027e44b086ca77ee271cfa555a6d",
-  "manifestDigest": "a043b46f9ff5f8b4aeed78d04d3adb35ceb15da1f6af7ab92e861ba7b2912903",
-  "migrationMarker": "0062_explorers_handle_holds",
-  "schemaChecksum": "85891a3161cf43d96a69f5fa57a49fa5706d822dc65b74ac1cd014efeb6d1eae",
+  "drilledAt": "2026-10-22T09:13:41.904Z",
+  "drillCommit": "e14ac5fcbb15c21f110f844054004f2eca1ac793",
+  "manifestDigest": "7b5fd8290d99b688841a42af899d91ceab95d6231e0ee2ffd4d7fea15730c95a",
+  "migrationMarker": "0063_explorers_open_library_books",
+  "schemaChecksum": "15c4e5ea3565d2d62def9f1a71d54e4701ced90e19151f5b4ec6eda02e24c7d9",
   "cleanup": "database-dropped-container-removed",
   "phases": [
     {
       "phase": "download",
-      "milliseconds": 1329
+      "milliseconds": 3094
     },
     {
       "phase": "decrypt",
-      "milliseconds": 613
+      "milliseconds": 605
     },
     {
       "phase": "acquire-target",
-      "milliseconds": 2035
+      "milliseconds": 2153
     },
     {
       "phase": "bootstrap-roles",
-      "milliseconds": 7
+      "milliseconds": 8
     },
     {
       "phase": "pg-restore",
-      "milliseconds": 961
+      "milliseconds": 995
     },
     {
       "phase": "repair-known-drift",
@@ -35,42 +35,46 @@
     },
     {
       "phase": "attest-schema",
-      "milliseconds": 240
+      "milliseconds": 299
     },
     {
       "phase": "attest-runtime-role",
-      "milliseconds": 303
+      "milliseconds": 318
     },
     {
       "phase": "boot",
-      "milliseconds": 1636
+      "milliseconds": 1879
     },
     {
       "phase": "probe",
-      "milliseconds": 129
+      "milliseconds": 250
     },
     {
       "phase": "media",
-      "milliseconds": 0
+      "milliseconds": 291
     }
   ],
   "proofs": {
     "journal": {
-      "rows": 62,
-      "currentId": "0062_explorers_handle_holds"
+      "rows": 63,
+      "currentId": "0063_explorers_open_library_books"
     },
     "identity": {
-      "authUsers": 0,
-      "authSessions": 0,
-      "creatorAccounts": 0
+      "authUsers": 1,
+      "authSessions": 1,
+      "creatorAccounts": 1
     },
-    "categories": {},
+    "categories": {
+      "books": 3,
+      "guides": 0,
+      "products": 18
+    },
     "media": {
-      "objects": 0,
-      "hashesMatched": 0,
-      "gatedRouteResolved": 0
+      "objects": 23,
+      "hashesMatched": 23,
+      "gatedRouteResolved": 1
     },
     "rowCountsMatched": true
   },
-  "recoveryMilliseconds": 7263
+  "recoveryMilliseconds": 9902
 }
