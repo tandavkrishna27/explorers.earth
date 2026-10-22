@@ -28,6 +28,29 @@ Mocks v4: https://claude.ai/artifact/EQhDwNgFuhBnYM94xs964Q (private). Model dec
   The setting appears in both Share and Manage.
 - **Make it mine:** the entry point to copy a public guide into your own drafts sits on the public guide page. Public pages are out of scope for this round.
 
+### v4.1: Guides editor revision (owner discussion, 2026-10-22)
+
+These changes replace the v4 "Add to slot" popup. Mock: same v4 link, "Day editor" and "Topic guide" screens.
+
+- **Model: a guide is a set of sections.** Each section holds items from any category plus notes. A template defines the sections:
+  - **Trip** is built first and is the full trip planner: days, Morning/Afternoon/Evening, optional dates.
+  - **Topic guide** comes later: the user names the sections (gift guides, learning paths, setups and routines, city or area guides), with no slots or dates.
+  - Both use the same editor and the same data. The New Guide popup offers the template choice, with Topic marked "Later".
+- **In-page editor, no popup.** "+ Add to <slot>" opens one **smart box inside the slot**. Suggestions come in this order:
+  1. the user's saved items, across categories;
+  2. Google results, with the location and map buttons;
+  3. "Add as a note: …".
+- **My lists panel:**
+  - Desktop: a panel to the right of the plan. Pick a list, then drag items into any slot or tap +. A Map tab shows the days as coloured pins.
+  - Mobile: the same panel opens as a bottom sheet, used only for browsing.
+- **Days:**
+  - A sticky **day strip** sits at the top. It shows dates when the guide has them, otherwise Day 1, 2, and so on. Tapping a day jumps to it, and "+ Day" appends one.
+  - Each day's ⋯ menu: insert before/after, duplicate, clear, delete.
+  - Days are dragged by a grip. The number of days in Manage stays in sync.
+- **Status:** the Published toggle and badge sit top-left as on lists. Draft shows "Only you can see this".
+
+Research basis (quick): Wanderlog adds items from saved lists into days, with drag reorder and a map of everything added. Mindtrip combines chat, map and a day-by-day plan in one workspace. Google Maps is centred on reorderable, shareable and collaborative lists. Our direction matches these; the improvement is keeping additions in-page.
+
 ## v3 (dashboard only): decisions, final after owner review 2026-10-22
 
 Mocks v3: https://claude.ai/artifact/D89UZnowRi1R9veMbYeWtb (private). The owner approved v2's category page and list page as they are. Public category and public list screens are out of scope here and will be discussed separately.
