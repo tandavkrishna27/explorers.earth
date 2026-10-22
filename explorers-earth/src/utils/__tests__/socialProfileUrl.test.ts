@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeSocialProfileUrl } from "../url";
+import { normalizeRecommendationLink, normalizeSocialProfileUrl } from "../url";
 import { recommendationContext } from "../../features/Favorites/hooks/useAddRecommendation";
 import { placeRecommendationContextSchema } from "../../../../tunes/shared/explorersPlaceContract";
 
@@ -31,4 +31,24 @@ describe("person recommendation context", () => {
     expect(context.personProfileUrl).toMatch(/^https:\/\//);
     expect(() => placeRecommendationContextSchema.parse(context)).not.toThrow();
   });
+});
+
+// OWN-11. "Recommended by" on a place takes a handle, a profile URL or any web link, and
+// the stored creatorSocialUrl must be a full http(s) URL.
+describe("normalizeRecommendationLink", () => {
+  it.each([
+    ["@explorer.one", "https://www.instagram.com/explorer.one"],
+    ["instagram.com/explorer", "https://instagram.com/explorer"],
+    ["linkedin.com/in/jane-doe", "https://linkedin.com/in/jane-doe"],
+    ["https://example.com/blog/post", "https://example.com/blog/post"],
+    ["http://example.com", "http://example.com"],
+    ["  https://example.com/x  ", "https://example.com/x"],
+  ])("turns %j into %j", (input, expected) => {
+    expect(normalizeRecommendationLink(input)).toBe(expected);
+  });
+
+  it.each(["", "   ", "not a link!", "example.com/path", "ftp://example.com", "javascript:alert(1)"])(
+    "refuses %j", (input) => {
+      expect(normalizeRecommendationLink(input)).toBeUndefined();
+    });
 });
