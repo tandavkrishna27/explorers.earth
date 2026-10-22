@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeSocialProfileUrl } from "../url";
+import { normalizeRecommendationLink, normalizeSocialProfileUrl } from "../url";
 import { recommendationContext } from "../../features/Favorites/hooks/useAddRecommendation";
 import { placeRecommendationContextSchema } from "../../../../tunes/shared/explorersPlaceContract";
 
@@ -30,5 +30,44 @@ describe("person recommendation context", () => {
     const context = recommendationContext({ recommendation: value } as never, { recommendationType: "person", source: "self" } as never);
     expect(context.personProfileUrl).toMatch(/^https:\/\//);
     expect(() => placeRecommendationContextSchema.parse(context)).not.toThrow();
+  });
+});
+
+// OWN-11. "Recommended by" on a place takes a handle, a profile URL or any web link, and
+// the stored creatorSocialUrl must be a full http(s) URL.
+describe("normalizeRecommendationLink", () => {
+  it.each([
+    ["@explorer.one", "https://www.instagram.com/explorer.one"],
+    ["instagram.com/explorer", "https://instagram.com/explorer"],
+    ["linkedin.com/in/jane-doe", "https://linkedin.com/in/jane-doe"],
+    ["https://example.com/blog/post", "https://example.com/blog/post"],
+    ["http://example.com", "http://example.com"],
+    ["  https://example.com/x  ", "https://example.com/x"],
+  ])("turns %j into %j", (input, expected) => {
+    expect(normalizeRecommendationLink(input)).toBe(expected);
+  });
+
+  it.each(["", "   ", "not a link!", "example.com/path", "ftp://example.com", "javascript:alert(1)"])(
+    "refuses %j", (input) => {
+      expect(normalizeRecommendationLink(input)).toBeUndefined();
+    });
+});
+
+// OWN-11. A place saved with a handle in "Recommended by" must pass the real contract.
+describe("place recommendationContext creatorSocialUrl", () => {
+  it.each([
+    ["@explorer.one", "https://www.instagram.com/explorer.one"],
+    ["instagram.com/x", "https://instagram.com/x"],
+    ["https://example.com/blog", "https://example.com/blog"],
+  ])("stores %j as %j and passes the contract", (link, expected) => {
+    const context = recommendationContext({ recommendationLink: link, address: "Somewhere" }, { recommendationType: "place", source: "self" });
+    expect(context.creatorSocialUrl).toBe(expected);
+    expect(placeRecommendationContextSchema.safeParse(context).success).toBe(true);
+  });
+
+  it("keeps an existing creatorSocialUrl when the field is blank", () => {
+    const existing = recommendationContext({ recommendationLink: "@kept" }, { recommendationType: "place", source: "self" });
+    const edited = recommendationContext({ recommendationLink: "  " }, { recommendationType: "place", source: "self", existing });
+    expect(edited.creatorSocialUrl).toBe("https://www.instagram.com/kept");
   });
 });

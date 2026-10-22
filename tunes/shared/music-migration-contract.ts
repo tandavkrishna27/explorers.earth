@@ -1,4 +1,4 @@
-export const EXPECTED_MUSIC_MIGRATION_ID = "0064_explorers_game_details" as const;
+export const EXPECTED_MUSIC_MIGRATION_ID = "0066_explorers_list_redirects_and_delete" as const;
 export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0001_runtime_baseline",
   "0002_identity_lifecycle",
@@ -63,6 +63,8 @@ export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0061_explorers_product_spec_order_budget_scale",
   "0062_explorers_handle_holds",
   "0063_explorers_open_library_books",
+  "0064_explorers_game_details",
+  "0065_explorers_collection_live_slug",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 export const LEGACY_CONTAINMENT_MIGRATION_MARKER = "containment-no-schema-change" as const;
@@ -131,6 +133,8 @@ export const DEPLOYABLE_MUSIC_MIGRATION_MARKERS = [
   "0061_explorers_product_spec_order_budget_scale",
   "0062_explorers_handle_holds",
   "0063_explorers_open_library_books",
+  "0064_explorers_game_details",
+  "0065_explorers_collection_live_slug",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 

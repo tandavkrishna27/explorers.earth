@@ -1123,6 +1123,7 @@
           "categoryRequired": "类别是必需的",
           "socialUrlInvalid": "请输入有效的Instagram或LinkedIn URL",
           "socialUrlRequired": "人员推荐需要Instagram或LinkedIn URL",
+          "recommendationLinkInvalid": "Enter a link (https://…), an Instagram @handle or a LinkedIn profile URL",
           "titleRequired": "标题是必需的"
         }
       },

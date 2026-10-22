@@ -1454,6 +1454,7 @@
           "categoryRequired": "קטגוריה נדרשת",
           "socialUrlInvalid": "אנא הכנס URL תקין של Instagram או LinkedIn",
           "socialUrlRequired": "נדרש URL של Instagram או LinkedIn להמלצות על אנשים",
+          "recommendationLinkInvalid": "Enter a link (https://…), an Instagram @handle or a LinkedIn profile URL",
           "titleRequired": "כותרת נדרשת"
         }
       },

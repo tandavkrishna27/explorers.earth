@@ -1123,6 +1123,7 @@
           "categoryRequired": "Categoria este obligatorie",
           "socialUrlInvalid": "Vă rugăm să introduceți un URL Instagram sau LinkedIn valid",
           "socialUrlRequired": "URL Instagram sau LinkedIn este necesar pentru recomandările de persoane",
+          "recommendationLinkInvalid": "Enter a link (https://…), an Instagram @handle or a LinkedIn profile URL",
           "titleRequired": "Titlul este obligatoriu"
         }
       },

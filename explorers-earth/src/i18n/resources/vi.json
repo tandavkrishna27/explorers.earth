@@ -1123,6 +1123,7 @@
           "categoryRequired": "Danh mục là bắt buộc",
           "socialUrlInvalid": "Vui lòng nhập URL Instagram hoặc LinkedIn hợp lệ",
           "socialUrlRequired": "URL Instagram hoặc LinkedIn là bắt buộc cho gợi ý về người",
+          "recommendationLinkInvalid": "Enter a link (https://…), an Instagram @handle or a LinkedIn profile URL",
           "titleRequired": "Tiêu đề là bắt buộc"
         }
       },

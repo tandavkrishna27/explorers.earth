@@ -127,15 +127,19 @@ describe('recommendation core PostgreSQL contract', () => {
     await expect(pool.query('UPDATE collection_items SET display_order=0 WHERE collection_id=$1',[list])).rejects.toMatchObject({code:'23505'});
     expect((await pool.query('SELECT recommendation_id FROM collection_items WHERE collection_id=$1 ORDER BY display_order',[list])).rows.map(r=>r.recommendation_id)).toEqual([second,first]);
   });
-  it('keeps archived slugs reserved and shared catalog facts intact', async () => {
+  it('frees archived slugs (OWN-01) and keeps shared catalog facts intact', async () => {
     const a=await account(), list=await collection(a), shared=await entity(), item=await recommendation(a,shared);
     await pool.query(`INSERT INTO collection_items VALUES ($1,$2,$3,'books',0,now())`,[list,item,a]);
     await pool.query('UPDATE collections SET archived_at=now() WHERE id=$1',[list]);
+    const reused=await pool.query(`INSERT INTO collections(account_id,category,title,slug,display_order)
+      SELECT account_id,category,title,slug,1 FROM collections WHERE id=$1 RETURNING id`,[list]);
+    expect(reused.rowCount).toBe(1);
     await expect(pool.query(`INSERT INTO collections(account_id,category,title,slug,display_order)
-      SELECT account_id,category,title,slug,1 FROM collections WHERE id=$1`,[list])).rejects.toMatchObject({code:'23505'});
+      SELECT account_id,category,title,slug,2 FROM collections WHERE id=$1`,[reused.rows[0].id])).rejects.toMatchObject({code:'23505'});
     expect((await pool.query('SELECT id FROM entities WHERE id=$1',[shared])).rowCount).toBe(1);
   });
-  it('denies runtime catalog identity reassignment and content hard deletion', async () => {
+  // Lists may be deleted since 0066 (R10): list-delete-analytics.integration.test.ts
+  it('denies runtime catalog identity reassignment and hard deletion of recommendations and entities', async () => {
     const client=await pool.connect();
     try {
       await client.query('SET ROLE music_runtime');

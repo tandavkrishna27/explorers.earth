@@ -1,5 +1,5 @@
 import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
-import { normalizeSocialProfileUrl } from "../../../utils/url";
+import { normalizeRecommendationLink, normalizeSocialProfileUrl } from "../../../utils/url";
 import { validateImageFiles, maxImageMegabytes, type RejectedImage } from "../../../utils/imageFileValidation";
 import { useRef, useState } from "react";
 import { KeyValuePair } from "../components/RecommendForm";
@@ -189,6 +189,9 @@ export function recommendationContext(values: KeyValuePair, options: {
   // "@handle" and "instagram.com/x" become the full URL the contract requires (PLC-05);
   // the form's own validation has already refused anything that cannot.
   const profile = (value: unknown) => { const raw = text(value); return raw === null ? null : normalizeSocialProfileUrl(raw) ?? raw; };
+  // OWN-11. "Recommended by" takes a handle, a profile or any web link; the form refuses
+  // what cannot become a URL, so the raw fallback is only reached by legacy values.
+  const link = (value: unknown) => { const raw = text(value); return raw === null ? null : normalizeRecommendationLink(raw) ?? raw; };
   return {
     ...emptyPlaceContext(),
     recommendationType: options.recommendationType,
@@ -202,9 +205,9 @@ export function recommendationContext(values: KeyValuePair, options: {
         : options.existing?.contactVisibility ?? "private",
     placeSocialUrl: person ? null : text(values.socialLink),
     placeWebsiteUrl: person ? text(values.socialLink) : null,
-    creatorSocialUrl: text(values.recommendationLink) ?? (person ? profile(values.recommendation) : options.existing?.creatorSocialUrl ?? null),
+    creatorSocialUrl: link(values.recommendationLink) ?? (person ? profile(values.recommendation) : options.existing?.creatorSocialUrl ?? null),
     legacyPlaceNote: options.existing?.legacyPlaceNote ?? null,
-    personProfileUrl: person ? profile(values.recommendation) ?? text(values.recommendationLink) : null,
+    personProfileUrl: person ? profile(values.recommendation) ?? link(values.recommendationLink) : null,
     personAddress: person ? text(values.address) : null,
   };
 }

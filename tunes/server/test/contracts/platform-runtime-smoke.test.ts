@@ -2,7 +2,7 @@ import {test} from 'vitest';
 import assert from 'node:assert/strict';
 import {assertUnauthenticatedSession,assertRestartQualification,selectCompiledExport} from '../../../../scripts/platform-runtime-smoke-contract.mjs';
 const session=()=>({status:200,headers:{'cache-control':'no-store','content-type':'application/json'},body:'null'});
-const schema=()=>({ready:true,currentId:'0064_explorers_game_details',currentChecksum:'a'.repeat(64),schemaChecksum:'b'.repeat(64)});
+const schema=()=>({ready:true,currentId:'0066_explorers_list_redirects_and_delete',currentChecksum:'a'.repeat(64),schemaChecksum:'b'.repeat(64)});
 test('defined unauthenticated session succeeds',()=>assert.doesNotThrow(()=>assertUnauthenticatedSession(session())));
 for(const status of [404,500,502])test('reject session HTTP '+status,()=>assert.throws(()=>assertUnauthenticatedSession({...session(),status})));
 for(const body of ['{}','{"session":null}','<!doctype html>',''])test('reject nonconforming session body '+JSON.stringify(body),()=>assert.throws(()=>assertUnauthenticatedSession({...session(),body})));

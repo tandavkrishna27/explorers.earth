@@ -1123,6 +1123,7 @@
           "categoryRequired": "カテゴリは必須です",
           "socialUrlInvalid": "有効なInstagramまたはLinkedInのURLを入力してください",
           "socialUrlRequired": "人物のおすすめにはInstagramまたはLinkedInのURLが必要です",
+          "recommendationLinkInvalid": "Enter a link (https://…), an Instagram @handle or a LinkedIn profile URL",
           "titleRequired": "タイトルは必須です"
         }
       },
