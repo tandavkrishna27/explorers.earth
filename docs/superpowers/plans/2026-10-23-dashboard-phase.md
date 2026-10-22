@@ -66,7 +66,7 @@ Each schema PR ships the migrations, the contract/repository changes they need, 
 Wave 0 (serial)   WP0  P0 bugs + S1 (0065, 0066)
                   WP0B Places navigation hotfix (OWN-05, OWN-18, OWN-06) — owns pages/Favorites.tsx
   Deploy checkpoint A (drill at the LIVE head 0064, republish, deploy → DB at 0066; re-test OWN-01/05/06/11/18)
-Wave 1 (parallel) WP1 Shell+origin back+loader | WP2 Publish pill+add button+nudge | WP3A Category page (owns Favorites.tsx in this wave) | WP3B List page (7 non-Places categories) | WP4 Add-item template | WP5 Performance
+Wave 1 (parallel) WPCI CI cycle time | WP1 Shell+origin back+loader | WP2 Publish pill+add button+nudge | WP3A Category page (owns Favorites.tsx in this wave) | WP3B List page (7 non-Places categories) | WP4 Add-item template | WP5 Performance
   Deploy checkpoint B (drill at the live head 0066, republish, deploy; re-test OWN-07/08/17/19)
 Wave 2            S2 (0067, 0068) → then parallel: WP6 Places | WP7 Movies/Books/Games | WP8 Apps/Products/People + prefill
 Wave 3            S3 (0069-0071) → WP9 Guides
@@ -221,16 +221,154 @@ Small, early, and the single owner of `pages/Favorites.tsx` before Wave 1, so th
 - **Acceptance:** a fresh account sees 2-3 samples per category localised by country; Make it mine converts in place to a draft; delete is permanent and never returns; samples never appear on the profile or public endpoints.
 - **Tests:** seeding idempotency integration test, publish-refusal tests on every publish path, public read-model exclusion test, Make it mine test.
 
-## WP12: Local proof, deploy, live re-test
+## WP12: Final full-test wave, deploy, live re-test
 
-1. Merge order check: all packages merged with merge commits; migration head is 0071; `main` CI green.
-2. **Local proof:** fresh worktree, `npm ci` in root, `tunes`, `explorers-earth`; run both typechecks, the frontend unit lane, the tunes unit and integration lanes and the Playwright dashboard flows; click through every flow in scope §3/§5/§6 at desktop and 375px on the local stack; record results on the UAT board (new and updated cases per DIR-09).
+1. **Merge check:** all packages merged with merge commits; migration head is 0071; `main` CI green with no skipped required steps.
+2. **Final full-test wave on the final `main` commit** (one test session, results attached to the release PR):
+   - explorers-earth typecheck (`npx tsc -p tsconfig.app.json --noEmit`) and the **whole unit lane run serially**: `cd explorers-earth && node scripts/run-contained-vitest.cjs run --maxWorkers 1`;
+   - tunes typecheck (filtered to `shared|server`), unit lane `npx vitest run server/test/`, and the **full integration suite** `npm run test:integration` against the CI-identical Postgres;
+   - **all e2e lanes**: the four `ci.yml` lanes (Category A, Category B, Public shell, Music and account) locally or via a PR run, plus a **full nightly qualification dispatch** of `frontend-e2e-qualification.yml` with `lane=all` on the final `main` (check every lane ran its steps; a skipped step is a failure);
+   - root workflow/seal tests (`scripts/*.test.mjs`);
+   - local click-through of every flow in scope §3/§5/§6 at 1280px and 375px, recorded on the UAT board.
 3. **Restore drill at the database's CURRENT head, not the new one.** The gate (`tunes/shared/platformRecoveryContract.ts:135`) compares the receipt's marker with the pre-deploy backup manifest's marker, which is the live head before migrating (0066 after checkpoint B). Run `npm run platform:restore-drill -- --manifest <latest prod manifest.json> --identity <owner age identity> --receipt <TEMP>/platform-restore-drill-<8+ letters>` on the latest `prod/backups/` manifest (owner-held credentials; never printed), commit the refreshed `docs/replatform/evidence/recovery-receipt.json` via PR, merge. The receipt must also be fresh (`DRILL_STALE`) and the backup fresh (`BACKUP_STALE`), so drill close to deploy day. A receipt at any other marker fails with `DRILL_MARKER_MISMATCH`.
 4. **Re-publish the image** from that exact `main` commit (the receipt commit changes `main`, so publish after it): `tunes.yml` with `publish_image=true`, `deploy_music=false`; take the digest from the publish job. The deploy verifies the attestation against the commit, so any later commit needs a re-publish.
 5. **Deploy:** `explorers.yml` with `confirm_cutover=replace-explorers-host` and the digest; the owner approves the `explorers-production` environment. The deploy takes its own pre-deploy backup and runs 0067-0071 (0065-0066 shipped at checkpoint A).
 6. **Taxonomy apply** for the five new catalogs (dry run, then apply, receipts recorded) via the owner's server agent.
-7. **Live re-test** on https://explorers.earth with the test account: every OWN case, UAT leftovers (UAT-01..04, clean up UAT-07), every new dashboard case; measure OWN-17 timings against the WP5 targets; record on the board; the owner runs the 55 owner-only cases (UAT-08).
+7. **Live UAT re-run on the UAT board** after deploy, on https://explorers.earth with the test account: every OWN case, UAT leftovers (UAT-01..04, clean up UAT-07), every new dashboard case; measure OWN-17 timings against the WP5 targets; record on the board; the owner runs the 55 owner-only cases (UAT-08).
 8. Hand over to the public-pages phase.
+
+## WPCI: CI cycle-time package (Wave 1, runs alongside the feature packages)
+
+**Baseline measured 2026-10-23** (`gh run list` / `gh run view --json jobs`, successful runs on PR `claude/igdb-prefill-cover` and on `main`):
+
+| Workflow (file) | Required gate | Wall time | Slowest jobs |
+|---|---|---|---|
+| Explorers validation (`ci.yml`) | `replatform-required` | 6-21 min (0 min on docs-only) | E2E Category B 17.2m, E2E Music and account 16.9m, Unit Tests 5.6m, E2E Public shell 5.0m, E2E Category A 4.4m |
+| Backend validation (`test.yml`) | `music-required` | 4-12 min (one 36 min outlier = queueing) | database 6.2m, frontend 5.6m, image-deploy-contract 3.8m, contracts 3.6m, platform-fixture 3.0m |
+| Music C0 contracts (`music-c0-contracts.yml`) | (check branch protection) | 13-20 min | windows-latest 16.4m, ubuntu-latest 2.4m |
+| API image validation (`tunes.yml`) | runs on PRs to `main` | 14-15 min PR, 18 min dispatch | build-test-scan-push 15.2m (single job) |
+| Frontend E2E qualification (nightly) | not required | nightly/dispatch | 13 lanes + real-stack lanes |
+
+A code PR therefore waits about 17-21 minutes on the critical path (two e2e lanes and the Windows Music lane), and every update-branch after a merge restarts it. With ~20 PRs in this phase that is the biggest schedule cost.
+
+- **Files:** `.github/workflows/ci.yml`, `test.yml`, `music-c0-contracts.yml`, `tunes.yml`, `explorers-earth/playwright.config.*`, `docs/replatform/evidence/ci-hosted-validation.md`. Not owned by any other package; feature packages only append to the selector lists (see merge rules).
+- **Candidate savings (each must pass the coverage proof below before it lands):**
+  1. Shard the two 17-minute e2e lanes (Playwright `--shard=1/2`, `2/2`) into parallel jobs: about −8 min on the critical path.
+  2. Cache Playwright browsers and `~/.npm` keyed on the three lockfiles (today each job runs `npx playwright install --with-deps`).
+  3. Music C0 on Windows: run it on PRs whose diff touches its path filter (Music/contract files, Windows-sensitive scripts), always on `main` push and nightly. Music was retired from the product (P3), so first record what this lane still protects; if it guards Windows-only path handling for the local test scripts, keep it on every PR and just cache it.
+  4. `tunes.yml` build-test-scan-push: enable Docker layer cache (`cache-from/cache-to type=gha`) and split scan from build where the attestation flow allows; target about −5 min.
+  5. "E2E Music and account": confirm which specs still run after the Music removal; drop dead Music specs only with the owner's sign-off, keep account specs.
+  6. Keep the existing docs-only skip (PR #139) as is.
+- **Must not weaken anything:** no required check removed or renamed; no job may report success with its steps skipped (the trap that let #119 merge hollow); path filters may only skip whole lanes whose inputs are provably untouched, and the aggregate gates (`replatform-required`, `music-required`) must fail if a lane that should have run did not.
+- **Double verification (acceptance):**
+  1. Before/after table of wall time and per-job time over at least 3 runs each, on the same code commit.
+  2. Proof the same tests still run: compare test counts and spec/file lists from the reporters (Playwright JSON reporter, Vitest JSON output) before vs after; sharded totals must equal the unsharded total, file for file.
+  3. A deliberate failing test in each sharded/filtered lane on a throwaway branch must turn the aggregate gate red.
+- **Tests:** `scripts/*` workflow-shape tests that already pin selectors stay green; add a test that every e2e spec file is assigned to exactly one shard.
+- **Depends on:** nothing; lands first among Wave 1 PRs if possible so the rest benefit.
+
+## Testing per package
+
+Every package names its tests up front; a package is not done until these exist and run in CI (integration files registered in `test.yml`, e2e specs placed in an existing lane or a new one added to `ci.yml`/nightly).
+
+| Package | Unit (Vitest) | Integration (tunes, real Postgres) | E2E (Playwright, `explorers-earth/e2e/`) |
+|---|---|---|---|
+| WP0 + S1 | `useAddRecommendation` `@handle`/`instagram.com/x` cases | `explorers/collection-slug.integration.test.ts`: archived reuse, live conflict, restore-after-reuse, redirect resolution, duplicate pre-check; migration contract/head tests updated | `locations.spec.ts`: save place with handle; create "paris" after archiving "paris" |
+| WP0B | Favorites `?list=` parsing; Home click; Manage tab no-loader | — | `category-navigation-a.spec.ts`: Home → place list; add → back lands on origin list |
+| WP1 | `originBack` (from-state, deep-link, refresh); loader single-owner | — | `public-shell-continuity.spec.ts`: one loader on cold entry; `category-navigation-b.spec.ts`: back from add/linked pages for 7 categories |
+| WP2 | PublishPill (3 kinds, menu, a11y), BottomAddButton scroll behaviour, nudge rule table | — | covered through WP3A/3B specs |
+| WP3A | CategoryPage per category, TopPicksManager, NewListDialog (Places location, duplicate city) | `recommendations` create with Places location data | `categories.spec.ts`: create list per category, drag-reorder cards, Top Picks empty/first-visit |
+| WP3B | ListPage tabs mount once, ShareTab QR size, ManageTab archive/delete/slug | archive frees slug; delete; slug rename writes redirect | `movies.spec.ts`/`books.spec.ts`: tabs, QR download dimensions, slug rename keeps old URL |
+| WP4 | StarRating mapping, ItemSearch carry-over, TaxonomyCombobox keyboard, sticky bar | — | via WP6-WP8 add flows |
+| WP5 | places command invalidation count; view-model provider-photo fallback and error row | movie import job (parallelism, idempotency, progress); batched media insert | `movies.spec.ts`: add provider movie, navigation before import completes; timing assertion in the local proof |
+| S2 | taxonomy contract for 5 new categories; product/app/person contract changes | 0067/0068 migrations incl. old two-URL product rows still read | — |
+| WP6 | coordinate parser table, nearby cache, four entry paths, person type refused | nearby endpoint (basic fields) | `locations.spec.ts`: add by name, coordinates, my-location (mocked geolocation), map pin |
+| WP7 | detail modals (platform chips, provider chip), Enter-to-search, book cover source | taxonomy apply dry-run fixtures; book cover stored copy | `games.spec.ts`, `books.spec.ts`, `movies.spec.ts`: search-first add with curated category |
+| WP8 | link-preview parser fixtures (Product/Person JSON-LD, OG-only, blocked, oversize, SSRF), money semantics | link-preview service with SSRF guard against a local server; iTunes adapter (recorded fixture) | `products.spec.ts`, `people.spec.ts`: paste-link prefill, inline currency, sector required |
+| S3 | guide/link/sample contracts | 0069 slot→ordered migration on a pre-0069 fixture; 0070 place-link → list-link migration; 0071 sample flag | — |
+| WP9 | day strip, smart box, time-heading grouping, move menu | guide commands: ordering invariants, last-day refusal, move atomicity, numberOfDays sync | `guides.spec.ts`: create Trip, add from lists/Google/note, drag within/between days, move via chip and menu, Undo |
+| WP10 | link picker, LinkedListsSection, one-level rule | own-lists-only, no self-link, projection hides non-public links | new `linking.spec.ts`: attach/detach/undo across categories, back to origin |
+| WP11 | sample badges, Make it mine, delete | seeding idempotency, publish refusal on every path, public read-model exclusion | new `first-visit.spec.ts`: fresh account (India and Global) sees samples; Make it mine; delete stays deleted |
+| WPCI | shard assignment test | — | shard totals equal unsharded totals |
+
+## Orchestration model
+
+- **One orchestrator session** (the "Replatform work status review" session) starts every package session, relays owner decisions, reviews each PR against its acceptance list, merges, watches CI, runs the update-branch train and drives the deploy checkpoints. Package sessions never merge, never deploy and never touch GitHub settings.
+- **Package sessions**, one per package, each in its own worktree and branch from current `main`, opening one PR. Each package section above is its brief: files it owns, changes, dependencies, acceptance and tests. The orchestrator adds only the current `main` SHA and any merged contract it depends on.
+- **Sub-agents inside a package session** are allowed for independent pieces that touch different files (listed in the parallelism map). The package session owns the final diff and runs the full checks itself before pushing.
+- **Reporting:** each package session reports PR link, files touched (must be a subset of its ownership list), tests added, and local results of the commands in "Rules for every package".
+
+## Parallelism map
+
+### Sessions per wave
+
+| Wave | Separate sessions / PRs at the same time | Notes |
+|---|---|---|
+| 0 | WP0 (+S1) → then WP0B | serial; WP0B starts after WP0 merges |
+| — | Checkpoint A (orchestrator) | drill at 0064 → republish → deploy |
+| 1 | WPCI, WP1, WP2, WP3A, WP3B, WP4, WP5 (7 sessions) | WP3A/3B code against the WP2 interface; WP3B merges after WP1 |
+| — | Checkpoint B (orchestrator) | drill at 0066 → republish → deploy |
+| 2 | S2 first (1 session); then WP6, WP7, WP8 (3 sessions) | S2 must merge before the three start |
+| 3 | S3 (1 session); then WP9 | |
+| 4 | WP10 | |
+| 5 | WP11 | can start its fixture drafting (content only) during Wave 3 |
+| 6 | WP12 (orchestrator + one test session) | final full-test wave, then deploy |
+
+### Sub-agent splits inside a package
+
+| Package | Sub-agent tasks (disjoint files) |
+|---|---|
+| WP1 | (a) `originBack` + route table for 7 categories; (b) loader single-owner; (c) dead toast removal |
+| WP2 | (a) PublishPill; (b) BottomAddButton; (c) usePublishNudge |
+| WP3A | (a) CategoryPage + ListCard; (b) Top Picks hero/manager; (c) NewListDialog |
+| WP3B | (a) tabs + Recommendations tab; (b) Share tab/QR; (c) Manage tab; (d) drag-and-drop reorder |
+| WP4 | (a) StarRating; (b) ItemSearch + PickedItemCard; (c) TaxonomyCombobox; (d) StickyActionBar |
+| WP5 | (a) server movie import job; (b) places command batching + view model; (c) `/me` dedupe; (d) media INSERT batch |
+| WP6 | (a) PlaceSearchField + coordinates; (b) PickOnMapSheet + nearby endpoint; (c) Places list onto template |
+| WP7 | one sub-agent per category (Movies, Books, Games) + one for taxonomy term lists |
+| WP8 | (a) link-preview service; (b) Apps + iTunes search; (c) Products form; (d) People form |
+| WP9 | (a) guide commands/API; (b) day strip + day list + drag; (c) smart box + My lists panel; (d) New guide dialog + Plan chips |
+| WP10 | (a) link API + migration consumer; (b) Manage/linked section UI |
+| WP11 | (a) India fixtures; (b) Global fixtures; (c) seeding + refusal paths; (d) UI badges/actions |
+| WPCI | (a) measurement + reporter diffing; (b) e2e sharding + caching; (c) tunes image cache |
+
+### File-ownership matrix (Wave 1, the widest wave)
+
+| Area | WP1 | WP2 | WP3A | WP3B | WP4 | WP5 | WPCI |
+|---|---|---|---|---|---|---|---|
+| `routes/ProtectedRoutes.tsx` | **owner** | | | | | | |
+| `pages/Favorites.tsx` | | | **owner** | | | | |
+| `components/controls/*` (new) | | **owner** | | | | | |
+| `features/shared/category/*`, `topPicks/*`, `lists/NewListDialog` (new) | | | **owner** | | | | |
+| `features/*/components/dashboard/*Home.tsx` (7) | | | **owner** | | | | |
+| `features/shared/list/*` (new), `*ListView.tsx` (7), `components/ShareModal.tsx`, `components/reorder/*` | | | | **owner** | | | |
+| `features/shared/addItem/*`, `components/StarRating`, `TaxonomyCombobox` (new) | | | | | **owner** | | |
+| `features/Favorites/api/*`, `Movies/api/moviesClient.ts`, `tunes/server/application/movieMediaImport.ts`, `media.ts`, recommendation repository media loop | | | | | | **owner** | |
+| `AddMoviePage.tsx` save function only | | | | | | **owner** | |
+| loaders, `TabVisibilityGuard`, `PublicColdEntryBoundary`, `lib/navigation/*` | **owner** | | | | | | |
+| `.github/workflows/*`, playwright config | | | | | | | **owner** |
+
+Verified on main: no file appears in two columns. Waves 2-5 have at most three parallel packages whose areas are per category (WP6 Places, WP7 Movies/Books/Games, WP8 Apps/Products/People) and do not overlap.
+
+### Shared files: single owner or sequenced
+
+| Shared file / area | Rule |
+|---|---|
+| `tunes/migrations/*`, marker-pinned files, OCI fixtures, `music-runtime-role.ts` | schema PRs S1-S3 only, one at a time |
+| `routes/ProtectedRoutes.tsx` | WP1 in Wave 1; WP6 (Places route) in Wave 2; WP9 (guide route) in Wave 3 |
+| i18n resources (`explorers-earth/src/i18n/resources/*`) | append-only keys under a per-package namespace (`dashboard.<package>.*`); conflicts resolved by the later PR on rebase; `node explorers-earth/scripts/check-i18n.js` must pass |
+| `.github/workflows/test.yml` selector list, `music-image-ci-tests.test.ts` | append-only at the end; the later PR rebases and re-appends |
+| root `.dockerignore` | regenerated, never hand-edited; the later PR re-runs the generator after rebase |
+| `explorersContract.ts`, shared DTOs | changed only in schema PRs or by the package that owns that category's contract |
+| `pages/Favorites.tsx` | WP0B → WP3A → WP6, never two at once |
+
+### Merge order and branch rules
+
+1. Within a wave, merge in this order: schema PR first (if any), then shared-component PRs (WP2, WP4, WPCI), then consumers (WP1, WP3A, WP3B, WP5), then category packages.
+2. Merge commits only, one PR at a time. After every merge the orchestrator runs update-branch on every open PR of the wave (`gh pr update-branch <n>`), and each package session re-runs its local checks if the update touched its area.
+3. A PR whose head looks stale after update-branch (status UNKNOWN, or "out of date" refused although just updated) is fixed by close and reopen, then re-run.
+4. Append-only shared lists (selectors, i18n, `.dockerignore`) are re-generated or re-appended by the later PR after its rebase, never edited by hand in conflict resolution.
+5. Nothing merges with a red or skipped required check; CI flakes are re-run once, then root-caused.
 
 ## Design acceptance (applies to every UI package)
 
@@ -273,7 +411,8 @@ The approved mocks are the visual spec; packages build to them, not to this text
 | WP9 Guides | 3 | — | WP2, WP3A, WP3B, WP4, WP6, S3 |
 | WP10 Linking | 4 | — | WP1, WP3B, WP9, S3 |
 | WP11 First-visit samples | 5 | — | WP3A, WP3B, WP7, WP8, WP9, S3 |
-| WP12 Local proof, drill, publish, deploy, live re-test | 6 | — | all |
+| WPCI CI cycle time | 1 | — | — |
+| WP12 Final full-test wave, drill, publish, deploy, live UAT | 6 | — | all |
 
 ## Review findings (2026-10-23)
 
@@ -299,6 +438,7 @@ Engineering review (gstack `plan-eng-review`) and design review (gstack `plan-de
 | P2 | **One big-bang deploy at the end.** All fixes and seven migrations would ship at once. | Two earlier deploy checkpoints (A after Wave 0, B after Wave 1) so bug fixes and speed reach the owner sooner and risk is split. |
 | P2 | **OWN-01 edge cases.** Creating the partial index could fail on existing live duplicates; restoring an archived list whose slug was reused was unspecified. | 0065 checks for live duplicates first; restore-after-reuse returns a clear conflict; tests added. |
 | P2 | **Design states unspecified.** The first version named screens but not loading/empty/error/partial states, accessibility or edge content. | New "Design acceptance" section: per-screen state table, a11y rules, edge content, and a screenshot-vs-mock fidelity check per UI PR. |
+| P2 | **Owner additions (second pass):** no explicit parallel-session map, no CI-time package, tests not named per package, no final full-test wave, no orchestration model. | Added "Parallelism map" (sessions per wave, sub-agent splits, Wave 1 file-ownership matrix, shared-file rules, merge/update-branch/close-reopen rules), WPCI with measured baseline and a double-verification acceptance, "Testing per package" table (unit/integration/e2e), WP12 rewritten as the final full-test wave (serial unit lane, integration suite, all e2e lanes, nightly `lane=all` dispatch, live UAT re-run), and "Orchestration model". |
 | P3 | Toast consolidation was scoped as a caller migration. Verified zero non-test importers of the two old toast modules. | WP1 now deletes them as dead code (no caller edits). |
 
 ### Design review scores (plan vs approved mocks)
@@ -327,7 +467,7 @@ Public pages, private sharing (invites), saving others' lists, the plugin, monet
 
 | Review | Trigger | Why | Runs | Status | Findings |
 |--------|---------|-----|------|--------|----------|
-| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | CLEAR (PLAN) | 10 issues, 0 critical gaps open (all folded into the plan) |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 2 | CLEAR (PLAN) | 11 issues, 0 critical gaps open (all folded into the plan) |
 | Design Review | `/plan-design-review` | UI/UX gaps | 1 | CLEAR (PLAN) | score: 6/10 → 9/10, 4 decisions (delegated, recommended options) |
 | CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | — | — |
 | Codex Review | `/codex review` | Independent 2nd opinion | 0 | — | — |
