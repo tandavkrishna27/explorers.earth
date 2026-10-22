@@ -270,6 +270,12 @@ export class ExplorersRecommendationRepository {
     return this.command(accountId,'createCollection',normalized,key,async db=>{
       const parent=linked?await this.lockCollection(db,accountId,input.parentLocationCollectionId!,input.parentExpectedRevision!):undefined;
       if(parent&&parent.category!=='places')throw new RecommendationFailure(422,'A location list is required');
+      // LP-09. A slug a LIVE list was renamed from still resolves to that list, so a new
+      // list may not take it. A redirect left by an archived list is stale and released.
+      const redirected=await db.query(`SELECT 1 FROM collection_slug_redirects r JOIN collections c ON c.id=r.collection_id
+        WHERE r.account_id=$1 AND r.category=$2 AND r.old_slug=$3 AND c.archived_at IS NULL`,[accountId,input.category,input.slug]);
+      if(redirected.rowCount)throw new RecommendationFailure(409,'Content conflicts with an existing resource');
+      await db.query('DELETE FROM collection_slug_redirects WHERE account_id=$1 AND category=$2 AND old_slug=$3',[accountId,input.category,input.slug]);
       const result=await db.query(`INSERT INTO collections(account_id,category,title,slug,visibility,publication_state,display_order)
         SELECT $1,$2,$3,$4,$5,$6,coalesce(max(display_order)+1,0) FROM collections WHERE account_id=$1 AND category=$2 RETURNING *`,
         [accountId,input.category,input.title,input.slug,normalized.visibility,normalized.publicationState]);
@@ -469,6 +475,17 @@ export class ExplorersRecommendationRepository {
       const locked=await this.lockCollection(db,accountId,id,expectedRevision);
       if(locked.category!=='places'&&input.slug!==undefined)throw new RecommendationFailure(422,'Category context mismatch');
       if(locked.category!=='places'&&input.placeLocation!==undefined)throw new RecommendationFailure(422,'Category context mismatch');
+      // LP-09. Renaming keeps the old URL working: the old slug becomes a redirect to this
+      // list. Taking a slug that is another live list's redirect is a conflict; taking a
+      // slug this list (or an archived list) left behind releases that redirect.
+      if(input.slug!==undefined&&input.slug!==locked.slug){
+        const taken=await db.query(`SELECT 1 FROM collection_slug_redirects r JOIN collections c ON c.id=r.collection_id
+          WHERE r.account_id=$1 AND r.category=$2 AND r.old_slug=$3 AND r.collection_id<>$4 AND c.archived_at IS NULL`,[accountId,locked.category,input.slug,id]);
+        if(taken.rowCount)throw new RecommendationFailure(409,'Content conflicts with an existing resource');
+        await db.query('DELETE FROM collection_slug_redirects WHERE account_id=$1 AND category=$2 AND old_slug=$3',[accountId,locked.category,input.slug]);
+        await db.query(`INSERT INTO collection_slug_redirects(account_id,category,old_slug,collection_id) VALUES($1,$2,$3,$4)
+          ON CONFLICT (account_id,category,old_slug) DO UPDATE SET collection_id=EXCLUDED.collection_id,created_at=now()`,[accountId,locked.category,locked.slug,id]);
+      }
       const result=await db.query(`UPDATE collections SET title=coalesce($2,title),visibility=coalesce($3,visibility),
         publication_state=coalesce($4,publication_state),slug=coalesce($5,slug),revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *`,[id,input.title??null,input.visibility??null,input.publicationState??null,input.slug??null]);
       if(input.description!==undefined) await db.query('UPDATE collections SET description=$2 WHERE id=$1',[id,input.description]);
