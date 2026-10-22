@@ -4,6 +4,26 @@ Status: **v2, awaiting owner decisions.** No app code changes.
 Mocks v2: https://claude.ai/artifact/TmMMFzJnW2cEtmUE7vVF7k (private, clickable, desktop + mobile).
 v1 mocks (https://claude.ai/artifact/MjTwMPH2QyCkQB6ZHaV2zx) were rejected by the owner: built from code only, merged the two public screens, dropped Top Picks, ignored visibility toggles and Manage/QR. v2 replaces them.
 
+## v5: controls placement (PROPOSED, 2026-10-23)
+
+Mocks v5: https://claude.ai/artifact/UDhwrVqLBNh8xKtZpppf6v (private; desktop and 375px phone). Status: **PROPOSED**, awaiting the owner's decision.
+
+- **Rule:** the top right holds status and publish. Add lives in the content. The floating + appears on phones only.
+- **Category page:**
+  - Header right: an "On profile ✓ / Hidden" chip (the category master switch), then the primary "+ New list".
+  - The first grid card is a dashed "+ New list".
+  - Phone: the header keeps only the chip, and the floating + means New list.
+- **List page:**
+  - Header right holds only the publish control. A draft shows a solid "Publish"; a published list shows a "🌐 Public ▾" pill whose menu offers Public / Private (invite, coming soon) / Unpublish to draft.
+  - This replaces the left-side Published toggle from earlier mocks.
+  - Tab row: Recommendations | Share | Manage, with "+ Add item" at the right end, shown on Recommendations only.
+  - A dashed "+ Add item" row sits at the end of the items. An empty list shows one large centred "+ Add item".
+  - Phone: the header keeps the pill, and the floating + means Add item.
+- **Guide page:**
+  - The same Publish / Public pill sits in the header.
+  - A dashed "+ Add to day" row ends each day.
+  - Phone: the floating + adds to the selected day.
+
 ## v4: dashboard Guides (proposal for owner review)
 
 Mocks v4: https://claude.ai/artifact/EQhDwNgFuhBnYM94xs964Q (private). Model decisions are in PR #190 (scope doc).
