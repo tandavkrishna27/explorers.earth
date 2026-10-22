@@ -42,6 +42,7 @@ import {BookCatalog} from '../services/bookCatalog';
 import { resolveTrustedProxy, setupCanonicalTerminator } from "../middleware/canonicalTerminator";
 import { setupCanonicalRetiredSurfaces } from "../routes/canonicalRetiredSurfaceRoutes";
 import { setupExplorersSeoRoutes } from "../routes/explorersSeoRoutes";
+import { SharePageService, setupExplorersSharePageRoutes } from "../routes/explorersSharePageRoutes";
 import { checkMusicDatabaseReadiness } from "../db/readiness";
 import { logServerErrorResponses } from "../http/unexpectedError";
 
@@ -86,6 +87,7 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   if(admission)app.use(admission.afterJsonParser);
   app.get("/health/live", (_request, response) => response.status(200).json({ status: "live" }));
   setupExplorersSeoRoutes(app, pool);
+  setupExplorersSharePageRoutes(app, new SharePageService(pool, config.baseURL));
   app.get("/health/ready", async (_request, response) => {
     try {
       await pool.query("SELECT 1");

@@ -394,7 +394,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 73
+      "line": 74
     },
     {
       "method": "USE",
@@ -404,7 +404,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 75
+      "line": 76
     },
     {
       "method": "ALL",
@@ -414,7 +414,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 82
+      "line": 83
     },
     {
       "method": "ALL",
@@ -424,7 +424,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 83
+      "line": 84
     },
     {
       "method": "GET",
@@ -434,7 +434,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 87
+      "line": 88
     },
     {
       "method": "GET",
@@ -444,7 +444,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 89
+      "line": 91
     },
     {
       "method": "POST",
@@ -454,7 +454,7 @@
       "policy": "trusted-origin+signed-short-lived-recovery-intent",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 120
+      "line": 122
     },
     {
       "method": "GET",
@@ -464,7 +464,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 138
+      "line": 140
     },
     {
       "method": "GET",
@@ -1785,6 +1785,16 @@
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersSeoRoutes.ts",
       "line": 141
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/share-page",
+      "classification": "public",
+      "ownerSource": "none",
+      "policy": "explicit-public-contract",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersSharePageRoutes.ts",
+      "line": 240
     },
     {
       "method": "GET",

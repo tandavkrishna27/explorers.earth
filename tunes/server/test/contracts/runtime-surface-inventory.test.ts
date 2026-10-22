@@ -34,7 +34,10 @@ describe("runtime route/event/job inventory", () => {
     // 193 = 192 + the owner Google profile photo import (POST /api/explorers/v1/media/provider-avatar).
     // 194 = 193 + the Places list-cover import (POST /api/explorers/v1/media/place-photo),
     // which fetches the Google photo server-side so the browser CSP need not allow it.
-    expect(inventory.routes).toHaveLength(196);
+    // 195 = 194 + the public share page host nginx asks for every HTML route
+    // (GET /api/explorers/v1/share-page, explorersSharePageRoutes.ts).
+    // 197 = 195 + Home's content summary GET and its fail-closed method boundary (HUB-X02).
+    expect(inventory.routes).toHaveLength(197);
     expect(inventory.events).toHaveLength(15);
     // 38 = 37 + the Google profile photo fetch deadline (googleAvatarFetch.ts).
     // 39 = 38 + the place photo fetch deadline (tunes/server/services/placePhotoFetch.ts).

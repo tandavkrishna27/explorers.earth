@@ -82,6 +82,7 @@ const PUBLIC_PATHS = new Set([
   "/robots.txt",
   "/sitemap.xml",
   "/api/explorers-sitemap.xml",
+  "/api/explorers/v1/share-page",
   "/api/user/request-reactivation",
   "/api/user/reactivate",
   "/api/music-fixture/readiness",

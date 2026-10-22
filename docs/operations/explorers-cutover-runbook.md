@@ -395,6 +395,18 @@ Expected dry run: `"observedCatalogVersion":0,"catalogVersion":1,"changed":true,
 prints the same with `"mode":"apply"` and a `receiptId`. Running the apply again prints
 `"changed":false`; that is safe.
 
+**People sectors.** Same commands with `--category people` first (Places stays the default):
+
+```bash
+$C run --rm --no-deps migrate node dist/apply-reviewed-taxonomy.js --category people --dry-run
+$C run --rm --no-deps migrate node dist/apply-reviewed-taxonomy.js --category people --apply --reviewed-by "<your name>"
+```
+
+Expected dry run: `"category":"people","observedCatalogVersion":0,"catalogVersion":1,
+"changed":true`, `"term:add":20` among the operations, and `"conflicts":[]`. Re-running the
+apply prints `"changed":false`. The 20 sectors live in
+`tunes/fixtures/taxonomy/reviewed-people-20261022/people-sectors.json`.
+
 The plan's command, `docker compose -f /opt/explorers/production.compose.yml run --rm migrate
 node dist/scripts/apply-reviewed-taxonomy.js`, fails twice over: without `--env-file`, compose
 cannot render the file, and the bundle is `dist/apply-reviewed-taxonomy.js`.
