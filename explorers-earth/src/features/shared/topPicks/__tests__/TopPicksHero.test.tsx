@@ -19,7 +19,7 @@ describe("TopPicksHero", () => {
     expect(screen.getByText('From "Comfort movies"')).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Show Chef" }));
     expect(screen.getByRole("heading", { name: "Chef" })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("heading", { name: "Chef" }));
+    await userEvent.click(screen.getByRole("button", { name: "Chef" }));
     expect(onOpenPick).toHaveBeenCalledWith(picks[1]);
   });
   it("empty: item copy for item categories, list copy for places", () => {

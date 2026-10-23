@@ -17,10 +17,7 @@ const surfaces = [
   "features/Favorites/components/Recommendations.tsx",
   "features/Games/components/dashboard/GameListView.tsx",
   "features/Movies/components/dashboard/MovieListView.tsx",
-  "features/Books/components/dashboard/BooksHome.tsx",
-  "features/People/components/dashboard/PeopleHome.tsx",
-  "features/Products/components/dashboard/ProductsHome.tsx",
-  "features/AppsAndTools/components/dashboard/AppsHome.tsx",
+  // The *Home.tsx category pages render the shared template (WP3A), which shows no note previews.
   "features/People/components/public/PersonCarouselRow.tsx",
   "features/Products/components/public/ProductCarouselRow.tsx",
   "features/AppsAndTools/components/public/AppCarouselRow.tsx",

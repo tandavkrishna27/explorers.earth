@@ -92,7 +92,7 @@ export default function NewListDialog({ open, category, username, initialName = 
 
   const field = "w-full rounded-lg border border-dashboard-border bg-dashboard-muted px-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:border-dashboard-accent focus:outline-none";
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm md:p-6" onClick={onClose}>
+    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm md:p-6" role="presentation" onClick={onClose}>
       <form role="dialog" aria-modal="true" aria-label={t("dashboard.wp3a.dialog.title")} onSubmit={submit} onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => { if (event.key === "Escape") onClose(); }}
         className="w-full max-w-2xl space-y-5 rounded-xl border border-dashboard-border bg-dashboard-sidebar p-6 shadow-2xl md:p-8">

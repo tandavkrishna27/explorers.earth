@@ -52,7 +52,7 @@ export default function ListCard({ category, list, busy, dragging, over, picked,
         <span className={`relative z-10 shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${list.status === "public" ? "bg-emerald-500 text-[#03271b]" : "bg-gray-700 text-gray-300"}`}>
           {list.status === "public" ? t("dashboard.wp3a.card.public") : t("dashboard.wp3a.card.draft")}
         </span>
-        <span className="relative z-10 hidden md:inline-flex" onClick={stop} title={empty ? t("dashboard.wp3a.card.emptyCantPublish") : undefined}>
+        <span className="relative z-10 hidden md:inline-flex" onClick={(event) => event.stopPropagation()} title={empty ? t("dashboard.wp3a.card.emptyCantPublish") : undefined}>
           <Switch checked={list.status === "public"} disabled={empty || busy} loading={busy}
             ariaLabel={t("dashboard.wp3a.card.publishSwitch", { name: list.title })}
             onChange={() => onSetStatus(list.id, list.status === "public" ? "draft" : "public")} />
