@@ -131,11 +131,15 @@ describe("owned image CI PostgreSQL wiring", () => {
       "server/test/explorers-recovery.integration.test.ts",
       "server/test/explorers-reorder.integration.test.ts",
       "server/test/explorers-search.integration.test.ts",
+      // S2. 0068 category data shape: backfills and new fields round-trip.
+      "server/test/explorers/category-data-shape.integration.test.ts",
       "server/test/explorers/category-write-path.integration.test.ts",
       // WP3B (LP-08/LP-09). Slug rename for every category, restore, permanent delete.
       "server/test/explorers/collection-manage.integration.test.ts",
       // OWN-01/LP-09. 0065 live-slug index and 0066 slug redirects through HTTP.
       "server/test/explorers/collection-slug.integration.test.ts",
+      // S2. 0067 curated catalogs, reviewed apply and assignment through HTTP.
+      "server/test/explorers/curated-taxonomy.integration.test.ts",
       // GMS-X01. 0064's game year/platforms/genres through resolve, owner and public read.
       "server/test/explorers/game-details.integration.test.ts",
       "server/test/explorers/guides.integration.test.ts",
@@ -166,8 +170,8 @@ describe("owned image CI PostgreSQL wiring", () => {
        */
       "server/test/user-leak.integration.test.ts",
     ]);
-    expect(selectors).toHaveLength(56); // 56 = 55 + link-preview (WP8); 55 = 54 + recommendation-media-batch (WP5); 54 = 51 + collection-slug + list-delete-analytics (0065/0066) + collection-manage (WP3B)
-    expect(new Set(selectors).size).toBe(56);
+    expect(selectors).toHaveLength(58); // 58 = 57 + link-preview (WP8); 57 = 55 + curated-taxonomy + category-data-shape (S2); 55 = 54 + recommendation-media-batch (WP5); 54 = 51 + collection-slug + list-delete-analytics (0065/0066) + collection-manage (WP3B)
+    expect(new Set(selectors).size).toBe(58);
   });
 
   /*

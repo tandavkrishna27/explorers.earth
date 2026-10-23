@@ -27,8 +27,9 @@ async function list(owner:{cookie:string},category='books') {
   const result=await command(owner,'post','/collections',{category,title:'Reading',slug:`reading-${randomUUID()}`,visibility:'private',publicationState:'draft'});expect(result.status).toBe(201);return result.body.collection;
 }
 async function entity(kind='book') {return (await pool.query("INSERT INTO entities(kind,title,origin) VALUES($1,'Shared title','manual') RETURNING id",[kind])).rows[0].id;}
+// People are not rated on new writes (DS-02, 0068 contract), so the helper rates every other category.
 async function recommendation(owner:{cookie:string},collection:any,entityId:string,revision=1) {
-  const result=await command(owner,'post','/recommendations',{category:collection.category,entityId,collectionId:collection.id,expectedCollectionRevision:revision,userRating:8,publicationState:'draft'});expect(result.status).toBe(201);return result.body.recommendation;
+  const result=await command(owner,'post','/recommendations',{category:collection.category,entityId,collectionId:collection.id,expectedCollectionRevision:revision,userRating:collection.category==='people'?null:8,publicationState:'draft'});expect(result.status).toBe(201);return result.body.recommendation;
 }
 
 async function parentCreateRevision(id:string) {
@@ -245,7 +246,7 @@ it('writes purpose-compatible owned media and rolls invalid replacement back ato
 });
 it.each([['places','place'],['places','person'],['books','book'],['movies','movie'],['games','game'],['apps','app'],['products','product'],['people','person']])('validates %s core against entity kind %s',async(category,kind)=>{
   const a=await persona(),c=await list(a,category),entityId=await entity(kind);
-  const created=await recommendation(a,c,entityId);expect(created).toMatchObject({category,entityId,userRating:8,publicationState:'draft',mediaIds:[]});
+  const created=await recommendation(a,c,entityId);expect(created).toMatchObject({category,entityId,userRating:category==='people'?null:8,publicationState:'draft',mediaIds:[]});
   for(const body of [{expectedRevision:1,userRating:0},{expectedRevision:1,userRating:11},{expectedRevision:1,userRating:1.5},{expectedRevision:1,userRating:'5'},{expectedRevision:1,note:{version:1,arbitrary:true}},{expectedRevision:1,entityId:randomUUID()},{expectedRevision:1,category:'books'},{expectedRevision:1}]) expect((await command(a,'patch',`/recommendations/${created.id}`,body)).status).toBe(422);
   const published=await command(a,'patch',`/recommendations/${created.id}`,{expectedRevision:1,publicationState:'published',userRating:null});expect(published.status).toBe(200);expect(published.body.recommendation).toMatchObject({publicationState:'published',userRating:null,revision:2});
 });

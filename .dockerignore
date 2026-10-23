@@ -190,6 +190,8 @@ explorers-earth/src/features/People/api/*
 explorers-earth/src/features/People/components/*
 !explorers-earth/src/features/People/hooks/
 explorers-earth/src/features/People/hooks/*
+!explorers-earth/src/features/People/lib/
+explorers-earth/src/features/People/lib/*
 !explorers-earth/src/features/People/types/
 explorers-earth/src/features/People/types/*
 !explorers-earth/src/features/People/utils/
@@ -432,6 +434,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/CategoryEmptyState.tsx
 !explorers-earth/src/components/CategoryVisibilityModal.tsx
 !explorers-earth/src/components/CircularPlacesModal.tsx
+!explorers-earth/src/components/CurrencyPriceInput.tsx
 !explorers-earth/src/components/DashboardLayout.tsx
 !explorers-earth/src/components/EarthLoader/BootSplash.tsx
 !explorers-earth/src/components/EarthLoader/EarthLoader.css
@@ -449,6 +452,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/LoadingSpinner.tsx
 !explorers-earth/src/components/Navbar.tsx
 !explorers-earth/src/components/OnboardingCheckError.tsx
+!explorers-earth/src/components/PasteLinkField.tsx
 !explorers-earth/src/components/ProfileSetupAccordion.tsx
 !explorers-earth/src/components/ProtectedRoute.tsx
 !explorers-earth/src/components/PublicNav.tsx
@@ -823,6 +827,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/People/components/public/PublicPersonSector.tsx
 !explorers-earth/src/features/People/hooks/usePeopleOwner.ts
 !explorers-earth/src/features/People/index.ts
+!explorers-earth/src/features/People/lib/detectPlatform.ts
 !explorers-earth/src/features/People/types/index.ts
 !explorers-earth/src/features/People/utils/personHelpers.ts
 !explorers-earth/src/features/Products/api/explorersAdapter.ts
@@ -1063,6 +1068,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/lib/currencyOptions.ts
 !explorers-earth/src/lib/explorerAccountSelection.ts
 !explorers-earth/src/lib/explorersApiClient.ts
+!explorers-earth/src/lib/linkPreviewClient.ts
 !explorers-earth/src/lib/money.ts
 !explorers-earth/src/lib/musicDevelopmentTransport.ts
 !explorers-earth/src/lib/navigation/BackToOrigin.tsx
