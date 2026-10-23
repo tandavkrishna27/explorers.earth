@@ -74,3 +74,41 @@ test('phone publish pill and its menu never overlap the header', async ({ browse
     }
   } finally { await closeFixture(owner); }
 });
+
+// The shared WP4 add template (served on the Movies add route by dashboard-layout.vite.config.ts).
+const addPath = '/recommendations/movies/layout-list/add';
+const intersects = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
+  a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+test('add page is centred at 1440px', async ({ browser, baseURL }) => {
+  const owner = await openFixture(browser, baseURL!, fixtureState(), { owner: true, width: 1440, height: 900 });
+  try {
+    await owner.page.goto(addPath);
+    const page = await container(owner.page);
+    const content = (await owner.page.locator('.dashboard-content').boundingBox())!;
+    expect(page.width).toBeLessThanOrEqual(720);
+    expect(Math.abs((page.x + page.width / 2) - (content.x + content.width / 2))).toBeLessThanOrEqual(1);
+    if (shots) await owner.page.screenshot({ path: `${shots}/1440-add.png` });
+  } finally { await closeFixture(owner); }
+});
+
+test('phone add page: back link clears the header, Save clears the bottom nav and is clickable', async ({ browser, baseURL }) => {
+  const owner = await openFixture(browser, baseURL!, fixtureState(), { owner: true, width: 375, height: 812, touch: true });
+  try {
+    await owner.page.goto(addPath);
+    const back = owner.page.getByRole('button', { name: /Back to Public movies/ });
+    await expect(back).toBeVisible();
+    expect(intersects((await back.boundingBox())!, await headerBox(owner.page)), 'back link under header').toBe(false);
+    const nav = (await owner.page.getByTestId('phone-bottom-nav').boundingBox())!;
+    const save = owner.page.getByRole('button', { name: 'Save', exact: true });
+    for (const scroll of ['top', 'bottom'] as const) {
+      if (scroll === 'bottom') await owner.page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      await expect.poll(() => owner.page.evaluate(() => window.scrollY)).toBe(scroll === 'top' ? 0 : await owner.page.evaluate(() => document.documentElement.scrollHeight - innerHeight));
+      await expect(save).toBeVisible();
+      expect(intersects((await save.boundingBox())!, nav), `Save under bottom nav (${scroll})`).toBe(false);
+      if (shots) await owner.page.screenshot({ path: `${shots}/375-add-${scroll}.png` });
+    }
+    // A trial click fails if another element (the bottom nav) would receive it.
+    await save.click({ trial: true, timeout: 3000 });
+  } finally { await closeFixture(owner); }
+});
