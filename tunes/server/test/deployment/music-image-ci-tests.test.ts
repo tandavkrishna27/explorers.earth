@@ -143,6 +143,8 @@ describe("owned image CI PostgreSQL wiring", () => {
       "server/test/explorers/placeLinks.integration.test.ts",
       "server/test/explorers/places.integration.test.ts",
       "server/test/explorers/products.integration.test.ts",
+      // WP5. replaceMedia writes a gallery in one INSERT.
+      "server/test/explorers/recommendation-media-batch.integration.test.ts",
       "server/test/google-sync.integration.test.ts",
       "server/test/load/music-load-http-postgres.integration.test.ts",
       "server/test/load/music-load-postgres.integration.test.ts",
@@ -160,8 +162,8 @@ describe("owned image CI PostgreSQL wiring", () => {
        */
       "server/test/user-leak.integration.test.ts",
     ]);
-    expect(selectors).toHaveLength(53); // 53 = 51 + collection-slug + list-delete-analytics (0065/0066)
-    expect(new Set(selectors).size).toBe(53);
+    expect(selectors).toHaveLength(54); // 54 = 53 + recommendation-media-batch (WP5); 53 = 51 + collection-slug + list-delete-analytics (0065/0066)
+    expect(new Set(selectors).size).toBe(54);
   });
 
   /*

@@ -10,6 +10,7 @@ import { lockContentCategories } from '../db/explorers-content-lock';
 import type { RichNote } from '../../shared/explorersRichNoteContract';
 import {emptyBookDetails,bookDisplayFieldsSchema,bookEntityDetailsSchema,type BookCandidate,type BookEntityDetails,type BookRecommendationContext} from '../../shared/explorersBookContract';
 import {insertBookDetails,readBookEntity,writeBookContext} from './bookCatalogRepository';
+import { replaceRecommendationMedia } from './recommendationMediaWrite';
 import {insertAppDetails,readAppEntity,writeAppScreenshots} from './appCatalogRepository';
 import {insertProductDetails,readProductEntity,writeProductOffer} from './productCatalogRepository';
 import {appDisplayFieldsSchema,appEntityDetailsSchema,type AppScreenshots} from '../../shared/explorersAppContract';
@@ -58,8 +59,7 @@ export class ExplorersRecommendationRepository {
     if(mediaId!==null) await db.query("INSERT INTO collection_media(collection_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3)",[id,accountId,mediaId]);
   }
   private async replaceMedia(db:PoolClient,accountId:string,id:string,mediaIds:string[]) {
-    await db.query('DELETE FROM recommendation_media WHERE recommendation_id=$1',[id]);
-    for(let position=0;position<mediaIds.length;position++) await db.query('INSERT INTO recommendation_media(recommendation_id,account_id,media_id,display_order) VALUES($1,$2,$3,$4)',[id,accountId,mediaIds[position],position]);
+    await replaceRecommendationMedia(db,accountId,id,mediaIds);
   }
   private async transaction<T>(work:(db:PoolClient)=>Promise<T>):Promise<T> {
     const db=await this.pool.connect();
