@@ -101,6 +101,10 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
   routes.patch('/api/explorers/v1/collections/:id',mutation((a,id,b,c)=>service.updateCollection(a,id,b,c),'collection'));
   routes.patch('/api/explorers/v1/collections/:id/order',mutation((a,id,b,c)=>service.reorderCollection(a,id,b,c),'collection'));
   routes.delete('/api/explorers/v1/collections/:id',mutation((a,id,b,c)=>service.archiveCollection(a,id,b,c),'collection'));
+  routes.post('/api/explorers/v1/collections/:id/restore',mutation((a,id,b,c)=>service.restoreCollection(a,id,b,c),'collection'));
+  routes.post('/api/explorers/v1/collections/:id/purge',mutation((a,id,b,c)=>service.purgeCollection(a,id,b,c),'collection'));
+  routes.all('/api/explorers/v1/collections/:id/restore',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/purge',unsupported);
   routes.get('/api/explorers/v1/recommendations/search',read((a,_id,q)=>{
     if(Object.values(q as object).some(v=>typeof v!=='string'))throw new RecommendationFailure(422,'Search parameters must be scalar');
     if(Object.hasOwn(q as object,'scope'))throw new RecommendationFailure(422,'Scope is specified by the route');

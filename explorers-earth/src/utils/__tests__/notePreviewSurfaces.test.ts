@@ -7,16 +7,16 @@ import { notePreviewText } from "../notePreviewText";
 // literally, so every surface that previews a note or description goes through
 // notePreviewText instead of its own tag-stripping regex.
 const surfaces = [
-  "features/Books/components/dashboard/BookListView.tsx",
-  "features/People/components/dashboard/PersonListView.tsx",
-  "features/Products/components/dashboard/ProductListView.tsx",
-  "features/AppsAndTools/components/dashboard/AppListView.tsx",
+  "features/shared/list/adapters/books.ts",
+  "features/shared/list/adapters/people.ts",
+  "features/shared/list/adapters/products.ts",
+  "features/shared/list/adapters/apps.ts",
   "features/Books/components/public/TopReadsHero.tsx",
   "features/PublicHome/components/PublicHome.tsx",
   // UAT BKS-X01: every category's list rows, including Places.
   "features/Favorites/components/Recommendations.tsx",
-  "features/Games/components/dashboard/GameListView.tsx",
-  "features/Movies/components/dashboard/MovieListView.tsx",
+  "features/shared/list/adapters/games.ts",
+  "features/shared/list/adapters/movies.ts",
   // The *Home.tsx category pages render the shared template (WP3A), which shows no note previews.
   "features/People/components/public/PersonCarouselRow.tsx",
   "features/Products/components/public/ProductCarouselRow.tsx",

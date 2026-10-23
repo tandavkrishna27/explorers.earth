@@ -100,6 +100,8 @@ explorers-earth/src/features/Settings/*
 explorers-earth/src/features/shared/*
 !explorers-earth/src/i18n/resources/
 explorers-earth/src/i18n/resources/*
+!explorers-earth/src/lib/navigation/
+explorers-earth/src/lib/navigation/*
 !explorers-earth/src/pages/public/
 explorers-earth/src/pages/public/*
 !explorers-earth/src/routes/validators/
@@ -228,6 +230,8 @@ explorers-earth/src/features/Settings/api/*
 explorers-earth/src/features/Settings/components/*
 !explorers-earth/src/features/shared/category/
 explorers-earth/src/features/shared/category/*
+!explorers-earth/src/features/shared/list/
+explorers-earth/src/features/shared/list/*
 !explorers-earth/src/features/shared/lists/
 explorers-earth/src/features/shared/lists/*
 !explorers-earth/src/features/shared/topPicks/
@@ -270,6 +274,8 @@ explorers-earth/src/features/Products/components/public/*
 explorers-earth/src/features/PublicHome/components/PlaceDetails/*
 !explorers-earth/src/features/PublicHome/components/PublicGuideViews/
 explorers-earth/src/features/PublicHome/components/PublicGuideViews/*
+!explorers-earth/src/features/shared/list/adapters/
+explorers-earth/src/features/shared/list/adapters/*
 !explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/
 explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/*
 !explorers-earth/src/features/LandingPage/components/BentoGrid/mockups/
@@ -425,6 +431,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/CategoryVisibilityModal.tsx
 !explorers-earth/src/components/CircularPlacesModal.tsx
 !explorers-earth/src/components/DashboardLayout.tsx
+!explorers-earth/src/components/EarthLoader/BootSplash.tsx
 !explorers-earth/src/components/EarthLoader/EarthLoader.css
 !explorers-earth/src/components/EarthLoader/EarthLoader.tsx
 !explorers-earth/src/components/EarthLoader/index.ts
@@ -437,7 +444,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/InteractiveMap.tsx
 !explorers-earth/src/components/LanguageModal.tsx
 !explorers-earth/src/components/ListVisibilityModal.tsx
-!explorers-earth/src/components/Loader.tsx
 !explorers-earth/src/components/LoadingSpinner.tsx
 !explorers-earth/src/components/Navbar.tsx
 !explorers-earth/src/components/OnboardingCheckError.tsx
@@ -447,7 +453,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/QrCardTagline.tsx
 !explorers-earth/src/components/RevisionConflictHost.tsx
 !explorers-earth/src/components/RouteFallback.tsx
-!explorers-earth/src/components/RouteLoader.tsx
 !explorers-earth/src/components/SEO.tsx
 !explorers-earth/src/components/ScrollToTop.tsx
 !explorers-earth/src/components/ShareModal.tsx
@@ -759,9 +764,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/LandingPage/components/ui/input.tsx
 !explorers-earth/src/features/LandingPage/components/ui/label.tsx
 !explorers-earth/src/features/LandingPage/components/ui/landingButton.tsx
-!explorers-earth/src/features/LandingPage/components/ui/toast.tsx
 !explorers-earth/src/features/LandingPage/hooks/use-mobile.tsx
-!explorers-earth/src/features/LandingPage/hooks/use-toast.ts
 !explorers-earth/src/features/LandingPage/hooks/useFaqs.ts
 !explorers-earth/src/features/LandingPage/hooks/useMarketingHashNavigation.ts
 !explorers-earth/src/features/LandingPage/hooks/usePlatformTerms.ts
@@ -948,6 +951,20 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/shared/category/listWrites.ts
 !explorers-earth/src/features/shared/category/models.ts
 !explorers-earth/src/features/shared/category/useCardReorder.ts
+!explorers-earth/src/features/shared/list/ListPage.tsx
+!explorers-earth/src/features/shared/list/ListTabs.tsx
+!explorers-earth/src/features/shared/list/ManageTab.tsx
+!explorers-earth/src/features/shared/list/RecommendationsTab.tsx
+!explorers-earth/src/features/shared/list/RestoreListButton.tsx
+!explorers-earth/src/features/shared/list/ShareTab.tsx
+!explorers-earth/src/features/shared/list/adapters/apps.ts
+!explorers-earth/src/features/shared/list/adapters/books.ts
+!explorers-earth/src/features/shared/list/adapters/games.ts
+!explorers-earth/src/features/shared/list/adapters/movies.ts
+!explorers-earth/src/features/shared/list/adapters/people.ts
+!explorers-earth/src/features/shared/list/adapters/products.ts
+!explorers-earth/src/features/shared/list/listPageAdapter.ts
+!explorers-earth/src/features/shared/list/slugRules.ts
 !explorers-earth/src/features/shared/lists/NewListDialog.tsx
 !explorers-earth/src/features/shared/topPicks/TopPicksHero.tsx
 !explorers-earth/src/features/shared/topPicks/TopPicksManager.tsx
@@ -965,7 +982,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/hooks/useQRContext.tsx
 !explorers-earth/src/hooks/useRecommendationsWalkthrough.ts
 !explorers-earth/src/hooks/useResponsiveChart.ts
-!explorers-earth/src/hooks/useToast.ts
 !explorers-earth/src/hooks/useUsernameValidation.ts
 !explorers-earth/src/i18n/index.js
 !explorers-earth/src/i18n/resources/ar.json
@@ -1033,6 +1049,10 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/lib/explorersApiClient.ts
 !explorers-earth/src/lib/money.ts
 !explorers-earth/src/lib/musicDevelopmentTransport.ts
+!explorers-earth/src/lib/navigation/BackToOrigin.tsx
+!explorers-earth/src/lib/navigation/categoryRoutes.ts
+!explorers-earth/src/lib/navigation/originBack.ts
+!explorers-earth/src/lib/navigation/useOriginBack.ts
 !explorers-earth/src/lib/publicRuntimeConfig.ts
 !explorers-earth/src/lib/publicRuntimeContract.ts
 !explorers-earth/src/lib/queryClient.ts
@@ -1098,6 +1118,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/utils/analytics.ts
 !explorers-earth/src/utils/aspectRatioUtils.ts
 !explorers-earth/src/utils/categoryMapper.ts
+!explorers-earth/src/utils/exportElementPng.ts
 !explorers-earth/src/utils/fileTypeDetection.ts
 !explorers-earth/src/utils/fileValidation.ts
 !explorers-earth/src/utils/formatAddress.ts

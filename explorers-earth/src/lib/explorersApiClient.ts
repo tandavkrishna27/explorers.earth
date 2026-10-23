@@ -18,7 +18,7 @@ import { ownerCollectionPageSchema, ownerRecommendationPageSchema, ownerCollecti
 import {ownerTopPicksRequestSchema,ownerTopPickPageSchema,ownerContentSummarySchema,type OwnerTopPicksRequest,type OwnerContentSummary} from '../../../tunes/shared/explorersOwnerContentContract';
 import { z } from 'zod/v3';
 import {taxonomyCatalogQuerySchema,taxonomyCatalogPageSchema,type TaxonomyCatalogPage} from '../../../tunes/shared/explorersTaxonomyContract';
-import { createCollectionSchema,createCollectionResultSchema,type CreateCollectionResult,updateCollectionSchema,createRecommendationObjectSchema,createRecommendationSchema,updateRecommendationSchema,reorderCollectionSchema,collectionCoreDtoSchema,recommendationCoreDtoSchema,apiErrorSchema,contentIdSchema,type CreateCollectionInput,type UpdateCollectionInput,type CreateRecommendationInput,type UpdateRecommendationInput } from '../../../tunes/shared/explorersContract';
+import { createCollectionSchema,createCollectionResultSchema,type CreateCollectionResult,updateCollectionSchema,createRecommendationObjectSchema,createRecommendationSchema,updateRecommendationSchema,reorderCollectionSchema,collectionCoreDtoSchema,contentRevisionSchema,recommendationCoreDtoSchema,apiErrorSchema,contentIdSchema,type CreateCollectionInput,type UpdateCollectionInput,type CreateRecommendationInput,type UpdateRecommendationInput } from '../../../tunes/shared/explorersContract';
 import { editableOwnerCollectionSchema,editableOwnerRecommendationSchema,type EditableOwnerCollection,type EditableOwnerRecommendation } from '../../../tunes/shared/explorersOwnerContentContract';
 import { resolveManualEntitySchema,resolveManualGameSchema,entityCoreDtoSchema,type ResolveManualEntityInput } from '../../../tunes/shared/explorersContract';
 import {bookCandidateRequestSchema,bookCandidatesSchema,bookEntityDtoSchema,resolveProviderBookSchema,resolveManualBookSchema,replaceRecommendationEntitySchema} from '../../../tunes/shared/explorersBookContract';
@@ -302,9 +302,11 @@ export type OwnerDetailObservation<T> = Readonly<{kind:'collection'|'recommendat
 export type CollectionObservation=OwnerDetailObservation<EditableOwnerCollection>;
 export type RecommendationObservation=OwnerDetailObservation<EditableOwnerRecommendation>;
 const issuedDetails=new WeakSet<object>();
-export function assertOwnerDetailObservation(value:OwnerDetailObservation<EditableOwnerCollection|EditableOwnerRecommendation>,kind?:'collection'|'recommendation'):void {
+// An archived detail is observed only to restore or permanently delete it (WP3B, LP-08):
+// every other command refuses it, restore requires it, delete takes either.
+export function assertOwnerDetailObservation(value:OwnerDetailObservation<EditableOwnerCollection|EditableOwnerRecommendation>,kind?:'collection'|'recommendation',archived:'refuse'|'allow'|'require'='refuse'):void {
  const state=useAuthStore.getState();
- if(!value||!issuedDetails.has(value)||kind&&value.kind!==kind||!state.isAuthenticated||state.accountId!==value.accountId||state.generation!==value.generation||Date.now()-value.observedAt>=600000||value.detail.archived)throw new ExplorersApiError(409,'CONFLICT','Reload the owner detail before saving');
+ if(!value||!issuedDetails.has(value)||kind&&value.kind!==kind||!state.isAuthenticated||state.accountId!==value.accountId||state.generation!==value.generation||Date.now()-value.observedAt>=600000||(archived==='refuse'&&value.detail.archived)||(archived==='require'&&!value.detail.archived))throw new ExplorersApiError(409,'CONFLICT','Reload the owner detail before saving');
 }
 /**
  * A command is composed against the version the owner's view showed. The re-read a command
@@ -325,14 +327,14 @@ export function copyOwnerDetailForStaging<T>(value:OwnerDetailObservation<T>):T 
  if(!issuedDetails.has(value))throw new ExplorersApiError(409,'CONFLICT','Reload the owner detail before staging');
  return structuredClone(value.detail);
 }
-async function editableDetail<K extends 'collection'|'recommendation'>(kind:K,id:string,signal?:AbortSignal):Promise<K extends 'collection'?CollectionObservation:RecommendationObservation> {
+async function editableDetail<K extends 'collection'|'recommendation'>(kind:K,id:string,signal?:AbortSignal,archived=false):Promise<K extends 'collection'?CollectionObservation:RecommendationObservation> {
  if(!contentIdSchema.safeParse(id).success)throw new ExplorersApiError(422,'INVALID_INPUT','Invalid resource ID');
  const state=useAuthStore.getState();
  try {
   const schema=kind==='collection'?z.object({collection:editableOwnerCollectionSchema}).strict():z.object({recommendation:editableOwnerRecommendationSchema}).strict();
-  const body=await ownerRead(`/`+(kind==='collection'?'collections':'recommendations')+`/${encodeURIComponent(id)}/editable`,{status:'active'},schema as z.ZodType<any>,signal);
+  const body=await ownerRead(`/`+(kind==='collection'?'collections':'recommendations')+`/${encodeURIComponent(id)}/editable`,{status:archived?'archived':'active'},schema as z.ZodType<any>,signal);
   const detail=body[kind] as EditableOwnerCollection|EditableOwnerRecommendation,current=useAuthStore.getState();
-  if(!current.isAuthenticated||current.generation!==state.generation||current.accountId!==state.accountId||detail.accountId!==state.accountId||detail.id!==id.toLowerCase()||detail.archived)throw new ExplorersApiError(409,'CONFLICT','Invalid editable owner detail');
+  if(!current.isAuthenticated||current.generation!==state.generation||current.accountId!==state.accountId||detail.accountId!==state.accountId||detail.id!==id.toLowerCase()||detail.archived!==archived)throw new ExplorersApiError(409,'CONFLICT','Invalid editable owner detail');
   const observed=deepFreeze({kind,accountId:detail.accountId,generation:state.generation,observedAt:Date.now(),resourceId:detail.id,resourceRevision:detail.revision,categoryRevision:detail.categoryRevision,detail});issuedDetails.add(observed);
   return observed as any;
  } catch(error) {
@@ -425,6 +427,9 @@ async function contentCommand<T extends {id:string}>(path:string,method:string,i
  } finally {unsubscribe();signal?.removeEventListener('abort',stop);}
 }
 const archivedResult=z.object({id:contentIdSchema,archived:z.literal(true)}).strict();
+const deletedResult=z.object({id:contentIdSchema,deleted:z.literal(true)}).strict();
+// Mirrors the server's restore body; the slug rule is the collection DTO's own.
+const restoreCollectionInputSchema=contentRevisionSchema.extend({slug:collectionCoreDtoSchema.shape.slug.optional()}).strict();
 // Ticket 5.3. The aggregate, re-presented with `id` so contentCommand's identity check
 // applies. The transform adds a field rather than renaming one, so nothing downstream has
 // to know the adapter happened.
@@ -590,7 +595,8 @@ export const explorersApiClient = {
   },
   /** HUB-X02. Per-category counts for Home in one read. */
   getMyContentSummary:async(signal?:AbortSignal):Promise<OwnerContentSummary>=>(await ownerRead('/content-summary',{},z.object({summary:ownerContentSummarySchema}).strict(),signal)).summary,
-  getMyEditableCollection:(id:string,signal?:AbortSignal)=>editableDetail('collection',id,signal),
+  // options.archived reads an archived list, for restore or permanent delete only (WP3B).
+  getMyEditableCollection:(id:string,signal?:AbortSignal,options:{archived?:boolean}={})=>editableDetail('collection',id,signal,options.archived===true),
   getMyEditableRecommendation:(id:string,signal?:AbortSignal)=>editableDetail('recommendation',id,signal),
   async createMyCollection(input:CreateCollectionInput,key:string,signal?:AbortSignal,parentObservation?:CollectionObservation):Promise<DeepReadonly<CreateCollectionResult>> {
    const initial=useAuthStore.getState(),parent=parentObservation;
@@ -639,7 +645,6 @@ export const explorersApiClient = {
   },
   async updateMyCollection(observed:CollectionObservation,patch:Omit<UpdateCollectionInput,'expectedRevision'>,key:string,signal?:AbortSignal) {
    assertOwnerDetailObservation(observed,'collection');assertUnchangedSinceViewed(key,observed);const editable=commandInput(updateCollectionSchema.innerType().omit({expectedRevision:true}).strict(),patch);
-   if(editable.slug!==undefined&&observed.detail.category!=='places')throw new ExplorersApiError(422,'INVALID_INPUT','Invalid content command');
    const body=commandInput(updateCollectionSchema,{...editable,expectedRevision:observed.resourceRevision});return contentCommand(`/collections/${observed.resourceId}`,'PATCH',body,key,'collection',collectionCoreDtoSchema,signal,observed,observed.resourceId,observed.resourceRevision+1);
   },
   /**
@@ -665,6 +670,18 @@ export const explorersApiClient = {
   },
   async archiveMyCollection(observed:CollectionObservation,key:string,signal?:AbortSignal) {
    assertOwnerDetailObservation(observed,'collection');assertUnchangedSinceViewed(key,observed);return contentCommand(`/collections/${observed.resourceId}`,'DELETE',{expectedRevision:observed.resourceRevision},key,'collection',archivedResult,signal,observed,observed.resourceId);
+  },
+  // WP3B (LP-08). Restore needs an archived observation (getMyEditableCollection(id,signal,{archived:true}));
+  // a reused slug comes back as 409 CONFLICT 'List URL is taken; choose a new URL to restore'.
+  async restoreMyCollection(observed:CollectionObservation,key:string,options:{slug?:string}={},signal?:AbortSignal) {
+   assertOwnerDetailObservation(observed,'collection','require');assertUnchangedSinceViewed(key,observed);
+   const body=commandInput(restoreCollectionInputSchema,{expectedRevision:observed.resourceRevision,...(options.slug===undefined?{}:{slug:options.slug})});
+   return contentCommand(`/collections/${observed.resourceId}/restore`,'POST',body,key,'collection',collectionCoreDtoSchema,signal,observed,observed.resourceId,observed.resourceRevision+1);
+  },
+  // WP3B (LP-08). Permanent delete of a live or archived list.
+  async purgeMyCollection(observed:CollectionObservation,key:string,signal?:AbortSignal) {
+   assertOwnerDetailObservation(observed,'collection','allow');assertUnchangedSinceViewed(key,observed);
+   return contentCommand(`/collections/${observed.resourceId}/purge`,'POST',{expectedRevision:observed.resourceRevision},key,'collection',deletedResult,signal,observed,observed.resourceId);
   },
   async createMyRecommendation(parent:CollectionObservation,input:Omit<CreateRecommendationInput,'collectionId'|'expectedCollectionRevision'|'category'>,key:string,signal?:AbortSignal) {
    assertOwnerDetailObservation(parent,'collection');const editable=commandInput(createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true}).strict(),input);

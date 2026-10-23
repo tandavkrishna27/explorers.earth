@@ -1250,13 +1250,13 @@
         "removeConfirm": "Remove"
       },
       "publicProfile": {
-    "loadError": {
-      "title": "This page could not be loaded",
-      "rateLimited": "Too many requests right now. We will try again shortly.",
-      "body": "Something went wrong while loading this page. It still exists; please try again.",
-      "retry": "Try again",
-      "retrying": "Retrying..."
-    },
+        "loadError": {
+          "title": "This page could not be loaded",
+          "rateLimited": "Too many requests right now. We will try again shortly.",
+          "body": "Something went wrong while loading this page. It still exists; please try again.",
+          "retry": "Try again",
+          "retrying": "Retrying..."
+        },
         "accountTypes": {
           "business": "Business",
           "creator": "Creator",
@@ -1604,17 +1604,43 @@
       "linkCopiedToast": "Link copied!"
     },
     "wp3a": {
-      "titles": { "places": "Places", "movies": "Movies & Shows", "books": "Books", "games": "Games", "apps": "Apps & Tools", "products": "Products", "people": "People", "guides": "Guides" },
-      "itemNoun": { "places": "place", "movies": "movie or show", "books": "book", "games": "game", "apps": "app", "products": "product", "people": "person", "guides": "guide" },
+      "titles": {
+        "places": "Places",
+        "movies": "Movies & Shows",
+        "books": "Books",
+        "games": "Games",
+        "apps": "Apps & Tools",
+        "products": "Products",
+        "people": "People",
+        "guides": "Guides"
+      },
+      "itemNoun": {
+        "places": "place",
+        "movies": "movie or show",
+        "books": "book",
+        "games": "game",
+        "apps": "app",
+        "products": "product",
+        "people": "person",
+        "guides": "guide"
+      },
       "itemCount": {
-        "places_one": "{{count}} place", "places_other": "{{count}} places",
-        "movies_one": "{{count}} movie", "movies_other": "{{count}} movies",
-        "books_one": "{{count}} book", "books_other": "{{count}} books",
-        "games_one": "{{count}} game", "games_other": "{{count}} games",
-        "apps_one": "{{count}} app", "apps_other": "{{count}} apps",
-        "products_one": "{{count}} product", "products_other": "{{count}} products",
-        "people_one": "{{count}} person", "people_other": "{{count}} people",
-        "guides_one": "{{count}} stop", "guides_other": "{{count}} stops"
+        "places_one": "{{count}} place",
+        "places_other": "{{count}} places",
+        "movies_one": "{{count}} movie",
+        "movies_other": "{{count}} movies",
+        "books_one": "{{count}} book",
+        "books_other": "{{count}} books",
+        "games_one": "{{count}} game",
+        "games_other": "{{count}} games",
+        "apps_one": "{{count}} app",
+        "apps_other": "{{count}} apps",
+        "products_one": "{{count}} product",
+        "products_other": "{{count}} products",
+        "people_one": "{{count}} person",
+        "people_other": "{{count}} people",
+        "guides_one": "{{count}} stop",
+        "guides_other": "{{count}} stops"
       },
       "newList": "New list",
       "newGuide": "New guide",
@@ -1623,8 +1649,15 @@
         "manage": "Manage Top Picks",
         "from": "From \"{{list}}\"",
         "show": "Show {{name}}",
-        "empty": { "title": "Pin items to feature them here", "body": "Tap the star on any {{item}} in your lists.", "bodyLists": "Pin a public list to feature it here." },
-        "firstVisit": { "title": "Your best picks go here", "body": "Create a list, add a few, then star your favourites. They show here and at the top of your profile." }
+        "empty": {
+          "title": "Pin items to feature them here",
+          "body": "Tap the star on any {{item}} in your lists.",
+          "bodyLists": "Pin a public list to feature it here."
+        },
+        "firstVisit": {
+          "title": "Your best picks go here",
+          "body": "Create a list, add a few, then star your favourites. They show here and at the top of your profile."
+        }
       },
       "states": {
         "loadError": "Your lists couldn't be loaded.",
@@ -1743,6 +1776,81 @@
         },
         "notNow": "Not now",
         "publish": "Publish"
+      }
+    },
+    "wp3b": {
+      "addItem": "Add item",
+      "addNoun": "Add {{noun}}",
+      "archive": "Archive",
+      "archiveExplain": "Archived lists are hidden and free their URL. Restore them from Archived on the category page.",
+      "archiveList": "Archive list",
+      "archived": "List archived",
+      "backTo": "Back to {{category}}",
+      "cancel": "Cancel",
+      "copyFailed": "Could not copy the link.",
+      "copyLink": "Copy link",
+      "deleteExplain": "This deletes the list and its link for good. It can't be undone.",
+      "deleteForever": "Delete forever",
+      "deleteList": "Delete permanently",
+      "deleted": "List deleted",
+      "description": "Description",
+      "downloadQr": "Download QR",
+      "draft": "Draft",
+      "edit": "Edit",
+      "emptyHint": "Add your first {{noun}} to start this list.",
+      "emptyTitle": "No {{noun}}s yet",
+      "items": "Items",
+      "linkCopied": "Link copied",
+      "listLink": "List link",
+      "listLoadFailed": "This list didn't load.",
+      "listName": "List name",
+      "listUrl": "List URL",
+      "more": "More actions for {{item}}",
+      "orderFailed": "Couldn't save the order",
+      "orderSaved": "Order saved",
+      "pin": "Pin {{item}} to Top Picks",
+      "pinFailed": "Couldn't update Top Picks",
+      "privateSoon": "Private — coming soon",
+      "privateSharingSoon": "Private sharing — coming soon: only people you invite by email.",
+      "public": "Public",
+      "qrDownloadFailed": "Could not create the QR image. Try again.",
+      "remove": "Remove from list",
+      "removeFailed": "Couldn't remove the item",
+      "restore": "Restore",
+      "restoreFailed": "Couldn't restore this list. Try again.",
+      "restoreNeedsUrl": "That URL is used by another list. Pick a new one:",
+      "restoreWrongCategory": "This list belongs to another category.",
+      "retry": "Try again",
+      "saveDetails": "Save details",
+      "saveUrl": "Save URL",
+      "saved": "Saved",
+      "shareDraft": "Publish this list to share it. Only you can see drafts.",
+      "shareTitle": "Share this list",
+      "shareVia": "Share…",
+      "slugKeepsWorking": "Old links and printed QR codes keep working.",
+      "tabManage": "Manage",
+      "tabRecs": "Recommendations",
+      "tabShare": "Share",
+      "typeToConfirm": "Type \"{{name}}\" to confirm",
+      "urlSaved": "URL updated"
+    },
+    "wp1": {
+      "back": {
+        "to": "Back to {{name}}",
+        "list": "Back to list",
+        "categories": {
+          "places": "Places",
+          "movies": "Movies & Shows",
+          "books": "Books",
+          "games": "Games",
+          "apps": "Apps & Tools",
+          "products": "Products",
+          "people": "People",
+          "guides": "Guides"
+        }
+      },
+      "loader": {
+        "boot": "Getting your recommendations ready…"
       }
     }
   },

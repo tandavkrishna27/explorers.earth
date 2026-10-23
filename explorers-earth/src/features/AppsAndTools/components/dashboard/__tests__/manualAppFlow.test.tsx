@@ -6,6 +6,7 @@ import AddAppPage from '../AddAppPage';
 import AppListView from '../AppListView';
 import { AppsClient } from '../../../api/appsClient';
 import useAuthStore from '../../../../../store/store';
+import { reorderListItems } from '../../../../../lib/reorderListItems';
 
 // Replaces scrape-flow.integration.test.tsx. That suite drove the paste-a-URL step
 // against /api/apps/scrape-url, a path the server no longer has and a containment test
@@ -15,7 +16,8 @@ const fixture = vi.hoisted(() => ({ content: { view: { lists: [] as unknown[] },
 vi.mock('../../../hooks/useAppsOwner', () => ({ useAppsOwner: () => ({ content: fixture.content, data: { appLists: fixture.content.view.lists }, loading: fixture.loading, error: fixture.error, refetch: fixture.refetch }), invalidateApps: vi.fn() }));
 vi.mock('../../../api/appsClient', () => ({ AppsClient: { observeCollection: vi.fn(), prepareManualIntent: vi.fn(), createManual: vi.fn(), upload: vi.fn(), updateRecommendation: vi.fn(), observeRecommendation: vi.fn(), updateCollection: vi.fn(), archiveCollection: vi.fn(), archiveRecommendation: vi.fn(), createCollection: vi.fn(), readCompleteOwner: vi.fn(), setTopPicks: vi.fn(), prepareMembershipIntent: vi.fn(), saveMembership: vi.fn() } }));
 vi.mock('../../../../Favorites/components/TiptapEditor', () => ({ default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => <textarea aria-label="Note" value={value} onChange={event => onChange(event.target.value)} /> }));
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), loading: vi.fn() } }));
+vi.mock('../../../../../lib/reorderListItems', () => ({ reorderListItems: vi.fn() }));
+vi.mock('sonner',() => ({ toast: { success: vi.fn(), error: vi.fn(), loading: vi.fn() } }));
 
 function mount() { return render(<MockedProvider><MemoryRouter initialEntries={['/apps/list-1/add']}><Routes><Route path="/apps/:listId/add" element={<AddAppPage />} /><Route path="/recommendations/apps/:listId" element={<p>Saved list</p>} /></Routes></MemoryRouter></MockedProvider>); }
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(r => { resolve = r; }); return { promise, resolve }; }
@@ -124,30 +126,33 @@ describe('native manual Apps', () => {
   expect(AppsClient.createManual).not.toHaveBeenCalled();
  });
 
- it('offers Reorder apps for a list of two or more, and not for a list of one', async () => {
+ // The separate "Reorder apps" panel (ListItemOrder) is gone (LP-05): every row carries its own
+ // grip, which is the drag handle and the keyboard path (Space to pick up, arrows, Enter to drop).
+ it('every app row has a reorder grip, and a keyboard move saves the new order', async () => {
+  const saved = vi.mocked(reorderListItems).mockResolvedValue({} as never);
   const app = (id: string, title: string) => ({ documentId: id, title, app_url: `https://example.com/${id}`, user_rating: null, user_recommendation_note: '', logo_url: null, developer: null, platforms: null, price_tier: null, download_url: null, description: null, screenshots: null, is_pinned: false });
-  const show = (apps: unknown[]) => { fixture.content.view.lists = [{ documentId: 'list-1', List_Name: 'List', slug: 'list', Visibility: false, recommended_apps: apps, account: { documentId: 'a1', username: 'owner' } }]; fixture.content = { ...fixture.content }; };
-  const view = <MockedProvider><MemoryRouter initialEntries={['/recommendations/apps/list-1']}><Routes><Route path="/recommendations/apps/:listId" element={<AppListView />} /></Routes></MemoryRouter></MockedProvider>;
-  show([app('a', 'Alpha')]); const first = render(view);
-  expect(screen.queryByRole('button', { name: 'Reorder apps' })).toBeNull(); first.unmount();
-  show([app('a', 'Alpha'), app('b', 'Beta')]); render(view);
-  fireEvent.click(screen.getByRole('button', { name: 'Reorder apps' }));
-  expect(screen.getByRole('list', { name: 'App order' })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Move App 1 down' })).toBeEnabled();
+  fixture.content.view.lists = [{ documentId: 'list-1', List_Name: 'List', slug: 'list', Visibility: false, recommended_apps: [app('a', 'Alpha'), app('b', 'Beta')], account: { documentId: 'a1', username: 'owner' } }]; fixture.content = { ...fixture.content };
+  render(<MockedProvider><MemoryRouter initialEntries={['/recommendations/apps/list-1']}><Routes><Route path="/recommendations/apps/:listId" element={<AppListView />} /></Routes></MemoryRouter></MockedProvider>);
+  expect(screen.queryByRole('button', { name: 'Reorder apps' })).toBeNull();
+  const grip = screen.getByRole('button', { name: 'Drag Alpha to reorder' }); expect(screen.getByRole('button', { name: 'Drag Beta to reorder' })).toBeEnabled();
+  fireEvent.keyDown(grip, { key: ' ' }); fireEvent.keyDown(grip, { key: 'ArrowDown' }); fireEvent.keyDown(screen.getByRole('button', { name: 'Drag Alpha to reorder' }), { key: 'Enter' });
+  await waitFor(() => expect(saved).toHaveBeenCalledWith('apps', 'list-1', ['b', 'a']));
  });
 
- it('offers explicit recommendation publication without inheriting the list publication', async () => {
+ // LP-04: per-item publication is gone from the list page. The list's own publish pill changes
+ // only the collection; it never writes a recommendation's publication state.
+ it('list publication goes through the list pill and never writes a recommendation', async () => {
   const app = { documentId: 'app-a', title: 'Manual app', app_url: 'https://example.com/a', user_rating: null, user_recommendation_note: '', logo_url: null, developer: null, platforms: null, price_tier: null, download_url: null, description: null, screenshots: null, is_pinned: false, app_list: { documentId: 'list-1', List_Name: 'Published list' } };
   fixture.content.view.lists = [{ documentId: 'list-1', List_Name: 'Published list', slug: 'published', Visibility: true, recommended_apps: [app], account: { documentId: 'a1', username: 'owner' } }];
-  const observed = { detail: { id: 'app-a', revision: 1, publicationState: 'draft', category: 'apps' } };
-  fixture.content.details.set('app-a', observed);
-  vi.mocked(AppsClient.observeRecommendation).mockResolvedValue(observed as never);
-  vi.mocked(AppsClient.updateRecommendation).mockResolvedValue({} as never);
+  const observed = { detail: { id: 'list-1', revision: 1, category: 'apps' } };
+  vi.mocked(AppsClient.observeCollection).mockResolvedValue(observed as never);
+  vi.mocked(AppsClient.updateCollection).mockResolvedValue({} as never);
   render(<MockedProvider><MemoryRouter initialEntries={['/recommendations/apps/list-1']}><Routes><Route path="/recommendations/apps/:listId" element={<AppListView />} /></Routes></MemoryRouter></MockedProvider>);
-  expect(screen.getByText('Recommendation is Draft')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Publish Manual app' }));
-  await waitFor(() => expect(AppsClient.updateRecommendation).toHaveBeenCalledWith(observed, { publicationState: 'published' }, expect.any(String), expect.any(AbortSignal)));
-  expect(AppsClient.updateCollection).not.toHaveBeenCalled();
+  expect(screen.queryByRole('button', { name: 'Publish Manual app' })).toBeNull();
+  expect(screen.queryByText(/Recommendation is/)).toBeNull();
+  fireEvent.click(document.querySelector('[aria-haspopup="menu"]')!); fireEvent.click(screen.getByRole('menuitemradio', { name: /draft/i }));
+  await waitFor(() => expect(AppsClient.updateCollection).toHaveBeenCalledWith(observed, { visibility: 'private', publicationState: 'draft' }, expect.any(String), expect.any(AbortSignal)));
+  expect(AppsClient.updateRecommendation).not.toHaveBeenCalled();
  });
 });
 

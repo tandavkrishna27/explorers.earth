@@ -5,13 +5,9 @@ import { describe, expect, it } from "vitest";
 import i18n from "../../i18n";
 import QrCardTagline from "../QrCardTagline";
 
+// The six non-Places list views share one list page; its Share tab owns the QR card.
 const NON_PLACES_LIST_VIEWS = [
-  "features/Movies/components/dashboard/MovieListView.tsx",
-  "features/Books/components/dashboard/BookListView.tsx",
-  "features/Games/components/dashboard/GameListView.tsx",
-  "features/AppsAndTools/components/dashboard/AppListView.tsx",
-  "features/Products/components/dashboard/ProductListView.tsx",
-  "features/People/components/dashboard/PersonListView.tsx",
+  "features/shared/list/ShareTab.tsx",
 ];
 
 const CATEGORIES = ["apps", "products", "people", "movies", "books", "games", "places"] as const;

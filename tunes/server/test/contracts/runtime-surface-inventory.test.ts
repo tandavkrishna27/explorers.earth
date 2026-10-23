@@ -38,7 +38,8 @@ describe("runtime route/event/job inventory", () => {
     // (GET /api/explorers/v1/share-page, explorersSharePageRoutes.ts).
     // 197 = 195 + Home's content summary GET and its fail-closed method boundary (HUB-X02).
     // 198 = 197 + the IGDB game cover import (POST /api/explorers/v1/media/game-cover, GMS-X01).
-    expect(inventory.routes).toHaveLength(198);
+    // 202 = 198 + restore and permanent delete of a list, each with its fail-closed method boundary (WP3B, LP-08).
+    expect(inventory.routes).toHaveLength(202);
     expect(inventory.events).toHaveLength(15);
     // 38 = 37 + the Google profile photo fetch deadline (googleAvatarFetch.ts).
     // 39 = 38 + the place photo fetch deadline (tunes/server/services/placePhotoFetch.ts).
@@ -136,6 +137,8 @@ describe("runtime route/event/job inventory", () => {
       ['POST','/api/explorers/v1/entities/resolve'], ['POST','/api/explorers/v1/collections'],
       ['PATCH','/api/explorers/v1/collections/:id'], ['PATCH','/api/explorers/v1/collections/:id/order'],
       ['DELETE','/api/explorers/v1/collections/:id'], ['POST','/api/explorers/v1/recommendations'],
+      // WP3B (LP-08). Restore an archived list; delete a list permanently.
+      ['POST','/api/explorers/v1/collections/:id/restore'], ['POST','/api/explorers/v1/collections/:id/purge'],
       ['PATCH','/api/explorers/v1/recommendations/:id'], ['DELETE','/api/explorers/v1/recommendations/:id'],
       ['POST','/api/explorers/v1/recommendations/:id/entity'], ['POST','/api/explorers/v1/recommendations/:id/movie-media/import'], ['POST','/api/explorers/v1/recommendations/:id/book-covers'],
       ['GET','/api/explorers/v1/collections'], ['GET','/api/explorers/v1/collections/:id'],
@@ -164,6 +167,7 @@ describe("runtime route/event/job inventory", () => {
       '/api/explorers/v1/collections/:id/memberships/:recommendationId',
       '/api/explorers/v1/collections/:id/location',
       '/api/explorers/v1/collections/:id','/api/explorers/v1/collections/:id/order',
+      '/api/explorers/v1/collections/:id/restore','/api/explorers/v1/collections/:id/purge',
       '/api/explorers/v1/collections/:id/editable','/api/explorers/v1/recommendations/:id/editable',
       '/api/explorers/v1/recommendations','/api/explorers/v1/recommendations/:id','/api/explorers/v1/recommendations/search',
       '/api/explorers/v1/categories/:category/content-snapshot','/api/explorers/v1/categories/:category/content-snapshot/validate','/api/explorers/v1/categories/:category/memberships',
