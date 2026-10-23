@@ -1,6 +1,8 @@
 import { GuideEditingProvider } from "../context/GuideEditingProvider";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { useOriginBack } from "../../../lib/navigation/useOriginBack";
 import { motion, AnimatePresence } from "framer-motion";
 import { EarthLoader } from "../../../components/EarthLoader";
 import SEO from "../../../components/SEO";
@@ -37,6 +39,11 @@ import { guideDescriptionText } from "../../../utils/guideDescriptionText";
 const GuideDetailsPage = () => {
   const { guideId } = useParams<{ guideId: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const back = useOriginBack({
+    to: "/recommendations/guides",
+    label: t("dashboard.wp1.back.to", { name: t("dashboard.wp1.back.categories.guides") }),
+  });
   const location = useLocation();
   const [deletingSection, setDeletingSection] = useState<string | null>(null);
   const [sectionToDelete, setSectionToDelete] = useState<{ id: string; title: string } | null>(null);
@@ -276,7 +283,7 @@ const GuideDetailsPage = () => {
         </p>
         <Button
           variant="primary"
-          onClickHandler={() => navigate("/guides")}
+          onClickHandler={() => back.goBack()}
           btnText="Back to Guides"
         />
       </div>
@@ -468,7 +475,7 @@ const GuideDetailsPage = () => {
           <div className="mb-6 flex justify-between items-center gap-4">
             {/* Back Button - Top Left */}
             <button
-              onClick={() => navigate("/guides")}
+              onClick={() => back.goBack()}
               className="flex items-center gap-2 text-dashboard-light hover:text-dashboard-accent transition-colors duration-200 group"
               aria-label="Back to Guides"
             >
