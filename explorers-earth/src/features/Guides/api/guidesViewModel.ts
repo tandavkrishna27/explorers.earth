@@ -1,6 +1,9 @@
-import {GUIDE_BUDGET_TIER_LABELS, GUIDE_SECTION_BLOCK_VERSION, GUIDE_TYPE_LABELS} from '../../../../../tunes/shared/explorersGuideContract';
+import {
+ GUIDE_BUDGET_TIER_LABELS, GUIDE_SECTION_BLOCK_VERSION, GUIDE_TYPE_LABELS,
+ budgetEntriesFromLegacy, legacyBudgetFromEntries, legacyTimelineFromItems, mergeLegacyTimeline,
+} from '../../../../../tunes/shared/explorersGuideContract';
 import type {
- GuideAggregateDto, GuideBudgetPlace, GuideDayPlace, GuideSectionBlocks, GuideSectionDto, GuideTransportSegment,
+ GuideAggregateDto, GuideBudgetPlace, GuideDayItem, GuideDayPlace, GuideSectionBlocks, GuideSectionDto, GuideTransportSegment,
 } from '../../../../../tunes/shared/explorersGuideContract';
 import type {OwnerCollectionDto} from '../../../../../tunes/shared/explorersOwnerContentContract';
 import type {
@@ -126,23 +129,21 @@ export function toTransportSegment(segment: GuideTransportSegment): TransportSeg
  };
 }
 
-export const toTimeline = (blocks: GuideSectionBlocks): TimelineData => ({
- morning: blocks.timeline.morning.map(toDayPlace),
- afternoon: blocks.timeline.afternoon.map(toDayPlace),
- evening: blocks.timeline.evening.map(toDayPlace),
-});
+export const toTimeline = (blocks: GuideSectionBlocks): TimelineData => {
+ const slots = legacyTimelineFromItems(blocks.items);
+ return {morning: slots.morning.map(toDayPlace), afternoon: slots.afternoon.map(toDayPlace), evening: slots.evening.map(toDayPlace)};
+};
 export const toTransport = (blocks: GuideSectionBlocks): TransportData => ({segments: blocks.transport.segments.map(toTransportSegment)});
 export const toStay = (blocks: GuideSectionBlocks): StayData => ({accommodations: blocks.stay.accommodations.map(toDayPlace)});
 export const toActivities = (blocks: GuideSectionBlocks): ActivityData => ({activities: blocks.activities.activities.map(toDayPlace)});
-export const toBudget = (blocks: GuideSectionBlocks): BudgetData => ({
- morning: blocks.budget.morning.map(toBudgetPlace),
- afternoon: blocks.budget.afternoon.map(toBudgetPlace),
- evening: blocks.budget.evening.map(toBudgetPlace),
-});
+export const toBudget = (blocks: GuideSectionBlocks): BudgetData => {
+ const slots = legacyBudgetFromEntries(blocks.budget.entries, blocks.items);
+ return {morning: slots.morning.map(toBudgetPlace), afternoon: slots.afternoon.map(toBudgetPlace), evening: slots.evening.map(toBudgetPlace)};
+};
 
 /** The section shape the details page, the section form and the six editors read. */
 export function toGuideSection(section: GuideSectionDto): GuideSection & {
- Timeline: TimelineData; Transport: TransportData; Stay: StayData; Budget: BudgetData;
+ Timeline: TimelineData; Transport: TransportData; Stay: StayData; Budget: BudgetData; Items: GuideDayItem[];
 } {
  return {
   documentId: section.id,
@@ -152,6 +153,7 @@ export function toGuideSection(section: GuideSectionDto): GuideSection & {
   Sequence: section.displayOrder + 1,
   ...(section.description === null ? {} : {Description: section.description}),
   Timeline: toTimeline(section.blocks),
+  Items: section.blocks.items,
   Transport: toTransport(section.blocks),
   Stay: toStay(section.blocks),
   Recommendation_Activity: toActivities(section.blocks),
@@ -306,24 +308,21 @@ export function toCanonicalSectionBlocks(input: {
  Packing_List?: {localId: string; label: string; done: boolean}[] | null;
  Pre_Tasks?: {localId: string; label: string; done: boolean}[] | null;
  Section_tags?: string[] | null;
+ Items?: GuideDayItem[] | null;
 }): GuideSectionBlocks {
  const places = (value: DayPlace[] | undefined | null) => (value ?? []).map(toCanonicalDayPlace);
  const budget = (value: BudgetPlace[] | undefined | null) => (value ?? []).map(toCanonicalBudgetPlace);
  return {
   version: GUIDE_SECTION_BLOCK_VERSION,
-  timeline: {
-   morning: places(input.Timeline?.morning),
-   afternoon: places(input.Timeline?.afternoon),
-   evening: places(input.Timeline?.evening),
-  },
+  items: mergeLegacyTimeline(input.Items ?? [], {
+   morning: places(input.Timeline?.morning), afternoon: places(input.Timeline?.afternoon), evening: places(input.Timeline?.evening),
+  }),
   transport: {segments: (input.Transport?.segments ?? []).map(toCanonicalTransportSegment)},
   stay: {accommodations: places(input.Stay?.accommodations)},
   activities: {activities: places(input.Recommendation_Activity?.activities)},
-  budget: {
-   morning: budget(input.Budget?.morning),
-   afternoon: budget(input.Budget?.afternoon),
-   evening: budget(input.Budget?.evening),
-  },
+  budget: {entries: budgetEntriesFromLegacy({
+   morning: budget(input.Budget?.morning), afternoon: budget(input.Budget?.afternoon), evening: budget(input.Budget?.evening),
+  })},
   mapDetails: input.Map_Details ?? null,
   packingList: {items: input.Packing_List ?? []},
   preTasks: {items: input.Pre_Tasks ?? []},

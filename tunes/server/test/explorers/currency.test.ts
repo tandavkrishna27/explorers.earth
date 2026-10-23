@@ -223,8 +223,8 @@ describe("guide money", () => {
     revision: 1, title: "Day 1", description: null,
     blocks: {
       ...guideEmptySectionBlocks,
-      timeline: { morning: [tripPlace(budgetCurrency)], afternoon: [], evening: [] },
-      budget: { morning: [budgetPlace("5", budgetCurrency)], afternoon: [], evening: [] },
+      items: [{ kind: "place" as const, localId: "m1", timeLabel: "morning" as const, place: tripPlace(budgetCurrency) }],
+      budget: { entries: [budgetPlace("5", budgetCurrency)] },
     },
   });
   it("lets a stored guide with an unlisted code be read, but a new write must name a real currency", () => {

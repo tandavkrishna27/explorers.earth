@@ -95,6 +95,7 @@ export function GuideEditingProvider({observation, list, reload, children}: {
       Packing_List: (save.Packing_List ?? mapped.Packing_List) as never,
       Pre_Tasks: (save.Pre_Tasks ?? mapped.Pre_Tasks) as never,
       Section_tags: (save.Section_tags ?? mapped.Section_tags) as never,
+      Items: mapped.Items,
      }),
     });
     reload();
