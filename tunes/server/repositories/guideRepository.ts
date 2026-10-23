@@ -2,7 +2,7 @@ import type {Pool,PoolClient} from 'pg';
 import {
  GUIDE_SECTION_BLOCK_VERSION,GUIDE_SECTION_LIMIT,GUIDE_SECTION_PAGE_LIMIT,
  guideCollectionDetailsSchema,guideSectionBlocksSchema,guideSectionDtoSchema,
- type GuideCollectionDetails,type GuideSectionBlocks,type GuideSectionDto,
+ type GuideCollectionDetails,type GuideDayPlace,type GuideSectionBlocks,type GuideSectionDto,
 } from '../../shared/explorersGuideContract';
 import {RecommendationFailure} from './explorersRecommendationRepository';
 
@@ -52,7 +52,7 @@ function mapWriteFailure(error:unknown):never{
 export const amountText=(value:string):string=>value.includes('.')?value.replace(/(\.[0-9]{2})0$/,'$1'):value;
 
 const DETAIL_COLUMNS=`guide_type,multi_city,number_of_days,estimated_budget::text AS estimated_budget,budget_currency,budget_type,budget_tier,
- best_time_to_visit,categories,tags,tips_notes,place_snapshot,location_entity_id`;
+ best_time_to_visit,categories,tags,tips_notes,place_snapshot,location_entity_id,to_char(start_date,'YYYY-MM-DD') AS start_date`;
 
 /**
  * The guide's own fields, or null when the collection has none yet.
@@ -65,7 +65,7 @@ export async function readGuideDetails(db:Pick<Pool,'query'>,collectionId:string
  if(!row)return null;
  const parsed=guideCollectionDetailsSchema.safeParse({
   guideType:row.guide_type,multiCity:row.multi_city,numberOfDays:row.number_of_days,
-  estimatedBudget:row.estimated_budget===null?null:amountText(row.estimated_budget),budgetCurrency:row.budget_currency,budgetType:row.budget_type,budgetTier:row.budget_tier,
+  estimatedBudget:row.estimated_budget===null?null:amountText(row.estimated_budget),budgetCurrency:row.budget_currency,budgetType:row.budget_type,budgetTier:row.budget_tier,startDate:row.start_date,
   bestTimeToVisit:row.best_time_to_visit,categories:row.categories,tags:row.tags,tipsNotes:row.tips_notes,
   place:row.place_snapshot,locationEntityId:row.location_entity_id,
  });
@@ -136,10 +136,14 @@ async function lockGuideAtRevision(db:PoolClient,collectionId:string,accountId:s
  * correctness that matters is that the end state equals the JSON, which 0050's deferred
  * trigger checks at COMMIT either way.
  */
+/** Every place snapshot in a v2 block that can carry photos. List refs and notes carry none. */
+export function sectionPlaces(blocks:GuideSectionBlocks):GuideDayPlace[]{
+ return [...blocks.items.flatMap(item=>item.kind==='place'?[item.place]:[]),...blocks.activities.activities,...blocks.stay.accommodations];
+}
+
 async function syncSectionPhotos(db:PoolClient,sectionId:string,accountId:string,blocks:GuideSectionBlocks):Promise<void>{
  const ids=new Set<string>();
- for(const place of [...blocks.timeline.morning,...blocks.timeline.afternoon,...blocks.timeline.evening,
-  ...blocks.activities.activities,...blocks.stay.accommodations])
+ for(const place of sectionPlaces(blocks))
   for(const photo of place.photos)ids.add(photo.mediaId);
  await db.query('DELETE FROM guide_section_photos WHERE section_id=$1 AND account_id=$2',[sectionId,accountId]);
  const unique=Array.from(ids);
@@ -159,17 +163,17 @@ export async function writeGuideDetails(db:PoolClient,collectionId:string,accoun
  await lockGuideAtRevision(db,collectionId,accountId,revision);
  try{
   await db.query(`INSERT INTO guide_collection_details(collection_id,account_id,guide_type,multi_city,number_of_days,
-    estimated_budget,budget_currency,budget_type,best_time_to_visit,categories,tags,tips_notes,place_snapshot,location_entity_id,budget_tier)
-   VALUES($1,$2,$3,$4,$5,$6::numeric,$7,$8,$9::jsonb,$10::jsonb,$11::jsonb,$12::jsonb,$13::jsonb,$14,$15)
+    estimated_budget,budget_currency,budget_type,best_time_to_visit,categories,tags,tips_notes,place_snapshot,location_entity_id,budget_tier,start_date)
+   VALUES($1,$2,$3,$4,$5,$6::numeric,$7,$8,$9::jsonb,$10::jsonb,$11::jsonb,$12::jsonb,$13::jsonb,$14,$15,$16::date)
    ON CONFLICT(collection_id) DO UPDATE SET guide_type=excluded.guide_type,multi_city=excluded.multi_city,
     number_of_days=excluded.number_of_days,estimated_budget=excluded.estimated_budget,budget_currency=excluded.budget_currency,
     budget_type=excluded.budget_type,best_time_to_visit=excluded.best_time_to_visit,categories=excluded.categories,
     tags=excluded.tags,tips_notes=excluded.tips_notes,place_snapshot=excluded.place_snapshot,
-    location_entity_id=excluded.location_entity_id,budget_tier=excluded.budget_tier`,
+    location_entity_id=excluded.location_entity_id,budget_tier=excluded.budget_tier,start_date=excluded.start_date`,
    [collectionId,accountId,details.guideType,details.multiCity,details.numberOfDays,details.estimatedBudget,
     details.budgetCurrency,details.budgetType,JSON.stringify(details.bestTimeToVisit),JSON.stringify(details.categories),
     JSON.stringify(details.tags),details.tipsNotes===null?null:JSON.stringify(details.tipsNotes),
-    JSON.stringify(details.place),details.locationEntityId,details.budgetTier]);
+    JSON.stringify(details.place),details.locationEntityId,details.budgetTier,details.startDate]);
  }catch(error){mapWriteFailure(error);}
 }
 

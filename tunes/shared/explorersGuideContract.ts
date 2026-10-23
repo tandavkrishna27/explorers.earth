@@ -54,7 +54,7 @@ const moneyProblem=(amount:string|null,code:string|null):string|null=>
 // ISO 4217 is three uppercase letters; the provider id is Google's opaque place id.
 const providerPlaceId=z.string().trim().min(1).max(512).regex(/^[A-Za-z0-9_\-]+$/,'Invalid place id');
 
-export const GUIDE_SECTION_BLOCK_VERSION='guide-section-blocks/v1' as const;
+export const GUIDE_SECTION_BLOCK_VERSION='guide-section-blocks/v2' as const;
 export const guideSectionBlockVersionSchema=z.literal(GUIDE_SECTION_BLOCK_VERSION);
 
 export const travelModeSchema=z.enum(['walk','drive','bike','public_transit','taxi','auto','ferry','flight']);
@@ -137,6 +137,98 @@ export const guideBudgetPlaceSchema=z.object({
 const budgetSegment=z.array(guideBudgetPlaceSchema).max(40);
 export const guideBudgetSchema=z.object({morning:budgetSegment,afternoon:budgetSegment,evening:budgetSegment}).strict();
 
+// GD-23. A day is ONE ordered list. Position is the array index; the only time data is an
+// optional label on the item. Labels are lowercase canonical values; the UI renders them.
+export const GUIDE_TIME_LABELS=['morning','afternoon','evening','night'] as const;
+export const GUIDE_DAY_ITEM_LIMIT=120;
+const clockTime=/^([01][0-9]|2[0-3]):[0-5][0-9]$/;
+export const guideTimeLabelSchema=z.union([z.enum(GUIDE_TIME_LABELS),z.string().regex(clockTime,'Invalid time')]);
+export type GuideTimeLabel=z.infer<typeof guideTimeLabelSchema>;
+
+/** What a person typed ('9:30', 'Morning', '9.30pm') to a canonical label, or null. */
+export function normalizeTimeLabel(raw:string):GuideTimeLabel|null{
+ const value=raw.trim().toLowerCase();
+ if((GUIDE_TIME_LABELS as readonly string[]).includes(value))return value as GuideTimeLabel;
+ const match=/^([0-9]{1,2})(?:[:.]([0-5][0-9]))?\s*(am|pm)?$/.exec(value);
+ if(!match)return null;
+ let hour=Number(match[1]);const minute=match[2]??'00',meridiem=match[3];
+ if(meridiem){if(hour<1||hour>12)return null;hour=(hour%12)+(meridiem==='pm'?12:0);}
+ else if(match[2]===undefined)return null;
+ if(hour>23)return null;
+ return `${String(hour).padStart(2,'0')}:${minute}`;
+}
+
+const itemLocalId=filled(100);
+export const guideItemCategorySchema=z.enum(['places','movies','books','games','apps','products','people']);
+// A list item stays in its list (GD-08). The ref says which; the snapshot is what the day
+// shows if the source is later renamed or removed, and removing the day item never touches it.
+export const guideListItemRefSchema=z.object({
+ recommendationId:z.string().uuid(),collectionId:z.string().uuid().nullable(),category:guideItemCategorySchema,
+}).strict();
+export const guideListItemSnapshotSchema=z.object({
+ title:filled(500),collectionTitle:text(200).nullable(),
+ geometry:z.object({location:z.object({lat:coordinate(90),lng:coordinate(180)}).strict()}).strict().nullable(),
+}).strict();
+const label=guideTimeLabelSchema.nullable();
+export const guideDayItemSchema=z.discriminatedUnion('kind',[
+ z.object({kind:z.literal('place'),localId:itemLocalId,timeLabel:label,place:guideDayPlaceSchema}).strict(),
+ z.object({kind:z.literal('listItem'),localId:itemLocalId,timeLabel:label,ref:guideListItemRefSchema,snapshot:guideListItemSnapshotSchema}).strict(),
+ z.object({kind:z.literal('note'),localId:itemLocalId,timeLabel:label,text:filled(2000)}).strict(),
+]).superRefine((v,ctx)=>{
+ if(v.kind==='place'&&v.place.localId!==v.localId)ctx.addIssue({code:'custom',message:'A place item and its place share one localId',path:['place','localId']});
+});
+export type GuideDayItem=z.infer<typeof guideDayItemSchema>;
+export const guideBudgetEntriesSchema=z.object({entries:z.array(guideBudgetPlaceSchema).max(GUIDE_DAY_ITEM_LIMIT)}).strict();
+
+export type GuideLegacySlot='morning'|'afternoon'|'evening';
+const LEGACY_SLOTS:readonly GuideLegacySlot[]=['morning','afternoon','evening'];
+/** Unlabelled and morning read as morning; night as evening; a clock time by its hour. */
+export function legacySlotOf(timeLabel:GuideTimeLabel|null):GuideLegacySlot{
+ if(timeLabel===null||timeLabel==='morning')return 'morning';
+ if(timeLabel==='afternoon')return 'afternoon';
+ if(timeLabel==='evening'||timeLabel==='night')return 'evening';
+ const hour=Number(timeLabel.slice(0,2));
+ return hour<12?'morning':hour<17?'afternoon':'evening';
+}
+/** The v1 slot view, for the public guide views and the pre-WP9 modals. Notes and list refs have no place and are skipped. */
+export function legacyTimelineFromItems(items:readonly GuideDayItem[]):Record<GuideLegacySlot,GuideDayPlace[]>{
+ const out:Record<GuideLegacySlot,GuideDayPlace[]>={morning:[],afternoon:[],evening:[]};
+ for(const item of items)if(item.kind==='place')out[legacySlotOf(item.timeLabel)].push(item.place);
+ return out;
+}
+export function legacyBudgetFromEntries(entries:readonly GuideBudgetPlace[],items:readonly GuideDayItem[]):Record<GuideLegacySlot,GuideBudgetPlace[]>{
+ const slot=new Map(items.map(item=>[item.localId,legacySlotOf(item.timeLabel)]));
+ const out:Record<GuideLegacySlot,GuideBudgetPlace[]>={morning:[],afternoon:[],evening:[]};
+ for(const entry of entries)out[slot.get(entry.localId)??'morning'].push(entry);
+ return out;
+}
+/**
+ * A legacy editor saved a slot timeline. Rebuild items WITHOUT losing what slots cannot say:
+ * notes and list refs keep their place, surviving places keep an exact label when they stayed
+ * in the same slot, the places fill the old place positions in the timeline's order, and new
+ * places are appended labelled with their slot.
+ */
+export function mergeLegacyTimeline(previous:readonly GuideDayItem[],timeline:Record<GuideLegacySlot,readonly GuideDayPlace[]>):GuideDayItem[]{
+ const incoming=LEGACY_SLOTS.flatMap(slot=>timeline[slot].map(place=>({slot,place})));
+ const previousPlaces=new Map(previous.filter(i=>i.kind==='place').map(i=>[i.localId,i]));
+ const surviving=incoming.filter(e=>previousPlaces.has(e.place.localId));
+ const fresh=incoming.filter(e=>!previousPlaces.has(e.place.localId));
+ const kept=new Set(surviving.map(e=>e.place.localId));
+ const out:GuideDayItem[]=[];let cursor=0;
+ for(const item of previous){
+  if(item.kind!=='place'){out.push(item);continue;}
+  if(!kept.has(item.localId))continue;
+  const next=surviving[cursor++];const before=previousPlaces.get(next.place.localId)!;
+  const timeLabel=legacySlotOf(before.timeLabel)===next.slot?before.timeLabel:next.slot;
+  out.push({kind:'place',localId:next.place.localId,timeLabel,place:next.place});
+ }
+ for(const e of fresh)out.push({kind:'place',localId:e.place.localId,timeLabel:e.slot,place:e.place});
+ return out;
+}
+export function budgetEntriesFromLegacy(budget:Record<GuideLegacySlot,readonly GuideBudgetPlace[]>):GuideBudgetPlace[]{
+ return LEGACY_SLOTS.flatMap(slot=>[...budget[slot]]);
+}
+
 export const guideMapDetailsSchema=z.object({
  center:z.object({lat:coordinate(90),lng:coordinate(180)}).strict().nullable(),
  zoom:z.number().int().min(0).max(24).nullable(),
@@ -156,11 +248,11 @@ const tags=z.array(filled(100)).max(50);
 // never has to distinguish "no places" from "this version had no timeline".
 export const guideSectionBlocksSchema=z.object({
  version:guideSectionBlockVersionSchema,
- timeline:guideTimelineSchema,
+ items:z.array(guideDayItemSchema).max(GUIDE_DAY_ITEM_LIMIT),
  transport:guideTransportSchema,
  stay:guideStaySchema,
  activities:guideActivitiesSchema,
- budget:guideBudgetSchema,
+ budget:guideBudgetEntriesSchema,
  mapDetails:guideMapDetailsSchema.nullable(),
  packingList:guideChecklistSchema,
  preTasks:guideChecklistSchema,
@@ -169,28 +261,21 @@ export const guideSectionBlocksSchema=z.object({
  // Transport must route between entries this section actually contains, or a reordered day
  // silently keeps a segment to a place that is no longer in it.
  .superRefine((v,ctx)=>{
-  const present=new Set([...v.timeline.morning,...v.timeline.afternoon,...v.timeline.evening,...v.activities.activities,...v.stay.accommodations].map(p=>p.localId));
-  const segments=v.transport.segments;
-  for(let index=0;index<segments.length;index+=1){
-   const s=segments[index];
+  const itemIds=v.items.map(i=>i.localId);
+  if(new Set(itemIds).size!==itemIds.length)ctx.addIssue({code:'custom',message:'Duplicate day item',path:['items']});
+  const present=new Set([...itemIds,...v.activities.activities.map(p=>p.localId),...v.stay.accommodations.map(p=>p.localId)]);
+  v.transport.segments.forEach((s,index)=>{
    if(!present.has(s.fromLocalId)||!present.has(s.toLocalId))
     ctx.addIssue({code:'custom',message:'Transport segment refers to an entry this section does not contain',path:['transport','segments',index]});
-  }
-  const priced=[...v.budget.morning,...v.budget.afternoon,...v.budget.evening];
-  for(let index=0;index<priced.length;index+=1)
-   if(!present.has(priced[index].localId))
-    ctx.addIssue({code:'custom',message:'Budget entry refers to an entry this section does not contain',path:['budget']});
-  if(new TextEncoder().encode(JSON.stringify(v)).length>262144)ctx.addIssue({code:'custom',message:'Section too large',path:['timeline']});
+  });
+  for(const entry of v.budget.entries)if(!present.has(entry.localId))
+   ctx.addIssue({code:'custom',message:'Budget entry refers to an entry this section does not contain',path:['budget']});
+  if(new TextEncoder().encode(JSON.stringify(v)).length>262144)ctx.addIssue({code:'custom',message:'Section too large',path:['items']});
  });
 
 export const guideEmptySectionBlocks:GuideSectionBlocks=Object.freeze({
- version:GUIDE_SECTION_BLOCK_VERSION,
- timeline:{morning:[],afternoon:[],evening:[]},
- transport:{segments:[]},
- stay:{accommodations:[]},
- activities:{activities:[]},
- budget:{morning:[],afternoon:[],evening:[]},
- mapDetails:null,packingList:{items:[]},preTasks:{items:[]},tags:[],
+ version:GUIDE_SECTION_BLOCK_VERSION,items:[],transport:{segments:[]},stay:{accommodations:[]},
+ activities:{activities:[]},budget:{entries:[]},mapDetails:null,packingList:{items:[]},preTasks:{items:[]},tags:[],
 }) as GuideSectionBlocks;
 
 // The guide's own place. Kept as a snapshot plus an optional canonical identity, for the
@@ -267,6 +352,9 @@ export const guideCollectionDetailsSchema=z.object({
  budgetType:guideBudgetTypeSchema.nullable(),
  // Optional in the wizard. Defaults to null so a writer that predates the tier still parses.
  budgetTier:guideBudgetTierSchema.nullable().default(null),
+ // GD-05. Day N's date is startDate + N-1, so adding a day extends the dates (GD-24) and
+ // moving a day keeps dates on positions (GD-28) with no per-day date to keep in sync.
+ startDate:z.string().regex(/^(20[0-9]{2}|2100)-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/,'Invalid date').nullable().default(null),
  bestTimeToVisit:z.array(filled(100)).max(24),
  categories:z.array(filled(100)).max(24),
  tags,
@@ -289,7 +377,7 @@ export const guideCollectionDetailsSchema=z.object({
 const revision=z.number().int().positive().safe();
 export const guideSectionDtoSchema=z.object({
  id:z.string().uuid(),collectionId:z.string().uuid(),
- title:filled(200),description:text(20000).nullable(),
+ title:text(200),description:text(20000).nullable(),
  displayOrder:z.number().int().nonnegative(),
  blocks:guideSectionBlocksSchema,
  archived:z.boolean(),
@@ -353,7 +441,7 @@ export const writeGuideDetailsSchema=at.extend({details:guideCollectionDetailsSc
 // assembling the whole block from the form is what stops a missing field in one modal from
 // becoming a null that erases what another modal wrote.
 const writeGuideSectionBase=at.extend({
- title:filled(200),description:text(20000).nullable(),blocks:guideSectionBlocksSchema,
+ title:text(200),description:text(20000).nullable(),blocks:guideSectionBlocksSchema,
 }).strict();
 // Every budgetCurrency in the section's blocks, wherever the block puts it: timeline entries
 // and the budget projection both carry one, and a new write must be able to name either.

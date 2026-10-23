@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 import {updateAccountRequestSchema} from '../../../shared/explorersContract';
-import {guideCollectionDetailsSchema, guideSectionBlocksSchema} from '../../../shared/explorersGuideContract';
+import {GUIDE_SECTION_BLOCK_VERSION, guideCollectionDetailsSchema, guideSectionBlocksSchema} from '../../../shared/explorersGuideContract';
 
 // Independent title oracle: do not construct request identity from helper exports.
 const CASES = [
@@ -26,6 +26,8 @@ const variants = [
 ] as const;
 const support = () => import('../../../scripts/guides-browser-support');
 const clone = <T>(value:T):T => structuredClone(value);
+/** The places among a v2 day's items, in day order (the seed's morning, afternoon, evening). */
+const dayPlaces = (blocks:any):any[] => blocks.items.filter((item:any)=>item.kind==='place').map((item:any)=>item.place);
 function defined<T>(value:T|undefined|null):T {
   expect(value).toBeDefined();expect(value).not.toBeNull();
   if(value===undefined||value===null)throw new Error('Required fixture value missing');
@@ -95,7 +97,7 @@ describe('private Guides fixture boundary: inventory, finite seed plans and pure
       const guide=defined(plan.guides.find((row:any)=>row.key===section.guideKey));
       const role=defined(plan.mediaRoles.find((row:any)=>row.key===binding.roleKey));
       expect(guide.owner).toBe(role.owner);
-      const entries=binding.block==='timeline.morning'?section.blocks.timeline.morning:
+      const entries=binding.block==='timeline.morning'?dayPlaces(section.blocks):
         binding.block==='stay.accommodations'?section.blocks.stay.accommodations:section.blocks.activities.activities;
       expect(entries[binding.entryIndex]).toBeDefined();
     }
@@ -121,8 +123,9 @@ describe('private Guides fixture boundary: inventory, finite seed plans and pure
     expect(JSON.stringify(details)).toMatch(/[^\u0000-\u007f]/);
     expect(details.estimatedBudget).toBe('1234.50'); expect(details.budgetCurrency).toBe('INR');
     const blocks=rich.sections[0].blocks;
-    for(const values of [blocks.timeline.morning,blocks.timeline.afternoon,blocks.timeline.evening,blocks.transport.segments,blocks.stay.accommodations,blocks.activities.activities,blocks.budget.morning,blocks.budget.afternoon,blocks.budget.evening,blocks.packingList.items,blocks.preTasks.items,blocks.tags]) expect(values.length).toBeGreaterThan(0);
-    expect(blocks.timeline.morning[0].geometry).toEqual({location:{lat:0,lng:0}});
+    for(const values of [blocks.items,blocks.transport.segments,blocks.stay.accommodations,blocks.activities.activities,blocks.budget.entries,blocks.packingList.items,blocks.preTasks.items,blocks.tags]) expect(values.length).toBeGreaterThan(0);
+    expect(blocks.items.map((item:any)=>item.timeLabel)).toEqual(['morning','afternoon','evening']);
+    expect(dayPlaces(blocks)[0].geometry).toEqual({location:{lat:0,lng:0}});
     const traversal=plans[4], ownerA=traversal.guides.filter((g:any)=>g.owner==='ownerA');
     const eligible=ownerA.filter((g:any)=>g.visibility==='public' && g.publicationState==='published' && !g.archived);
     expect(eligible).toHaveLength(53);
@@ -245,7 +248,7 @@ function syntheticGuidesManifest(plan:any, project:string=PROJECTS[0], generatio
   });
   if(plan.mediaRoles.some((r:any)=>r.key==='activity-import'))fixtureBytes['activity-import']=new Uint8Array(Buffer.from(KNOWN_GUIDES_BYTES['activity-import'].base64,'base64'));
   const attachments:any[]=[];
-  for(const binding of plan.photoBindings){const section=sections.find((s:any)=>s.key===binding.sectionKey),asset=media.find((m:any)=>m.key===binding.roleKey);const [block,field]=binding.block.split('.');section.blocks[block][field][binding.entryIndex].photos=[{mediaId:asset.id,fileName:`${binding.roleKey}.png`,width:8,height:8,aspectRatio:'1:1'}];attachments.push({slot:'section-photo',guideId:section.collectionId,sectionId:section.id,accountId:section.accountId,mediaId:asset.id});}
+  for(const binding of plan.photoBindings){const section=sections.find((s:any)=>s.key===binding.sectionKey),asset=media.find((m:any)=>m.key===binding.roleKey);const target=binding.block==='timeline.morning'?section.blocks.items.filter((i:any)=>i.kind==='place')[binding.entryIndex].place:section.blocks.stay.accommodations[binding.entryIndex];target.photos=[{mediaId:asset.id,fileName:`${binding.roleKey}.png`,width:8,height:8,aspectRatio:'1:1'}];attachments.push({slot:'section-photo',guideId:section.collectionId,sectionId:section.id,accountId:section.accountId,mediaId:asset.id});}
   for(const key of ['old-cover','independent-cover']){const asset=media.find((m:any)=>m.key===key);if(asset){const guide=guides.find((g:any)=>g.accountId===asset.accountId);attachments.push({slot:'cover',guideId:guide.id,accountId:guide.accountId,mediaId:asset.id});}}
   const own=guides.filter((g:any)=>g.accountId===bindings.ownerA.accountId&&g.visibility==='public'&&g.publicationState==='published'&&!g.archived);
   const traversal=plan.traversal?{guideCount:53,sectionCount:53,publicDetail:{limit:12,lengths:[12,12,12,12,5],offsets:[0,12,24,36,48],cursors:['o12','o24','o36','o48',null]},publicCategory:{limit:24,lengths:[24,24,5]},ownerSections:{limit:20,lengths:[20,20,13],requests:[{},{after:19},{after:39}],cursors:[19,39,null],wireCursors:['19','39',null]}}:null;
@@ -296,12 +299,12 @@ describe('private Guides run-bound initial manifest and known media bytes',()=>{
   });
   it('delegates complete blocks geometry money photo and byte ceilings to shared contracts',async()=>{
     const s:any=await support();expect(s.guidesManifestSchema).toBeDefined();const base=syntheticGuidesManifest(s.buildGuidesSeedPlan(CASES[6]));
-    expect(guideActivityPhotoSchema.safeParse(base.manifest.sections[0].blocks.timeline.morning[0].photos[0]).success).toBe(true);expect(GUIDE_SECTION_LIMIT).toBe(200);expect(base.manifest.sections[0].blocks.timeline.morning[0].geometry).toEqual({location:{lat:0,lng:0}});expect(base.manifest.guides[0].details.estimatedBudget).toBe('1234.50');expect(s.guidesManifestSchema.parse(base)).toEqual(base.manifest);
+    expect(guideActivityPhotoSchema.safeParse(base.manifest.sections[0].blocks.items[0].place.photos[0]).success).toBe(true);expect(GUIDE_SECTION_LIMIT).toBe(200);expect(base.manifest.sections[0].blocks.items[0].place.geometry).toEqual({location:{lat:0,lng:0}});expect(base.manifest.guides[0].details.estimatedBudget).toBe('1234.50');expect(s.guidesManifestSchema.parse(base)).toEqual(base.manifest);
     const normalized=clone(base);normalized.manifest.guides[0].details.tags[0]=`  ${base.manifest.guides[0].details.tags[0]}  `;normalized.manifest.sections[0].blocks.tags[0]=`  ${base.manifest.sections[0].blocks.tags[0]}  `;expect(guideCollectionDetailsSchema.parse(normalized.manifest.guides[0].details)).toEqual(base.manifest.guides[0].details);expect(guideSectionBlocksSchema.parse(normalized.manifest.sections[0].blocks)).toEqual(base.manifest.sections[0].blocks);const normalizedBefore=clone(normalized);expect(s.guidesManifestSchema.parse(normalized)).toEqual(base.manifest);expect(normalized).toEqual(normalizedBefore);
     const largeDetails=clone(base);largeDetails.manifest.guides[0].details.tipsNotes={text:'旅'.repeat(22000)};const detailRefusal=guideCollectionDetailsSchema.safeParse(largeDetails.manifest.guides[0].details);expect(detailRefusal.success,'shared details UTF-8 byte ceiling').toBe(false);if(!detailRefusal.success)expect(detailRefusal.error.issues.some(issue=>issue.path.join('.')==='tipsNotes')).toBe(true);const manifestDetailRefusal=s.guidesManifestSchema.safeParse(largeDetails);expect(manifestDetailRefusal.success,'manifest delegated details byte ceiling').toBe(false);if(!detailRefusal.success&&!manifestDetailRefusal.success)for(const issue of detailRefusal.error.issues.filter(issue=>issue.path.join('.')==='tipsNotes'))expect(manifestDetailRefusal.error.issues).toEqual(expect.arrayContaining([expect.objectContaining({code:issue.code,path:['manifest','guides',0,'details',...issue.path]})]));
-    const largeBlocks=clone(base);largeBlocks.manifest.sections[0].blocks.activities.activities=Array.from({length:30},(_,i)=>({...clone(base.manifest.sections[0].blocks.activities.activities[0]),localId:`large-${i}`,tips:'旅'.repeat(3000)}));const blockRefusal=guideSectionBlocksSchema.safeParse(largeBlocks.manifest.sections[0].blocks);expect(blockRefusal.success,'shared section UTF-8 byte ceiling within entry limits').toBe(false);if(!blockRefusal.success)expect(blockRefusal.error.issues.some(issue=>issue.path.join('.')==='timeline')).toBe(true);const manifestBlockRefusal=s.guidesManifestSchema.safeParse(largeBlocks);expect(manifestBlockRefusal.success,'manifest delegated section byte ceiling').toBe(false);if(!blockRefusal.success&&!manifestBlockRefusal.success)for(const issue of blockRefusal.error.issues.filter(issue=>issue.path.join('.')==='timeline'))expect(manifestBlockRefusal.error.issues).toEqual(expect.arrayContaining([expect.objectContaining({code:issue.code,path:['manifest','sections',0,'blocks',...issue.path]})]));
+    const largeBlocks=clone(base);largeBlocks.manifest.sections[0].blocks.activities.activities=Array.from({length:30},(_,i)=>({...clone(base.manifest.sections[0].blocks.activities.activities[0]),localId:`large-${i}`,tips:'旅'.repeat(3000)}));const blockRefusal=guideSectionBlocksSchema.safeParse(largeBlocks.manifest.sections[0].blocks);expect(blockRefusal.success,'shared section UTF-8 byte ceiling within entry limits').toBe(false);if(!blockRefusal.success)expect(blockRefusal.error.issues.some(issue=>issue.path.join('.')==='items')).toBe(true);const manifestBlockRefusal=s.guidesManifestSchema.safeParse(largeBlocks);expect(manifestBlockRefusal.success,'manifest delegated section byte ceiling').toBe(false);if(!blockRefusal.success&&!manifestBlockRefusal.success)for(const issue of blockRefusal.error.issues.filter(issue=>issue.path.join('.')==='items'))expect(manifestBlockRefusal.error.issues).toEqual(expect.arrayContaining([expect.objectContaining({code:issue.code,path:['manifest','sections',0,'blocks',...issue.path]})]));
     for(const coordinate of ['lat','lng']){const x=clone(base);x.manifest.guides[0].details.place[coordinate]=null;const sharedCoordinateRefusal=guideCollectionDetailsSchema.safeParse(x.manifest.guides[0].details);expect(sharedCoordinateRefusal.success,`shared parent ${coordinate} coordinate pair`).toBe(false);const manifestCoordinateRefusal=s.guidesManifestSchema.safeParse(x);expect(manifestCoordinateRefusal.success,`manifest delegated parent ${coordinate} coordinate pair`).toBe(false);if(!sharedCoordinateRefusal.success&&!manifestCoordinateRefusal.success){expect(sharedCoordinateRefusal.error.issues.length).toBeGreaterThan(0);for(const issue of sharedCoordinateRefusal.error.issues)expect(manifestCoordinateRefusal.error.issues).toEqual(expect.arrayContaining([expect.objectContaining({code:issue.code,path:['manifest','guides',0,'details',...issue.path]})]));}}
-    for(const mutate of [(x:any)=>x.manifest.sections[0].blocks.version='v2',(x:any)=>delete x.manifest.sections[0].blocks.budget,(x:any)=>x.manifest.sections[0].blocks.timeline.morning[0].geometry={lat:0,lng:0},(x:any)=>delete x.manifest.sections[0].blocks.timeline.morning[0].geometry.location.lng,(x:any)=>x.manifest.sections[0].blocks.timeline.morning[0].geometry.location.lat=Infinity,(x:any)=>x.manifest.sections[0].blocks.timeline.morning[0].geometry.location.lng=181,(x:any)=>x.manifest.sections[0].blocks.timeline.morning[0].budgetCurrency=null,(x:any)=>x.manifest.sections[0].blocks.transport.segments[0].fromLocalId='dangling',(x:any)=>x.manifest.sections[0].blocks.budget.morning[0].localId='dangling',(x:any)=>x.manifest.sections[0].blocks.timeline.morning[0].photos[0].mediaId='bad',(x:any)=>x.manifest.media[0].byteLength=5242881]){const x=clone(base);mutate(x);expect(()=>s.guidesManifestSchema.parse(x)).toThrow();}
+    for(const mutate of [(x:any)=>x.manifest.sections[0].blocks.version='v2',(x:any)=>delete x.manifest.sections[0].blocks.budget,(x:any)=>x.manifest.sections[0].blocks.items[0].place.geometry={lat:0,lng:0},(x:any)=>delete x.manifest.sections[0].blocks.items[0].place.geometry.location.lng,(x:any)=>x.manifest.sections[0].blocks.items[0].place.geometry.location.lat=Infinity,(x:any)=>x.manifest.sections[0].blocks.items[0].place.geometry.location.lng=181,(x:any)=>x.manifest.sections[0].blocks.items[0].place.budgetCurrency=null,(x:any)=>x.manifest.sections[0].blocks.transport.segments[0].fromLocalId='dangling',(x:any)=>x.manifest.sections[0].blocks.budget.entries[0].localId='dangling',(x:any)=>x.manifest.sections[0].blocks.items[0].place.photos[0].mediaId='bad',(x:any)=>x.manifest.media[0].byteLength=5242881]){const x=clone(base);mutate(x);expect(()=>s.guidesManifestSchema.parse(x)).toThrow();}
   });
   it('binds known actual media bytes MIME digest length and original object metadata',async()=>{
     const s:any=await support();expect(s.guidesManifestSchema).toBeDefined();const base=syntheticGuidesManifest(s.buildGuidesSeedPlan(CASES[5]));const {createHash}=await import('node:crypto');
@@ -310,15 +313,15 @@ describe('private Guides run-bound initial manifest and known media bytes',()=>{
     for(const bytes of [new Uint8Array(),new Uint8Array(5242881),base.fixtureBytes['old-cover'].slice(0,73)]){const x=clone(base);x.fixtureBytes['old-cover']=bytes;expect(()=>s.guidesManifestSchema.parse(x)).toThrow();}
     const changed=clone(base);changed.fixtureBytes['old-cover'][40]^=1;const changedDigest=createHash('sha256').update(changed.fixtureBytes['old-cover']).digest('hex');for(const row of changed.manifest.media.filter((row:any)=>row.fixtureId==='old-cover'))row.sha256=changedDigest;expect(()=>s.guidesManifestSchema.parse(changed)).toThrow();
     const missing=clone(base);missing.manifest.media.pop();expect(()=>s.guidesManifestSchema.parse(missing)).toThrow();const extra=clone(base);extra.manifest.media.push(clone(extra.manifest.media[0]));expect(()=>s.guidesManifestSchema.parse(extra)).toThrow();const exchanged=clone(base);[exchanged.manifest.media[0].key,exchanged.manifest.media[1].key]=[exchanged.manifest.media[1].key,exchanged.manifest.media[0].key];expect(()=>s.guidesManifestSchema.parse(exchanged)).toThrow();
-    const malformedPhotoAsset=syntheticGuidesManifest(s.buildGuidesSeedPlan(CASES[6]));expect(s.guidesManifestSchema.parse(malformedPhotoAsset)).toEqual(malformedPhotoAsset.manifest);const previousPhotoId=malformedPhotoAsset.manifest.media[0].id,malformedPhotoId='bad';malformedPhotoAsset.manifest.media[0].id=malformedPhotoId;malformedPhotoAsset.manifest.media[0].keyPath=`local/${malformedPhotoAsset.manifest.media[0].accountId}/${malformedPhotoId}`;malformedPhotoAsset.manifest.media[0].contentUrl=`/api/explorers/v1/media/${malformedPhotoId}/content`;malformedPhotoAsset.manifest.expectedPublic.roleMediaIds['direct-timeline']=malformedPhotoId;for(const attachment of malformedPhotoAsset.manifest.attachments)if(attachment.mediaId===previousPhotoId)attachment.mediaId=malformedPhotoId;for(const section of malformedPhotoAsset.manifest.sections)for(const entry of [...section.blocks.timeline.morning,...section.blocks.timeline.afternoon,...section.blocks.timeline.evening,...section.blocks.stay.accommodations,...section.blocks.activities.activities])for(const photo of entry.photos)if(photo.mediaId===previousPhotoId)photo.mediaId=malformedPhotoId;let malformedPhotoResult:any;expect(()=>{malformedPhotoResult=s.guidesManifestSchema.safeParse(malformedPhotoAsset);},'malformed owned photo UUID safeParse returns without throwing').not.toThrow();expect(malformedPhotoResult.success).toBe(false);if(!malformedPhotoResult.success)expect(malformedPhotoResult.error.issues).toEqual(expect.arrayContaining([expect.objectContaining({code:'invalid_string',validation:'uuid',path:['manifest','media',0,'id']})]));
+    const malformedPhotoAsset=syntheticGuidesManifest(s.buildGuidesSeedPlan(CASES[6]));expect(s.guidesManifestSchema.parse(malformedPhotoAsset)).toEqual(malformedPhotoAsset.manifest);const previousPhotoId=malformedPhotoAsset.manifest.media[0].id,malformedPhotoId='bad';malformedPhotoAsset.manifest.media[0].id=malformedPhotoId;malformedPhotoAsset.manifest.media[0].keyPath=`local/${malformedPhotoAsset.manifest.media[0].accountId}/${malformedPhotoId}`;malformedPhotoAsset.manifest.media[0].contentUrl=`/api/explorers/v1/media/${malformedPhotoId}/content`;malformedPhotoAsset.manifest.expectedPublic.roleMediaIds['direct-timeline']=malformedPhotoId;for(const attachment of malformedPhotoAsset.manifest.attachments)if(attachment.mediaId===previousPhotoId)attachment.mediaId=malformedPhotoId;for(const section of malformedPhotoAsset.manifest.sections)for(const entry of [...dayPlaces(section.blocks),...section.blocks.stay.accommodations,...section.blocks.activities.activities])for(const photo of entry.photos)if(photo.mediaId===previousPhotoId)photo.mediaId=malformedPhotoId;let malformedPhotoResult:any;expect(()=>{malformedPhotoResult=s.guidesManifestSchema.safeParse(malformedPhotoAsset);},'malformed owned photo UUID safeParse returns without throwing').not.toThrow();expect(malformedPhotoResult.success).toBe(false);if(!malformedPhotoResult.success)expect(malformedPhotoResult.error.issues).toEqual(expect.arrayContaining([expect.objectContaining({code:'invalid_string',validation:'uuid',path:['manifest','media',0,'id']})]));
   });
   it('requires exact cover and photo registry membership and independent seed role locations',async()=>{
     const s:any=await support();expect(s.guidesManifestSchema).toBeDefined();
     for(const index of [5,6,7]){const base=syntheticGuidesManifest(s.buildGuidesSeedPlan(CASES[index]));for(const mutate of [(x:any)=>x.manifest.attachments.pop(),(x:any)=>x.manifest.attachments.push(clone(x.manifest.attachments[0])),(x:any)=>x.manifest.attachments[0].mediaId='20000000-0000-4000-8000-000000000001',(x:any)=>x.manifest.attachments[0].accountId=x.manifest.personas.ownerC.accountId,(x:any)=>x.manifest.media[0].purpose=index===5?'guide':'collection']){const x=clone(base);mutate(x);expect(()=>s.guidesManifestSchema.parse(x)).toThrow();}}
-    const missingShared=syntheticGuidesManifest(s.buildGuidesSeedPlan(CASES[7]));missingShared.manifest.sections[1].blocks.timeline.morning[0].photos=[];missingShared.manifest.attachments=missingShared.manifest.attachments.filter((a:any)=>a.sectionId!==missingShared.manifest.sections[1].id);expect(()=>s.guidesManifestSchema.parse(missingShared)).toThrow();
-    const photo=syntheticGuidesManifest(s.buildGuidesSeedPlan(CASES[6]));const repeated=clone(photo);repeated.manifest.sections[0].blocks.timeline.morning[0].photos.push(clone(repeated.manifest.sections[0].blocks.timeline.morning[0].photos[0]));expect(s.guidesManifestSchema.parse(repeated)).toEqual(repeated.manifest);
-    const swapped=clone(photo);[swapped.manifest.sections[0].blocks.timeline.morning[0].photos,swapped.manifest.sections[0].blocks.stay.accommodations[0].photos]=[swapped.manifest.sections[0].blocks.stay.accommodations[0].photos,swapped.manifest.sections[0].blocks.timeline.morning[0].photos];expect(()=>s.guidesManifestSchema.parse(swapped)).toThrow();
-    for(const [block,field] of [['timeline','morning'],['timeline','afternoon'],['timeline','evening'],['stay','accommodations'],['activities','activities']]){const x=clone(photo);x.manifest.sections[1].blocks[block][field][0].photos=[clone(photo.manifest.sections[0].blocks.timeline.morning[0].photos[0])];expect(()=>s.guidesManifestSchema.parse(x)).toThrow();}
+    const missingShared=syntheticGuidesManifest(s.buildGuidesSeedPlan(CASES[7]));missingShared.manifest.sections[1].blocks.items[0].place.photos=[];missingShared.manifest.attachments=missingShared.manifest.attachments.filter((a:any)=>a.sectionId!==missingShared.manifest.sections[1].id);expect(()=>s.guidesManifestSchema.parse(missingShared)).toThrow();
+    const photo=syntheticGuidesManifest(s.buildGuidesSeedPlan(CASES[6]));const repeated=clone(photo);repeated.manifest.sections[0].blocks.items[0].place.photos.push(clone(repeated.manifest.sections[0].blocks.items[0].place.photos[0]));expect(s.guidesManifestSchema.parse(repeated)).toEqual(repeated.manifest);
+    const swapped=clone(photo);[swapped.manifest.sections[0].blocks.items[0].place.photos,swapped.manifest.sections[0].blocks.stay.accommodations[0].photos]=[swapped.manifest.sections[0].blocks.stay.accommodations[0].photos,swapped.manifest.sections[0].blocks.items[0].place.photos];expect(()=>s.guidesManifestSchema.parse(swapped)).toThrow();
+    for(const pick of [(b:any)=>dayPlaces(b)[0],(b:any)=>dayPlaces(b)[1],(b:any)=>dayPlaces(b)[2],(b:any)=>b.stay.accommodations[0],(b:any)=>b.activities.activities[0]]){const x=clone(photo);pick(x.manifest.sections[1].blocks).photos=[clone(photo.manifest.sections[0].blocks.items[0].place.photos[0])];expect(()=>s.guidesManifestSchema.parse(x)).toThrow();}
     const surplus=clone(photo);surplus.manifest.attachments.push({...surplus.manifest.attachments[0],sectionId:surplus.manifest.sections[1].id,guideId:surplus.manifest.sections[1].collectionId,accountId:surplus.manifest.sections[1].accountId});expect(()=>s.guidesManifestSchema.parse(surplus)).toThrow();
     const sole=syntheticGuidesManifest(s.buildGuidesSeedPlan(CASES[7]));const source=clone(sole.manifest.sections[0].blocks.stay.accommodations[0].photos);sole.manifest.sections[1].blocks.stay.accommodations[0].photos=source;sole.manifest.attachments.push({slot:'section-photo',sectionId:sole.manifest.sections[1].id,guideId:sole.manifest.sections[1].collectionId,accountId:sole.manifest.sections[1].accountId,mediaId:source[0].mediaId});expect(()=>s.guidesManifestSchema.parse(sole)).toThrow();
   });
@@ -964,9 +967,9 @@ function resourceFixture(){
       const id=resourceId(next++);events.push({kind:'returned-section-id',data:id});
       const blocks=clone(input.blocks),row={id,collection_id:collectionId,account_id:accountId,title:input.title,
         description:input.description,display_order:input.position??rowset('guide_sections').filter(r=>r.collection_id===collectionId).length,
-        blocks,block_version:'guide-section-blocks/v1',archived_at:null,created_at:new Date(RESOURCE_TIME),updated_at:new Date(RESOURCE_TIME)};
+        blocks,block_version:GUIDE_SECTION_BLOCK_VERSION,archived_at:null,created_at:new Date(RESOURCE_TIME),updated_at:new Date(RESOURCE_TIME)};
       rowset('guide_sections').push(row);
-      const ids=new Set([...blocks.timeline.morning,...blocks.timeline.afternoon,...blocks.timeline.evening,
+      const ids=new Set([...dayPlaces(blocks),
         ...blocks.stay.accommodations,...blocks.activities.activities].flatMap(p=>p.photos.map(photo=>photo.mediaId)));
       for(const mediaId of ids)rowset('guide_section_photos').push({section_id:id,account_id:accountId,media_id:mediaId});
       bump(accountId);return id;
@@ -1272,20 +1275,20 @@ describe('private Guides resource controller orchestration against foreign-inter
       expect(active.body.generation).toBe(1);
       x.addGuide(parent);x.addMedia(resourceId(911));
       const preserved=x.snapshotTables();
-      const emptyBlocks=guideSectionBlocksSchema.parse({version:'guide-section-blocks/v1',
-        timeline:{morning:[],afternoon:[],evening:[]},transport:{segments:[]},stay:{accommodations:[]},
-        activities:{activities:[]},budget:{morning:[],afternoon:[],evening:[]},mapDetails:null,
+      const emptyBlocks=guideSectionBlocksSchema.parse({version:GUIDE_SECTION_BLOCK_VERSION,
+        items:[],transport:{segments:[]},stay:{accommodations:[]},
+        activities:{activities:[]},budget:{entries:[]},mapDetails:null,
         packingList:{items:[]},preTasks:{items:[]},tags:[]});
       const template:ResourceRow=x.rowset(table)[0]??{account_id:RESOURCE_ACCOUNTS[0],category:'guides',
         collection_id:parent,recommendation_id:null,title:'Scoped section',description:null,display_order:0,
-        block_version:'guide-section-blocks/v1',blocks:emptyBlocks,archived_at:null,
+        block_version:GUIDE_SECTION_BLOCK_VERSION,blocks:emptyBlocks,archived_at:null,
         created_at:new Date(RESOURCE_TIME),updated_at:new Date(RESOURCE_TIME),
         section_id:resourceId(912),media_id:resourceId(911)};
       if(table==='guide_section_photos'){
         // Deliberately corrupted duplicate registry response, not a valid DB
         // snapshot. Every pair still joins an actual selected section/asset.
         x.rowset('guide_sections').push({id:resourceId(912),account_id:RESOURCE_ACCOUNTS[0],collection_id:parent,
-          title:'Scoped section',description:null,display_order:0,block_version:'guide-section-blocks/v1',
+          title:'Scoped section',description:null,display_order:0,block_version:GUIDE_SECTION_BLOCK_VERSION,
           blocks:emptyBlocks,archived_at:null,created_at:new Date(RESOURCE_TIME),updated_at:new Date(RESOURCE_TIME)});
       }
       // The defensive769-object count is also a corrupted duplicate-PK
@@ -1398,13 +1401,13 @@ describe('private Guides resource controller orchestration against foreign-inter
     f.addGuide(idA,RESOURCE_ACCOUNTS[0],8,{title:'Native changed',description:'persisted',visibility:'private'});
     f.addGuide(idC,RESOURCE_ACCOUNTS[0],7,{description:null});
     const blocks:GuideSectionBlocks=guideSectionBlocksSchema.parse({
-      version:'guide-section-blocks/v1',timeline:{morning:[],afternoon:[],evening:[]},transport:{segments:[]},
-      stay:{accommodations:[]},activities:{activities:[]},budget:{morning:[],afternoon:[],evening:[]},
+      version:GUIDE_SECTION_BLOCK_VERSION,items:[],transport:{segments:[]},
+      stay:{accommodations:[]},activities:{activities:[]},budget:{entries:[]},
       mapDetails:{center:{lat:0,lng:0},zoom:12},packingList:{items:[]},preTasks:{items:[]},tags:[' canonical ']});
     const sectionId=resourceId(860);
     f.rowset('guide_sections').push({id:sectionId,collection_id:idA,account_id:RESOURCE_ACCOUNTS[0],
       title:'  Native section  ',description:'  canonical description  ',display_order:7,
-      block_version:'guide-section-blocks/v1',blocks:{...blocks,tags:[' canonical ']},archived_at:new Date(RESOURCE_TIME),
+      block_version:GUIDE_SECTION_BLOCK_VERSION,blocks:{...blocks,tags:[' canonical ']},archived_at:new Date(RESOURCE_TIME),
       created_at:new Date(RESOURCE_TIME),updated_at:new Date(RESOURCE_TIME)});
     const canonicalDetails:GuideCollectionDetails=guideCollectionDetailsSchema.parse({
       guideType:'itinerary',multiCity:false,numberOfDays:1,estimatedBudget:'12.00',budgetCurrency:'INR',budgetType:'per-person',
@@ -1417,12 +1420,12 @@ describe('private Guides resource controller orchestration against foreign-inter
       {content_sha256:null,width_px:null,height_px:null,original_filename:'pending.png',alternative_text:null,caption:null});
     f.rowset('collection_media').push({collection_id:idC,account_id:RESOURCE_ACCOUNTS[0],media_id:coverId,slot:'cover'});
     const photo={mediaId,fileName:'native.png',width:8,height:8,aspectRatio:'1:1'};
-    const storedBlocks=guideSectionBlocksSchema.parse({...blocks,timeline:{morning:[{
+    const storedBlocks=guideSectionBlocksSchema.parse({...blocks,items:[{kind:'place',localId:'native-morning',timeLabel:'morning',place:{
       localId:'native-morning',placeId:'native_place',name:'  Native café  ',formattedAddress:' India ',
       geometry:{location:{lat:0,lng:0}},types:['point_of_interest'],tips:' Water ',photos:[photo,photo],
       priceLevel:1,priceRange:'₹100',customBudget:'tea',budgetAmount:'100.00',budgetCurrency:'INR',source:'manual',verified:false,
-    }],afternoon:[],evening:[]}});
-    storedBlocks.timeline.morning[0].name='  Native café  ';
+    }}]});
+    dayPlaces(storedBlocks)[0].name='  Native café  ';
     f.rowset('guide_sections').find(row=>row.id===sectionId)!.blocks={...storedBlocks,tags:[' canonical ']};
     f.rowset('guide_section_photos').push({section_id:sectionId,account_id:RESOURCE_ACCOUNTS[0],media_id:mediaId});
     const original=f.rowset('media_objects').find(row=>row.media_id===mediaId)!;
@@ -1433,11 +1436,11 @@ describe('private Guides resource controller orchestration against foreign-inter
     const foreignAccount=resourceId(999),foreignGuide=resourceId(880),otherGuide=resourceId(882);
     f.addGuide(foreignGuide,foreignAccount);f.addGuide(otherGuide,RESOURCE_ACCOUNTS[0],9,{category:'places'});
     f.rowset('guide_sections').push({id:resourceId(881),collection_id:foreignGuide,account_id:foreignAccount,
-      title:'Foreign section',description:null,display_order:0,block_version:'guide-section-blocks/v1',blocks,
+      title:'Foreign section',description:null,display_order:0,block_version:GUIDE_SECTION_BLOCK_VERSION,blocks,
       archived_at:null,created_at:new Date(RESOURCE_TIME),updated_at:new Date(RESOURCE_TIME)});
     f.addMedia(resourceId(884),foreignAccount,'guide');f.addMedia(resourceId(885),RESOURCE_ACCOUNTS[0],'profile');
     const foreignBlocks=guideSectionBlocksSchema.parse(storedBlocks);
-    foreignBlocks.timeline.morning[0].photos=[{mediaId:resourceId(884),fileName:'foreign.png',width:8,height:8,aspectRatio:'1:1'}];
+    dayPlaces(foreignBlocks)[0].photos=[{mediaId:resourceId(884),fileName:'foreign.png',width:8,height:8,aspectRatio:'1:1'}];
     f.rowset('guide_sections').find(row=>row.id===resourceId(881))!.blocks=foreignBlocks;
     f.rowset('guide_section_photos').push({section_id:resourceId(881),account_id:foreignAccount,media_id:resourceId(884)});
     f.rowset('collection_media').push({collection_id:otherGuide,account_id:RESOURCE_ACCOUNTS[0],media_id:coverId,slot:'cover'});
@@ -1517,8 +1520,8 @@ describe('private Guides resource controller orchestration against foreign-inter
     expect(attachments.filter(row=>row.sectionId===sectionId)).toEqual([
       {slot:'section-photo',guideId:idA,sectionId,accountId:RESOURCE_ACCOUNTS[0],mediaId},
     ]);
-    const observedNative=resourceRecord(resourceRows(resourceRecord(
-      resourceRecord(sections.find(row=>row.id===sectionId)!.blocks).timeline).morning)[0]);
+    const observedNative=resourceRecord(resourceRecord(resourceRows(
+      resourceRecord(sections.find(row=>row.id===sectionId)!.blocks).items)[0]).place);
     expect(observedNative.name).toBe('Native café');expect(resourceRows(observedNative.photos)).toHaveLength(2);
     expect(guides.map(row=>row.id)).toEqual(expect.arrayContaining([...seedIds,idA,idB,idC]));
     expect(guides.find(row=>row.id===idA)).toMatchObject({title:'Native changed',visibility:'private',publicationState:'draft',details:canonicalDetails});
@@ -1537,7 +1540,7 @@ describe('private Guides resource controller orchestration against foreign-inter
       ()=>{f.rowset('collections').find(row=>row.id===idA)!.revision='9007199254740992';},
       ()=>{f.rowset('collections').find(row=>row.id===idA)!.revision='1.5';},
       ()=>{f.rowset('collections').find(row=>row.id===idA)!.revision='NaN';},
-      ()=>{f.rowset('guide_sections').find(row=>row.id===sectionId)!.block_version='guide-section-blocks/v2';},
+      ()=>{f.rowset('guide_sections').find(row=>row.id===sectionId)!.block_version='guide-section-blocks/v3';},
       ()=>f.rowset('guide_section_photos').push({section_id:sectionId,account_id:RESOURCE_ACCOUNTS[0],media_id:mediaId}),
     ]){
       const saved=f.snapshotTables();mutation();const offset=f.events.length;

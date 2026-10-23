@@ -413,9 +413,10 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
         const photo = await upload('guide', png, 'image/png');
         markMaterialization('media-attachment','guides',[...mediaIds].indexOf(photo.id));
         const nativeSection = await row('SELECT title,description,blocks FROM guide_sections WHERE id=$1 AND collection_id=$2 AND account_id=$3', [section.id, section.collectionId, actor('ownerA').accountId]), blocks = guideSectionBlocksSchema.parse(nativeSection.blocks);
-        if (blocks.timeline.morning.length !== 1 || blocks.timeline.morning[0].source !== 'manual' || blocks.timeline.morning[0].verified || blocks.timeline.morning[0].photos.length)
+        const dayPlaces = blocks.items.flatMap(item => item.kind === 'place' ? [item.place] : []);
+        if (blocks.items.length !== 1 || dayPlaces.length !== 1 || dayPlaces[0].source !== 'manual' || dayPlaces[0].verified || dayPlaces[0].photos.length)
             throw refuse();
-        blocks.timeline.morning[0].photos.push({ mediaId: photo.id, fileName: 'parity.png', width: 8, height: 8, aspectRatio: '1:1' });
+        dayPlaces[0].photos.push({ mediaId: photo.id, fileName: 'parity.png', width: 8, height: 8, aspectRatio: '1:1' });
         markMaterialization('media-attachment','guides',[...mediaIds].indexOf(photo.id));
         const revision = Number(await categoryRevision('ownerA', 'guides'));
         await transaction(db => updateGuideSection(db, section.collectionId, actor('ownerA').accountId, revision, section.id, { title: nativeSection.title, description: nativeSection.description, blocks: guideSectionBlocksSchema.parse(blocks) }));
@@ -455,7 +456,7 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
             for (const value of sections.rows) {
                 if (![...items.values()].some(item => item.id === value.section_id && item.category === 'guides' && item.collectionId === value.collection_id))
                     throw refuse();
-                const blocks = guideSectionBlocksSchema.parse(value.blocks), photos = [...blocks.timeline.morning, ...blocks.timeline.afternoon, ...blocks.timeline.evening, ...blocks.activities.activities, ...blocks.stay.accommodations].flatMap(place => place.photos), photo = photos.find(photo => photo.mediaId === id);
+                const blocks = guideSectionBlocksSchema.parse(value.blocks), photos = [...blocks.items.flatMap(item => item.kind === 'place' ? [item.place] : []), ...blocks.activities.activities, ...blocks.stay.accommodations].flatMap(place => place.photos), photo = photos.find(photo => photo.mediaId === id);
                 if (!photo)
                     throw refuse();
                 attachments.push({ accountId: value.account_id, category: 'guides', collectionId: value.collection_id, subresourceId: value.section_id, slot: 'guide-section-photo', position: photos.findIndex(photo => photo.mediaId === id), photo });
