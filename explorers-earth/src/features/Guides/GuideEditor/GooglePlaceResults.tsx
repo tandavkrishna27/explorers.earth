@@ -1,27 +1,24 @@
 import {useEffect, useState} from 'react';
 import {searchGooglePlaces, type GooglePick} from './googlePlaceSearch';
 
-type Props = {query: string; onPick: (place: GooglePick) => void};
+/** Every search starts at this many characters, saved items and Google alike. */
+export const MIN_SEARCH_CHARS = 3;
+export const GOOGLE_DEBOUNCE_MS = 500;
+/** Each Google text search costs money and sends the text to Google; a sentence is a note, not a place, so it is never sent. */
+export function shouldSearchGoogle(query: string): boolean {
+ const q = query.trim();
+ return q.length >= MIN_SEARCH_CHARS && q.split(/\s+/).length <= 4;
+}
 
-/** The Google group of the smart add box: one option per text-search result (debounced, aborted on change). */
-export default function GooglePlaceResults({query, onPick}: Props) {
+/** The Google group of the smart add box: text-search results (debounced, aborted on change). */
+export function useGooglePlaceResults(query: string): GooglePick[] {
  const [results, setResults] = useState<GooglePick[]>([]);
  useEffect(() => {
   const q = query.trim();
-  if (q.length < 2) {setResults([]); return;}
+  if (!shouldSearchGoogle(q)) {setResults([]); return;}
   const controller = new AbortController();
-  const timer = setTimeout(() => void searchGooglePlaces(q, controller.signal).then(setResults).catch(() => setResults([])), 300);
+  const timer = setTimeout(() => void searchGooglePlaces(q, controller.signal).then(setResults).catch(() => setResults([])), GOOGLE_DEBOUNCE_MS);
   return () => {clearTimeout(timer); controller.abort();};
  }, [query]);
- if (!results.length) return null;
- return (
-  <ul role="group" className="space-y-1">
-   {results.map((p) => (
-    <li key={p.placeId} role="option" aria-selected={false} tabIndex={0} onClick={() => onPick(p)} onKeyDown={(e) => {if (e.key === 'Enter') {e.preventDefault(); onPick(p);}}}
-     className="flex min-h-[44px] cursor-pointer flex-col justify-center rounded-lg px-2 hover:bg-white/5">
-     <span className="text-sm">{p.name}</span>{p.formattedAddress && <span className="text-xs text-gray-400">{p.formattedAddress}</span>}
-    </li>
-   ))}
-  </ul>
- );
+ return results;
 }
