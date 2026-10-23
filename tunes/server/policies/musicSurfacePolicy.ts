@@ -228,6 +228,17 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
         ["PATCH", "/api/explorers/v1/collections/:id/guide/sections/:sectionId"],
         ["DELETE", "/api/explorers/v1/collections/:id/guide/sections/:sectionId"],
         ["PUT", "/api/explorers/v1/collections/:id/guide/cover"],
+        // WP9 (GD-24..30). Day and day-item commands, declared one at a time for the same reason.
+        ["POST", "/api/explorers/v1/collections/:id/guide/days"],
+        ["PATCH", "/api/explorers/v1/collections/:id/guide/days/:sectionId/position"],
+        ["POST", "/api/explorers/v1/collections/:id/guide/days/:sectionId/duplicate"],
+        ["POST", "/api/explorers/v1/collections/:id/guide/days/:sectionId/clear"],
+        ["DELETE", "/api/explorers/v1/collections/:id/guide/days/:sectionId"],
+        ["POST", "/api/explorers/v1/collections/:id/guide/days/:sectionId/items"],
+        ["PATCH", "/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/position"],
+        ["PUT", "/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/time-label"],
+        ["PUT", "/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/note"],
+        ["DELETE", "/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId"],
       ].some(([method,path])=>route.method===method && route.path===path)) return "explorers-owner";
   if (route.source === "tunes/server/routes/explorersAccountRoutes.ts"
       && route.method === "PATCH" && route.path === "/api/explorers/v1/account") return "explorers-owner";
