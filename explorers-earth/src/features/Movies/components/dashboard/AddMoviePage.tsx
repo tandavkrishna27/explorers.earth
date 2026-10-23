@@ -4,6 +4,7 @@ import { explorersApiClient } from '../../../../lib/explorersApiClient';
 import { friendlyErrorMessage } from "../../../../utils/friendlyError";
 import { useMoviesOwner, useMovieGenres, invalidateMovies } from '../../api/explorersAdapter';
 import { moviesCommandKey } from '../../api/moviesClient';
+import { startMovieImport } from '../../api/backgroundMovieImport';
 import type { MovieCandidate } from '../../../../../../tunes/shared/explorersMovieContract';
 import { richNoteFromEditor } from '../../../../../../tunes/shared/explorersRichNoteContract';
 import useAuthStore from '../../../../store/store';
@@ -227,22 +228,7 @@ const AddMoviePage = () => {
     if (!alive()) return;
     const recommendation=await explorersApiClient.createMyRecommendation(intent.parent,input,intent.key,controller.signal);
     if (!alive()) return;
-    if (selected) {
-     try {
-      if (!alive()) return;
-      const fresh=await explorersApiClient.getMyEditableRecommendation(recommendation.id,controller.signal);
-      if (!alive()) return;
-      const imported=await explorersApiClient.importMovieMedia(fresh,moviesCommandKey(),controller.signal);
-      if (!alive()) return;
-      if(imported.slots.some(slot=>slot.status==='unavailable'))toast.info('Saved. Some provider images could not be copied.');
-      if (!alive()) return;
-      await explorersApiClient.getMyEditableRecommendation(recommendation.id,controller.signal);
-      if (!alive()) return;
-     } catch {
-      if (!alive()) return;
-      toast.info('Movie saved. Provider image copying is unavailable; original images remain.');
-     }
-    }
+    if (selected) startMovieImport(recommendation.id,moviesCommandKey());
    }
    if (!alive()) return;
    invalidateMovies();toast.success(isEdit?'Movie updated!':'Movie added!');navigate(`/recommendations/movies/${listId}`,{state:{justAddedRecommendation:true}});
