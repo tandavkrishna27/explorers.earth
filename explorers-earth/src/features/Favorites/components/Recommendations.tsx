@@ -37,7 +37,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useMenuItems } from "../hooks/useMenuItems";
 // ⭐ Walkthrough Hook
 import { useRecommendationsWalkthrough } from "../../../hooks/useRecommendationsWalkthrough";
-import AddPlaceOverlay from "./AddPlaceOverlay";
 import { IMAGE_CONFIG } from "../../../config";
 import { ChevronDown, Users, ShoppingBag } from "lucide-react";
 import ProductDetailModal from "../../Products/components/public/ProductDetailModal";
@@ -217,7 +216,8 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
   const [topPlacesKey, setTopPlacesKey] = useState<number>(0);
   // local state for Instagram import modal
   // local state for Add Place overlay
-  const [showAddPlaceOverlay, setShowAddPlaceOverlay] = useState<boolean>(false);
+  // WP6: adding a place opens the full add page (the old overlay was retired).
+  const openAddPlace = () => { if (selectedCity?.documentId) navigate(`/recommendations/places/${selectedCity.documentId}/add`); };
   // dropdown for the split Add button
   const [showAddDropdown, setShowAddDropdown] = useState<boolean>(false);
   const addDropdownRef = useRef<HTMLDivElement>(null);
@@ -384,19 +384,16 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
     }
   }, [stepIndex, run, advanceToNextStepRef]);
 
-  // Auto-open AddPlaceOverlay for Walkthrough Step 2 (Suggestions)
+  // Open the add-place page for Walkthrough Step 2 (Suggestions)
   useEffect(() => {
-    const handleOpen = () => setShowAddPlaceOverlay(true);
-    const handleClose = () => setShowAddPlaceOverlay(false);
+    const handleOpen = () => openAddPlace();
 
     window.addEventListener('openWalkthroughModal', handleOpen);
-    window.addEventListener('closeWalkthroughModal', handleClose);
 
     return () => {
       window.removeEventListener('openWalkthroughModal', handleOpen);
-      window.removeEventListener('closeWalkthroughModal', handleClose);
     };
-  }, []);
+  }, [selectedCity?.documentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ⭐ Expose walkthrough control globally for other components
 
@@ -640,7 +637,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
             {/* Main button + chevron */}
             <div className="flex w-full rounded-xl overflow-hidden shadow-lg shadow-blue-900/30">
               <button
-                onClick={() => setShowAddPlaceOverlay(true)}
+                onClick={openAddPlace}
                 className="flex-1 bg-dashboard-accent hover:opacity-90 text-sm text-white font-bold py-3 flex items-center justify-center gap-2 transition-all cursor-pointer"
                 data-walkthrough="add-place"
               >
@@ -670,7 +667,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
                   className="absolute top-[calc(100%+6px)] left-0 right-0 bg-dashboard-sidebar border border-dashboard-border rounded-xl shadow-2xl z-50 overflow-hidden"
                 >
                   <button
-                    onClick={() => { setShowAddDropdown(false); setShowAddPlaceOverlay(true); }}
+                    onClick={() => { setShowAddDropdown(false); openAddPlace(); }}
                     className="w-full flex items-center gap-3 px-4 py-3 text-sm text-dashboard hover:bg-dashboard-muted transition-colors text-left border-b border-white/5"
                   >
                     <div className="w-7 h-7 rounded-lg bg-blue-500/15 flex items-center justify-center flex-shrink-0">
@@ -1174,16 +1171,6 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
           </div>
         </Modal>
       )}
-
-      {/* Add Place Overlay */}
-      <AddPlaceOverlay
-        isOpen={showAddPlaceOverlay}
-        onClose={() => setShowAddPlaceOverlay(false)}
-        existingRecommendations={allPlacesData?.recommendationList?.recommended_places || []}
-        selectedLocationCoords={selectedCityCoordinates}
-        onPlaceAdded={handlePlaceAdded}
-        topPlacesKey={topPlacesKey}
-      />
     </div>
   );
 });
