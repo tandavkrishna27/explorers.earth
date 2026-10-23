@@ -39,7 +39,7 @@ describe("runtime route/event/job inventory", () => {
     // 197 = 195 + Home's content summary GET and its fail-closed method boundary (HUB-X02).
     // 198 = 197 + the IGDB game cover import (POST /api/explorers/v1/media/game-cover, GMS-X01).
     // 202 = 198 + restore and permanent delete of a list, each with its fail-closed method boundary (WP3B, LP-08).
-    expect(inventory.routes).toHaveLength(202);
+    expect(inventory.routes).toHaveLength(204);
     expect(inventory.events).toHaveLength(15);
     // 38 = 37 + the Google profile photo fetch deadline (googleAvatarFetch.ts).
     // 39 = 38 + the place photo fetch deadline (tunes/server/services/placePhotoFetch.ts).
@@ -132,8 +132,10 @@ describe("runtime route/event/job inventory", () => {
     const ownerCommands=[
       ['POST','/api/explorers/v1/collections/:id/memberships/:recommendationId'],
       ['DELETE','/api/explorers/v1/collections/:id/memberships/:recommendationId'],
-      ['POST','/api/explorers/v1/collections/:id/location'],
-      ['DELETE','/api/explorers/v1/collections/:id/location'],
+      // WP10. Links between two of the owner's lists.
+      ['POST','/api/explorers/v1/collections/:id/links'],
+      ['PATCH','/api/explorers/v1/collections/:id/links/:linkId'],
+      ['DELETE','/api/explorers/v1/collections/:id/links/:linkId'],
       ['POST','/api/explorers/v1/entities/resolve'], ['POST','/api/explorers/v1/collections'],
       ['PATCH','/api/explorers/v1/collections/:id'], ['PATCH','/api/explorers/v1/collections/:id/order'],
       ['DELETE','/api/explorers/v1/collections/:id'], ['POST','/api/explorers/v1/recommendations'],
@@ -165,7 +167,7 @@ describe("runtime route/event/job inventory", () => {
     ];
     const methodBoundaries=['/api/explorers/v1/entities/resolve','/api/explorers/v1/collections','/api/explorers/v1/content-summary',
       '/api/explorers/v1/collections/:id/memberships/:recommendationId',
-      '/api/explorers/v1/collections/:id/location',
+      '/api/explorers/v1/collections/:id/links','/api/explorers/v1/collections/:id/links/:linkId',
       '/api/explorers/v1/collections/:id','/api/explorers/v1/collections/:id/order',
       '/api/explorers/v1/collections/:id/restore','/api/explorers/v1/collections/:id/purge',
       '/api/explorers/v1/collections/:id/editable','/api/explorers/v1/recommendations/:id/editable',

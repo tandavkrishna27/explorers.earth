@@ -1660,26 +1660,7 @@
     },
     {
       "method": "POST",
-      "path": "/api/explorers/v1/collections/:id/location",
-      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "decision": "explorers-owner",
-      "allowed": {
-        "unauthenticated": false,
-        "owner": true,
-        "otherUser": false,
-        "suspended": false,
-        "pendingDeletion": false,
-        "staleEntitlement": false,
-        "guestValid": false,
-        "guestInvalid": false,
-        "guestRevoked": false,
-        "internalAdmin": false,
-        "nativeSession": false
-      }
-    },
-    {
-      "method": "DELETE",
-      "path": "/api/explorers/v1/collections/:id/location",
+      "path": "/api/explorers/v1/collections/:id/links",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
       "decision": "explorers-owner",
       "allowed": {
@@ -1698,7 +1679,64 @@
     },
     {
       "method": "ALL",
-      "path": "/api/explorers/v1/collections/:id/location",
+      "path": "/api/explorers/v1/collections/:id/links",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/explorers/v1/collections/:id/links/:linkId",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/explorers/v1/collections/:id/links/:linkId",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/links/:linkId",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
       "decision": "tombstone",
       "allowed": {
