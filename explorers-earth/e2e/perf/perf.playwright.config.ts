@@ -1,0 +1,3 @@
+import {defineConfig} from '@playwright/test';
+if(!process.env.MOVIES_E2E_FIXTURE_PATH||!process.env.PLAYWRIGHT_EXTERNAL_BASE_URL?.startsWith('http://127.0.0.1:'))throw new Error('WP5 perf requires the owned Movies fixture');
+export default defineConfig({testDir:'.',outputDir:process.env.MOVIES_E2E_ARTIFACT_DIR,testMatch:'save-latency.spec.ts',fullyParallel:false,workers:1,retries:0,timeout:120000,expect:{timeout:15000},reporter:'line',use:{baseURL:process.env.PLAYWRIGHT_EXTERNAL_BASE_URL,headless:true},projects:[{name:'perf-desktop',use:{browserName:'chromium',viewport:{width:1365,height:900}}}]});
