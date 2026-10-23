@@ -193,3 +193,24 @@ it('tells the owner when a provider title cannot be resolved instead of failing 
  await userEvent.click(await screen.findByText('Paterson'));
  await waitFor(()=>expect(error).toHaveBeenCalledWith(expect.stringMatching(/Provider details unavailable/)));expect(screen.getByRole('alert')).toHaveTextContent(/retry or add manually/);
 });
+
+
+// OWN-17: the provider-image copy no longer holds the add page; it runs after navigation.
+it('navigates as soon as the create returns, before the provider image import finishes',async()=>{
+ loginSurface();navigateSpy.mockClear();vi.spyOn(explorersApiClient,'getMovieGenres').mockResolvedValue({items:[]} as never);
+ vi.spyOn(explorersApiClient,'searchMovieCandidates').mockResolvedValue({version:'explorers-movie-candidates/v1',items:[{provider:'tmdb',externalKind:'movie',externalId:'1',title:'Zodiac',posterUrl:null,yearText:'2007'}],nextCursor:null,expiresAt:Date.now()+60000} as never);
+ vi.spyOn(explorersApiClient,'resolveMovieEntity').mockResolvedValue({id:'entity',title:'Zodiac',origin:'provider',details:{...emptyMovieDetails(),mediaType:'movie'},provenance:null} as never);
+ vi.spyOn(explorersApiClient,'getMyEditableCollection').mockResolvedValue({resourceId:'list',resourceRevision:1,detail:{id:'list',category:'movies'}} as never);
+ vi.spyOn(explorersApiClient,'createMyRecommendation').mockResolvedValue({id:'r'} as never);
+ const observe=vi.spyOn(explorersApiClient,'getMyEditableRecommendation').mockResolvedValue({resourceId:'r',resourceRevision:1} as never);observe.mockClear();
+ let finishImport:()=>void=()=>{};
+ const copy=vi.spyOn(explorersApiClient,'importMovieMedia').mockImplementation(()=>new Promise(resolve=>{finishImport=()=>resolve({slots:[]} as never);}) as never);copy.mockClear();
+ render(<MemoryRouter initialEntries={['/recommendations/movies/list/add']}><Routes><Route path="/recommendations/movies/:listId/add" element={<AddMoviePage/>}/></Routes></MemoryRouter>);
+ await userEvent.type(screen.getByPlaceholderText('Search "Interstellar", "Breaking Bad"...'),'Zodiac');
+ await userEvent.click(await screen.findByText('Zodiac'));
+ await userEvent.click(await screen.findByRole('button',{name:'Add to List'}));
+ await waitFor(()=>expect(navigateSpy).toHaveBeenCalledWith('/recommendations/movies/list',expect.anything()));
+ await waitFor(()=>expect(copy).toHaveBeenCalledTimes(1));
+ expect(observe).toHaveBeenCalledTimes(1);
+ finishImport();
+});

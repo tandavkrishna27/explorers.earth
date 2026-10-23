@@ -65,6 +65,9 @@ export type RecommendationListView={
  // copying their contents here would make two sources of the same list.
  linked_person_list_ids:string[];
  linked_product_list_ids:string[];
+ // OWN-19. Set when this list's own read failed: the list is shown with an error and a
+ // retry instead of disappearing, and its places are not known (not empty).
+ loadError?:true;
 };
 
 export function placeViewModel(detail:Readonly<EditableOwnerRecommendation>,membership:Readonly<OwnerMembershipDto>):RecommendedPlaceView{
@@ -154,6 +157,23 @@ export function collectionViewModel(collection:Readonly<EditableOwnerCollection>
  };
 }
 
+/** A list whose detail read failed, built from the category row alone (OWN-19). */
+function unavailableListViewModel(collection:CompletePlacesOwnerContent['collections'][number],username:string):RecommendationListView{
+ return {
+  documentId:collection.id,List_Name:collection.title,slug:collection.slug,
+  Visibility:collection.visibility==='public'&&collection.publicationState==='published',
+  display_order:collection.displayOrder,
+  // The list's own pin travels on the detail read, which is what failed.
+  is_pinned:false,pin_order:null,
+  List_Name_Details:null,Instagram_Media_URL:null,
+  cover_image:collection.coverMediaId===null?null:{url:MEDIA(collection.coverMediaId),alternativeText:null},
+  top_picks_heading:collection.heading,
+  account:{documentId:collection.accountId,username},
+  recommended_places:[],linked_person_list_ids:[],linked_product_list_ids:[],
+  loadError:true,
+ };
+}
+
 export type PlacesOwnerView={lists:RecommendationListView[]};
 
 export const placesViewModel={
@@ -163,9 +183,10 @@ export const placesViewModel={
   const visible=observed.collections.filter(collection=>!collection.archived);
   return {lists:visible.flatMap(collection=>{
    const observation=lists.get(collection.id);
-   // A list that disappeared mid-read (reported by the adapter) is left out rather than
-   // failing the whole owner view; any other missing detail is still an error.
-   if(!observation&&unavailable.has(collection.id))return [];
+   // A list whose detail read failed (reported by the adapter) stays visible as an error
+   // row instead of disappearing (OWN-19) or failing the whole owner view; any other
+   // missing detail is still an error.
+   if(!observation&&unavailable.has(collection.id))return [unavailableListViewModel(collection,username)];
    if(!observation)throw new ExplorersApiError(409,'CONFLICT','Places list detail missing while mapping');
    return [collectionViewModel(
     observation.detail as Readonly<EditableOwnerCollection>,

@@ -1,6 +1,10 @@
 import useAuthStore from "../store/store";
 import i18n from "i18next";
 import { adoptAccountLocale, persistAccountLocale } from "./accountLocale";
+import { queryClient } from "./queryClient";
+import { recordViewedAccount } from "./viewedRevisions";
+import { canonicalAccountQuery } from "../features/Profile/api/useCanonicalAccount";
+import type { AccountDto } from "../../../tunes/shared/explorersContract";
 
 type AuthSession = { user?: { id?: string; email?: string }; session?: { id?: string } } | null;
 type CanonicalAccount = { id: string; handle: string | null; onboardingStatus: "incomplete" | "complete"; revision: number; locale?: string };
@@ -48,7 +52,13 @@ export const authClient = {
       // A never-onboarded account has only the column default, so it keeps the language the
       // visitor signed up in (and saves it); an onboarded account applies its saved locale.
       if (account.onboardingStatus === "incomplete") void persistAccountLocale(i18n.language).catch(() => undefined);
-      else void adoptAccountLocale(account.locale).catch(() => undefined);
+      else {
+        // The page's account observers read this response instead of asking /me again. A
+        // never-onboarded account is not seeded: its locale save above changes the revision.
+        recordViewedAccount(account.revision);
+        queryClient.setQueryData(canonicalAccountQuery(session.user.id, generation).queryKey, account as unknown as AccountDto);
+        void adoptAccountLocale(account.locale).catch(() => undefined);
+      }
     } catch { useAuthStore.getState().verificationFailed(generation, "error"); }
   },
   async startGoogleSignIn(recovery = false): Promise<void> {

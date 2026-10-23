@@ -589,7 +589,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
               className="w-full max-w-3xl rounded-xl border border-amber-400/50 bg-amber-400/10 p-4 text-dashboard"
             >
               <h2 className="font-poppins text-sm font-semibold">
-                Place saved; image needs attention
+                Photo upload failed; place not saved yet
               </h2>
               <p className="mt-1 font-poppins text-xs text-dashboard-light">
                 {mediaFeedback}
