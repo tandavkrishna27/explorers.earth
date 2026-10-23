@@ -38,7 +38,7 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
       return response.status(status).json({[name]:result});
     } catch(error) {
       if(error instanceof BookProviderFailure||error instanceof MovieProviderFailure||error instanceof GameCatalogFailure){if(error instanceof BookProviderFailure&&error.retryAfter)response.set('Retry-After',String(error.retryAfter));return response.status(error.status).json({error:{code:error.code,message:error.message,requestId}});}
-      if(error instanceof RecommendationFailure) return response.status(error.status).json({error:{code:error.status===404?'NOT_FOUND':error.status===409?'CONFLICT':error.status===413?'RESOURCE_TOO_LARGE':'INVALID_INPUT',message:error.message,requestId}});
+      if(error instanceof RecommendationFailure) return response.status(error.status).json({error:{code:error.code??(error.status===404?'NOT_FOUND':error.status===409?'CONFLICT':error.status===413?'RESOURCE_TOO_LARGE':'INVALID_INPUT'),message:error.message,requestId}});
       sendActorError(request,response,error);
     }
   };
@@ -50,7 +50,7 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
     } catch(error) {
       if(error instanceof GamePresentationUnavailable)return response.status(error.status).json({error:{code:error.code,message:error.message,requestId}});
       if(error instanceof SearchFailure)return response.status(error.status).json({error:{code:error.status===503?'UNAVAILABLE':error.status===409?'CONFLICT':error.status===413?'RESOURCE_TOO_LARGE':error.status===404?'NOT_FOUND':'INVALID_INPUT',message:error.message,requestId,...(error.status===503?{retryable:true}:{})}});
-      if(error instanceof RecommendationFailure) return response.status(error.status).json({error:{code:error.status===404?'NOT_FOUND':error.status===409?'CONFLICT':error.status===413?'RESOURCE_TOO_LARGE':'INVALID_INPUT',message:error.message,requestId}});
+      if(error instanceof RecommendationFailure) return response.status(error.status).json({error:{code:error.code??(error.status===404?'NOT_FOUND':error.status===409?'CONFLICT':error.status===413?'RESOURCE_TOO_LARGE':'INVALID_INPUT'),message:error.message,requestId}});
       sendActorError(request,response,error);
     }
   };
@@ -101,10 +101,12 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
   routes.patch('/api/explorers/v1/collections/:id',mutation((a,id,b,c)=>service.updateCollection(a,id,b,c),'collection'));
   routes.patch('/api/explorers/v1/collections/:id/order',mutation((a,id,b,c)=>service.reorderCollection(a,id,b,c),'collection'));
   routes.delete('/api/explorers/v1/collections/:id',mutation((a,id,b,c)=>service.archiveCollection(a,id,b,c),'collection'));
+  routes.post('/api/explorers/v1/collections/:id/make-it-mine',mutation((a,id,b,c)=>service.makeCollectionMine(a,id,b,c),'collection'));
   routes.post('/api/explorers/v1/collections/:id/restore',mutation((a,id,b,c)=>service.restoreCollection(a,id,b,c),'collection'));
   routes.post('/api/explorers/v1/collections/:id/purge',mutation((a,id,b,c)=>service.purgeCollection(a,id,b,c),'collection'));
   routes.all('/api/explorers/v1/collections/:id/restore',unsupported);
   routes.all('/api/explorers/v1/collections/:id/purge',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/make-it-mine',unsupported);
   routes.get('/api/explorers/v1/recommendations/search',read((a,_id,q)=>{
     if(Object.values(q as object).some(v=>typeof v!=='string'))throw new RecommendationFailure(422,'Search parameters must be scalar');
     if(Object.hasOwn(q as object,'scope'))throw new RecommendationFailure(422,'Scope is specified by the route');

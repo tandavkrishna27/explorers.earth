@@ -9,6 +9,7 @@ import { ExplorersRecommendationRepository, RecommendationFailure } from '../rep
 import { normalizeRichNote } from './richNote';
 import {replaceRecommendationEntitySchema} from '../../shared/explorersBookContract';
 import {attachLocationLinkSchema,detachLocationLinkSchema} from '../../shared/explorersPlaceLinkContract';
+import {makeSampleMineSchema} from '../../shared/explorersSampleContract';
 import {gameMembershipCommandSchema,gameMembershipResultSchema} from '../../shared/explorersGameOwnerContract';
 
 export function parseContent<T>(schema:z.ZodType<T,any,any>,input:unknown):T {
@@ -122,6 +123,13 @@ export class RecommendationService {
     return this.authorized(actor,'collections:write',async()=>{
       parseContent(contentIdSchema,id);const parsed=parseContent(contentRevisionSchema,input);
       return this.repository.archiveCollection(actor.accountId,id,parsed.expectedRevision,this.key(context));
+    });
+  }
+  /** SMP-04 Make it mine. Body {expectedRevision}; the list id comes from the route. */
+  async makeCollectionMine(actor:Actor,id:string,input:unknown,context:RequestContext) {
+    return this.authorized(actor,'collections:write',async()=>{
+      const parsed=parseContent(makeSampleMineSchema,{...(input&&typeof input==='object'&&!Array.isArray(input)?input:{}),collectionId:id});
+      return collectionCoreDtoSchema.parse(await this.repository.makeCollectionMine(actor.accountId,parsed.collectionId,parsed.expectedRevision,this.key(context)));
     });
   }
   async restoreCollection(actor:Actor,id:string,input:unknown,context:RequestContext) {
