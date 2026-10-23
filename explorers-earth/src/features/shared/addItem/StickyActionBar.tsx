@@ -16,7 +16,7 @@ export default function StickyActionBar({ onCancel, onSave, onSaveAndAddAnother,
   const spinner = <Loader2 aria-hidden className="mr-1 inline h-4 w-4 animate-spin" />;
   return (
     <div role="toolbar" aria-label={t("dashboard.wp4.actions", "Item actions")}
-      className="sticky bottom-0 z-10 -mx-4 flex items-center gap-2 border-t border-dashboard-border bg-dashboard-sidebar px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 text-dashboard backdrop-blur">
+      className="sticky bottom-[var(--bottom-nav-height)] md:bottom-0 z-10 -mx-4 flex items-center gap-2 border-t border-dashboard-border bg-dashboard-sidebar px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 text-dashboard backdrop-blur">
       <button type="button" onClick={onCancel} disabled={busy} className="min-h-11 rounded-xl border border-dashboard-border px-4 text-dashboard">{t("dashboard.wp4.cancel", "Cancel")}</button>
       <span className="flex-1" />
       {onSaveAndAddAnother && (
