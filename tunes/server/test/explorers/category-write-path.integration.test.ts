@@ -110,14 +110,14 @@ describePg("owner write path for typed categories", () => {
     // No offer supplied: the row is created as unknown, never as free.
     const created = await repository.createRecommendation(accountId, {category: "products", entityId: entity.id, collectionId: parent.id,
       expectedCollectionRevision: parent.revision}, key());
-    expect(await readProductOffer(pool, created.id, accountId)).toEqual({price: null, currencyCode: null, buyUrl: null});
+    expect(await readProductOffer(pool, created.id, accountId)).toEqual({price: null, currencyCode: null, buyUrl: null, affiliateDisclosed: false});
     // The reader returns the empty offer for an absent row too, so assert the row itself
     // exists: this recommendation owns its offer from creation.
     expect((await pool.query("SELECT count(*)::int AS count FROM product_recommendation_context WHERE recommendation_id=$1", [created.id])).rows[0].count).toBe(1);
     const updated = await repository.updateRecommendation(accountId, created.id, created.revision, {productOffer: {price: "0.00", currencyCode: "USD", buyUrl: null}}, key());
     expect(await readProductOffer(pool, created.id, accountId)).toMatchObject({price: "0.00", currencyCode: "USD"});
     await repository.updateRecommendation(accountId, created.id, updated.revision, {productOffer: {price: null, currencyCode: null, buyUrl: null}}, key());
-    expect(await readProductOffer(pool, created.id, accountId)).toEqual({price: null, currencyCode: null, buyUrl: null});
+    expect(await readProductOffer(pool, created.id, accountId)).toEqual({price: null, currencyCode: null, buyUrl: null, affiliateDisclosed: false});
   });
 
   it("accepts an App and a Product display override on update", async () => {
@@ -142,7 +142,7 @@ describePg("owner write path for typed categories", () => {
     const row = await repository.createRecommendation(accountId, {category: "apps", entityId: app.id, collectionId: appList.id, expectedCollectionRevision: appList.revision}, key());
     await expect(repository.updateRecommendation(accountId, row.id, row.revision, {productOffer: {price: "1.00", currencyCode: "USD", buyUrl: null}}, key())).rejects.toThrow();
     // The refused offer left nothing behind.
-    expect(await readProductOffer(pool, row.id, accountId)).toEqual({price: null, currencyCode: null, buyUrl: null});
+    expect(await readProductOffer(pool, row.id, accountId)).toEqual({price: null, currencyCode: null, buyUrl: null, affiliateDisclosed: false});
   });
 
   it("persists the typed Place facts and a context that starts private", async () => {

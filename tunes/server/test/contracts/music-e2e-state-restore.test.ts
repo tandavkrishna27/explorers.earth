@@ -181,7 +181,7 @@ describe("Music E2E transactional state restore", () => {
       "0049_explorers_collection_location_links",
       "0050_explorers_guide_sections",
       "0051_explorers_launch_controls",
-      "0052_canonical_music_numeric_retirement", "0053_explorers_taxonomy_catalogs", "0054_explorers_place_individual_pins", "0055_explorers_app_enrichment", "0056_explorers_app_enrichment_jobs", "0057_retire_music_category", "0058_explorers_place_photo_backfill", "0059_explorers_person_suppression_audit", "0060_explorers_guide_budget_tier", "0061_explorers_product_spec_order_budget_scale", "0062_explorers_handle_holds", "0063_explorers_open_library_books", "0064_explorers_game_details", "0065_explorers_collection_live_slug", "0066_explorers_list_redirects_and_delete",
+      "0052_canonical_music_numeric_retirement", "0053_explorers_taxonomy_catalogs", "0054_explorers_place_individual_pins", "0055_explorers_app_enrichment", "0056_explorers_app_enrichment_jobs", "0057_retire_music_category", "0058_explorers_place_photo_backfill", "0059_explorers_person_suppression_audit", "0060_explorers_guide_budget_tier", "0061_explorers_product_spec_order_budget_scale", "0062_explorers_handle_holds", "0063_explorers_open_library_books", "0064_explorers_game_details", "0065_explorers_collection_live_slug", "0066_explorers_list_redirects_and_delete", "0067_explorers_curated_taxonomy_catalogs", "0068_explorers_category_data_shape",
     ]);
     const expectedTriggers: Array<{table:string;name:string;enabled:string;type:number;function?:string}> = [
       { table: "account_music_identity", name: "account_music_identity_immutable", enabled: "O", type: 19 },

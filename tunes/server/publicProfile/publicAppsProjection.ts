@@ -41,7 +41,10 @@ async function richApp(db:PoolClient,row:any){
  return {documentId:row.id,app_url:facts.appUrl,
  title:(Object.hasOwn(overrides,'title')?overrides.title:entity.title)??'Untitled app',
  description:facts.description,logo_url:facts.logoUrl,developer:facts.developer,
- platforms:facts.platforms.length?facts.platforms:null,price_tier:facts.priceTier,download_url:facts.downloadUrl,
+ platforms:facts.platforms.length?facts.platforms:null,price_tier:facts.priceTier,
+ // 0068 moved the download link into otherLinks; the public field keeps showing it.
+ download_url:facts.downloadUrl??facts.otherLinks.find(link=>link.label==='Download')?.url??null,
+ other_links:facts.otherLinks.length?facts.otherLinks.map(link=>({label:link.label,url:link.url})):null,
  user_recommendation_note:normalizeRichNote(row.note)?.html??'',user_rating:row.user_rating,
  is_pinned:row.pin_order!==null,pin_order:row.pin_order,display_order:row.display_order,
  screenshots:screenshots.length?screenshots.map(id=>`/api/explorers/v1/media/${id}/content`):null,

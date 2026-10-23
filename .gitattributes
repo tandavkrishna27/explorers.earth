@@ -2,3 +2,4 @@ tunes/migrations/*.sql text eol=lf
 tunes/fixtures/taxonomy/real-strapi-20261013/*.json -text whitespace=cr-at-eol
 tunes/server/services/appEnrichmentDecoderFields.generated.mjs text eol=lf
 tunes/fixtures/taxonomy/reviewed-people-20261022/*.json -text whitespace=cr-at-eol
+tunes/fixtures/taxonomy/reviewed-curated-20261023/*.json -text whitespace=cr-at-eol

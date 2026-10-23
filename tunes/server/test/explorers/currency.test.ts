@@ -78,7 +78,7 @@ describe("currency table", () => {
   });
 });
 
-const offer = (price: string | null, currencyCode: string | null) => ({ price, currencyCode, buyUrl: null });
+const offer = (price: string | null, currencyCode: string | null) => ({ price, currencyCode, buyUrl: null, affiliateDisclosed: false });
 const messages = (result: { success: boolean; error?: { issues: { message: string }[] } }) => result.error?.issues.map((issue) => issue.message) ?? [];
 
 describe("product offer write validation", () => {

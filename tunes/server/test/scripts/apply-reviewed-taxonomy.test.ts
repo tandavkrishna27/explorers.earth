@@ -55,8 +55,38 @@ describe("reviewed taxonomy apply surface", () => {
       .toEqual({ mode: "apply", reviewedBy: "Ops", category: "people" });
     for (const argv of [[], ["--apply"], ["--apply", "--reviewed-by"], ["--apply", "--reviewed-by", " "],
       ["--dry-run", "--apply"], ["--dry-run", "--reviewed-by", "x"], ["--apply", "--reviewed-by", "a\nb"], ["--people"],
-      ["--category"], ["--category", "books", "--dry-run"], ["--dry-run", "--category", "people"], ["--category", "people"]]) {
+      ["--category"], ["--category", "movies", "--dry-run"], ["--dry-run", "--category", "people"], ["--category", "people"]]) {
       expect(() => parseTaxonomyApplyArguments(argv), argv.join(" ")).toThrow(/Usage/);
     }
+  });
+});
+
+describe("curated categories", () => {
+  it.each(["books", "games", "apps", "products"] as const)("parses --category %s", (category) => {
+    expect(parseTaxonomyApplyArguments(["--category", category, "--dry-run"])).toEqual({ mode: "dry-run", category });
+    expect(parseTaxonomyApplyArguments(["--category", category, "--apply", "--reviewed-by", "Ops"]))
+      .toEqual({ mode: "apply", reviewedBy: "Ops", category });
+  });
+
+  it.each([["books", 26], ["games", 20], ["apps", 20], ["products", 20]] as const)("%s reviewed input is flat, en-only, hash-pinned with %i terms", (category, count) => {
+    // Break caught: a fixture is edited without re-running the generator and
+    // re-pinning, or a category loads another category's file.
+    const input = resolveTaxonomyApplyInput(category);
+    expect(input.category).toBe(category);
+    expect(input.terms).toHaveLength(count);
+    expect(input.terms.every((term) => term.category === category && term.parentId === null && term.active
+      && Object.keys(term.labels).join() === "en")).toBe(true);
+    expect(input.sourceMappings.length > 0).toBe(category === "games");
+  });
+
+  it("maps IGDB genres onto games terms only", () => {
+    const games = resolveTaxonomyApplyInput("games");
+    const ids = new Set(games.terms.map((term) => term.id));
+    expect(games.sourceMappings).toHaveLength(23);
+    expect(games.sourceMappings.every((m) => m.sourceHost === "api.igdb.com" && m.entityKind === "genre" && ids.has(m.termId))).toBe(true);
+  });
+
+  it("refuses movies", () => {
+    expect(() => parseTaxonomyApplyArguments(["--category", "movies", "--dry-run"])).toThrow(/Usage/);
   });
 });

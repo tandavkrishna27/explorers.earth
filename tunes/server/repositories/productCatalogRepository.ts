@@ -37,15 +37,15 @@ export async function readProductEntity(db:Pick<Pool,'query'>,id:string){
  * price is read as text so the exact decimal survives; a JS number could not hold it.
  */
 export async function readProductOffer(db:Pick<Pool,'query'>,recommendationId:string,accountId:string):Promise<ProductOffer>{
- const row=(await db.query<{price:string|null;currency_code:string|null;buy_url:string|null}>(
-  'SELECT price::text AS price,currency_code,buy_url FROM product_recommendation_context WHERE recommendation_id=$1 AND account_id=$2',
+ const row=(await db.query<{price:string|null;currency_code:string|null;buy_url:string|null;affiliate_disclosed:boolean}>(
+  'SELECT price::text AS price,currency_code,buy_url,affiliate_disclosed FROM product_recommendation_context WHERE recommendation_id=$1 AND account_id=$2',
   [recommendationId,accountId])).rows[0];
  if(!row)return emptyProductOffer();
  const currencyCode=row.currency_code;
  return productOfferSchema.parse({
   // Zero survives as zero: only null means unknown, and "0.000000" is not null.
   price:row.price===null?null:canonicalAmount(row.price,currencyCode),
-  currencyCode,buyUrl:row.buy_url,
+  currencyCode,buyUrl:row.buy_url,affiliateDisclosed:row.affiliate_disclosed,
  });
 }
 
@@ -58,10 +58,10 @@ export async function writeProductOffer(db:PoolClient,recommendationId:string,ac
  const parsed=productOfferWriteSchema.safeParse(offer);
  if(!parsed.success)throw new RecommendationFailure(422,parsed.error.issues[0]?.message??'Invalid product offer');
  const value=parsed.data;
- await db.query(`INSERT INTO product_recommendation_context(recommendation_id,account_id,price,currency_code,buy_url)
-   VALUES($1,$2,$3::numeric,$4,$5)
-   ON CONFLICT(recommendation_id) DO UPDATE SET price=EXCLUDED.price,currency_code=EXCLUDED.currency_code,buy_url=EXCLUDED.buy_url`,
-  [recommendationId,accountId,value.price,value.currencyCode,value.buyUrl]);
+ await db.query(`INSERT INTO product_recommendation_context(recommendation_id,account_id,price,currency_code,buy_url,affiliate_disclosed)
+   VALUES($1,$2,$3::numeric,$4,$5,$6)
+   ON CONFLICT(recommendation_id) DO UPDATE SET price=EXCLUDED.price,currency_code=EXCLUDED.currency_code,buy_url=EXCLUDED.buy_url,affiliate_disclosed=EXCLUDED.affiliate_disclosed`,
+  [recommendationId,accountId,value.price,value.currencyCode,value.buyUrl,value.affiliateDisclosed]);
 }
 
 // An owner's display override re-presents a shared entity. productUrl is absent from the

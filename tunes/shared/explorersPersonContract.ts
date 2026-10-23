@@ -51,6 +51,8 @@ const fields={
  externalFollowerCountText:text(50).nullable(),
 };
 export const personEntityDetailsSchema=z.object(fields).strict().refine(v=>new TextEncoder().encode(JSON.stringify(v)).length<=8192,'Person details too large');
+/** DS-09: new writes never carry a follower count; stored values stay readable. */
+export const personEntityWriteDetailsSchema=personEntityDetailsSchema.refine(v=>v.externalFollowerCountText===null,'Follower count is no longer recorded');
 
 // A display override re-presents a *shared* entity for one owner. usernameHandle is
 // excluded: a handle is how a person is identified on a platform, so letting one owner
@@ -61,7 +63,7 @@ const {usernameHandle:_identity,...overridable}=fields;
 export const personDisplayFieldsSchema=z.object(overridable).partial().strict();
 
 export const personEntityDtoSchema=z.object({id:z.string().uuid(),kind:z.literal('person'),title:z.string().trim().refine(v=>v.length>0&&Array.from(v).length<=500),details:personEntityDetailsSchema,origin:z.literal('manual'),suppressed:z.boolean()}).strict();
-export const resolveManualPersonSchema=z.object({kind:z.literal('manual'),category:z.literal('people'),details:z.object(fields).partial().extend({title:personNameSchema}).strict()}).strict();
+export const resolveManualPersonSchema=z.object({kind:z.literal('manual'),category:z.literal('people'),details:z.object(fields).partial().extend({title:personNameSchema}).strict().refine(v=>v.externalFollowerCountText==null,'Follower count is no longer recorded')}).strict();
 
 export type PersonEntityDetails=z.infer<typeof personEntityDetailsSchema>;
 export type PersonEntityDto=z.infer<typeof personEntityDtoSchema>;

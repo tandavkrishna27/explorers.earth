@@ -100,6 +100,10 @@ export async function runAccountLifecycleMaintenance(pool: Pool, storage: Object
         // Cascading taxonomy deletes must follow catalog -> account -> category order.
         await db.query("SELECT lock_explorers_taxonomy_catalog('people')");
         await db.query("SELECT lock_explorers_taxonomy_catalog('places')");
+        await db.query("SELECT lock_explorers_taxonomy_catalog('apps')");
+        await db.query("SELECT lock_explorers_taxonomy_catalog('books')");
+        await db.query("SELECT lock_explorers_taxonomy_catalog('games')");
+        await db.query("SELECT lock_explorers_taxonomy_catalog('products')");
         const account = await db.query<{ status: string; user_id: string }>(`SELECT a.status,m.user_id FROM creator_accounts a
           JOIN account_memberships m ON m.account_id=a.id AND m.role='owner'
           WHERE a.id=$1 FOR UPDATE OF a`, [operation.account_id]);
