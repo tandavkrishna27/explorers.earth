@@ -782,7 +782,8 @@ const FavoritesHome = memo(() => {
 
       <div className="bg-dashboard-bg">
         <NavigationStatus navigation={navigation} />
-        <div className="bg-dashboard-bg min-h-screen max-w-6xl mx-auto px-4 pt-0 md:pt-4 pb-4">
+        {/* The category branch brings its own DashboardPageContainer, so this wrapper adds no width or padding to it. */}
+        <div className={`bg-dashboard-bg min-h-screen ${((loading && !cities) || !accountById) || (step === 2 && placeCards.length > 0) ? "max-w-6xl mx-auto px-4 pt-0 md:pt-4 pb-4" : ""}`}>
           {/* OWN-06. Only a cold load replaces the page; a refresh keeps the last read. */}
           {((loading && !cities) || !accountById) ? (
             <div className="flex items-center justify-center min-h-screen">

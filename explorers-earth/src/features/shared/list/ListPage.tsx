@@ -8,6 +8,7 @@ import ShareTab from "./ShareTab";
 import ManageTab from "./ManageTab";
 import PublishPill from "../../../components/controls/PublishPill";
 import type { ListPageAdapter } from "./listPageAdapter";
+import DashboardPageContainer from "../../../components/layout/DashboardPageContainer";
 
 type Props = { adapter: ListPageAdapter; onMount?: (tab: TabKey) => void };
 
@@ -24,14 +25,14 @@ export default function ListPage({ adapter, onMount }: Props) {
 
   if (!list && adapter.error) {
     return (
-      <div role="alert" className="mx-auto grid max-w-[720px] gap-3 p-4">
+      <DashboardPageContainer className="grid gap-3 py-4"><div role="alert" className="grid gap-3">
         <p>{t("dashboard.wp3b.listLoadFailed", "This list didn't load.")}</p>
         <button type="button" onClick={adapter.retry} className="justify-self-start rounded-xl bg-blue-400 px-4 py-2 text-white">{t("dashboard.wp3b.retry", "Try again")}</button>
-      </div>
+      </div></DashboardPageContainer>
     );
   }
   return (
-    <div className="mx-auto grid w-full max-w-[720px] gap-3 px-4 pb-24">
+    <DashboardPageContainer className="grid gap-3 pb-24">
       <button type="button" onClick={back} className="justify-self-start text-[10px] uppercase tracking-[.08em] text-gray-400">
         ‹ {t("dashboard.wp3b.backTo", "Back to {{category}}", { category: adapter.categoryLabel }).replace("{{category}}", adapter.categoryLabel)}
       </button>
@@ -47,7 +48,7 @@ export default function ListPage({ adapter, onMount }: Props) {
           share: <Mounted tab="share" onMount={onMount}><ShareTab adapter={adapter} /></Mounted>,
           manage: <Mounted tab="manage" onMount={onMount}><ManageTab adapter={adapter} /></Mounted>,
         }} />
-    </div>
+    </DashboardPageContainer>
   );
 }
 

@@ -121,7 +121,7 @@ const ResponsiveLayout = () => {
             <Header />
             <div
               ref={scrollContainerRef}
-              className={isDesktop ? "flex-1 overflow-auto pt-[72px] md:pt-[54px]" : "pt-16"}
+              className={isDesktop ? "flex-1 overflow-auto pt-[72px] md:pt-[54px]" : "dashboard-mobile-content"}
               onScroll={isDesktop ? (event) => updateHeaderVisibility(event.currentTarget.scrollTop) : undefined}
             >
               {page}
