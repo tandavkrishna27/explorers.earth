@@ -46,6 +46,9 @@ it('lock function accepts the new categories and refuses unknown ones',async()=>
 // Apply runs after the UNCONFIGURED assertions above (tests in a file run in order).
 it.each(['books','games','apps','products'] as const)('%s: dry-run clean, apply configures v1, identical re-apply is a no-op',async category=>{
  const {input}=loadReviewedCuratedTaxonomy(category);
+ // The suite shares one database: explorers-content-revision leaves a books counter at
+ // its 2^53-1 ceiling, and apply bumps every affected account's counter once.
+ await admin.query('UPDATE account_category_content_state SET revision=1 WHERE category=$1 AND revision>=9007199254740991',[category]);
  const dry=await dryRunTaxonomyCatalogImport(admin as never,input);
  expect(dry.conflicts).toEqual([]);expect(dry.catalogVersion).toBe(1);
  const receipt=await applyTaxonomyCatalogImport(admin as never,input,'wave2-integration');
