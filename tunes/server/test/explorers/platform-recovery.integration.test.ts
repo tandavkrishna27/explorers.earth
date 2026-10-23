@@ -186,6 +186,14 @@ describePostgres("platform recovery round trip", () => {
       await provisionMusicRuntimeLogin(ownerPool, { loginRole: login, password });
       const runtime = new URL(url(name)); runtime.username = login; runtime.password = password;
       await expect(verifyMusicRuntimeDatabaseConnection({ connectionString: runtime.toString(), user: login } as never, owner)).resolves.toBeUndefined();
-    } finally { await ownerPool.end(); }
+    } finally {
+      await ownerPool.end();
+      // Roles are cluster-wide: a leftover login stays a member of music_runtime, and every
+      // later suite's provisioning refuses that reverse membership. Remove both roles here.
+      await admin.query("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname=$1 AND pid<>pg_backend_pid()", [name]);
+      await admin.query(`DROP DATABASE IF EXISTS ${name}`);
+      await admin.query(`DROP ROLE IF EXISTS ${login}`);
+      await admin.query(`DROP ROLE IF EXISTS ${owner}`);
+    }
   }, 600_000);
 });
