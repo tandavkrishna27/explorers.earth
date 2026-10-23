@@ -301,9 +301,9 @@ export class ExplorersRecommendationRepository {
       return created;
     });
   }
-  private async lockCollection(db:PoolClient,accountId:string,id:string,revision:number) {
+  private async lockCollection(db:PoolClient,accountId:string,id:string,revision:number,options:{allowArchived?:boolean}={}) {
     if(!Number.isSafeInteger(revision)||revision<1) throw new RecommendationFailure(422,'Invalid revision');
-    const result=await db.query('SELECT * FROM collections WHERE id=$1 AND account_id=$2 AND archived_at IS NULL FOR UPDATE',[id,accountId]);
+    const result=await db.query(`SELECT * FROM collections WHERE id=$1 AND account_id=$2${options.allowArchived?'':' AND archived_at IS NULL'} FOR UPDATE`,[id,accountId]);
     if(!result.rows[0]) throw new RecommendationFailure(404,'Collection unavailable');
     if(Number(result.rows[0].revision)!==revision) throw new RecommendationFailure(409,'Stale collection revision');
     return result.rows[0];
@@ -395,6 +395,38 @@ export class ExplorersRecommendationRepository {
       return {id,archived:true};
     });
   }
+  // LP-08. Restore brings an archived list back under its slug, or a new one when the old
+  // slug now belongs to a live list or is a live list's redirect. The new slug leaves no
+  // redirect: the archived URL resolved to nothing, so there is no old link to keep.
+  async restoreCollection(accountId:string,id:string,expectedRevision:number,slug:string|undefined,key:string):Promise<CollectionRecord> {
+    return this.command(accountId,'restoreCollection',{id,expectedRevision,slug},key,async db=>{
+      const locked=await this.lockCollection(db,accountId,id,expectedRevision,{allowArchived:true});
+      if(!locked.archived_at)throw new RecommendationFailure(409,'List is not archived');
+      const next=slug??locked.slug;
+      const taken=await db.query(`SELECT 1 FROM collections WHERE account_id=$1 AND category=$2 AND slug=$3 AND archived_at IS NULL AND id<>$4
+        UNION ALL SELECT 1 FROM collection_slug_redirects r JOIN collections c ON c.id=r.collection_id
+        WHERE r.account_id=$1 AND r.category=$2 AND r.old_slug=$3 AND r.collection_id<>$4 AND c.archived_at IS NULL LIMIT 1`,[accountId,locked.category,next,id]);
+      if(taken.rowCount)throw new RecommendationFailure(409,'List URL is taken; choose a new URL to restore');
+      await db.query('DELETE FROM collection_slug_redirects WHERE account_id=$1 AND category=$2 AND old_slug=$3',[accountId,locked.category,next]);
+      const result=await db.query('UPDATE collections SET archived_at=NULL,slug=$2,revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *',[id,next]);
+      return this.collectionRecord(db,result.rows[0]);
+    });
+  }
+  // LP-08. Permanent delete. Children CASCADE (analytics events only lose their link, 0066);
+  // recommendations left in no other list are archived so media cleanup follows the
+  // existing archive path. Recommendations and entities are never hard-deleted.
+  async purgeCollection(accountId:string,id:string,expectedRevision:number,key:string):Promise<{id:string;deleted:true}> {
+    return this.command(accountId,'purgeCollection',{id,expectedRevision},key,async db=>{
+      const locked=await this.lockCollection(db,accountId,id,expectedRevision,{allowArchived:true});
+      const orphans=await db.query(`SELECT ci.recommendation_id id FROM collection_items ci WHERE ci.collection_id=$1
+        AND NOT EXISTS (SELECT 1 FROM collection_items o WHERE o.recommendation_id=ci.recommendation_id AND o.collection_id<>$1)`,[id]);
+      const removed=await db.query('DELETE FROM category_recommendation_pins WHERE collection_id=$1 RETURNING 1',[id]);
+      if(removed.rowCount) await db.query('UPDATE account_category_pin_state SET revision=revision+1 WHERE account_id=$1 AND category=$2',[accountId,locked.category]);
+      await db.query('DELETE FROM collections WHERE id=$1 AND account_id=$2',[id,accountId]);
+      if(orphans.rowCount) await db.query('UPDATE recommendations SET archived_at=now(),revision=revision+1,updated_at=now() WHERE id=ANY($1::uuid[]) AND account_id=$2 AND archived_at IS NULL',[orphans.rows.map(r=>r.id),accountId]);
+      return {id,deleted:true};
+    });
+  }
   async getPublicCollection(id:string):Promise<CollectionRecord|null> {
     const result=await this.pool.query(`SELECT c.* FROM collections c JOIN creator_accounts a ON a.id=c.account_id
       JOIN account_category_settings s ON s.account_id=c.account_id AND s.category=c.category
@@ -473,7 +505,6 @@ export class ExplorersRecommendationRepository {
   async updateCollection(accountId:string,id:string,expectedRevision:number,input:{title?:string;slug?:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails;displayOrder?:number;pinOrder?:number|null},key:string):Promise<CollectionRecord> {
     return this.command(accountId,'updateCollection',{id,expectedRevision,input},key,async db=>{
       const locked=await this.lockCollection(db,accountId,id,expectedRevision);
-      if(locked.category!=='places'&&input.slug!==undefined)throw new RecommendationFailure(422,'Category context mismatch');
       if(locked.category!=='places'&&input.placeLocation!==undefined)throw new RecommendationFailure(422,'Category context mismatch');
       // LP-09. Renaming keeps the old URL working: the old slug becomes a redirect to this
       // list. Taking a slug that is another live list's redirect is a conflict; taking a

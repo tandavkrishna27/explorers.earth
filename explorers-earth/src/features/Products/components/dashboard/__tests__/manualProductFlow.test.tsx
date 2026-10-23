@@ -221,30 +221,36 @@ describe('native manual Products', () => {
   expect(screen.getByLabelText('Title')).toHaveValue('');
  });
 
- it('describes deleting a list as archiving it, which is what the command does', () => {
+ it('describes deleting a list as archiving it, which is what the command does', async () => {
   fixture.content.view.lists = [{documentId: 'list-1', List_Name: 'Gear', slug: 'gear', Visibility: true, recommended_products: [], account: {documentId: 'a1', username: 'owner'}}];
   render(<MockedProvider><MemoryRouter initialEntries={['/recommendations/products/list-1']}><Routes><Route path="/recommendations/products/:listId" element={<ProductListView />} /></Routes></MemoryRouter></MockedProvider>);
-  fireEvent.click(screen.getByRole('button', {name: 'manage'}));
+  // LP-05: the Manage tab labels archiving "Archive list" and the action archives (never purges).
+  vi.mocked(ProductsClient.observeCollection).mockResolvedValue({detail: {id: 'list-1'}} as never);
+  vi.mocked(ProductsClient.archiveCollection).mockResolvedValue({} as never);
+  fireEvent.click(screen.getByRole('tab', {name: 'Manage'}));
+  fireEvent.click(screen.getByRole('button', {name: 'Archive list'}));
+  expect(screen.getByText(/Archived lists are hidden and free their URL/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', {name: 'Archive'}));
-  expect(screen.getByRole('heading', {name: 'Archive list?'})).toBeInTheDocument();
-  expect(screen.getByText(/archives "Gear"/)).toBeInTheDocument();
+  await waitFor(() => expect(ProductsClient.archiveCollection).toHaveBeenCalled());
   expect(screen.queryByText(/permanently delete/i)).toBeNull();
  });
 
- it('offers explicit recommendation publication without inheriting the list publication', async () => {
+ it('publishes the list from the publish pill without a per-recommendation publish control', async () => {
   const product = {documentId: 'product-a', title: 'Manual product', product_url: 'https://example.com/a', brand: null, price: null, currency: null,
    buy_url: null, logo_url: null, description: null, specifications: null, user_recommendation_note: '', user_rating: null, is_pinned: false,
    pin_order: null, display_order: 0, images: null, product_list: {documentId: 'list-1', List_Name: 'Published list', slug: 'published'}, product_category: null};
-  fixture.content.view.lists = [{documentId: 'list-1', List_Name: 'Published list', slug: 'published', Visibility: true, recommended_products: [product], account: {documentId: 'a1', username: 'owner'}}];
-  const observed = {detail: {id: 'product-a', revision: 1, publicationState: 'draft', category: 'products'}};
-  fixture.content.details.set('product-a', observed);
-  vi.mocked(ProductsClient.observeRecommendation).mockResolvedValue(observed as never);
-  vi.mocked(ProductsClient.updateRecommendation).mockResolvedValue({} as never);
+  fixture.content.view.lists = [{documentId: 'list-1', List_Name: 'Draft list', slug: 'published', Visibility: false, recommended_products: [product], account: {documentId: 'a1', username: 'owner'}}];
+  const observed = {detail: {id: 'list-1', revision: 1, category: 'products'}};
+  vi.mocked(ProductsClient.observeCollection).mockResolvedValue(observed as never);
+  vi.mocked(ProductsClient.updateCollection).mockResolvedValue({} as never);
   render(<MockedProvider><MemoryRouter initialEntries={['/recommendations/products/list-1']}><Routes><Route path="/recommendations/products/:listId" element={<ProductListView />} /></Routes></MemoryRouter></MockedProvider>);
-  expect(screen.getByText('Recommendation is Draft')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', {name: 'Publish Manual product'}));
-  await waitFor(() => expect(ProductsClient.updateRecommendation).toHaveBeenCalledWith(observed, {publicationState: 'published'}, expect.any(String), expect.any(AbortSignal)));
-  expect(ProductsClient.updateCollection).not.toHaveBeenCalled();
+  // LP-04: the per-recommendation publish row is gone; publication is the list's.
+  expect(screen.queryByText(/Recommendation is/)).toBeNull();
+  expect(screen.queryByRole('button', {name: 'Publish Manual product'})).toBeNull();
+  fireEvent.click(document.querySelector('[aria-haspopup="menu"]')!);
+  fireEvent.click(screen.getByRole('menuitemradio', {name: /public/i}));
+  await waitFor(() => expect(ProductsClient.updateCollection).toHaveBeenCalledWith(observed, {visibility: 'public', publicationState: 'published'}, expect.any(String), expect.any(AbortSignal)));
+  expect(ProductsClient.updateRecommendation).not.toHaveBeenCalled();
  });
 });
 

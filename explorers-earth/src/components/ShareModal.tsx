@@ -10,6 +10,7 @@ import { useCityStore } from "../store/useCityStore";
 import { toast } from "sonner";
 import { appendUtmParams, UTMParameters, createUtmParams } from "../utils/urlHelpers";
 import { buildQrUrl, type ListQrCategory } from "../utils/listShareUrls";
+import { exportElementPng, savePng } from "../utils/exportElementPng";
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -84,60 +85,13 @@ const ShareModal: React.FC<ShareModalProps> = ({
 
   const handleDownloadQR = async () => {
     try {
-      // Use the same approach as QRSticker - html-to-image library
-      const { toPng } = await import('html-to-image');
-      const qrContainer = document.getElementById('qr-sticker-container');
-
-      if (qrContainer) {
-        // Wait a bit for any images to load
-        await new Promise(resolve => setTimeout(resolve, 300));
-
-        const dataUrl = await toPng(qrContainer, {
-          cacheBust: true,
-          backgroundColor: '#000000',
-          pixelRatio: 3, // Higher resolution
-          quality: 1.0,
-          style: {
-            transform: 'scale(1)',
-            transformOrigin: 'top left'
-          }
-        });
-
-        const link = document.createElement('a');
-        link.href = dataUrl;
-        link.download = 'explorers-qr-sticker.png';
-
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
+      // Wait a bit for any images to load
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const dataUrl = await exportElementPng(document.getElementById('qr-sticker-container'), { backgroundColor: '#000000' });
+      savePng(dataUrl, 'explorers-qr-sticker.png');
     } catch (error) {
-      console.error('Failed to download QR sticker:', error);
-
-      // Fallback to html2canvas
-      try {
-        const { default: html2canvas } = await import('html2canvas');
-        const qrContainer = document.getElementById('qr-sticker-container');
-
-        if (qrContainer) {
-          await new Promise(resolve => setTimeout(resolve, 300));
-
-          const canvas = await html2canvas(qrContainer, {
-            backgroundColor: '#000000',
-            scale: 3,
-            useCORS: true,
-            allowTaint: true,
-            logging: false
-          });
-
-          const link = document.createElement('a');
-          link.download = 'explorers-qr-sticker.png';
-          link.href = canvas.toDataURL('image/png', 1.0);
-          link.click();
-        }
-      } catch (fallbackError) {
-        console.error('Fallback download also failed:', fallbackError);
-      }
+      console.error('QR download failed', error);
+      toast.error(t('dashboard.wp3b.qrDownloadFailed', 'Could not create the QR image. Try again.'));
     }
   };
 
@@ -414,6 +368,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
                   {/* Download Button */}
                   <button
                     onClick={handleDownloadQR}
+                    aria-label={t('dashboard.wp3b.downloadQr', 'Download QR')}
                     className="flex flex-col items-center justify-center p-4 sm:p-5 md:p-6 lg:p-7 xl:p-8 transition-all duration-200 hover:scale-110 text-white rounded-lg hover:bg-gray-800/50 backdrop-blur-sm"
                     style={{
                       backgroundColor: 'transparent',

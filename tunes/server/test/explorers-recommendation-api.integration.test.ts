@@ -507,12 +507,10 @@ it('Places foreign and archived targets deny edits; invalid cover rolls back slu
  expect((await command(a,'patch',`/collections/${c.id}`,{expectedRevision:1,title:'Must roll back',slug:'rollback-location',coverMediaId:media})).status).toBe(422);expect(await slugState(a,c.id)).toEqual(before);
  await pool.query('UPDATE collections SET archived_at=now() WHERE id=$1',[c.id]);const archived=await slugState(a,c.id);expect((await command(a,'patch',`/collections/${c.id}`,{expectedRevision:1,slug:'archived-denied'})).status).toBe(404);expect(await slugState(a,c.id)).toEqual(archived);expect((await slugState(b,foreign.id)).resource.slug).toBe(foreign.slug);
 });
-it.each(['guides','movies','books','games','apps','products','people'])('guarded stored %s rejects slug without writes and ordinary omitted slug works',async category=>{
- const a=await persona(),c=await list(a,category),before=(await pool.query('SELECT * FROM collections WHERE id=$1',[c.id])).rows[0],state=(await pool.query('SELECT * FROM account_category_content_state WHERE account_id=$1 AND category=$2',[a.accountId,category])).rows;
- const receipts=()=>pool.query("SELECT count(*)::int n FROM application_command_receipts WHERE account_id=$1 AND operation='updateCollection'",[a.accountId]);const count=(await receipts()).rows[0].n;
- expect((await command(a,'patch',`/collections/${c.id}`,{expectedRevision:1,title:'Rejected',slug:'rejected-category'})).status).toBe(422);expect((await pool.query('SELECT * FROM collections WHERE id=$1',[c.id])).rows[0]).toEqual(before);expect((await pool.query('SELECT * FROM account_category_content_state WHERE account_id=$1 AND category=$2',[a.accountId,category])).rows).toEqual(state);expect((await receipts()).rows[0].n).toBe(count);
- const {ExplorersRecommendationRepository}=await import('../repositories/explorersRecommendationRepository');
- await expect(new ExplorersRecommendationRepository(pool).updateCollection(a.accountId,c.id,1,{slug:'trusted-category-bypass'} as any,randomUUID())).rejects.toMatchObject({status:422});
- expect((await pool.query('SELECT * FROM collections WHERE id=$1',[c.id])).rows[0]).toEqual(before);expect((await receipts()).rows[0].n).toBe(count);
- const ordinary=await command(a,'patch',`/collections/${c.id}`,{expectedRevision:1,title:'Ordinary'});expect(ordinary.status).toBe(200);expect(ordinary.body.collection).toMatchObject({title:'Ordinary',slug:c.slug,revision:2});
+// WP3B (LP-09). Every category renames its list URL; the old slug becomes a redirect.
+it.each(['guides','movies','books','games','apps','products','people'])('stored %s renames its slug with a redirect and ordinary omitted slug works',async category=>{
+ const a=await persona(),c=await list(a,category);
+ const renamed=await command(a,'patch',`/collections/${c.id}`,{expectedRevision:1,title:'Renamed',slug:'renamed-category'});expect(renamed.status,JSON.stringify(renamed.body)).toBe(200);expect(renamed.body.collection).toMatchObject({title:'Renamed',slug:'renamed-category',revision:2});
+ expect((await pool.query('SELECT old_slug FROM collection_slug_redirects WHERE collection_id=$1',[c.id])).rows).toEqual([{old_slug:c.slug}]);
+ const ordinary=await command(a,'patch',`/collections/${c.id}`,{expectedRevision:2,title:'Ordinary'});expect(ordinary.status).toBe(200);expect(ordinary.body.collection).toMatchObject({title:'Ordinary',slug:'renamed-category',revision:3});
 });

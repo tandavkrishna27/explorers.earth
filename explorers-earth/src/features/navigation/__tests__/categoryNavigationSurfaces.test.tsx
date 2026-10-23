@@ -460,10 +460,10 @@ describe('ordinary category headers use verified navigation', () => {
     vi.mocked(explorersApiClient.getMyEditableCollection).mockResolvedValue(observed);
     vi.mocked(explorersApiClient.archiveMyCollection).mockResolvedValue({ ...observed.detail, archived: true });
     const h = surfaceHarness(<Routes><Route path="/list/:listId" element={<MovieListView />} /><Route path="*" element={<div>Returned to lists</div>} /></Routes>, { route: '/list/list-1', initial: { pinned_nav_tabs: ['public_profile', 'public_movie', 'public_books'] } }); await h.ready();
-    fireEvent.click(await screen.findByRole('button', { name: /^manage$/i }));
-    fireEvent.click(screen.getByRole('button', { name: /^Archive list$/i }));
+    fireEvent.click(await screen.findByRole('tab', { name: /^manage$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Archive list$/i }));
     expect(explorersApiClient.archiveMyCollection).not.toHaveBeenCalled();
-    fireEvent.click(screen.getAllByRole('button', { name: /^Archive list$/i }).at(-1)!);
+    fireEvent.click(await screen.findByRole('button', { name: /^Archive$/ }));
     await screen.findByText('Returned to lists');
     expect(explorersApiClient.getMyEditableCollection).toHaveBeenCalledWith('list-1');
     expect(explorersApiClient.archiveMyCollection).toHaveBeenCalledExactlyOnceWith(observed, expect.any(String));
