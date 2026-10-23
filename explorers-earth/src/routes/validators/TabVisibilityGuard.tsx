@@ -22,7 +22,7 @@ interface TabVisibilityGuardProps {
  * and error state render because it is the fallback destination.
  */
 const TabVisibilityGuard = memo(({ tabField, defaultVisible = false, children }: TabVisibilityGuardProps) => {
-    const { overlayVisible } = usePublicColdEntry();
+    const { inShellNavigation } = usePublicColdEntry();
     const identity = usePublicAccountIdentity();
     const loading = identity.status === "loading";
     const error = identity.status === "terminal-error";
@@ -42,10 +42,11 @@ const TabVisibilityGuard = memo(({ tabField, defaultVisible = false, children }:
         });
     }, [identity.usernameKey, tabField]);
 
-    // One loader owner (OWN-08): while the cold-entry overlay is up it is the only
-    // loader. A warm in-shell re-check shows the content-shaped skeleton.
+    // One loader owner (OWN-08): the cold-entry overlay is the only loader on cold
+    // entry, including the frames after it leaves while identity is still settling.
+    // Only a warm in-shell navigation shows the content-shaped skeleton.
     if (loading) {
-        if (overlayVisible) return null;
+        if (!inShellNavigation) return null;
         return (
             <div className="bg-black min-h-screen pt-20 px-4 md:px-6">
                 <div className="max-w-5xl mx-auto">

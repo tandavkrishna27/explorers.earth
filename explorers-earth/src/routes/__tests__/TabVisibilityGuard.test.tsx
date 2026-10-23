@@ -234,10 +234,14 @@ describe("TabVisibilityGuard", () => {
     }
   });
 
-  it("shows its skeleton for an in-shell (warm) visibility re-check once the overlay is gone", async () => {
+  it("paints no skeleton after the overlay leaves on cold entry while identity is still loading", async () => {
+    // CI repro (8x CPU): the shell revealed before the guard's identity settled and the
+    // guard painted HeroSkeleton right after the Earth - a second loader.
     mockUseQuery.mockReturnValue({ data: undefined, loading: true } as ReturnType<typeof useQuery>);
     renderBooksRoute();
     await waitFor(() => expect(screen.queryByTestId("public-cold-entry-overlay")).toBeNull());
-    expect(screen.getByTestId("guard-skeleton")).toBeInTheDocument();
+    expect(screen.queryByTestId("guard-skeleton")).toBeNull();
   });
+  // The warm in-shell navigation skeleton is pinned by PublicLayout.readiness.test.tsx
+  // ("shows a destination skeleton inside an already revealed shell while visibility revalidates").
 });

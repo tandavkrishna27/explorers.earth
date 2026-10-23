@@ -896,6 +896,9 @@ test('WP1 one loader owner: category cold entry never shows a second loader afte
       };
       requestAnimationFrame(sample);
     });
+    // Slow CPU (as on CI) opens the frame where a page reported ready before its read started.
+    const cdp = await visitor.page.context().newCDPSession(visitor.page);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 8 });
     await visitor.page.goto(path);
     await expect(visitor.page.getByRole('status', { name: 'Earth loading' })).toHaveCount(1);
     gate.release();

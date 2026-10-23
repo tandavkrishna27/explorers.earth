@@ -31,6 +31,8 @@ type PublicColdEntryValue = {
   shellRevealed: boolean;
   /** True while the cold-entry overlay is the visible loader (it owns loading). */
   overlayVisible: boolean;
+  /** True on a route reached inside an already painted shell (not the cold-entry route). */
+  inShellNavigation: boolean;
   reportValidation(status: "pending" | "valid" | "terminal-invalid"): void;
   reportIdentity(status: PublicIdentityStatus): void;
   reportRouteReady(ready: boolean): void;
@@ -75,6 +77,7 @@ export function PublicColdEntryBoundary({ children }: { children: ReactNode }) {
   );
   const readiness = syncPublicShell(stored, usernameKey, contentRouteKey);
   const [paintedUsernameKey, setPaintedUsernameKey] = useState<string | null>(null);
+  const [coldEntryRouteKey, setColdEntryRouteKey] = useState<string | null>(null);
 
   // Synchronize route identity before descendants render with a new pathname.
   if (readiness !== stored) {
@@ -105,15 +108,19 @@ export function PublicColdEntryBoundary({ children }: { children: ReactNode }) {
     routeReady: readiness.routeReady,
     shellRevealed: readiness.shellRevealed,
     overlayVisible: showOverlay,
+    inShellNavigation: !showOverlay && paintedUsernameKey === usernameKey && coldEntryRouteKey !== contentRouteKey,
     reportValidation,
     reportIdentity,
     reportRouteReady,
   };
   useLayoutEffect(() => {
     if (!readiness.shellRevealed || paintedUsernameKey === usernameKey) return;
-    const frame = window.requestAnimationFrame(() => setPaintedUsernameKey(usernameKey));
+    const frame = window.requestAnimationFrame(() => {
+      setPaintedUsernameKey(usernameKey);
+      setColdEntryRouteKey(contentRouteKey);
+    });
     return () => window.cancelAnimationFrame(frame);
-  }, [paintedUsernameKey, readiness.shellRevealed, usernameKey]);
+  }, [contentRouteKey, paintedUsernameKey, readiness.shellRevealed, usernameKey]);
 
   const interactionGuard = showOverlay ? { inert: "" } : {};
 
