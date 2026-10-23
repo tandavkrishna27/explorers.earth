@@ -89,12 +89,16 @@ export const sampleGuideFileSchema = z.object({
   }).strict(),
 }).strict();
 
-/** Compact fixture item -> S3 v2 GuideDayItem. Field list equals S3's guideDayPlaceSchema. */
+/**
+ * Compact fixture item -> S3 v2 GuideDayItem. Field list equals S3's guideDayPlaceSchema.
+ * S3's placeId is required (never null), so an unresolved place gets a stable synthetic id
+ * `manual-<localId>` with source 'manual' and verified false; the resolver can replace it later.
+ */
 export function toGuideDayItem(item: SampleGuideFixtureItem): GuideDayItem {
   if (item.kind === "note") return guideDayItemSchema.parse({ kind: "note", localId: item.localId, timeLabel: item.timeLabel, text: item.text });
   const d = item.details;
   return guideDayItemSchema.parse({ kind: "place", localId: item.localId, timeLabel: item.timeLabel, place: {
-    localId: item.localId, placeId: item.googlePlaceId, name: d.title, formattedAddress: d.formattedAddress ?? null,
+    localId: item.localId, placeId: item.googlePlaceId ?? `manual-${item.localId}`, name: d.title, formattedAddress: d.formattedAddress ?? null,
     geometry: d.latitude != null && d.longitude != null ? { location: { lat: d.latitude, lng: d.longitude } } : null,
     types: [], tips: item.tips, photos: [], priceLevel: null, priceRange: null, customBudget: null,
     budgetAmount: null, budgetCurrency: null, source: item.googlePlaceId ? "google" : "manual", verified: item.googlePlaceId !== null,

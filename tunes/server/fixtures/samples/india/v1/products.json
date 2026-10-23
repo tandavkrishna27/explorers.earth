@@ -1,1 +1,11 @@
-{"set":"india","version":"v1","category":"products","lists":[]}
+{"set":"india","version":"v1","category":"products","lists":[
+ {"key":"in-products-kitchen","title":"Kitchen staples","description":"Things in my kitchen that last for years.","topPicks":true,"items":[
+  {"note":"Dal in fifteen minutes, every day.","rating":9,"details":{"title":"Hawkins Classic Pressure Cooker 5 L","productUrl":"https://www.hawkinscookers.com","brand":"Hawkins","description":"Aluminium pressure cooker for everyday cooking."}},
+  {"note":"Keeps chai hot through a long morning.","rating":8,"details":{"title":"Milton Thermosteel Flask 1 L","productUrl":"https://www.milton.in","brand":"Milton","description":"Vacuum-insulated steel flask."}},
+  {"note":"Microwave-safe and does not stain.","rating":8,"details":{"title":"Borosil Glass Lunch Box Set","productUrl":"https://www.myborosil.com","brand":"Borosil","description":"Glass containers with lids."}},
+  {"note":"Rotis come out even, every time.","rating":8,"details":{"title":"Prestige Omega Deluxe Tawa","productUrl":"https://www.ttkprestige.com","brand":"Prestige","description":"Non-stick flat griddle."}}]},
+ {"key":"in-products-desk","title":"Work-from-home desk","description":"Small upgrades that made long days easier.","topPicks":false,"items":[
+  {"note":"Comfortable for a full day; the scroll wheel is great.","rating":9,"details":{"title":"Logitech MX Master 3S","productUrl":"https://www.logitech.com","brand":"Logitech","description":"Wireless ergonomic mouse."}},
+  {"note":"Good sound and long battery for the price.","rating":8,"details":{"title":"boAt Rockerz 450","productUrl":"https://www.boat-lifestyle.com","brand":"boAt","description":"Wireless on-ear headphones."}},
+  {"note":"Reading without the glare.","rating":9,"details":{"title":"Kindle Paperwhite","productUrl":"https://www.amazon.in/kindle","brand":"Amazon","description":"E-reader with an adjustable warm light."}}]}
+]}

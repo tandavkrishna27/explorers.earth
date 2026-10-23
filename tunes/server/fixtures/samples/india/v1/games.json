@@ -1,1 +1,12 @@
-{"set":"india","version":"v1","category":"games","lists":[]}
+{"set":"india","version":"v1","category":"games","lists":[
+ {"key":"in-games-on-the-phone","title":"Play on your phone","description":"Quick games for the commute.","topPicks":true,"items":[
+  {"note":"Family game nights, now on the phone. By Gametion.","rating":8,"details":{"title":"Ludo King","releaseYear":2016,"platforms":["Android","iOS"],"genres":["Board"]}},
+  {"note":"Three-minute matches that are hard to put down. By Supercell.","rating":8,"details":{"title":"Clash Royale","releaseYear":2016,"platforms":["Android","iOS"],"genres":["Strategy"]}},
+  {"note":"Short, beautiful puzzles. By ustwo games.","rating":9,"details":{"title":"Monument Valley","releaseYear":2014,"platforms":["Android","iOS"],"genres":["Puzzle"]}},
+  {"note":"A word a day, shared with friends.","rating":8,"details":{"title":"Wordle","releaseYear":2021,"platforms":["Web"],"genres":["Puzzle"]}}]},
+ {"key":"in-games-cozy","title":"Cozy games","description":"Slow, kind games for winding down.","topPicks":false,"items":[
+  {"note":"Farm, fish, make friends. Lose a whole weekend. By ConcernedApe.","rating":10,"details":{"title":"Stardew Valley","releaseYear":2016,"platforms":["PC","Switch","Android","iOS"],"genres":["Simulation"]}},
+  {"note":"An island that is all yours. By Nintendo.","rating":9,"details":{"title":"Animal Crossing: New Horizons","releaseYear":2020,"platforms":["Switch"],"genres":["Simulation"]}},
+  {"note":"A story told through unpacking boxes. By Witch Beam.","rating":9,"details":{"title":"Unpacking","releaseYear":2021,"platforms":["PC","Switch"],"genres":["Puzzle"]}},
+  {"note":"A two-hour hike that feels like a holiday. By adamgryu.","rating":9,"details":{"title":"A Short Hike","releaseYear":2019,"platforms":["PC","Switch"],"genres":["Adventure"]}}]}
+]}
