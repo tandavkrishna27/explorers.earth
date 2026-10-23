@@ -3341,5 +3341,18 @@
       "otherLinks": "Other platform links",
       "addOtherLink": "+ Add another platform link"
     }
+  },
+  "people": {
+    "form": {
+      "profileLink": "Profile link",
+      "platform": "Platform",
+      "filledFromLink": "Filled from link",
+      "socialLinks": "Other social links",
+      "addSocialLink": "+ Add social link",
+      "linkNoRoom": "Only one link per platform plus one other link.",
+      "chooseSector": "Choose a sector",
+      "skills": "Skills",
+      "skillsHint": "Type a skill and press Enter"
+    }
   }
 }

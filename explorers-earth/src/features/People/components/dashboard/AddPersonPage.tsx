@@ -1,53 +1,70 @@
-import ReorderableList from '../../../../components/reorder/ReorderableList';
 import ReorderableMediaStrip from '../../../../components/reorder/ReorderableMediaStrip';
 import { useEffect, useRef, useState } from 'react';
 import { friendlyErrorMessage, urlFieldError } from "../../../../utils/friendlyError";
 import { useLocation, useParams } from 'react-router-dom';
-import { ArrowLeft, Loader2, Users, X } from 'lucide-react';
+import { ArrowLeft, X } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '../../../../store/store';
 import type { RecommendationObservation, CompleteTaxonomyCatalog } from '../../../../lib/explorersApiClient';
 import { PeopleClient, type ManualPersonIntent } from '../../api/peopleClient';
 import { usePeopleCommands } from '../../api/query';
 import { invalidatePeople, usePeopleOwner } from '../../hooks/usePeopleOwner';
-import { PERSON_PLATFORMS, type PersonPlatform } from '../../../../../../tunes/shared/explorersPersonContract';
+import type { PersonPlatform } from '../../../../../../tunes/shared/explorersPersonContract';
+import type { LinkPreview } from '../../../../../../tunes/shared/explorersLinkPreviewContract';
 import { richNoteFromEditor } from '../../../../../../tunes/shared/explorersRichNoteContract';
 import TiptapEditor from '../../../Favorites/components/TiptapEditor';
 import { useOriginBack } from "../../../../lib/navigation/useOriginBack";
 import { listPath } from "../../../../lib/navigation/categoryRoutes";
 import { useTranslation } from "react-i18next";
+import AddItemPage from '../../../shared/addItem/AddItemPage';
+import PasteLinkField from '../../../../components/PasteLinkField';
+import { linkPreviewClient } from '../../../../lib/linkPreviewClient';
+import { detectPlatform } from '../../lib/detectPlatform';
 
-// twitter is stored; the form has always offered x, so the option carries both.
+// twitter is stored; the form has always offered x, so the label says X.
 const PLATFORM_LABELS: Record<PersonPlatform, string> = {
  instagram: 'Instagram', linkedin: 'LinkedIn', twitter: 'X', github: 'GitHub',
  youtube: 'YouTube', website: 'Website', other: 'Other',
 };
+const EXTRA_LINK_LIMIT = 4;
+type Field = 'name' | 'headline';
 
 /**
- * Ticket 4.5. Native People add/edit page.
+ * Keys each extra social link by the platform its link points at. The primary link owns its
+ * platform's key; a second link on an already-used platform goes to "other". Returns null for
+ * a row that has nowhere left to go (its platform and "other" are both taken).
+ */
+export function keySocialLinks(primary: { url: string; platform: PersonPlatform } | null, extras: string[]): { socialUrls: Record<string, string>; unplaced: number[] } {
+ const socialUrls: Record<string, string> = {}, unplaced: number[] = [];
+ if (primary) { socialUrls.primary = primary.url; socialUrls[primary.platform] = primary.url; }
+ extras.forEach((raw, index) => {
+  const url = raw.trim(); if (!url) return;
+  const detected = detectPlatform(url);
+  const key = socialUrls[detected] === undefined ? detected : socialUrls.other === undefined ? 'other' : null;
+  if (key === null) unplaced.push(index); else socialUrls[key] = url;
+ });
+ return { socialUrls, unplaced };
+}
+
+/**
+ * People add/edit page on the shared add-item template (WP8 Task 8-13: DS-02, DS-08, DS-09,
+ * ADD-12).
  *
- * Removed rather than ported:
- *
- *  - The paste-a-profile step posted to /api/people/scrape-profile. The server has no
- *    such route and music-security-containment.test.ts asserts the path stays absent, so
- *    the step called a dead endpoint and discarded the draft when it failed. Every field
- *    is owner-entered now, which is what "enrichment failure must not erase a manual
- *    draft" asks for - there is no enrichment left to fail.
- *  - Scraped screenshots: imagery is owner media through the native route. Nothing here
- *    copies an image from a third party's profile.
- *
- * One field genuinely has nowhere to go. The Strapi form had separate "Headline / Role"
- * and "Bio / Description" inputs, but the target schema's person_entity_details has only
- * headline, and RecommendedPerson already declares bio as a compatibility alias of it.
- * So this page keeps one headline input and bio reads from it. That is a deliberate
- * narrowing recorded in the ticket, not an oversight.
+ *  - Sector is required: Save stays off until one is chosen from the People sector catalog.
+ *  - No rating and no follower count. The columns stay (old rows keep their values), but this
+ *    form writes userRating null and externalFollowerCountText null, and the detail view no
+ *    longer shows either.
+ *  - One profile link. Its platform is detected from the link (no platform select), and a
+ *    pasted link fills a still-empty name and headline and copies the link's photo into owned
+ *    media. Up to four more social links are keyed by their own detected platform.
+ *  - Skills are a plain tag input.
  */
 export default function AddPersonPage() {
  const { listId, personId } = useParams<{ listId: string; personId?: string }>();
  const location = useLocation();
- const { t: tBack } = useTranslation();
- const back = useOriginBack({ to: listPath("people", listId!), label: tBack("dashboard.wp1.back.list") });
- const backText = back.source === "state" && back.label ? tBack("dashboard.wp1.back.to", { name: back.label }) : tBack("dashboard.wp1.back.list");
+ const { t } = useTranslation();
+ const back = useOriginBack({ to: listPath("people", listId!), label: t("dashboard.wp1.back.list") });
+ const backText = back.source === "state" && back.label ? t("dashboard.wp1.back.to", { name: back.label }) : t("dashboard.wp1.back.list");
  const generation = useAuthStore(state => state.generation), accountId = useAuthStore(state => state.accountId);
  const scope = JSON.stringify([generation, accountId, location.pathname, listId, personId]);
  const currentScope = useRef(scope); currentScope.current = scope;
@@ -58,12 +75,14 @@ export default function AddPersonPage() {
  const existingPeople = [...new Map((owner.content?.view.lists.flatMap(list => list.recommended_people) ?? []).filter(person => !owner.content?.view.lists.find(list => list.documentId === listId)?.recommended_people.some(member => member.documentId === person.documentId)).map(person => [person.documentId, person])).values()];
 
  const [name, setName] = useState(''), [profileUrl, setProfileUrl] = useState('');
- const [platform, setPlatform] = useState<PersonPlatform | ''>('');
+ const [storedPrimary, setStoredPrimary] = useState<{ url: string; platform: PersonPlatform } | null>(null);
+ const [extraLinks, setExtraLinks] = useState<string[]>([]);
  const [handle, setHandle] = useState(''), [headline, setHeadline] = useState('');
- const [locationText, setLocationText] = useState(''), [followers, setFollowers] = useState('');
+ const [locationText, setLocationText] = useState('');
  const [tags, setTags] = useState<string[]>([]), [tagDraft, setTagDraft] = useState('');
- const [note, setNote] = useState(''), [rating, setRating] = useState<number | null>(null);
+ const [note, setNote] = useState('');
  const [media, setMedia] = useState<{ id: string; url: string }[]>([]), [pending, setPending] = useState(0);
+ const [importing, setImporting] = useState(false), [filled, setFilled] = useState<Set<Field>>(new Set());
  const [saving, setSaving] = useState(false), [error, setError] = useState('');
  const [sectorId,setSectorId]=useState(''),[sectorTouched,setSectorTouched]=useState(false);
  const [catalog,setCatalog]=useState<CompleteTaxonomyCatalog>(),[catalogLoading,setCatalogLoading]=useState(true),[catalogError,setCatalogError]=useState(''),[catalogRetry,setCatalogRetry]=useState(0);
@@ -81,7 +100,7 @@ export default function AddPersonPage() {
   return()=>{live=false;abort.abort();};
  },[scope,catalogRetry]);
  useEffect(()=>{setSectorId('');setSectorTouched(false);setExistingSector(null);},[scope]);
- useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setName(''); setProfileUrl(''); setPlatform(''); setHandle(''); setHeadline(''); setLocationText(''); setFollowers(''); setTags([]); setTagDraft(''); setNote(''); setRating(null); setMedia([]); setPending(0); setSaving(false); setError(''); setExistingId(''); }, [scope]);
+ useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setName(''); setProfileUrl(''); setStoredPrimary(null); setExtraLinks([]); setHandle(''); setHeadline(''); setLocationText(''); setTags([]); setTagDraft(''); setNote(''); setMedia([]); setPending(0); setImporting(false); setFilled(new Set()); setSaving(false); setError(''); setExistingId(''); }, [scope]);
 
  useEffect(() => {
   if (!personId || !owner.content || initialized.current === scope) return;
@@ -91,24 +110,53 @@ export default function AddPersonPage() {
   initialized.current = scope; draftObservation.current = observed;
   const stored=observed.detail.peopleSector?.sector??null;setExistingSector(stored);setSectorId(stored?.id??'');setSectorTouched(false);
   setName(person.name); setHandle(person.username_handle ?? ''); setHeadline(person.headline ?? '');
-  setLocationText(person.location ?? ''); setFollowers(person.follower_count ?? '');
-  setPlatform((person.primary_platform as PersonPlatform | null) ?? '');
-  setProfileUrl(person.profile_url ?? '');
+  setLocationText(person.location ?? '');
+  const primaryUrl = person.profile_url ?? '';
+  const storedPlatform = person.primary_platform as PersonPlatform | null;
+  setProfileUrl(primaryUrl);
+  setStoredPrimary(primaryUrl && storedPlatform ? { url: primaryUrl, platform: storedPlatform } : null);
+  // Every stored link other than the primary (under its own key) becomes an extra row.
+  const social = (person.social_urls ?? {}) as Record<string, string | undefined>;
+  setExtraLinks(Object.entries(social).filter(([key, url]) => url && key !== 'primary' && !(url === primaryUrl && (key === storedPlatform || storedPlatform === null))).map(([, url]) => url as string).slice(0, EXTRA_LINK_LIMIT));
   setTags(person.skills_tags ?? []);
   setNote(typeof person.user_recommendation_note === 'string' ? person.user_recommendation_note : '');
-  setRating(person.user_rating);
   // Without this the form starts empty and save() sends mediaIds: [], silently detaching
-  // every snapshot the owner already uploaded. mediaIds is on every recommendation detail,
-  // so unlike appScreenshots it needs no category guard.
+  // every snapshot the owner already uploaded.
   setMedia((observed.detail.mediaIds ?? []).map(id => ({ id, url: `/api/explorers/v1/media/${id}/content` })));
  }, [owner.content, scope, personId, listId]);
 
  const valid = (captured: string, operation?: number) => mounted.current && currentScope.current === captured && (operation === undefined || active.current === operation);
  const assertCurrent = (captured: string, operation: number) => { if (!valid(captured, operation) || controller.current?.signal.aborted) throw new Error('Person owner or route changed'); };
  const blank = (value: string) => { const trimmed = value.trim(); return trimmed === '' ? null : trimmed; };
+ const touched = (field: Field) => setFilled(value => { if (!value.has(field)) return value; const next = new Set(value); next.delete(field); return next; });
 
- // Reported before any command is dispatched, so the draft is never discarded to find out.
- const urlProblem = urlFieldError(profileUrl) ?? undefined;
+ const link = profileUrl.trim();
+ // The stored platform is kept while the stored link is unchanged; otherwise it is read from the link.
+ const primaryPlatform: PersonPlatform | null = !link ? null : storedPrimary?.url === link ? storedPrimary.platform : detectPlatform(link);
+ const keyed = keySocialLinks(link && primaryPlatform ? { url: link, platform: primaryPlatform } : null, extraLinks);
+ const urlProblem = urlFieldError(profileUrl) ?? extraLinks.map(url => urlFieldError(url)).find(Boolean) ?? (keyed.unplaced.length ? t('people.form.linkNoRoom', 'Only one link per platform plus one other link.') : undefined);
+ const sectorItems = catalog?.items.filter(item => item.category === 'people' && item.parentId === null) ?? [];
+
+ const importPhoto = async (imageUrl: string) => {
+  const captured = scope; setImporting(true);
+  try {
+   const result = await linkPreviewClient.importImage(imageUrl);
+   if (!valid(captured)) return;
+   setMedia(value => [{ id: result.id, url: `/api/explorers/v1/media/${result.id}/content` }, ...value.filter(item => item.id !== result.id)]);
+  } catch (failure) { if (valid(captured)) setError(friendlyErrorMessage(failure, 'The photo could not be copied')); }
+  finally { if (valid(captured)) setImporting(false); }
+ };
+
+ // Fills only what is still empty, so a read never overwrites what the owner typed.
+ const prefill = (preview: LinkPreview) => {
+  const marks: Field[] = [];
+  const nextName = preview.person?.name ?? preview.title;
+  const nextHeadline = preview.person?.headline ?? null;
+  if (nextName && !name.trim()) { setName(nextName); marks.push('name'); }
+  if (nextHeadline && !headline.trim()) { setHeadline(nextHeadline); marks.push('headline'); }
+  setFilled(value => new Set([...value, ...marks]));
+  if (preview.imageUrl && media.length === 0) void importPhoto(preview.imageUrl);
+ };
 
  const addTag = () => {
   const value = tagDraft.trim();
@@ -132,21 +180,22 @@ export default function AddPersonPage() {
   }
  };
 
+ // Sector is required whenever there is a sector to choose. An unconfigured or empty catalog
+ // cannot block saving, or the person could never be recommended at all.
+ const sectorMissing = !sectorId && !(catalog && (catalog.state !== 'CONFIGURED' || sectorItems.length === 0));
+ const notReady = !listId || pending > 0 || importing || saving || !name.trim() || sectorMissing || Boolean(urlProblem) || Boolean(personId && initialized.current !== scope);
  const save = async () => {
-  if (!listId || pending || saving || !name.trim() || urlProblem || (personId && initialized.current !== scope)) return;
+  if (notReady || !listId) return;
   const captured = scope, operation = ++active.current; controller.current?.abort(); controller.current = new AbortController(); const signal = controller.current.signal;
   setSaving(true); setError('');
   try {
-   const sectorPatch=sectorTouched?{peopleSectorTermId:sectorId||null}:{};
-   if(sectorTouched&&sectorId&&(!catalog||catalog.category!=='people'||catalog.state!=='CONFIGURED'||!catalog.items.some(item=>item.id===sectorId&&item.category==='people'&&item.parentId===null)))throw new Error('Reload sectors and choose an available sector before saving');
-   const link = blank(profileUrl);
-   // The stated platform's link and the explicit primary are the same address here;
-   // keying it under both is what lets the projection resolve a primary either way.
-   const socialUrls = link === null ? {} : {primary: link, ...(platform === '' ? {} : {[platform]: link})};
+   // A new person carries its chosen sector; an edit sends it only when the owner changed it.
+   const sectorPatch=(sectorId&&!personId)||sectorTouched?{peopleSectorTermId:sectorId||null}:{};
+   if((!personId||sectorTouched)&&sectorId&&(!catalog||catalog.category!=='people'||catalog.state!=='CONFIGURED'||!catalog.items.some(item=>item.id===sectorId&&item.category==='people'&&item.parentId===null)))throw new Error('Reload sectors and choose an available sector before saving');
    const facts = { usernameHandle: blank(handle), headline: blank(headline), locationText: blank(locationText),
-    avatarUrl: null, primaryPlatform: platform === '' ? null : platform, socialUrls,
-    skillsTags: tags, externalFollowerCountText: blank(followers) };
-   const draft = { title: name.trim(), ...facts, note: richNoteFromEditor(note), userRating: rating, mediaIds: media.map(item => item.id),...sectorPatch };
+    avatarUrl: null, primaryPlatform, socialUrls: keyed.socialUrls,
+    skillsTags: tags, externalFollowerCountText: null };
+   const draft = { title: name.trim(), ...facts, note: richNoteFromEditor(note), userRating: null, mediaIds: media.map(item => item.id),...sectorPatch };
    const signature = JSON.stringify(draft);
    assertCurrent(captured, operation);
    if (personId) {
@@ -157,7 +206,7 @@ export default function AddPersonPage() {
     // usernameHandle is absent here on purpose: it is not in the override vocabulary,
     // because a handle is how a person is identified on a platform.
     const {usernameHandle: _handle, ...overridable} = facts;
-    await PeopleClient.updateRecommendation(observed, { displayOverrides: { title: draft.title, ...overridable }, note: draft.note, userRating: rating, mediaIds: draft.mediaIds,...sectorPatch }, updateKey.current.key, signal);
+    await PeopleClient.updateRecommendation(observed, { displayOverrides: { title: draft.title, ...overridable }, note: draft.note, userRating: null, mediaIds: draft.mediaIds,...sectorPatch }, updateKey.current.key, signal);
     assertCurrent(captured, operation);
    } else {
     if (intent.current?.scope !== captured || intent.current.signature !== signature) {
@@ -181,88 +230,73 @@ export default function AddPersonPage() {
   </div>;
  }
 
- return <div className="min-h-screen text-dashboard">
-  <header className="border-b border-dashboard-border px-4 md:px-6 py-3 flex items-center gap-3">
-   <button aria-label={backText} onClick={() => back.goBack()}><ArrowLeft size={20} /></button>
-   <h1 className="font-semibold">{personId ? 'Edit Person' : 'Add Person'}</h1>
-  </header>
-  <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-6" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
-   {!personId && existingPeople.length > 0 && <section className="rounded-2xl border border-dashboard-border bg-dashboard-sidebar p-5 space-y-3">
-    <label className="block">Existing person
-     <select value={existingId} onChange={event => setExistingId(event.target.value)} disabled={commands.loading} className="block w-full bg-dashboard-muted rounded-xl p-3">
-      <option value="">Select a person</option>
-      {existingPeople.map(person => <option key={person.documentId} value={person.documentId}>{person.name}</option>)}
-     </select>
+ const fromLink = (field: Field) => filled.has(field) && <span className="ml-2 text-xs text-blue-400">{t('people.form.filledFromLink', 'Filled from link')}</span>;
+ const input = "block w-full bg-dashboard-muted rounded-xl p-3";
+
+ return <AddItemPage
+  title={personId ? 'Edit Person' : 'Add Person'} backLabel={backText} onBack={() => back.goBack()} mode="manual"
+  bar={{ onCancel: () => back.goBack(), onSave: () => void save(), saving: saving ? 'save' : null, canSave: !notReady }}>
+  {!personId && existingPeople.length > 0 && <section className="rounded-2xl border border-dashboard-border bg-dashboard-sidebar p-5 space-y-3">
+   <label className="block">Existing person
+    <select value={existingId} onChange={event => setExistingId(event.target.value)} disabled={commands.loading} className={input}>
+     <option value="">Select a person</option>
+     {existingPeople.map(person => <option key={person.documentId} value={person.documentId}>{person.name}</option>)}
+    </select>
+   </label>
+   <button disabled={!existingId || commands.loading} onClick={attachExisting}>Add existing person to this list</button>
+  </section>}
+  {owner.error && <p role="alert">{owner.error.message}</p>}
+
+  <PasteLinkField label={t('people.form.profileLink', 'Profile link')} value={profileUrl} onChange={setProfileUrl} onPrefill={prefill} placeholder="https://www.instagram.com/their-handle/" disabled={saving} />
+  {primaryPlatform && <p className="text-sm text-dashboard-muted">{t('people.form.platform', 'Platform')}: <span data-detected-platform>{PLATFORM_LABELS[primaryPlatform]}</span></p>}
+
+  <fieldset className="min-w-0 space-y-2"><legend>{t('people.form.socialLinks', 'Other social links')}</legend>
+   {extraLinks.map((url, index) => <div key={index} className="flex min-w-0 items-end gap-2">
+    <label className="min-w-0 flex-1">Social link {index + 1}
+     <input type="url" value={url} disabled={saving} onChange={event => setExtraLinks(value => value.map((row, at) => at === index ? event.target.value : row))} placeholder="https://github.com/their-handle" className={input} />
     </label>
-    <button disabled={!existingId || commands.loading} onClick={attachExisting}>Add existing person to this list</button>
-   </section>}
+    <button type="button" aria-label={`Remove social link ${index + 1}`} disabled={saving} onClick={() => setExtraLinks(value => value.filter((_row, at) => at !== index))} className="min-h-11 min-w-11"><X size={16} /></button>
+   </div>)}
+   {extraLinks.length < EXTRA_LINK_LIMIT && <button type="button" disabled={saving} onClick={() => setExtraLinks(value => [...value, ''])} className="text-sm text-blue-400">{t('people.form.addSocialLink', '+ Add social link')}</button>}
+  </fieldset>
+  {urlProblem && <p role="alert" className="text-sm text-red-400">{urlProblem}</p>}
 
-   <section className="rounded-2xl border border-dashboard-border bg-dashboard-sidebar p-5 space-y-5">
-    <h2 className="font-semibold flex gap-2"><Users size={18} />{personId ? 'My Person' : 'Add manually'}</h2>
-    {personId && owner.loading && <p role="status">Loading person…</p>}
-    {owner.error && <p role="alert">{owner.error.message}</p>}
+  <div><label htmlFor="person-name">Full Name</label>{fromLink('name')}<input id="person-name" value={name} onChange={event => { setName(event.target.value); touched('name'); }} disabled={saving} className={input} /></div>
+  <label className="block">Sector
+   <select aria-label="Sector" value={sectorId} onChange={event=>{setSectorId(event.target.value);setSectorTouched(true);}} disabled={saving} required aria-required="true" className={input}>
+    <option value="">{t('people.form.chooseSector', 'Choose a sector')}</option>
+    {existingSector&&!sectorItems.some(item=>item.id===existingSector.id)&&<option value={existingSector.id} disabled>{existingSector.label??existingSector.slug} (unavailable)</option>}
+    {sectorItems.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}
+   </select>
+  </label>
+  {catalogLoading&&<p role="status">Loading sectors…</p>}
+  {catalog?.state==='UNCONFIGURED'&&<p role="status">Sector catalog is not configured.</p>}
+  {existingSector&&(existingSector.unavailable||catalog&&!catalog.items.some(item=>item.id===existingSector.id))&&<p role="status">Existing sector is unavailable.</p>}
+  {catalogError&&<div role="alert"><p>{catalogError}</p><button onClick={()=>setCatalogRetry(value=>value+1)}>Retry loading sectors</button></div>}
 
-    <label className="block">Full Name<input value={name} onChange={event => setName(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
-    <label className="block">Sector
-     <select aria-label="Sector" value={sectorId} onChange={event=>{setSectorId(event.target.value);setSectorTouched(true);}} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3">
-      <option value="">No sector</option>
-      {existingSector&&!catalog?.items.some(item=>item.id===existingSector.id)&&<option value={existingSector.id} disabled>{existingSector.label??existingSector.slug} (unavailable)</option>}
-      {catalog?.items.filter(item=>item.category==='people'&&item.parentId===null).map(item=><option key={item.id} value={item.id}>{item.label}</option>)}
-     </select>
-    </label>
-    {catalogLoading&&<p role="status">Loading sectors…</p>}
-    {catalog?.state==='UNCONFIGURED'&&<p role="status">Sector catalog is not configured.</p>}
-    {existingSector&&(existingSector.unavailable||catalog&&!catalog.items.some(item=>item.id===existingSector.id))&&<p role="status">Existing sector is unavailable.</p>}
-    {catalogError&&<div role="alert"><p>{catalogError}</p><button onClick={()=>setCatalogRetry(value=>value+1)}>Retry loading sectors</button></div>}
-    <p className="text-sm text-dashboard-muted">Details are not fetched automatically. Fill in whatever you know; nothing you type is discarded.</p>
+  <label className="block">Handle / Username<input value={handle} onChange={event => setHandle(event.target.value)} disabled={saving} className={input} /></label>
+  {personId && <p className="text-sm text-dashboard-muted">The handle identifies this person on their platform and is shared with everyone who recommends them, so changing it here does not re-point the shared record.</p>}
+  <div><label htmlFor="person-headline">Headline / Role</label>{fromLink('headline')}<input id="person-headline" value={headline} onChange={event => { setHeadline(event.target.value); touched('headline'); }} disabled={saving} className={input} /></div>
+  <label className="block">Location<input value={locationText} onChange={event => setLocationText(event.target.value)} disabled={saving} className={input} /></label>
 
-    <label className="block">Profile URL<input value={profileUrl} onChange={event => setProfileUrl(event.target.value)} disabled={saving} placeholder="https://example.com/their-profile" className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
-    {urlProblem && <p role="alert">{urlProblem}</p>}
-    <label className="block">Platform
-     <select value={platform} onChange={event => setPlatform(event.target.value as PersonPlatform | '')} disabled={saving} className="block bg-dashboard-muted p-2">
-      <option value="">Unspecified</option>
-      {PERSON_PLATFORMS.map(value => <option key={value} value={value}>{PLATFORM_LABELS[value]}</option>)}
-     </select>
-    </label>
-
-    <label className="block">Handle / Username<input value={handle} onChange={event => setHandle(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
-    {personId && <p className="text-sm text-dashboard-muted">The handle identifies this person on their platform and is shared with everyone who recommends them, so changing it here does not re-point the shared record.</p>}
-    <label className="block">Headline / Role<input value={headline} onChange={event => setHeadline(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
-    <label className="block">Location<input value={locationText} onChange={event => setLocationText(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
-    <label className="block">Followers<input value={followers} onChange={event => setFollowers(event.target.value)} disabled={saving} placeholder="12.4k" className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
-    <p className="text-sm text-dashboard-muted">Follower counts are text you record for presentation. Nothing here follows anyone.</p>
-
-    <fieldset className="min-w-0"><legend>Tags</legend>
-     <div className="flex gap-2">
-      <input aria-label="New tag" value={tagDraft} disabled={saving || tags.length >= 32} onChange={event => setTagDraft(event.target.value)} className="bg-dashboard-muted rounded-xl p-2" />
-      <button disabled={saving || !tagDraft.trim() || tags.length >= 32} onClick={addTag}>Add tag</button>
-     </div>
-     {/* Tag order is the order they are shown on the public person page. */}
-     <ReorderableList items={tags} getKey={tag => tag} getLabel={tag => `Tag ${tag}`} onReorder={setTags} disabled={saving} axis="x" ariaLabel="Tag order"
-      className="flex gap-2 overflow-x-auto pb-2" itemClassName="shrink-0"
-      renderItem={tag => <span className="px-2 py-1 rounded-lg border border-white/10 text-sm">
-       {tag}<button aria-label={`Remove tag ${tag}`} disabled={saving} onClick={() => setTags(value => value.filter(row => row !== tag))}><X size={12} /></button>
-      </span>} />
-    </fieldset>
-
-    <label className="block">Your rating
-     <select value={rating ?? ''} onChange={event => setRating(event.target.value ? Number(event.target.value) : null)} disabled={saving} className="block bg-dashboard-muted p-2">
-      <option value="">No rating</option>
-      {Array.from({ length: 10 }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1}</option>)}
-     </select>
-    </label>
-
-    <div><h3>My Thoughts</h3><TiptapEditor value={note} onChange={setNote} placeholder="Why do you recommend this person?" /></div>
-
-    <label className="block">Snapshots<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple disabled={saving || pending > 0} onChange={event => { void upload(Array.from(event.target.files ?? [])); event.target.value = ''; }} /></label>
-    {pending > 0 && <p role="status">Uploading snapshots…</p>}
-    <ReorderableMediaStrip items={media} onChange={setMedia} noun="Snapshot" alt="Person snapshot" removeLabel="Remove snapshot" disabled={saving} />
-
-    {error && <p role="alert">{error}</p>}
-    <button onClick={save} disabled={saving || pending > 0 || !name.trim() || Boolean(urlProblem) || Boolean(personId && initialized.current !== scope)} className="bg-dashboard-accent text-white rounded-xl px-5 py-3">
-     {saving && <Loader2 className="inline animate-spin mr-2" size={16} />}Save person
-    </button>
-   </section>
+  <div>
+   <label htmlFor="person-skills">{t('people.form.skills', 'Skills')}</label>
+   <input id="person-skills" value={tagDraft} disabled={saving || tags.length >= 32} onChange={event => setTagDraft(event.target.value)}
+    onKeyDown={event => { if (event.key === 'Enter' || event.key === ',') { event.preventDefault(); addTag(); } }} onBlur={addTag}
+    placeholder={t('people.form.skillsHint', 'Type a skill and press Enter')} className={input} />
+   {tags.length > 0 && <ul className="mt-2 flex flex-wrap gap-2">
+    {tags.map(tag => <li key={tag} className="flex items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-sm">{tag}
+     <button type="button" aria-label={`Remove skill ${tag}`} disabled={saving} onClick={() => setTags(value => value.filter(row => row !== tag))}><X size={12} /></button></li>)}
+   </ul>}
   </div>
- </div>;
+
+  <div><h3>My Thoughts</h3><TiptapEditor value={note} onChange={setNote} placeholder="Why do you recommend this person?" /></div>
+
+  <label className="block">Snapshots<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple disabled={saving || pending > 0} onChange={event => { void upload(Array.from(event.target.files ?? [])); event.target.value = ''; }} /></label>
+  {pending > 0 && <p role="status">Uploading snapshots…</p>}
+  {importing && <p role="status">Copying the photo…</p>}
+  <ReorderableMediaStrip items={media} onChange={setMedia} noun="Snapshot" alt="Person snapshot" removeLabel="Remove snapshot" disabled={saving} />
+
+  {error && <p role="alert">{error}</p>}
+ </AddItemPage>;
 }

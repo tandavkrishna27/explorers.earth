@@ -26,6 +26,8 @@ const draft = () => vi.mocked(PeopleClient.prepareManualIntent).mock.calls[0][1]
 const sectorId='00000000-0000-4000-8000-000000000123';
 const catalog=()=>({complete:true,category:'people',state:'CONFIGURED',catalogVersion:2,defaultLocale:'en',requestedLocale:null,items:[{id:sectorId,category:'people',parentId:null,label:'Approved sector',slug:'approved-sector',position:0,resolvedLocale:'en'}],nextCursor:null});
 beforeEach(()=>{vi.mocked(PeopleClient.readSectorCatalog).mockResolvedValue(catalog() as never);});
+// WP8: a sector is required whenever the catalog offers one.
+const chooseSector=async()=>{await screen.findByRole('option',{name:'Approved sector'});fill('Sector',sectorId);};
 
 describe('native manual People', () => {
  beforeEach(() => {
@@ -40,13 +42,13 @@ describe('native manual People', () => {
  it('selects the canonical sector and keeps it in the retry signature',async()=>{
   vi.mocked(PeopleClient.createManual).mockRejectedValueOnce(new Error('Retry save'));
   mount();fill('Full Name','Alex');await screen.findByRole('option',{name:'Approved sector'});fill('Sector',sectorId);
-  fireEvent.click(screen.getByRole('button',{name:'Save person'}));await screen.findByText('Retry save');
+  fireEvent.click(screen.getByRole('button',{name:'Save'}));await screen.findByText('Retry save');
   expect(draft()).toHaveProperty('peopleSectorTermId',sectorId);
-  fireEvent.click(screen.getByRole('button',{name:'Save person'}));await screen.findByText('Saved list');expect(PeopleClient.prepareManualIntent).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole('button',{name:'Save'}));await screen.findByText('Saved list');expect(PeopleClient.prepareManualIntent).toHaveBeenCalledTimes(1);
  });
  it('reports unconfigured sector and saves an unassigned person',async()=>{
   vi.mocked(PeopleClient.readSectorCatalog).mockResolvedValue({...catalog(),state:'UNCONFIGURED',catalogVersion:0,defaultLocale:null,items:[]} as never);
-  mount();await screen.findByText('Sector catalog is not configured.');fill('Full Name','Alex');fireEvent.click(screen.getByRole('button',{name:'Save person'}));await screen.findByText('Saved list');expect(draft()).not.toHaveProperty('peopleSectorTermId');
+  mount();await screen.findByText('Sector catalog is not configured.');fill('Full Name','Alex');fireEvent.click(screen.getByRole('button',{name:'Save'}));await screen.findByText('Saved list');expect(draft()).not.toHaveProperty('peopleSectorTermId');
  });
  it('restarts catalog loading after a conflict without losing entered fields',async()=>{
   vi.mocked(PeopleClient.readSectorCatalog).mockRejectedValueOnce(new Error('Catalog changed'));
@@ -61,80 +63,82 @@ describe('native manual People', () => {
   mount();fill('Full Name','Retained');await waitFor(()=>expect(screen.queryByText('Loading sectors…')).not.toBeInTheDocument());
   const forgedId=kind==='unknown'?'00000000-0000-4000-8000-000000000999':sectorId;
   const select=screen.getByLabelText('Sector') as HTMLSelectElement;const option=document.createElement('option');option.value=forgedId;option.text='Forged';select.add(option);fill('Sector',forgedId);
-  fireEvent.click(screen.getByRole('button',{name:'Save person'}));await screen.findByText('Reload sectors and choose an available sector before saving');expect(PeopleClient.prepareManualIntent).not.toHaveBeenCalled();expect(PeopleClient.createManual).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button',{name:'Save'}));await screen.findByText('Reload sectors and choose an available sector before saving');expect(PeopleClient.prepareManualIntent).not.toHaveBeenCalled();expect(PeopleClient.createManual).not.toHaveBeenCalled();
  });
 
  it('creates a person from the owner-entered fields, with the link under both keys', async () => {
-  mount();
-  fill('Full Name', 'Alex Lee'); fill('Profile URL', 'https://example.com/alex');
-  fill('Platform', 'twitter'); fill('Handle / Username', 'alexlee');
-  fill('Headline / Role', 'Designer'); fill('Location', 'Lisbon'); fill('Followers', '12.4k');
+  mount(); await chooseSector();
+  fill('Full Name', 'Alex Lee'); fill('Profile link', 'https://x.com/alex');
+  fill('Handle / Username', 'alexlee');
+  fill('Headline / Role', 'Designer'); fill('Location', 'Lisbon');
   fill('Note', '<p>Great eye</p>');
-  fireEvent.click(screen.getByRole('button', {name: 'Save person'}));
+  fireEvent.click(screen.getByRole('button', {name: 'Save'}));
   await screen.findByText('Saved list');
   expect(draft()).toMatchObject({title: 'Alex Lee', usernameHandle: 'alexlee', headline: 'Designer',
-   locationText: 'Lisbon', externalFollowerCountText: '12.4k', primaryPlatform: 'twitter',
+   locationText: 'Lisbon', externalFollowerCountText: null, userRating: null, primaryPlatform: 'twitter',
    // Keyed under both so the projection can resolve a primary either way.
-   socialUrls: {primary: 'https://example.com/alex', twitter: 'https://example.com/alex'}});
+   socialUrls: {primary: 'https://x.com/alex', twitter: 'https://x.com/alex'}});
  });
 
- it('requires only the name, since every other column is nullable', async () => {
+ it('requires the name and a sector; every other column is nullable', async () => {
   mount();
-  expect(screen.getByRole('button', {name: 'Save person'})).toBeDisabled();
+  expect(screen.getByRole('button', {name: 'Save'})).toBeDisabled();
   fill('Full Name', 'Just A Name');
-  expect(screen.getByRole('button', {name: 'Save person'})).toBeEnabled();
-  fireEvent.click(screen.getByRole('button', {name: 'Save person'}));
+  await screen.findByRole('option',{name:'Approved sector'});
+  expect(screen.getByRole('button', {name: 'Save'})).toBeDisabled();
+  fill('Sector', sectorId);
+  expect(screen.getByRole('button', {name: 'Save'})).toBeEnabled();
+  fireEvent.click(screen.getByRole('button', {name: 'Save'}));
   await screen.findByText('Saved list');
   expect(draft()).toMatchObject({title: 'Just A Name', usernameHandle: null, headline: null,
    locationText: null, primaryPlatform: null, socialUrls: {}, skillsTags: [], externalFollowerCountText: null});
  });
 
- it('offers X as the label while sending the stored twitter value', async () => {
-  mount();
-  await screen.findByRole('option',{name:'Approved sector'});
-  const options = [...(screen.getByLabelText('Platform') as HTMLSelectElement).options];
-  expect(options.map(option => option.value)).toEqual(['', 'instagram', 'linkedin', 'twitter', 'github', 'youtube', 'website', 'other']);
-  expect(options.find(option => option.value === 'twitter')?.text).toBe('X');
+ it('shows X for a detected twitter link and renders no platform select', async () => {
+  mount(); await chooseSector();
+  fill('Profile link', 'https://twitter.com/alex');
+  expect(screen.getByText('X', {selector: '[data-detected-platform]'})).toBeInTheDocument();
+  expect(screen.queryByLabelText('Platform')).toBeNull();
  });
 
  it('reports a malformed profile address before dispatching, and keeps the draft', async () => {
-  mount(); fill('Full Name', 'Bad Link'); fill('Profile URL', 'notaurl');
+  mount(); await chooseSector(); fill('Full Name', 'Bad Link'); fill('Profile link', 'notaurl');
   expect(await screen.findByRole('alert')).toHaveTextContent('Enter a web address starting with http');
-  expect(screen.getByRole('button', {name: 'Save person'})).toBeDisabled();
+  expect(screen.getByRole('button', {name: 'Save'})).toBeDisabled();
   expect(PeopleClient.observeCollection).not.toHaveBeenCalled();
   expect(screen.getByLabelText('Full Name')).toHaveValue('Bad Link');
-  fill('Profile URL', 'https://example.com/ok');
-  await waitFor(() => expect(screen.getByRole('button', {name: 'Save person'})).toBeEnabled());
+  fill('Profile link', 'https://example.com/ok');
+  await waitFor(() => expect(screen.getByRole('button', {name: 'Save'})).toBeEnabled());
  });
 
- it('collects distinct tags up to the stored bound', async () => {
-  mount(); fill('Full Name', 'Tagged');
-  for (const tag of ['design', 'type', 'design']) { fill('New tag', tag); fireEvent.click(screen.getByRole('button', {name: 'Add tag'})); }
-  fireEvent.click(screen.getByRole('button', {name: 'Save person'}));
+ it('collects distinct skills up to the stored bound', async () => {
+  mount(); await chooseSector(); fill('Full Name', 'Tagged');
+  for (const tag of ['design', 'type', 'design']) { fill('Skills', tag); fireEvent.keyDown(screen.getByLabelText('Skills'), {key: 'Enter'}); }
+  fireEvent.click(screen.getByRole('button', {name: 'Save'}));
   await screen.findByText('Saved list');
   expect(draft()).toMatchObject({skillsTags: ['design', 'type']});
  });
 
  it('waits for uploaded snapshot readiness before saving', async () => {
   const upload = deferred<{id: string}>(); vi.mocked(PeopleClient.upload).mockReturnValue(upload.promise as never);
-  mount(); fill('Full Name', 'Shot');
+  mount(); await chooseSector(); fill('Full Name', 'Shot');
   fireEvent.change(screen.getByLabelText('Snapshots'), {target: {files: [new File(['bytes'], 'shot.png', {type: 'image/png'})]}});
-  expect(screen.getByRole('button', {name: 'Save person'})).toBeDisabled();
+  expect(screen.getByRole('button', {name: 'Save'})).toBeDisabled();
   await act(async () => upload.resolve({id: 'media-1'}));
-  await waitFor(() => expect(screen.getByRole('button', {name: 'Save person'})).toBeEnabled());
-  fireEvent.click(screen.getByRole('button', {name: 'Save person'}));
+  await waitFor(() => expect(screen.getByRole('button', {name: 'Save'})).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', {name: 'Save'}));
   await screen.findByText('Saved list');
   expect(draft()).toMatchObject({mediaIds: ['media-1']});
  });
 
  it('preserves every typed field when the save fails and retries the same intent', async () => {
   vi.mocked(PeopleClient.createManual).mockRejectedValueOnce(new Error('Temporarily unavailable')).mockResolvedValueOnce({id: 'person-1'} as never);
-  mount(); fill('Full Name', 'Retained'); fill('Headline / Role', 'Retained role');
-  fireEvent.click(screen.getByRole('button', {name: 'Save person'}));
+  mount(); await chooseSector(); fill('Full Name', 'Retained'); fill('Headline / Role', 'Retained role');
+  fireEvent.click(screen.getByRole('button', {name: 'Save'}));
   await screen.findByRole('alert');
   expect(screen.getByLabelText('Full Name')).toHaveValue('Retained');
   expect(screen.getByLabelText('Headline / Role')).toHaveValue('Retained role');
-  fireEvent.click(screen.getByRole('button', {name: 'Save person'}));
+  fireEvent.click(screen.getByRole('button', {name: 'Save'}));
   await screen.findByText('Saved list');
   expect(PeopleClient.prepareManualIntent).toHaveBeenCalledTimes(1);
   expect(vi.mocked(PeopleClient.createManual).mock.calls[0][0]).toBe(vi.mocked(PeopleClient.createManual).mock.calls[1][0]);
@@ -142,8 +146,8 @@ describe('native manual People', () => {
 
  it('cannot create a person once the account is replaced while the parent read is pending', async () => {
   const parent = deferred<never>(); vi.mocked(PeopleClient.observeCollection).mockReturnValue(parent.promise);
-  mount(); fill('Full Name', 'Old owner');
-  fireEvent.click(screen.getByRole('button', {name: 'Save person'}));
+  mount(); await chooseSector(); fill('Full Name', 'Old owner');
+  fireEvent.click(screen.getByRole('button', {name: 'Save'}));
   act(() => useAuthStore.getState().logout());
   await act(async () => parent.resolve({detail: {id: 'list-1'}} as never));
   expect(PeopleClient.prepareManualIntent).not.toHaveBeenCalled();
@@ -180,7 +184,8 @@ describe('manual People edit', () => {
    skills_tags: ['design'], follower_count: '12.4k', user_recommendation_note: '<p>Note</p>', user_rating: 7,
    is_pinned: false, pin_order: null, display_order: 0, person_list: null, person_category: null};
   fixture.content.view.lists = [{documentId: 'list-1', recommended_people: [person]}];
-  fixture.content.details.set('person-a', {detail: {id: 'person-a', revision: 1, category: 'people', mediaIds}});
+  fixture.content.details.set('person-a', {detail: {id: 'person-a', revision: 1, category: 'people', mediaIds,
+   peopleSector: {sector: {id: sectorId, slug: 'approved-sector', label: 'Approved sector', unavailable: false}, catalogState: 'CONFIGURED', catalogVersion: 2, defaultLocale: 'en', selectionUnavailable: false}}});
   fixture.content = {...fixture.content}; fixture.loading = false; fixture.error = undefined;
  }
  beforeEach(() => { vi.clearAllMocks(); fixture.content = {view: {lists: []}, details: new Map(), observation: {}}; fixture.loading = false; fixture.error = undefined; useAuthStore.getState().login({id: 'u1', documentId: 'u1', username: 'owner',email:'owner@example.invalid',blocked:false, token: 'fixture'}); useAuthStore.setState({accountId: 'a1'}); });
@@ -189,13 +194,13 @@ describe('manual People edit', () => {
  it('hydrates a sector from the owner read and omits untouched assignments',async()=>{
   loaded();fixture.content.details.get('person-a').detail.peopleSector={sector:{id:sectorId,slug:'approved-sector',label:'Approved sector',unavailable:false},catalogState:'CONFIGURED',catalogVersion:2,defaultLocale:'en',selectionUnavailable:false};
   render(editElement());await screen.findByRole('option',{name:'Approved sector'});expect(screen.getByLabelText('Sector')).toHaveValue(sectorId);
-  fireEvent.click(screen.getByRole('button',{name:'Save person'}));await waitFor(()=>expect(PeopleClient.updateRecommendation).toHaveBeenCalled());expect(vi.mocked(PeopleClient.updateRecommendation).mock.calls[0][1]).not.toHaveProperty('peopleSectorTermId');
+  fireEvent.click(screen.getByRole('button',{name:'Save'}));await waitFor(()=>expect(PeopleClient.updateRecommendation).toHaveBeenCalled());expect(vi.mocked(PeopleClient.updateRecommendation).mock.calls[0][1]).not.toHaveProperty('peopleSectorTermId');
  });
  it.each(['clear','replace'])('allows %s of an unavailable existing sector even with no configured catalog',async action=>{
   loaded();fixture.content.details.get('person-a').detail.peopleSector={sector:{id:'old-sector',slug:'stored-slug',label:null,unavailable:true},catalogState:'UNCONFIGURED',catalogVersion:0,defaultLocale:null,selectionUnavailable:true};
   if(action==='clear')vi.mocked(PeopleClient.readSectorCatalog).mockResolvedValue({...catalog(),state:'UNCONFIGURED',catalogVersion:0,defaultLocale:null,items:[]} as never);
   render(editElement());await screen.findByText(action==='clear'?'Sector catalog is not configured.':'Existing sector is unavailable.');expect(screen.getByLabelText('Sector')).toHaveValue('old-sector');expect(screen.getByRole('option',{name:'stored-slug (unavailable)'})).toBeInTheDocument();
-  fill('Sector',action==='clear'?'':sectorId);fireEvent.click(screen.getByRole('button',{name:'Save person'}));await waitFor(()=>expect(PeopleClient.updateRecommendation).toHaveBeenCalled());expect(vi.mocked(PeopleClient.updateRecommendation).mock.calls[0][1]).toHaveProperty('peopleSectorTermId',action==='clear'?null:sectorId);
+  fill('Sector',action==='clear'?'':sectorId);fireEvent.click(screen.getByRole('button',{name:'Save'}));await waitFor(()=>expect(PeopleClient.updateRecommendation).toHaveBeenCalled());expect(vi.mocked(PeopleClient.updateRecommendation).mock.calls[0][1]).toHaveProperty('peopleSectorTermId',action==='clear'?null:sectorId);
  });
 
  // Without rehydration the form starts with no media and saves mediaIds: [], silently
@@ -204,7 +209,7 @@ describe('manual People edit', () => {
   const existing = '22222222-3333-4444-5555-666666666666';
   loaded([existing]); render(editElement());
   expect(await screen.findByAltText('Person snapshot')).toHaveAttribute('src', `/api/explorers/v1/media/${existing}/content`);
-  fireEvent.click(screen.getByRole('button', {name: 'Save person'}));
+  fireEvent.click(screen.getByRole('button', {name: 'Save'}));
   await waitFor(() => expect(PeopleClient.updateRecommendation).toHaveBeenCalledTimes(1));
   expect(vi.mocked(PeopleClient.updateRecommendation).mock.calls[0][1]).toMatchObject({mediaIds: [existing]});
  });
@@ -214,37 +219,42 @@ describe('manual People edit', () => {
   loaded([a, b]); render(editElement());
   await screen.findAllByAltText('Person snapshot');
   fireEvent.click(screen.getByRole('button', {name: 'Move Snapshot 2 up'}));
-  fireEvent.click(screen.getByRole('button', {name: 'Save person'}));
+  fireEvent.click(screen.getByRole('button', {name: 'Save'}));
   await waitFor(() => expect(PeopleClient.updateRecommendation).toHaveBeenCalledTimes(1));
   expect(vi.mocked(PeopleClient.updateRecommendation).mock.calls[0][1]).toMatchObject({mediaIds: [b, a]});
  });
 
- it('saves tags in the order the owner arranged them', async () => {
+ // Skills are a plain tag input (WP8): added in typing order, no reordering control.
+ it('appends skills in the order they are added', async () => {
   loaded(); render(editElement());
   await screen.findByLabelText('Full Name');
-  for (const tag of ['writing', 'research']) { fireEvent.change(screen.getByLabelText('New tag'), {target: {value: tag}}); fireEvent.click(screen.getByRole('button', {name: 'Add tag'})); }
-  fireEvent.click(screen.getByRole('button', {name: 'Move Tag research up'}));
-  fireEvent.click(screen.getByRole('button', {name: 'Move Tag research up'}));
-  fireEvent.click(screen.getByRole('button', {name: 'Save person'}));
+  for (const tag of ['writing', 'research']) { fireEvent.change(screen.getByLabelText('Skills'), {target: {value: tag}}); fireEvent.keyDown(screen.getByLabelText('Skills'), {key: 'Enter'}); }
+  await screen.findByRole('option',{name:'Approved sector'});
+  fireEvent.click(screen.getByRole('button', {name: 'Save'}));
   await waitFor(() => expect(PeopleClient.updateRecommendation).toHaveBeenCalledTimes(1));
-  expect(vi.mocked(PeopleClient.updateRecommendation).mock.calls[0][1]).toMatchObject({displayOverrides: {skillsTags: ['research', 'design', 'writing']}});
+  expect(vi.mocked(PeopleClient.updateRecommendation).mock.calls[0][1]).toMatchObject({displayOverrides: {skillsTags: ['design', 'writing', 'research']}});
  });
 
- it('hydrates the stored platform rather than its presented alias', async () => {
-  loaded(); render(editElement());
+ it('keeps the stored platform while the stored link is unchanged, and shows no follower field', async () => {
+  loaded(); vi.mocked(PeopleClient.updateRecommendation).mockResolvedValue({} as never); render(editElement());
   expect(await screen.findByLabelText('Full Name')).toHaveValue('Alex Lee');
-  // The select carries the stored value; x is only the label.
-  expect(screen.getByLabelText('Platform')).toHaveValue('twitter');
-  expect(screen.getByLabelText('Profile URL')).toHaveValue('https://example.com/alex');
+  // example.com would detect as a website; the stored twitter is kept and labelled X.
+  expect(screen.getByText('X', {selector: '[data-detected-platform]'})).toBeInTheDocument();
+  expect(screen.getByLabelText('Profile link')).toHaveValue('https://example.com/alex');
   expect(screen.getByLabelText('Handle / Username')).toHaveValue('alexlee');
-  expect(screen.getByLabelText('Followers')).toHaveValue('12.4k');
+  expect(screen.queryByLabelText('Followers')).toBeNull();
+  await screen.findByRole('option',{name:'Approved sector'});
+  fireEvent.click(screen.getByRole('button', {name: 'Save'}));
+  await waitFor(() => expect(PeopleClient.updateRecommendation).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(PeopleClient.updateRecommendation).mock.calls[0][1]).toMatchObject({userRating: null, displayOverrides: {primaryPlatform: 'twitter', externalFollowerCountText: null,
+   socialUrls: {primary: 'https://example.com/alex', twitter: 'https://example.com/alex'}}});
  });
 
  it('never sends the handle as a display override', async () => {
   loaded(); vi.mocked(PeopleClient.updateRecommendation).mockResolvedValue({} as never);
   render(editElement());
   fireEvent.change(await screen.findByLabelText('Full Name'), {target: {value: 'Renamed'}});
-  fireEvent.click(screen.getByRole('button', {name: 'Save person'}));
+  fireEvent.click(screen.getByRole('button', {name: 'Save'}));
   await waitFor(() => expect(PeopleClient.updateRecommendation).toHaveBeenCalledTimes(1));
   const patch = vi.mocked(PeopleClient.updateRecommendation).mock.calls[0][1] as {displayOverrides: Record<string, unknown>};
   expect(patch.displayOverrides).not.toHaveProperty('usernameHandle');
@@ -269,7 +279,7 @@ describe('manual People edit', () => {
   loaded(); fixture.content.details.set('person-a', {detail: {id: 'person-a', revision: 2, category: 'people'}});
   view.rerender(editElement());
   expect(screen.getByLabelText('Full Name')).toHaveValue('My unsaved edit');
-  fireEvent.click(screen.getByRole('button', {name: 'Save person'}));
+  fireEvent.click(screen.getByRole('button', {name: 'Save'}));
   expect(await screen.findByRole('alert')).toHaveTextContent('Reload the person before saving');
   expect(PeopleClient.updateRecommendation).not.toHaveBeenCalled();
   expect(fixture.content.details.get('person-a')).not.toBe(original);
