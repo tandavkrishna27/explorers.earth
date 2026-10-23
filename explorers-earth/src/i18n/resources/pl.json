@@ -1231,6 +1231,25 @@
       "copied": "Skopiowane!",
       "copyLink": "Kopiuj link",
       "linkCopiedToast": "Link skopiowany!!"
+    },
+    "wp1": {
+      "back": {
+        "to": "Back to {{name}}",
+        "list": "Back to list",
+        "categories": {
+          "places": "Places",
+          "movies": "Movies & Shows",
+          "books": "Books",
+          "games": "Games",
+          "apps": "Apps & Tools",
+          "products": "Products",
+          "people": "People",
+          "guides": "Guides"
+        }
+      },
+      "loader": {
+        "boot": "Getting your recommendations ready…"
+      }
     }
   },
   "emailVerification": {

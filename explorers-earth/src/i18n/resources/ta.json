@@ -1231,6 +1231,25 @@
       "copied": "நகலெடுக்கப்பட்டது!",
       "copyLink": "இணைப்பைப் பகர்த்தெடுக்கவும்",
       "linkCopiedToast": "இணைப்பு நகலெடுக்கப்பட்டது!!"
+    },
+    "wp1": {
+      "back": {
+        "to": "Back to {{name}}",
+        "list": "Back to list",
+        "categories": {
+          "places": "Places",
+          "movies": "Movies & Shows",
+          "books": "Books",
+          "games": "Games",
+          "apps": "Apps & Tools",
+          "products": "Products",
+          "people": "People",
+          "guides": "Guides"
+        }
+      },
+      "loader": {
+        "boot": "Getting your recommendations ready…"
+      }
     }
   },
   "emailVerification": {

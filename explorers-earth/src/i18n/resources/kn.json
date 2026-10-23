@@ -1231,6 +1231,25 @@
       "copied": "ಕಾಪಿ ಆಗಿದೆ!",
       "copyLink": "ಲಿಂಕ್ ಕಾಪಿ ಮಾಡಿ",
       "linkCopiedToast": "ಲಿಂಕ್ ಕಾಪಿ ಆಗಿದೆ!!"
+    },
+    "wp1": {
+      "back": {
+        "to": "Back to {{name}}",
+        "list": "Back to list",
+        "categories": {
+          "places": "Places",
+          "movies": "Movies & Shows",
+          "books": "Books",
+          "games": "Games",
+          "apps": "Apps & Tools",
+          "products": "Products",
+          "people": "People",
+          "guides": "Guides"
+        }
+      },
+      "loader": {
+        "boot": "Getting your recommendations ready…"
+      }
     }
   },
   "emailVerification": {

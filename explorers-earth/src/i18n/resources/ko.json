@@ -1231,6 +1231,25 @@
       "copied": "복사됨!",
       "copyLink": "링크 복사",
       "linkCopiedToast": "링크가 복사되었습니다!!"
+    },
+    "wp1": {
+      "back": {
+        "to": "Back to {{name}}",
+        "list": "Back to list",
+        "categories": {
+          "places": "Places",
+          "movies": "Movies & Shows",
+          "books": "Books",
+          "games": "Games",
+          "apps": "Apps & Tools",
+          "products": "Products",
+          "people": "People",
+          "guides": "Guides"
+        }
+      },
+      "loader": {
+        "boot": "Getting your recommendations ready…"
+      }
     }
   },
   "emailVerification": {
