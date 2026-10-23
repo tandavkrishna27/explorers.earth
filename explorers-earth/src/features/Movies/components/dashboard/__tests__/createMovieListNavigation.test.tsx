@@ -44,19 +44,13 @@ describe("MoviesHome create-list navigation (BUG-3)", () => {
     });
     await h.ready();
 
-    // Open the create-list modal (header renders a New List button).
-    const newListButtons = await screen.findAllByRole("button", {
-      name: /New List/i,
-    });
+    // Open the shared New list popup (header renders a New list button).
+    const newListButtons = await screen.findAllByRole("button", { name: /New list/i });
     await userEvent.click(newListButtons[0]);
 
     // Fill the list name and submit.
-    const nameInput = await screen.findByPlaceholderText(/Enter List Name/i);
-    await userEvent.type(nameInput, "Sci-Fi Picks");
-
-    await userEvent.click(
-      screen.getByRole("button", { name: /Create List/i })
-    );
+    await userEvent.type(await screen.findByLabelText("Name"), "Sci-Fi Picks");
+    await userEvent.click(screen.getByRole("button", { name: /Create list/i }));
 
     await waitFor(() => expect(explorersApiClient.createMyCollection).toHaveBeenCalledWith(expect.objectContaining({category:'movies',title:'Sci-Fi Picks',visibility:'private',publicationState:'draft'}),expect.any(String)));
     await waitFor(() =>

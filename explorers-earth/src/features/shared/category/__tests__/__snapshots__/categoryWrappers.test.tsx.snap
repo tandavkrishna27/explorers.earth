@@ -1,0 +1,55 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`category wrappers render the shared template > movies 1`] = `
+{
+  "category": "movies",
+  "categoryVisibility": "public",
+  "lists": [
+    {
+      "covers": [
+        "https://image.tmdb.org/t/p/w185/c.jpg",
+      ],
+      "id": "l1",
+      "itemCount": 1,
+      "pinnedCount": 1,
+      "status": "public",
+      "title": "Comfort movies",
+    },
+  ],
+  "newList": Any<Object>,
+  "onCategoryVisibility": Any<Function>,
+  "onChanged": Any<Function>,
+  "onOpenList": Any<Function>,
+  "onRetry": Any<Function>,
+  "pinCandidates": [
+    {
+      "id": "m1",
+      "imageUrl": "https://image.tmdb.org/t/p/w342/c.jpg",
+      "listId": "l1",
+      "listTitle": "Comfort movies",
+      "pinnable": true,
+      "pinned": true,
+      "subtitle": null,
+      "title": "Chef",
+    },
+  ],
+  "status": {
+    "error": null,
+    "loading": false,
+    "refreshing": false,
+  },
+  "topPicks": [
+    {
+      "id": "m1",
+      "imageUrl": "https://image.tmdb.org/t/p/w342/c.jpg",
+      "listId": "l1",
+      "listTitle": "Comfort movies",
+      "pinnable": true,
+      "pinned": true,
+      "subtitle": null,
+      "title": "Chef",
+    },
+  ],
+  "visibilityBusy": false,
+}
+`;

@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { MockedProvider } from '@apollo/client/testing';
 import { CreateMovieListModal } from '../../features/Movies/components/dashboard/MoviesHome';
 import { explorersApiClient } from '../../lib/explorersApiClient';
+import { I18nextProvider } from 'react-i18next';
+import { englishI18n } from '../../test/englishI18n';
 
 // Mock getCanonicalUrl / domain helpers
 vi.mock('../../utils/getCurrentDomain', () => ({
@@ -107,38 +109,33 @@ describe('Home Categories Tab switching and List creation integration', () => {
     expect(screen.getByTestId('list-content')).toHaveTextContent('My Books List');
   });
 
-  // Retains Formik validation and native observed creation through the actual modal.
-  it('opens movie creation modal, triggers Formik validation, and creates list successfully on submit', { timeout: 30000 }, async () => {
+  // Retains validation and native observed creation through the shared New list popup.
+  it('opens movie creation modal, validates the name, and creates list successfully on submit', { timeout: 30000 }, async () => {
     const createList=vi.spyOn(explorersApiClient,'createMyCollection').mockResolvedValue({id:'movie_list_doc_id'} as never);
     render(
-      <MockedProvider mocks={[]}>
-        <HomeCategoriesDashboard />
-      </MockedProvider>
+      <I18nextProvider i18n={englishI18n}>
+        <MockedProvider mocks={[]}>
+          <HomeCategoriesDashboard />
+        </MockedProvider>
+      </I18nextProvider>
     );
 
-    // Open list creation modal
     fireEvent.click(screen.getByRole('button', { name: 'Add List' }));
-    expect(screen.getByRole('heading', { name: 'Create New List' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'New list' })).toBeInTheDocument();
 
-    // Trigger validation error by typing empty name
-    const submitBtn = screen.getByRole('button', { name: 'Create List' });
+    const submitBtn = screen.getByRole('button', { name: 'Create list' });
     fireEvent.click(submitBtn);
     await waitFor(() => {
-      expect(screen.getByText('List name is required')).toBeInTheDocument();
+      expect(screen.getByText('Give your list a name')).toBeInTheDocument();
     });
 
-    // Fill form and submit successfully
-    const nameInput = screen.getByPlaceholderText(/Enter List Name/);
-    fireEvent.change(nameInput, { target: { value: 'Top Sci-Fi Movies' } });
-
-    const descInput = screen.getByPlaceholderText(/Enter a note or description/);
-    fireEvent.change(descInput, { target: { value: 'My favorite mind-bending movies' } });
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Top Sci-Fi Movies' } });
+    fireEvent.change(screen.getByLabelText('Short description (optional)'), { target: { value: 'My favorite mind-bending movies' } });
 
     fireEvent.click(submitBtn);
 
-    // Verify it closed the modal and updated the list panel
     await waitFor(() => {
-      expect(screen.queryByRole('heading', { name: 'Create New List' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('dialog', { name: 'New list' })).not.toBeInTheDocument();
       expect(screen.getByTestId('list-content')).toHaveTextContent('New List ID: movie_list_doc_id');
       expect(createList).toHaveBeenCalledWith(expect.objectContaining({category:'movies',title:'Top Sci-Fi Movies',description:'My favorite mind-bending movies',slug:'top-sci-fi-movies',visibility:'private',publicationState:'draft'}),expect.any(String));
     });
