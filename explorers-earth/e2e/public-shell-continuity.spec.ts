@@ -877,3 +877,37 @@ test('deterministic cold and in-shell transitions meet route-state frame and CLS
   }
   console.info(`[task7-timing-cls] ${JSON.stringify(Object.fromEntries(Object.entries(evidence).map(([width, result]) => [width, result.summary])))}`);
 });
+
+test('WP1 one loader owner: category cold entry never shows a second loader after the Earth', async ({ browser, baseURL }) => {
+  const state = fixtureState({ pinned_nav_tabs: ['public_profile', 'public_books'] }, 'public');
+  const path = publicPath('books');
+  const gate = holdDestination(state, path);
+  const visitor = await openFixture(browser, baseURL!, state, { width: 390, height: 900 });
+  try {
+    await visitor.page.addInitScript(() => {
+      (window as any).__loaderSamples = [];
+      const sample = () => {
+        const earth = document.querySelectorAll('[role="status"][aria-label="Earth loading"]').length;
+        const skeleton = document.querySelectorAll('[data-testid="public-cold-entry-shell"] .animate-pulse, [data-testid="public-cold-entry-shell"] [class*="skeleton" i]').length;
+        const shell = document.querySelector('[data-testid="public-cold-entry-shell"]') as HTMLElement | null;
+        const shellVisible = !!shell && getComputedStyle(shell).visibility !== 'hidden';
+        (window as any).__loaderSamples.push({ earth, skeleton: shellVisible ? skeleton : 0 });
+        requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+    });
+    await visitor.page.goto(path);
+    await expect(visitor.page.getByRole('status', { name: 'Earth loading' })).toHaveCount(1);
+    gate.release();
+    await expectSettledShell(visitor.page);
+    const samples = await visitor.page.evaluate(() => (window as any).__loaderSamples as { earth: number; skeleton: number }[]);
+    expect(samples.length).toBeGreaterThan(0);
+    // Never two loaders in the same frame, and never a visible skeleton after the Earth on cold entry.
+    expect(samples.filter(s => s.earth + (s.skeleton > 0 ? 1 : 0) > 1)).toEqual([]);
+    const lastEarth = samples.map(s => s.earth > 0).lastIndexOf(true);
+    expect(samples.slice(lastEarth + 1).filter(s => s.skeleton > 0)).toEqual([]);
+  } finally {
+    gate.release();
+    await closeFixture(visitor);
+  }
+});
