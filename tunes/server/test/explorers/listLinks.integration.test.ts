@@ -247,3 +247,43 @@ describePg("owner read (LNK-04, LNK-05)", () => {
     expect(((await reader.getCollection(actor, s.id, {}, true)) as any).linkedLists.map((c: any) => c.collection.archived)).toEqual([true]);
   });
 });
+
+describePg("create and attach (LNK-06)", () => {
+  it("creates a list of any category and links it from the host atomically", async () => {
+    const owner = await account(); const host = await list(owner, "guides");
+    const before = await categoryRevision(owner, "guides");
+    const created = await repository.createCollection(owner, {category: "products", title: "Packing", slug: `packing-${key()}`,
+      attachTo: {hostCollectionId: host.id, expectedHostRevision: before, role: "Packing list"}} as never, key()) as any;
+    expect(created.attachedTo).toMatchObject({hostCollectionId: host.id, hostCategoryRevision: await categoryRevision(owner, "guides")});
+    const cards = await readListLinksForCollection(pool, host.id, owner);
+    expect(cards.map(c => [c.direction, c.collection.id, c.role, c.linkId])).toEqual([["outgoing", created.id, "Packing list", created.attachedTo.linkId]]);
+  });
+
+  it("attaches through the service when the new list shares the host's category", async () => {
+    const owner = await account(); const host = await list(owner, "books");
+    const service = new RecommendationService(pool);
+    const actor = await ownerOf(owner, ["collections:write"]);
+    const created = await service.createCollection(actor, {category: "books", title: "Next", slug: `next-${key()}`,
+      attachTo: {hostCollectionId: host.id.toUpperCase(), expectedHostRevision: await categoryRevision(owner, "books"), role: ""}}, {requestId: key(), idempotencyKey: key()} as never);
+    expect(created.attachedTo).toMatchObject({hostCollectionId: host.id, hostCategoryRevision: await categoryRevision(owner, "books")});
+    expect((await readListLinksForCollection(pool, host.id, owner)).map(c => [c.collection.id, c.role])).toEqual([[created.id, null]]);
+  });
+
+  it("rolls the new list back when the host revision is stale", async () => {
+    const owner = await account(); const host = await list(owner, "places");
+    const slug = `orphan-${key()}`;
+    await expect(repository.createCollection(owner, {category: "people", title: "Orphan", slug,
+      attachTo: {hostCollectionId: host.id, expectedHostRevision: 9999}} as never, key())).rejects.toMatchObject({status: 409});
+    expect((await pool.query("SELECT count(*)::int n FROM collections WHERE account_id=$1 AND slug=$2", [owner, slug])).rows[0].n).toBe(0);
+  });
+
+  it("refuses a foreign or missing host as 404 without an orphan", async () => {
+    const owner = await account(), other = await account(); const theirs = await list(other, "places");
+    for (const hostId of [theirs.id, randomUUID()]) {
+      const slug = `orphan-${key()}`;
+      await expect(repository.createCollection(owner, {category: "people", title: "Orphan", slug,
+        attachTo: {hostCollectionId: hostId, expectedHostRevision: 1, role: null}} as never, key())).rejects.toMatchObject({status: 404});
+      expect((await pool.query("SELECT count(*)::int n FROM collections WHERE account_id=$1 AND slug=$2", [owner, slug])).rows[0].n).toBe(0);
+    }
+  });
+});

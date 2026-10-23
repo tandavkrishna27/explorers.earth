@@ -96,7 +96,7 @@ export class ExplorersRecommendationRepository {
       // Account -> category -> aggregate. Replay returns above without mutation.
       // Existing resource scope is derived under the account lock, never supplied
       // by the caller; the callback still checks ownership/archive/revision.
-      const commandInput=input as {category?:ContentCategory;id?:string;parentLocationCollectionId?:string};
+      const commandInput=input as {category?:ContentCategory;id?:string;attachTo?:{hostCollectionId:string}};
       let category=commandInput.category;
       if(operation==='attachGameMembership'||operation==='detachGameMembership'){
         // Preserve the historical Games receipt fingerprint while deriving the
@@ -113,7 +113,11 @@ export class ExplorersRecommendationRepository {
           : 'SELECT category FROM collections WHERE id=$1 AND account_id=$2',[commandInput.id,accountId]);
         category=scope.rows[0]?.category;
       }
-      if(category) await lockContentCategories(db,accountId,operation==='createCollection'&&commandInput.parentLocationCollectionId!==undefined?[category,'places']:[category]);
+      // WP10. Create-and-attach also changes the host's category, so both categories are
+      // locked here, in sorted order, before any row.
+      const attachHost=operation==='createCollection'?commandInput.attachTo?.hostCollectionId:undefined;
+      const hostCategory=attachHost===undefined?undefined:(await db.query('SELECT category FROM collections WHERE id=$1 AND account_id=$2',[attachHost,accountId])).rows[0]?.category as string|undefined;
+      if(category) await lockContentCategories(db,accountId,hostCategory?[category,hostCategory]:[category]);
       const result=await work(db);
       await db.query(`INSERT INTO application_command_receipts(account_id,operation,idempotency_key_hash,request_hash,response)
         VALUES($1,$2,$3,$4,$5)`,[accountId,operation,keyHash,requestHash,JSON.stringify(result)]);
@@ -263,15 +267,20 @@ export class ExplorersRecommendationRepository {
       return inserted.rows[0] as {id:string;kind:CatalogKind;title:string};
     });
   }
-  async createCollection(accountId:string,input:{category:ContentCategory;title:string;slug:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails;parentLocationCollectionId?:string;parentExpectedRevision?:number},key:string):Promise<CreateCollectionResult> {
-    const linked=input.parentLocationCollectionId!==undefined;
-    if(linked!==(input.parentExpectedRevision!==undefined))throw new RecommendationFailure(422,'Parent identity and revision are required together');
-    if(linked&&(!Number.isSafeInteger(input.parentExpectedRevision)||(input.parentExpectedRevision??0)<1))throw new RecommendationFailure(422,'Invalid revision');
-    if(linked&&!linkableChildCategorySchema.safeParse(input.category).success)throw new RecommendationFailure(422,'Only Products and People lists link to a location');
-    const normalized={...input,visibility:input.visibility??'private',publicationState:input.publicationState??'draft'};
+  async createCollection(accountId:string,input:{category:ContentCategory;title:string;slug:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails;attachTo?:{hostCollectionId:string;expectedHostRevision:number;role?:string|null}},key:string):Promise<CreateCollectionResult> {
+    if(input.attachTo!==undefined&&(!Number.isSafeInteger(input.attachTo.expectedHostRevision)||input.attachTo.expectedHostRevision<1))throw new RecommendationFailure(422,'Invalid revision');
+    const normalized={...input,visibility:input.visibility??'private',publicationState:input.publicationState??'draft',...(input.attachTo?{attachTo:{...input.attachTo,role:input.attachTo.role??null}}:{})};
     return this.command(accountId,'createCollection',normalized,key,async db=>{
-      const parent=linked?await this.lockCollection(db,accountId,input.parentLocationCollectionId!,input.parentExpectedRevision!):undefined;
-      if(parent&&parent.category!=='places')throw new RecommendationFailure(422,'A location list is required');
+      // WP10 (LNK-06). The host is checked before the new list exists: a foreign, missing or
+      // archived host is a 404 and a stale host category revision a 409, and either rolls the
+      // whole create back. The command wrapper already holds both category locks.
+      let host:{id:string;category:string}|undefined;
+      if(input.attachTo){
+        host=(await db.query('SELECT id,category FROM collections WHERE account_id=$1 AND id=$2 AND archived_at IS NULL',[accountId,input.attachTo.hostCollectionId])).rows[0];
+        if(!host)throw new RecommendationFailure(404,'Resource unavailable');
+        await lockContentCategories(db,accountId,[input.category,host.category]);
+        await this.assertCategoryRevision(db,accountId,host.category,input.attachTo.expectedHostRevision);
+      }
       // LP-09. A slug a LIVE list was renamed from still resolves to that list, so a new
       // list may not take it. A redirect left by an archived list is stale and released.
       const redirected=await db.query(`SELECT 1 FROM collection_slug_redirects r JOIN collections c ON c.id=r.collection_id
@@ -287,19 +296,17 @@ export class ExplorersRecommendationRepository {
       // A Places list always owns a location row from the start, so the location is this
       // list's own from creation; an unset location is explicitly empty, not missing.
       if(input.category==='places')await writePlaceCollectionDetails(db,result.rows[0].id,accountId,input.placeLocation??emptyPlaceCollectionDetails());
-      // Ticket 5.2. Creating a list from a location links it in the same transaction, so a
-      // failed parent leaves no orphan child - the whole create rolls back.
-      let parentLocation:CreateCollectionResult['parentLocation'];
-      if(input.parentLocationCollectionId!==undefined){
-        const child=linkableChildCategorySchema.safeParse(input.category);
-        if(!child.success)throw new RecommendationFailure(422,'Only Products and People lists link to a location');
-        await writeLocationLink(db,{childCollectionId:result.rows[0].id,accountId,childCategory:child.data,locationCollectionId:input.parentLocationCollectionId});
-        const changed=await db.query('UPDATE collections SET revision=revision+1,updated_at=now() WHERE id=$1 AND account_id=$2 RETURNING id,revision',[parent!.id,accountId]);
-        parentLocation={id:changed.rows[0].id,revision:Number(changed.rows[0].revision)};
+      // WP10 (LNK-06). Linked from the host in the same transaction. When the host shares the
+      // new list's category the create itself also moves that revision, so the reported
+      // revision is read back rather than derived from the expected one.
+      let attachedTo:CreateCollectionResult['attachedTo'];
+      if(host){
+        const link=await insertListLink(db,{accountId,hostCollectionId:host.id,linkedCollectionId:result.rows[0].id,role:normalized.attachTo!.role??null});
+        attachedTo={hostCollectionId:host.id,linkId:link.id,hostCategoryRevision:await this.readCategoryRevision(db,accountId,host.category)};
       }
-      const created=createCollectionResultSchema.parse({...await this.collectionRecord(db,{...result.rows[0],description:input.description??null,heading:input.heading??null}),...(parentLocation?{parentLocation}:{})});
-      if(created.accountId!==accountId||created.category!==input.category||created.revision!==1||created.id.toLowerCase()===input.parentLocationCollectionId?.toLowerCase()||
-        (linked?(created.parentLocation?.id.toLowerCase()!==input.parentLocationCollectionId!.toLowerCase()||created.parentLocation?.revision!==input.parentExpectedRevision!+1):created.parentLocation!==undefined))throw new RecommendationFailure(422,'Invalid create result');
+      const created=createCollectionResultSchema.parse({...await this.collectionRecord(db,{...result.rows[0],description:input.description??null,heading:input.heading??null}),...(attachedTo?{attachedTo}:{})});
+      if(created.accountId!==accountId||created.category!==input.category||created.revision!==1||
+        (host?created.attachedTo?.hostCollectionId!==host.id:created.attachedTo!==undefined))throw new RecommendationFailure(422,'Invalid create result');
       return created;
     });
   }

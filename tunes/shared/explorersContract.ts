@@ -90,12 +90,13 @@ export const createCollectionSchema = z.object({category:contentCategorySchema,t
   // The list's own location selection, for Places only: a location list is distinct
   // from the place recommendations inside it.
   placeLocation:placeCollectionDetailsSchema.optional(),
-  // Ticket 5.2. Creating a Products or People list from a location links it atomically,
-  // so a failed parent leaves no orphan child.
-  parentLocationCollectionId:contentIdSchema.optional(),parentExpectedRevision:contentRevision.optional()}).strict()
-  .refine(v=>(v.parentLocationCollectionId===undefined)===(v.parentExpectedRevision===undefined),'Parent identity and revision are required together')
-  .refine(v=>v.placeLocation===undefined||v.category==='places','A location aggregate requires the places category')
-  .refine(v=>v.parentLocationCollectionId===undefined||v.category==='products'||v.category==='people','Only Products and People lists link to a location');
+  // WP10 (LNK-06). "Create a new list" in the attach picker creates the list and links it
+  // from the host in one transaction, so a stale host leaves no orphan list. The role bound
+  // mirrors LIST_LINK_ROLE_MAX (80) in explorersListLinkContract.ts, which imports this file.
+  // expectedHostRevision is the host's CATEGORY content revision, as on every link command.
+  attachTo:z.object({hostCollectionId:contentIdSchema,expectedHostRevision:contentRevision,
+    role:z.string().trim().max(80).transform(v=>v===''?null:v).nullable().default(null)}).strict().optional()}).strict()
+  .refine(v=>v.placeLocation===undefined||v.category==='places','A location aggregate requires the places category');
 // Slug syntax is shared; admission is restricted by issued/stored Places category.
 export const updateCollectionSchema = z.object({expectedRevision:contentRevision,title:contentTitle.optional(),slug:contentSlug.optional(),
   visibility:contentVisibility.optional(),publicationState:publicationState.optional(),description:collectionPlainText.optional(),
@@ -133,7 +134,7 @@ export const collectionCoreDtoSchema = z.object({id:contentIdSchema,accountId:co
   title:contentTitle,slug:contentSlug,visibility:contentVisibility,publicationState,revision:contentRevision,
   description:collectionPlainText,heading:collectionHeading,coverMediaId:contentIdSchema.nullable()}).strict();
 export const createCollectionResultSchema = collectionCoreDtoSchema.extend({
-  parentLocation:z.object({id:contentIdSchema,revision:contentRevision}).strict().optional()}).strict();
+  attachedTo:z.object({hostCollectionId:contentIdSchema,linkId:contentIdSchema,hostCategoryRevision:contentRevision}).strict().optional()}).strict();
 export type CreateCollectionResult = z.infer<typeof createCollectionResultSchema>;
 export const recommendationCoreDtoSchema = z.object({id:contentIdSchema,accountId:contentIdSchema,entityId:contentIdSchema,
   category:recommendationCategorySchema,userRating,publicationState,revision:contentRevision,mediaIds:recommendationMediaIds}).strict();

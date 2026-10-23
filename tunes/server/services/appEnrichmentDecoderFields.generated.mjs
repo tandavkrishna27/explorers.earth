@@ -4633,11 +4633,16 @@ var createCollectionSchema = external_exports.object({
   // The list's own location selection, for Places only: a location list is distinct
   // from the place recommendations inside it.
   placeLocation: placeCollectionDetailsSchema.optional(),
-  // Ticket 5.2. Creating a Products or People list from a location links it atomically,
-  // so a failed parent leaves no orphan child.
-  parentLocationCollectionId: contentIdSchema.optional(),
-  parentExpectedRevision: contentRevision.optional()
-}).strict().refine((v) => v.parentLocationCollectionId === void 0 === (v.parentExpectedRevision === void 0), "Parent identity and revision are required together").refine((v) => v.placeLocation === void 0 || v.category === "places", "A location aggregate requires the places category").refine((v) => v.parentLocationCollectionId === void 0 || v.category === "products" || v.category === "people", "Only Products and People lists link to a location");
+  // WP10 (LNK-06). "Create a new list" in the attach picker creates the list and links it
+  // from the host in one transaction, so a stale host leaves no orphan list. The role bound
+  // mirrors LIST_LINK_ROLE_MAX (80) in explorersListLinkContract.ts, which imports this file.
+  // expectedHostRevision is the host's CATEGORY content revision, as on every link command.
+  attachTo: external_exports.object({
+    hostCollectionId: contentIdSchema,
+    expectedHostRevision: contentRevision,
+    role: external_exports.string().trim().max(80).transform((v) => v === "" ? null : v).nullable().default(null)
+  }).strict().optional()
+}).strict().refine((v) => v.placeLocation === void 0 || v.category === "places", "A location aggregate requires the places category");
 var updateCollectionSchema = external_exports.object({
   expectedRevision: contentRevision,
   title: contentTitle.optional(),
@@ -4723,7 +4728,7 @@ var collectionCoreDtoSchema = external_exports.object({
   coverMediaId: contentIdSchema.nullable()
 }).strict();
 var createCollectionResultSchema = collectionCoreDtoSchema.extend({
-  parentLocation: external_exports.object({ id: contentIdSchema, revision: contentRevision }).strict().optional()
+  attachedTo: external_exports.object({ hostCollectionId: contentIdSchema, linkId: contentIdSchema, hostCategoryRevision: contentRevision }).strict().optional()
 }).strict();
 var recommendationCoreDtoSchema = external_exports.object({
   id: contentIdSchema,

@@ -107,9 +107,9 @@ export class RecommendationService {
     return this.authorized(actor,'collections:write',async()=>{
       const command=parseContent(createCollectionSchema,input);
       const result=createCollectionResultSchema.parse(await this.repository.createCollection(actor.accountId,command,this.key(context)));
-      if(result.accountId!==actor.accountId||result.category!==command.category||result.revision!==1||result.id.toLowerCase()===command.parentLocationCollectionId?.toLowerCase()||
-        (command.parentLocationCollectionId===undefined?result.parentLocation!==undefined:
-          result.parentLocation?.id.toLowerCase()!==command.parentLocationCollectionId.toLowerCase()||result.parentLocation.revision!==command.parentExpectedRevision!+1))throw new RecommendationFailure(422,'Invalid create result');
+      if(result.accountId!==actor.accountId||result.category!==command.category||result.revision!==1||
+        (command.attachTo===undefined?result.attachedTo!==undefined:
+          result.attachedTo?.hostCollectionId.toLowerCase()!==command.attachTo.hostCollectionId.toLowerCase()))throw new RecommendationFailure(422,'Invalid create result');
       return result;
     });
   }
