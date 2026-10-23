@@ -1,5 +1,5 @@
 import { selectedCity } from "../../../pages/Favorites";
-import { KeyValuePair } from "../components/RecommendForm";
+import { KeyValuePair } from "../formValues";
 import * as Yup from "yup";
 import { useTranslation } from "react-i18next";
 
