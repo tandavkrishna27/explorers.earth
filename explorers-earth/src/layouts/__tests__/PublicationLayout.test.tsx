@@ -11,8 +11,7 @@ import useAuthStore from '../../store/store';
 vi.mock('../../components/Header', () => ({ default: () => null }));
 vi.mock('../../components/Navbar', () => ({ default: () => null }));
 vi.mock('../../components/Sidenav', () => ({ default: () => null }));
-vi.mock('../../components/RouteLoader', () => ({ default: () => null }));
-vi.mock('../../components/EarthLoader', () => ({ EarthLoader: () => null }));
+vi.mock('../../components/EarthLoader', () => ({ EarthLoader: () => null, BootSplash: () => null }));
 vi.mock('../../routes/validators', () => ({ DashboardRouteValidator: ({ children }: any) => children }));
 
 function Consumer() {

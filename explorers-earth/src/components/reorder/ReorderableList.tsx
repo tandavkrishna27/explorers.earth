@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Reorder, useDragControls } from 'framer-motion';
 import { ArrowDown, ArrowUp, GripVertical } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +19,11 @@ export interface ReorderableListProps<T> {
   itemClassName?: string;
   /** Accessible name of the whole list. */
   ariaLabel: string;
+  /**
+   * 'buttons' (default): grip plus visible Move up / Move down buttons.
+   * 'keyboard': the grip is the only control; Space picks up, arrows move, Space/Enter drops, Escape cancels.
+   */
+  controls?: 'buttons' | 'keyboard';
 }
 
 type Direction = 'up' | 'down';
@@ -33,12 +38,31 @@ interface RowProps<T> {
   className?: string;
   onMove: (index: number, delta: -1 | 1) => void;
   onDragEnd: () => void;
+  controls: 'buttons' | 'keyboard';
+  onPreview: (index: number, delta: -1 | 1) => void;
+  onCommit: () => void;
+  onCancel: () => void;
   children: ReactNode;
 }
 
-function Row<T>({ item, index, total, id, label, disabled, className, onMove, onDragEnd, children }: RowProps<T>) {
+function Row<T>({ item, index, total, id, label, disabled, className, onMove, onDragEnd, controls: mode, onPreview, onCommit, onCancel, children }: RowProps<T>) {
   const { t } = useTranslation();
   const controls = useDragControls();
+  const [picked, setPicked] = useState(false);
+  const onGripKey = (event: KeyboardEvent) => {
+    if (mode !== 'keyboard' || disabled) return;
+    if (event.key === ' ' || (picked && event.key === 'Enter')) {
+      event.preventDefault();
+      if (!picked) setPicked(true); else { setPicked(false); onCommit(); }
+    } else if (picked && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+      event.preventDefault();
+      onPreview(index, event.key === 'ArrowUp' ? -1 : 1);
+    } else if (picked && event.key === 'Escape') {
+      event.preventDefault();
+      setPicked(false);
+      onCancel();
+    }
+  };
   const buttonClass = 'inline-flex items-center justify-center min-h-[44px] min-w-[44px] sm:min-h-8 sm:min-w-8 rounded-md border border-dashboard text-dashboard transition-colors hover:border-dashboard-accent disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dashboard-accent';
   const upLabel = fillTemplate(t('common.reorder.moveEarlier', { defaultValue: 'Move {{item}} up' }), { item: label });
   const downLabel = fillTemplate(t('common.reorder.moveLater', { defaultValue: 'Move {{item}} down' }), { item: label });
@@ -61,18 +85,22 @@ function Row<T>({ item, index, total, id, label, disabled, className, onMove, on
           type="button"
           disabled={disabled}
           aria-label={dragLabel}
+          aria-pressed={mode === 'keyboard' ? picked : undefined}
+          onKeyDown={onGripKey}
           onPointerDown={(event) => { if (!disabled) controls.start(event); }}
           style={{ touchAction: 'none' }}
           className={`${buttonClass} cursor-grab`}
         >
           <GripVertical aria-hidden="true" size={16} />
         </button>
+        {mode !== 'keyboard' && (<>
         <button type="button" data-move="up" disabled={disabled || index === 0} aria-label={upLabel} onClick={() => onMove(index, -1)} className={buttonClass}>
           <ArrowUp aria-hidden="true" size={16} />
         </button>
         <button type="button" data-move="down" disabled={disabled || index === total - 1} aria-label={downLabel} onClick={() => onMove(index, 1)} className={buttonClass}>
           <ArrowDown aria-hidden="true" size={16} />
         </button>
+        </>)}
       </div>
     </Reorder.Item>
   );
@@ -84,7 +112,7 @@ function Row<T>({ item, index, total, id, label, disabled, className, onMove, on
  * has a non-drag equivalent; each completed move is announced through a polite live region.
  * The component is controlled: it never keeps an order the parent has not been told about.
  */
-export default function ReorderableList<T>({ items, getKey, getLabel, onReorder, renderItem, axis = 'x', disabled = false, className, itemClassName, ariaLabel }: ReorderableListProps<T>) {
+export default function ReorderableList<T>({ items, getKey, getLabel, onReorder, renderItem, axis = 'x', disabled = false, className, itemClassName, ariaLabel, controls = 'buttons' }: ReorderableListProps<T>) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState<T[] | null>(null);
   const [announcement, setAnnouncement] = useState('');
@@ -121,6 +149,21 @@ export default function ReorderableList<T>({ items, getKey, getLabel, onReorder,
     onReorder(draft);
     if (moved >= 0) announce(draft[moved], moved + 1);
   }, [announce, draft, getKey, items, onReorder]);
+
+  // Keyboard mode: arrows only preview the move locally (draft); the drop commits it once and
+  // Escape restores the last committed order. Button mode keeps committing on every move.
+  const preview = useCallback((index: number, delta: -1 | 1) => {
+    const current = draft ?? (items as T[]);
+    const target = index + delta;
+    if (disabled || target < 0 || target >= current.length) return;
+    const moving = current[index];
+    setAnnouncement(fillTemplate(t('common.reorder.moved', { defaultValue: '{{item}} moved to position {{position}} of {{total}}.' }), {
+      item: getLabel(moving, index), position: target + 1, total,
+    }));
+    setDraft(moveItem(current, index, target));
+  }, [disabled, draft, getLabel, items, t, total]);
+
+  const cancel = useCallback(() => { setDraft(null); }, []);
 
   // The moved entry keeps its DOM node when it is keyed, but a browser may still blur it as
   // the node is repositioned, so focus is restored onto the same direction button (or its
@@ -166,6 +209,10 @@ export default function ReorderableList<T>({ items, getKey, getLabel, onReorder,
             className={itemClassName}
             onMove={move}
             onDragEnd={commitDrag}
+            controls={controls}
+            onPreview={preview}
+            onCommit={commitDrag}
+            onCancel={cancel}
           >
             {renderItem(item, index)}
           </Row>

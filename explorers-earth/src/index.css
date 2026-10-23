@@ -116,6 +116,8 @@
 /* Poppins included in consolidated import above */
 
 :root {
+  /* Phone bottom nav (components/Navbar.tsx) incl. safe area; Navbar overwrites it with the measured value. */
+  --bottom-nav-height: calc(64px + env(safe-area-inset-bottom, 0px));
   --dash-bg: #fffcf6;
   --dash-sidebar-bg: #ffffff;
   --dash-accent: #3B82F6;

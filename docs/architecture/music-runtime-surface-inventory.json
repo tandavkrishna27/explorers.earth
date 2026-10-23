@@ -1497,6 +1497,46 @@
       "line": 103
     },
     {
+      "method": "POST",
+      "path": "/api/explorers/v1/collections/:id/restore",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 104
+    },
+    {
+      "method": "POST",
+      "path": "/api/explorers/v1/collections/:id/purge",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 105
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/restore",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 106
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/collections/:id/purge",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
+      "line": 107
+    },
+    {
       "method": "GET",
       "path": "/api/explorers/v1/recommendations/search",
       "classification": "canonical-explorers-owner",
@@ -1504,7 +1544,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 104
+      "line": 108
     },
     {
       "method": "ALL",
@@ -1514,7 +1554,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 109
+      "line": 113
     },
     {
       "method": "GET",
@@ -1524,7 +1564,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 110
+      "line": 114
     },
     {
       "method": "GET",
@@ -1534,7 +1574,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 111
+      "line": 115
     },
     {
       "method": "POST",
@@ -1544,7 +1584,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 112
+      "line": 116
     },
     {
       "method": "POST",
@@ -1554,7 +1594,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 113
+      "line": 117
     },
     {
       "method": "POST",
@@ -1564,7 +1604,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 114
+      "line": 118
     },
     {
       "method": "POST",
@@ -1574,7 +1614,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 115
+      "line": 119
     },
     {
       "method": "PATCH",
@@ -1584,7 +1624,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 116
+      "line": 120
     },
     {
       "method": "DELETE",
@@ -1594,7 +1634,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "delete",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 117
+      "line": 121
     },
     {
       "method": "ALL",
@@ -1604,7 +1644,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 118
+      "line": 122
     },
     {
       "method": "ALL",
@@ -1614,7 +1654,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 119
+      "line": 123
     },
     {
       "method": "ALL",
@@ -1624,7 +1664,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 120
+      "line": 124
     },
     {
       "method": "ALL",
@@ -1634,7 +1674,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 121
+      "line": 125
     },
     {
       "method": "ALL",
@@ -1644,7 +1684,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 122
+      "line": 126
     },
     {
       "method": "ALL",
@@ -1654,7 +1694,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 123
+      "line": 127
     },
     {
       "method": "ALL",
@@ -1664,7 +1704,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 124
+      "line": 128
     },
     {
       "method": "ALL",
@@ -1674,7 +1714,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 125
+      "line": 129
     },
     {
       "method": "ALL",
@@ -1684,7 +1724,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 126
+      "line": 130
     },
     {
       "method": "ALL",
@@ -1694,7 +1734,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 127
+      "line": 131
     },
     {
       "method": "ALL",
@@ -1704,7 +1744,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 128
+      "line": 132
     },
     {
       "method": "ALL",
@@ -1714,7 +1754,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 129
+      "line": 133
     },
     {
       "method": "ALL",
@@ -1724,7 +1764,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 130
+      "line": 134
     },
     {
       "method": "ALL",
@@ -1734,7 +1774,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 131
+      "line": 135
     },
     {
       "method": "ALL",
@@ -1744,7 +1784,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 132
+      "line": 136
     },
     {
       "method": "ALL",
@@ -1754,7 +1794,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 133
+      "line": 137
     },
     {
       "method": "ALL",
@@ -1764,7 +1804,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersRecommendationRoutes.ts",
-      "line": 134
+      "line": 138
     },
     {
       "method": "GET",
