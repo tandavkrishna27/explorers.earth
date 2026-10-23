@@ -9,7 +9,7 @@ const query = vi.hoisted(() => ({ current: { data: { id: "account-a", onboarding
 vi.mock("../../features/Profile/api/useCanonicalAccount", () => ({
   useCanonicalAccount: vi.fn(() => query.current),
 }));
-vi.mock("../EarthLoader", () => ({ EarthLoader: () => <div>LOADING</div> }));
+vi.mock("../EarthLoader", () => ({ EarthLoader: () => <div>LOADING</div>, BootSplash: () => <div>LOADING</div> }));
 vi.mock("../../hooks/useLogout", () => ({ useLogout: () => vi.fn() }));
 
 const signIn = () => useAuthStore.setState({ isAuthenticated: true, status: "active-complete",

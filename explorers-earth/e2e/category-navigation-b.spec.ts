@@ -306,3 +306,48 @@ test('ordinary stale loaded account rereads latest pins and route/account change
     state.account.documentId = 'browser-account'; await owner.page.reload(); await expect(owner.page.getByRole('checkbox').first()).toBeChecked(); expect(state.writes).toHaveLength(writes);
   } finally { release?.(); await closeFixture(owner); }
 });
+
+const nativeCategories = categories.filter(c => !['places', 'guides'].includes(c.route));
+
+for (const category of nativeCategories) {
+  test(`WP1 ${category.route}: Back from add returns to the origin (deep link, in-app origin, refresh, linked page)`, async ({ browser, baseURL }) => {
+    // Ruling R5: Add*Page.tsx is WP4's. WP4 deletes this line when it adopts useOriginBack.
+    test.fixme(true, 'WP4 adopts useOriginBack on add pages (see WP1 plan "Requirements for WP4"); WP4 un-fixmes');
+    const state = fixtureState();
+    const owner = await openFixture(browser, baseURL!, state, { owner: true });
+    const list = `/recommendations/${category.route}/${category.route}-list`;
+    const back = () => owner.page.getByRole('button', { name: /^Back to / }).first();
+    try {
+      // Deep link: no origin -> the list.
+      await owner.page.goto(`${list}/add`);
+      await back().click();
+      await expect(owner.page).toHaveURL(`${baseURL}${list}`);
+
+      // In-app origin that is not the list (Home), surviving a browser refresh.
+      await owner.page.goto('/home');
+      await owner.page.evaluate((to) => {
+        window.history.pushState({ usr: { from: { pathname: '/home', search: '', label: 'Home' } }, key: 'wp1', idx: 1 }, '', to);
+        window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
+      }, `${list}/add`);
+      await owner.page.reload();
+      await expect(owner.page.getByRole('button', { name: 'Back to Home' })).toBeVisible();
+      await owner.page.getByRole('button', { name: 'Back to Home' }).click();
+      await expect(owner.page).toHaveURL(`${baseURL}/home`);
+
+      // Linked page (Places -> add person/product) passes redirectBack.
+      await owner.page.goto(`${list}/add?redirectBack=${encodeURIComponent('/recommendations/places')}`);
+      await back().click();
+      await expect(owner.page).toHaveURL(`${baseURL}/recommendations/places`);
+    } finally { await closeFixture(owner); }
+  });
+}
+
+test('WP1 guides: Back from a guide returns to the origin or the Guides page', async ({ browser, baseURL }) => {
+  const state = fixtureState();
+  const owner = await openFixture(browser, baseURL!, state, { owner: true });
+  try {
+    await owner.page.goto('/recommendations/guides/guides-list');
+    await owner.page.getByRole('button', { name: /^Back to / }).first().click();
+    await expect(owner.page).toHaveURL(`${baseURL}/recommendations/guides`);
+  } finally { await closeFixture(owner); }
+});
