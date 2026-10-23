@@ -56,7 +56,7 @@ export default function ListPage({ adapter, onMount }: Props) {
             <span>{t("samples.onlyYouCantPublish", "Only you can see this · can't be published")}</span>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-yellow-400/30 bg-yellow-400/[.06] p-3">
-            <p className="m-0 min-w-0 flex-1 text-sm text-gray-200">{t("samples.bar", "A sample to show how a list works. Keep it, delete it, or make it yours to edit and publish.")}</p>
+            <p className="m-0 min-w-0 flex-[1_1_16rem] text-sm text-gray-200">{t("samples.bar", "A sample to show how a list works. Keep it, delete it, or make it yours to edit and publish.")}</p>
             <SampleActions
               onMakeMine={async () => {
                 try { await makeMine(); toast.success(t("samples.madeMineToast", "It's yours now. Edit it and publish when ready.")); }

@@ -81,7 +81,7 @@ export default function ListCard({ category, list, busy, dragging, over, picked,
             onClick={(event) => { stop(event); setMenu((value) => !value); }}
             className="grid h-[22px] w-6 place-items-center rounded-lg border border-white/[.09] bg-black/35 text-[13px] leading-none text-white min-h-[44px] md:min-h-[22px]">⋯</button>
           {menu && sample && (
-            <span role="menu" onClick={stop} className="absolute right-0 top-8 z-20 grid min-w-[150px] rounded-[10px] border border-white/[.09] bg-[#1f2430] p-1 text-xs">
+            <span role="menu" onClick={stop} className="absolute right-0 top-8 z-20 grid min-w-[150px] rounded-[10px] border border-white/[.09] bg-[#1f2430] p-1 text-xs text-gray-100">
               <button role="menuitem" type="button" disabled={sampleBusy} className="rounded-md px-2.5 py-1.5 text-left hover:bg-white/5 disabled:opacity-50"
                 onClick={() => { setMenu(false); void runSample(commands.makeMine, t("samples.madeMineToast", "It's yours now. Edit it and publish when ready.")); }}>{t("samples.makeMine", "Make it mine")}</button>
               <button role="menuitem" type="button" className="rounded-md px-2.5 py-1.5 text-left hover:bg-white/5"
