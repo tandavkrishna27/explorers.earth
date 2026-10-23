@@ -28,6 +28,11 @@ vi.mock("../../../Products/hooks/useProductsOwner", () => ({ useProductsOwner: (
   { documentId: "p1", List_Name: "Desk setup", Visibility: false, recommended_products: [] }] } }) }));
 vi.mock("../../../People/hooks/usePeopleOwner", () => ({ usePeopleOwner: () => ({ loading: false, error: null, refetch: vi.fn(), data: { personLists: [
   { documentId: "q1", List_Name: "Design voices", Visibility: false, recommended_people: [{ documentId: "y1", name: "A type designer", is_pinned: false }] }] } }) }));
+vi.mock("../../../../components/SEO", () => ({ default: () => null }));
+vi.mock("../../../Guides/hooks/useGuidesOwner", () => ({ invalidateGuides: vi.fn(), useGuidesOwner: () => ({ loading: false, error: null, refresh: vi.fn(), content: null, guides: [
+  { documentId: "gd1", Title: "48 hours in Goa", Visibility: true, is_pinned: true, pin_order: 0, Guide_Media: [{ url: "/g.jpg" }], display_order: 0 },
+  { documentId: "gd2", Title: "Draft trip", Visibility: false, is_pinned: false, display_order: 1 },
+] }) }));
 
 const page = (ui: React.ReactElement) => render(<I18nextProvider i18n={englishI18n}><MemoryRouter>{ui}</MemoryRouter></I18nextProvider>);
 const last = () => captured[captured.length - 1] as Record<string, any>;
@@ -52,6 +57,15 @@ describe("category wrappers render the shared template", () => {
     page(<Home />);
     expect(last()).toMatchObject({ category, ...expected });
     expect(last()).toMatchSnapshot({ onCategoryVisibility: expect.any(Function), onOpenList: expect.any(Function), onRetry: expect.any(Function), onChanged: expect.any(Function), newList: expect.any(Object) });
+  });
+
+  it("guides", async () => {
+    const { default: GuidesPage } = await import("../../../Guides/GuidesPage");
+    page(<GuidesPage />);
+    expect(last()).toMatchObject({ category: "guides", newList: { kind: "navigate" },
+      lists: [{ id: "gd1", status: "public" }, { id: "gd2", status: "draft" }],
+      topPicks: [{ id: "gd1", listId: "gd1", pinned: true }] });
+    expect(last().pinCandidates.find((p: { id: string }) => p.id === "gd2").pinnable).toBe(false);
   });
 
   it("books", async () => {
