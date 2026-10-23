@@ -1602,6 +1602,105 @@
       "copied": "Copied!",
       "copyLink": "Copy Link",
       "linkCopiedToast": "Link copied!"
+    },
+    "wp3a": {
+      "titles": { "places": "Places", "movies": "Movies & Shows", "books": "Books", "games": "Games", "apps": "Apps & Tools", "products": "Products", "people": "People", "guides": "Guides" },
+      "itemNoun": { "places": "place", "movies": "movie or show", "books": "book", "games": "game", "apps": "app", "products": "product", "people": "person", "guides": "guide" },
+      "itemCount": {
+        "places_one": "{{count}} place", "places_other": "{{count}} places",
+        "movies_one": "{{count}} movie", "movies_other": "{{count}} movies",
+        "books_one": "{{count}} book", "books_other": "{{count}} books",
+        "games_one": "{{count}} game", "games_other": "{{count}} games",
+        "apps_one": "{{count}} app", "apps_other": "{{count}} apps",
+        "products_one": "{{count}} product", "products_other": "{{count}} products",
+        "people_one": "{{count}} person", "people_other": "{{count}} people",
+        "guides_one": "{{count}} stop", "guides_other": "{{count}} stops"
+      },
+      "newList": "New list",
+      "newGuide": "New guide",
+      "topPicks": {
+        "title": "Top Picks",
+        "manage": "Manage Top Picks",
+        "from": "From \"{{list}}\"",
+        "show": "Show {{name}}",
+        "empty": { "title": "Pin items to feature them here", "body": "Tap the star on any {{item}} in your lists.", "bodyLists": "Pin a public list to feature it here." },
+        "firstVisit": { "title": "Your best picks go here", "body": "Create a list, add a few, then star your favourites. They show here and at the top of your profile." }
+      },
+      "states": {
+        "loadError": "Your lists couldn't be loaded.",
+        "retry": "Retry",
+        "refreshing": "Refreshing…",
+        "firstList": "Create your first list",
+        "loading": "Loading your lists"
+      },
+      "toasts": {
+        "listCreated": "List created",
+        "orderSaved": "Order saved",
+        "orderFailed": "Couldn't save the order. Try again.",
+        "pinsSaved": "Top Picks updated",
+        "pinsFailed": "Couldn't save Top Picks. Your selection is kept.",
+        "statusFailed": "Couldn't update the list. Try again.",
+        "nowPublic": "Now public",
+        "nowDraft": "Back to draft"
+      },
+      "card": {
+        "public": "Public",
+        "draft": "Draft",
+        "pinned": "★ {{count}} pinned",
+        "noItems": "No items yet",
+        "more": "More actions for {{name}}",
+        "publishSwitch": "Public: {{name}}",
+        "emptyCantPublish": "Add an item before publishing",
+        "moveEarlier": "Move earlier",
+        "moveLater": "Move later",
+        "grip": "Reorder {{name}}. Press Space to pick up, arrow keys to move, Space to drop.",
+        "moved": "{{name}} moved to position {{position}} of {{total}}"
+      },
+      "manager": {
+        "title": "Manage Top Picks",
+        "count": "{{pinned}} of {{limit}} pinned",
+        "pinned": "Pinned (shown in Top Picks)",
+        "available": "Available to pin",
+        "none": "No Top Picks yet. Pin some below.",
+        "nothing": "Nothing to pin yet. Add items to a list first.",
+        "full": "Top Picks are full ({{limit}}). Unpin one to pin another.",
+        "onlyPublic": "Only public lists can be pinned.",
+        "save": "Save Top Picks",
+        "close": "Close",
+        "pin": "Pin {{name}}",
+        "unpin": "Unpin {{name}}",
+        "moveUp": "Move {{name}} up",
+        "moveDown": "Move {{name}} down"
+      },
+      "dialog": {
+        "title": "New list",
+        "name": "Name",
+        "namePlaceholder": "e.g. Comfort movies",
+        "description": "Short description (optional)",
+        "address": "Web address",
+        "location": "Location",
+        "locationPlaceholder": "Search a city or area (e.g. Goa)",
+        "locationRequired": "Pick a location from the suggestions",
+        "nameRequired": "Give your list a name",
+        "slugRequired": "Add a web address",
+        "slugTaken": "This web address is taken. Try another.",
+        "failed": "Couldn't create the list. Try again.",
+        "cancel": "Cancel",
+        "create": "Create list"
+      },
+      "pill": {
+        "public": "🌐 Public",
+        "hidden": "🔒 Hidden",
+        "draft": "✎ Draft",
+        "private": "👥 Private",
+        "comingSoon": "Coming soon",
+        "categoryPublic": "{{category}} shows on your profile",
+        "categoryHidden": "Not on your profile; your public lists still work by link",
+        "listDraft": "Only you can see it",
+        "listPublic": "Anyone with the link, and on your profile",
+        "listPrivate": "Coming soon: only people you invite by email",
+        "label": "Visibility: {{state}}"
+      }
     }
   },
   "emailVerification": {
