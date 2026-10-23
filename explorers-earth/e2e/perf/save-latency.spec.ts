@@ -4,7 +4,8 @@ import {test,expect,type Page,type Request} from '@playwright/test';
 import {assertFixtureOrigin} from '../replatform/proxy-fixture-authority.mjs';
 
 // WP5 (OWN-17) local measurement at the live round trip. Runs only inside the owned Movies
-// fixture (`movies-browser-fixture.ts --focus perf`); it is not part of any CI lane.
+// fixture with `movies-fixture-perf-focus.patch` applied (`--focus perf`; the fixture is hash-pinned,
+// so the patch stays local). It is not part of any CI lane.
 const RTT_MS=185;
 type Persona={cookie:string;userId:string;handle:string};
 const fixture=JSON.parse(readFileSync(process.env.MOVIES_E2E_FIXTURE_PATH!,'utf8')) as {origin:string;personas:{ownerA:Persona}};
