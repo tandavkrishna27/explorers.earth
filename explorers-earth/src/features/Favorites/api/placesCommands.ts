@@ -35,9 +35,11 @@ export function usePlacesCommands(listId?:string) {
  const observeRecommendation=async(signature:string,id:string,assert:()=>void,signal:AbortSignal)=>{let observed=recommendations.current.get(signature);if(!observed){observed=await PlacesClient.observeRecommendation(id,signal);assert();recommendations.current.set(signature,observed);}return observed;};
  const observeComplete=async(signature:string,assert:()=>void,signal:AbortSignal)=>{let observed=completeReads.current.get(signature);if(!observed){observed=await PlacesClient.readCompleteOwner(signal);assert();completeReads.current.set(signature,observed);}return observed;};
  const key=(intent:string)=>{const existing=keys.current.get(intent);if(existing)return existing;const value=crypto.randomUUID();keys.current.set(intent,value);return value;};
+ // A media command (refresh=false) is not exclusive: photos upload side by side, so it
+ // neither supersedes the command in flight nor is superseded by the next one.
  const run=async<T,>(action:(assert:()=>void,signal:AbortSignal)=>Promise<T>,refresh=true):Promise<T>=>{
-  const captured=scope,token=++operation.current,controller=new AbortController();controllers.current.add(controller);setPending(value=>value+1);
-  const assert=()=>{const state=useAuthStore.getState();if(!state.isAuthenticated||state.accountId!==accountId||state.generation!==generation||!mounted.current||current.current!==captured||operation.current!==token||controller.signal.aborted)throw new Error('Places owner or route changed');};
+  const captured=scope,token=refresh?++operation.current:null,controller=new AbortController();controllers.current.add(controller);setPending(value=>value+1);
+  const assert=()=>{const state=useAuthStore.getState();if(!state.isAuthenticated||state.accountId!==accountId||state.generation!==generation||!mounted.current||current.current!==captured||(token!==null&&operation.current!==token)||controller.signal.aborted)throw new Error('Places owner or route changed');};
   try{assert();const result=await action(assert,controller.signal);assert();if(refresh)invalidatePlaces();return result;}
   finally{controllers.current.delete(controller);if(mounted.current&&current.current===captured)setPending(value=>Math.max(0,value-1));}
  };
@@ -124,7 +126,11 @@ export function usePlacesCommands(listId?:string) {
   }),
   // Provider imagery is imported into owned media before it is referenced, so a place
   // gallery never depends on a provider request to render.
-  importPlacePhoto:(photoUri:string)=>run(async(assert,signal)=>{const signature=`place-photo:${photoUri}`;begin('place-photo',signature);assert();const result=await PlacesClient.importPlacePhoto(photoUri,'collection',signal);assert();forget(signature);return result;}),
-  upload:(file:File,purpose:'recommendation'|'collection'='recommendation')=>run(async(assert,signal)=>{const signature=`upload:${purpose}:${file.name}:${file.size}:${file.lastModified}`;begin(`upload:${purpose}:${file.name}`,signature);assert();const result=await PlacesClient.upload(file,purpose,signal);assert();forget(signature);return result;}),
+  // Media commands do not reload the owner view (OWN-17): an upload changes nothing the
+  // owner view shows until a later command attaches it, and that command refreshes.
+  importPlacePhoto:(photoUri:string)=>run(async(assert,signal)=>{const signature=`place-photo:${photoUri}`;begin('place-photo',signature);assert();const result=await PlacesClient.importPlacePhoto(photoUri,'collection',signal);assert();forget(signature);return result;},false),
+  upload:(file:File,purpose:'recommendation'|'collection'='recommendation')=>run(async(assert,signal)=>{const signature=`upload:${purpose}:${file.name}:${file.size}:${file.lastModified}`;begin(`upload:${purpose}:${file.name}`,signature);assert();const result=await PlacesClient.upload(file,purpose,signal);assert();forget(signature);return result;},false),
+  // Multi-step flows that end without a refreshing command reload the owner view once.
+  refresh:()=>invalidatePlaces(),
  };
 }

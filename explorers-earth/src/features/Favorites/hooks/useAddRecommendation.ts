@@ -94,13 +94,24 @@ type PendingRecommendationMedia = {
   origin: "provider" | "creator";
 };
 
-type CreatedRecommendationMediaAttempt = {
-  recommendationId: string;
+/** A create whose photo upload failed: what the creator submitted, kept for the retry. */
+type PendingCreateAttempt = {
+  values: KeyValuePair;
   selected: PendingRecommendationMedia[];
-  pending: PendingRecommendationMedia[];
-  photoMediaIds: string[];
-  attached: boolean;
 };
+
+/** Runs `work` over `items` with at most `limit` in flight; results keep the input order. */
+async function mapLimited<T, R>(items: T[], limit: number, work: (item: T, index: number) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) { const index = next++; results[index] = await work(items[index], index); }
+  }));
+  return results;
+}
+
+/** Photos upload three at a time (OWN-17): serial uploads were one round trip each. */
+const PHOTO_UPLOAD_CONCURRENCY = 3;
 
 interface AddRecommendation {
   places?: Places | null;
@@ -246,7 +257,11 @@ export const useAddRecommendation = ({
   const [uploadedUserMedia, setUploadedUserMedia] = useState<{ file: File; fileName: string }[]>([]);
   const [mediaStatus, setMediaStatus] = useState<RecommendationMediaStatus | null>(null);
   const [createdRecommendationDocumentId, setCreatedRecommendationDocumentId] = useState<string | null>(null);
-  const createdMediaAttemptRef = useRef<CreatedRecommendationMediaAttempt | null>(null);
+  // Set once the recommendation exists, so no later click can create a second one.
+  const createdRecommendationRef = useRef<string | null>(null);
+  const pendingCreateRef = useRef<PendingCreateAttempt | null>(null);
+  // Bytes already uploaded in this form, so a retry uploads only what is still missing.
+  const uploadedMediaIds = useRef(new Map<Blob, string>());
   const submissionInFlightRef = useRef(false);
   const completionInFlightRef = useRef(false);
 
@@ -367,76 +382,47 @@ export const useAddRecommendation = ({
   };
 
   /**
-   * Uploads whatever is still pending, then attaches it to the recommendation that was
-   * already created. Both halves are resumable: an upload failure leaves the remaining
-   * blobs pending, and an attach failure leaves the uploaded ids to attach again, so a
-   * retry never uploads the same blob twice or creates a second recommendation.
+   * Uploads the selected photos, three at a time, before the recommendation is created, so
+   * their ids travel on the create and no attach request follows it (OWN-17). Every upload
+   * that succeeds is remembered, even when another fails, so a retry uploads only what is
+   * still missing and never creates a second recommendation. Null means an upload failed.
    */
-  const persistCreatedRecommendationMedia = async (
-    attempt: CreatedRecommendationMediaAttempt,
-  ): Promise<RecommendationMediaStatus> => {
-    while (attempt.pending.length > 0) {
-      const media = attempt.pending[0];
+  const uploadSelectedMedia = async (selected: PendingRecommendationMedia[]): Promise<string[] | null> => {
+    let failed = false;
+    const ids = await mapLimited(selected, PHOTO_UPLOAD_CONCURRENCY, async (media) => {
+      // Imported provider photos are owned media already; only bytes are uploaded.
+      if (media.mediaId) return media.mediaId;
+      const blob = media.blob as Blob;
+      const known = uploadedMediaIds.current.get(blob);
+      if (known) return known;
       try {
-        // Imported provider photos are owned media already; only bytes are uploaded.
-        if (media.mediaId) { attempt.photoMediaIds.push(media.mediaId); attempt.pending = attempt.pending.slice(1); continue; }
-        const blob = media.blob as Blob;
         const file = new File([blob], media.fileName || "recommendation", { type: blob.type || "image/jpeg" });
-        const uploaded = await commands.upload(file, "recommendation");
         // Creator and provider uploads share the one typed, publicly projected photo
         // path. The generic recommendation_media leg had no public Places reader.
-        attempt.photoMediaIds.push(uploaded.id);
-        attempt.pending = attempt.pending.slice(1);
+        const uploaded = await commands.upload(file, "recommendation");
+        uploadedMediaIds.current.set(blob, uploaded.id);
+        return uploaded.id;
       } catch (error) {
         console.warn("Selected recommendation media upload failed:", error);
-        setMediaStatus("upload-failed");
-        return "upload-failed";
+        failed = true;
+        return "";
       }
-    }
-
-    try {
-      await commands.updatePlace(attempt.recommendationId, {
-        placePhotos: { photoMediaIds: attempt.photoMediaIds },
-      });
-      attempt.attached = true;
-    } catch (error) {
-      console.warn("Selected recommendation media attachment failed:", error);
-      setMediaStatus("metadata-failed");
-      return "metadata-failed";
-    }
-
-    setMediaStatus("saved");
-    return "saved";
+    });
+    return failed ? null : ids;
   };
 
   const retryMediaUpload = async () => {
-    const attempt = createdMediaAttemptRef.current;
-    if (
-      !attempt
-      || (mediaStatus !== "upload-failed" && mediaStatus !== "metadata-failed")
-      || submissionInFlightRef.current
-    ) return;
-
-    submissionInFlightRef.current = true;
-    setIsLoading(true);
-    try {
-      const status = await persistCreatedRecommendationMedia(attempt);
-      if (status === "saved") {
-        await finishCreatedRecommendation("saved");
-      }
-    } finally {
-      submissionInFlightRef.current = false;
-      if (!completionInFlightRef.current) setIsLoading(false);
-    }
+    const pending = pendingCreateRef.current;
+    if (!pending || mediaStatus !== "upload-failed" || submissionInFlightRef.current) return;
+    await createRecommendation(pending.values, pending.selected);
   };
 
+  // Nothing was created when an upload failed, so continuing creates the place without
+  // photos, once.
   const continueWithoutImage = async () => {
-    if (
-      !createdMediaAttemptRef.current
-      || (mediaStatus !== "upload-failed" && mediaStatus !== "metadata-failed")
-      || submissionInFlightRef.current
-    ) return;
-    await finishCreatedRecommendation("continued");
+    const pending = pendingCreateRef.current;
+    if (!pending || mediaStatus !== "upload-failed" || submissionInFlightRef.current) return;
+    await createRecommendation(pending.values, [], "continued");
   };
 
   /** The one provider request the add flow makes, and only for a custom place. */
@@ -455,15 +441,25 @@ export const useAddRecommendation = ({
     }
   };
 
-  const handleSubmit = async (values: KeyValuePair) => {
+  const handleSubmit = (values: KeyValuePair) => createRecommendation(values, null);
+
+  /**
+   * Files the recommendation with its photos. `retained` is the media a failed attempt
+   * kept (a retry or a continue), so the staged media leaving props does not lose it.
+   */
+  const createRecommendation = async (
+    values: KeyValuePair,
+    retained: PendingRecommendationMedia[] | null,
+    completion: "saved" | "continued" = "saved",
+  ) => {
     if (type === "edit") return;
     if (!listId) {
       toast.error("Recommendation could not be saved. Please try again.");
       return;
     }
-    if (submissionInFlightRef.current || createdMediaAttemptRef.current) return;
+    if (submissionInFlightRef.current || createdRecommendationRef.current) return;
     submissionInFlightRef.current = true;
-    setMediaStatus(null);
+    if (completion === "saved") setMediaStatus(null);
 
     // Show the loader before any async network work.
     setIsLoading(true);
@@ -483,9 +479,20 @@ export const useAddRecommendation = ({
         return;
       }
 
+      const selectedMedia = retained ?? snapshotSelectedMedia();
       // Refuse before anything is created or uploaded, so the creator can remove photos
       // and save again rather than learn afterwards that some were silently dropped.
-      if (refusePhotoOverflow(snapshotSelectedMedia().length)) {
+      if (refusePhotoOverflow(selectedMedia.length)) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Photos upload before the create and travel on it (OWN-17). A failed upload stops
+      // here, before anything exists, so the retry cannot create a second recommendation.
+      pendingCreateRef.current = { values, selected: selectedMedia };
+      const photoMediaIds = await uploadSelectedMedia(selectedMedia);
+      if (!photoMediaIds) {
+        setMediaStatus("upload-failed");
         setIsLoading(false);
         return;
       }
@@ -500,11 +507,10 @@ export const useAddRecommendation = ({
         context: recommendationContext(values, { recommendationType, source }),
         note: richNoteFromEditor(typeof values.reason === "string" ? values.reason : ""),
         userRating: toNumberOrNull(values.userRating),
-        // Media is attached after the recommendation exists, so a media failure cannot
-        // lose what the creator already wrote.
-        photoMediaIds: [],
+        photoMediaIds,
       };
 
+      // The create command refreshes the owner view once; the uploads before it did not.
       const created = recommendationType === "person"
         ? await commands.createPerson(listId, draft)
         : await commands.createPlace(listId, draft);
@@ -512,35 +518,22 @@ export const useAddRecommendation = ({
         throw new Error("Recommendation creation returned no persisted record");
       }
 
+      createdRecommendationRef.current = created.id;
+      pendingCreateRef.current = null;
       setCreatedRecommendationDocumentId(created.id);
 
-      const selectedMedia = snapshotSelectedMedia();
-      const attempt: CreatedRecommendationMediaAttempt = {
-        recommendationId: created.id,
-        selected: selectedMedia,
-        pending: [...selectedMedia],
-        photoMediaIds: [],
-        attached: false,
-      };
-      createdMediaAttemptRef.current = attempt;
-
-      if (selectedMedia.length === 0) {
+      if (completion === "continued") {
+        await finishCreatedRecommendation("continued");
+      } else if (selectedMedia.length === 0) {
         setMediaStatus("not-selected");
         await finishCreatedRecommendation("not-selected");
-        return;
-      }
-
-      const status = await persistCreatedRecommendationMedia(attempt);
-      if (status === "saved") {
-        await finishCreatedRecommendation("saved");
       } else {
-        setIsLoading(false);
+        setMediaStatus("saved");
+        await finishCreatedRecommendation("saved");
       }
     } catch (error) {
-      if (!createdMediaAttemptRef.current) {
-        console.error("Recommendation creation failed:", error);
-        toast.error("Recommendation could not be saved. Please try again.");
-      }
+      console.error("Recommendation creation failed:", error);
+      toast.error("Recommendation could not be saved. Please try again.");
       setIsLoading(false);
     } finally {
       submissionInFlightRef.current = false;
@@ -572,13 +565,16 @@ export const useAddRecommendation = ({
         setIsLoading(false);
         return;
       }
-      // Keep successful uploads and the exact patch across response loss or failure.
-      for(let index=attempt.uploadedIds.length;index<uploadedUserMedia.length;index++){
+      // Keep successful uploads and the exact patch across response loss or failure. Ids
+      // are kept by slot, so photos upload three at a time and still save in form order.
+      const current=attempt;
+      const missing=uploadedUserMedia.map((_,index)=>index).filter(index=>!current.uploadedIds[index]);
+      await mapLimited(missing,PHOTO_UPLOAD_CONCURRENCY,async index=>{
         const {file,fileName}=uploadedUserMedia[index];
         const uploaded=await commands.upload(new File([file],fileName||file.name,{type:file.type}),"recommendation");
-        if(editAttempt.current!==attempt)throw new Error("Edit media attempt retired");
-        attempt.uploadedIds.push(uploaded.id);
-      }
+        if(editAttempt.current!==current)throw new Error("Edit media attempt retired");
+        current.uploadedIds[index]=uploaded.id;
+      });
       const uploadedIds=attempt.uploadedIds;
       // Read the existing photos from the authoritative owner detail, not from the
       // presentation view model: the patch preserves what the server says this
@@ -734,7 +730,7 @@ export const useAddRecommendation = ({
     addExternalMedia,
     mediaStatus,
     mediaFeedback: mediaStatus === "upload-failed"
-      ? "Recommendation saved, but the selected image could not be uploaded."
+      ? "The selected image could not be uploaded, so the recommendation is not saved yet."
       : mediaStatus === "metadata-failed"
         ? "Recommendation saved and media uploaded, but its image metadata could not be saved."
         : mediaStatus === "saved"
