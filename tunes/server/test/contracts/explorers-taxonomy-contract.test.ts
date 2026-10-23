@@ -1,5 +1,5 @@
-import {expect, it} from 'vitest';
-import {taxonomyImportSchema, placesTaxonomyAssignmentSchema} from '../../../shared/explorersTaxonomyContract';
+import {describe, expect, it} from 'vitest';
+import {taxonomyImportSchema, placesTaxonomyAssignmentSchema, taxonomyCatalogQuerySchema, curatedTermAssignmentSchema, taxonomyCatalogCategorySchema} from '../../../shared/explorersTaxonomyContract';
 
 const id=(n:number)=>`aaaaaaaa-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const term=(n:number,parentId:string|null=null)=>({id:id(n),category:'places' as const,slug:`term-${n}`,parentId,position:n,active:true,labels:{en:`Term ${n}`,hi:`श्रेणी ${n}`}});
@@ -66,4 +66,30 @@ it('actual command inputs preserve omission and reject wrong category or incompl
  expect(createRecommendationSchema.safeParse({...base,category:'people',placesTaxonomy:{categoryTermId:null,subcategoryTermId:null}}).success).toBe(false);
  expect(updateRecommendationSchema.parse({expectedRevision:1,peopleSectorTermId:null}).peopleSectorTermId).toBeNull();
  expect(updateRecommendationSchema.safeParse({expectedRevision:1,placesTaxonomy:{categoryTermId:id(1)}}).success).toBe(false);
+});
+
+const flatUuid=(n:number)=>`00000000-0000-5000-8000-${String(n).padStart(12,'0')}`;
+const flatTerm=(n:number,category:string,parentId:string|null=null)=>({id:flatUuid(n),category,slug:`t-${n}`,parentId,position:n,active:true,labels:{en:`T ${n}`}});
+const flat=(category:string,terms:unknown[])=>({version:'explorers-taxonomy-import/v1',catalogVersion:1,category,defaultLocale:'en',terms,sourceMappings:[],legacySlugMappings:[]});
+
+describe('curated flat catalogs (S2, DS-07)',()=>{
+ it.each(['books','games','apps','products'])('accepts a flat %s import',category=>{
+  expect(taxonomyImportSchema.safeParse(flat(category,[flatTerm(1,category),flatTerm(2,category)])).success).toBe(true);
+ });
+ it.each(['books','games','apps','products'])('refuses a parented %s term',category=>{
+  expect(taxonomyImportSchema.safeParse(flat(category,[flatTerm(1,category),flatTerm(2,category,flatUuid(1))])).success).toBe(false);
+ });
+ it('never imports movies (configured in place by 0067)',()=>{
+  expect(taxonomyImportSchema.safeParse(flat('movies',[flatTerm(1,'movies')])).success).toBe(false);
+ });
+ it('reads all seven catalogs',()=>{
+  for(const category of ['places','people','movies','books','games','apps','products'])
+   expect(taxonomyCatalogQuerySchema.parse({category}).category).toBe(category);
+  expect(taxonomyCatalogCategorySchema.safeParse('guides').success).toBe(false);
+ });
+ it('curated assignment is one canonical uuid or null',()=>{
+  expect(curatedTermAssignmentSchema.safeParse(flatUuid(1)).success).toBe(true);
+  expect(curatedTermAssignmentSchema.safeParse(null).success).toBe(true);
+  expect(curatedTermAssignmentSchema.safeParse(id(1).toUpperCase()).success).toBe(false);
+ });
 });
