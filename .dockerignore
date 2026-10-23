@@ -96,6 +96,8 @@ explorers-earth/src/features/Profile/*
 explorers-earth/src/features/PublicHome/*
 !explorers-earth/src/features/Settings/
 explorers-earth/src/features/Settings/*
+!explorers-earth/src/features/shared/
+explorers-earth/src/features/shared/*
 !explorers-earth/src/i18n/resources/
 explorers-earth/src/i18n/resources/*
 !explorers-earth/src/pages/public/
@@ -224,6 +226,12 @@ explorers-earth/src/features/PublicHome/utils/*
 explorers-earth/src/features/Settings/api/*
 !explorers-earth/src/features/Settings/components/
 explorers-earth/src/features/Settings/components/*
+!explorers-earth/src/features/shared/category/
+explorers-earth/src/features/shared/category/*
+!explorers-earth/src/features/shared/lists/
+explorers-earth/src/features/shared/lists/*
+!explorers-earth/src/features/shared/topPicks/
+explorers-earth/src/features/shared/topPicks/*
 !explorers-earth/src/features/Analytics/components/charts/
 explorers-earth/src/features/Analytics/components/charts/*
 !explorers-earth/src/features/AppsAndTools/components/dashboard/
@@ -559,7 +567,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/AppsAndTools/components/dashboard/AddAppPage.tsx
 !explorers-earth/src/features/AppsAndTools/components/dashboard/AppEnrichmentPanel.tsx
 !explorers-earth/src/features/AppsAndTools/components/dashboard/AppListView.tsx
-!explorers-earth/src/features/AppsAndTools/components/dashboard/AppTopPicksManager.tsx
 !explorers-earth/src/features/AppsAndTools/components/dashboard/AppsHome.tsx
 !explorers-earth/src/features/AppsAndTools/components/public/AppCarouselRow.tsx
 !explorers-earth/src/features/AppsAndTools/components/public/AppDetailModal.tsx
@@ -800,7 +807,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/People/components/dashboard/AddPersonPage.tsx
 !explorers-earth/src/features/People/components/dashboard/PeopleHome.tsx
 !explorers-earth/src/features/People/components/dashboard/PersonListView.tsx
-!explorers-earth/src/features/People/components/dashboard/PersonTopPicksManager.tsx
 !explorers-earth/src/features/People/components/public/PersonCarouselRow.tsx
 !explorers-earth/src/features/People/components/public/PersonDetailModal.tsx
 !explorers-earth/src/features/People/components/public/PersonTopPicksHero.tsx
@@ -819,7 +825,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Products/api/query.ts
 !explorers-earth/src/features/Products/components/dashboard/AddProductPage.tsx
 !explorers-earth/src/features/Products/components/dashboard/ProductListView.tsx
-!explorers-earth/src/features/Products/components/dashboard/ProductTopPicksManager.tsx
 !explorers-earth/src/features/Products/components/dashboard/ProductsHome.tsx
 !explorers-earth/src/features/Products/components/public/ProductCarouselRow.tsx
 !explorers-earth/src/features/Products/components/public/ProductDetailModal.tsx
@@ -936,6 +941,17 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/navigation/canonicalNavigationMapping.ts
 !explorers-earth/src/features/navigation/categoryNavigationApi.ts
 !explorers-earth/src/features/navigation/categoryNavigationPolicy.ts
+!explorers-earth/src/features/shared/category/CategoryPage.tsx
+!explorers-earth/src/features/shared/category/ListCard.tsx
+!explorers-earth/src/features/shared/category/categoryConfig.ts
+!explorers-earth/src/features/shared/category/controls.tsx
+!explorers-earth/src/features/shared/category/listWrites.ts
+!explorers-earth/src/features/shared/category/models.ts
+!explorers-earth/src/features/shared/category/useCardReorder.ts
+!explorers-earth/src/features/shared/lists/NewListDialog.tsx
+!explorers-earth/src/features/shared/topPicks/TopPicksHero.tsx
+!explorers-earth/src/features/shared/topPicks/TopPicksManager.tsx
+!explorers-earth/src/features/shared/topPicks/topPicksWrites.ts
 !explorers-earth/src/hooks/useDeviceDetection.tsx
 !explorers-earth/src/hooks/useDialogA11y.ts
 !explorers-earth/src/hooks/useDistanceValidation.ts
