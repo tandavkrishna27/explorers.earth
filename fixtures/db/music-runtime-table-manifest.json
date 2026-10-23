@@ -2,7 +2,7 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0068_explorers_category_data_shape",
+    "expectedId": "0071_explorers_samples",
     "files": [
       "0001_runtime_baseline.sql",
       "0002_identity_lifecycle.sql",
