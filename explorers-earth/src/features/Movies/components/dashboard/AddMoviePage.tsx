@@ -170,6 +170,7 @@ const AddMoviePage = () => {
  const toggleGenre=(id:string)=>setForm(previous=>({...previous,categoryIds:previous.categoryIds.includes(id)?previous.categoryIds.filter(value=>value!==id):[...previous.categoryIds,id]}));
  const fieldClass='w-full bg-dashboard-muted border border-dashboard-border rounded-xl px-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent transition-colors';
   return (
+    <div className="min-h-screen text-dashboard">
     <AddItemPage
       title={isEdit ? "Edit Movie" : "Add Movie or Show"}
       backLabel={backText}
@@ -457,6 +458,7 @@ const AddMoviePage = () => {
           </>
         )}
     </AddItemPage>
+    </div>
   );
 };
 

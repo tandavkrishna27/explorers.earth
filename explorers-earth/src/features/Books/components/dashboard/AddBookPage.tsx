@@ -279,6 +279,7 @@ const AddBookPage = () => {
   const clearSelection = () => { selectionSequence.current++; setSelectedBook(null); setBuyLinks([]); setEntityId(undefined); setIsManualBook(false); setCategoryId(null); };
   const mode = selectedBook || isEdit ? "picked" as const : manualOpen ? "manual" as const : "search" as const;
   return (
+    <div className="min-h-screen text-dashboard">
     <AddItemPage
       title={isEdit ? "Edit Book" : "Add a Book"}
       backLabel={backText}
@@ -449,6 +450,7 @@ const AddBookPage = () => {
         </div>
       )}
     </AddItemPage>
+    </div>
   );
 };
 
