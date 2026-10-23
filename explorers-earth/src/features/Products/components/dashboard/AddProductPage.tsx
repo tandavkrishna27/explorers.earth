@@ -71,6 +71,8 @@ export default function AddProductPage() {
  const [title, setTitle] = useState(''), [productUrl, setProductUrl] = useState('');
  const [brand, setBrand] = useState(''), [logoUrl, setLogoUrl] = useState('');
  const [description, setDescription] = useState(''), [buyUrl, setBuyUrl] = useState('');
+ // DS-14 (0068): kept as loaded until the Products form gains its toggle, so an edit never clears it.
+ const [affiliateDisclosed, setAffiliateDisclosed] = useState(false);
  const [price, setPrice] = useState(''), [currency, setCurrency] = useState<string>(initialCurrency);
  const [specifications, setSpecifications] = useState<{ key: string; value: string }[]>([]);
  const [note, setNote] = useState(''), [rating, setRating] = useState<number | null>(null);
@@ -85,7 +87,7 @@ export default function AddProductPage() {
  const moveSpecification = (index: number, delta: -1 | 1) => { setSpecifications(value => moveItem(value, index, index + delta)); announceSpec(`Specification ${index + 1}`, index + delta + 1, specifications.length); };
 
  useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.abort(); active.current++; }; }, []);
- useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setTitle(''); setProductUrl(''); setBrand(''); setLogoUrl(''); setDescription(''); setBuyUrl(''); setPrice(''); setCurrency(initialCurrency); setSpecifications([]); setNote(''); setRating(null); setMedia([]); setPending(0); setSaving(false); setError(''); setExistingId(''); }, [scope]);
+ useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setTitle(''); setProductUrl(''); setBrand(''); setLogoUrl(''); setDescription(''); setBuyUrl(''); setAffiliateDisclosed(false); setPrice(''); setCurrency(initialCurrency); setSpecifications([]); setNote(''); setRating(null); setMedia([]); setPending(0); setSaving(false); setError(''); setExistingId(''); }, [scope]);
 
  useEffect(() => {
   if (!productId || !owner.content || initialized.current === scope) return;
@@ -97,7 +99,7 @@ export default function AddProductPage() {
   setLogoUrl(product.logo_url ?? ''); setDescription(product.description ?? ''); setBuyUrl(product.buy_url ?? '');
   // The exact decimal is read back from the observation, not from the display number.
   const offer = observed.detail.category === 'products' ? observed.detail.productOffer : undefined;
-  setPrice(offer?.price ?? ''); setCurrency(offer?.currencyCode ?? '');
+  setPrice(offer?.price ?? ''); setCurrency(offer?.currencyCode ?? ''); setAffiliateDisclosed(offer?.affiliateDisclosed ?? false);
   setSpecifications(product.specification_list ? product.specification_list.map(entry => ({ ...entry })) : Object.entries(product.specifications ?? {}).map(([key, value]) => ({ key, value })));
   setNote(typeof product.user_recommendation_note === 'string' ? product.user_recommendation_note : '');
   setRating(product.user_rating);
@@ -151,7 +153,7 @@ export default function AddProductPage() {
    // An empty amount is unknown, never zero, and a currency with no amount names nothing, so
    // the two travel together or not at all.
    const amount = blank(price);
-   const offer = { price: amount, currencyCode: amount === null || currency === '' ? null : currency, buyUrl: blank(buyUrl) };
+   const offer = { price: amount, currencyCode: amount === null || currency === '' ? null : currency, buyUrl: blank(buyUrl), affiliateDisclosed };
    const draft = { title: title.trim(), productUrl: productUrl.trim(), ...facts, offer, note: richNoteFromEditor(note), userRating: rating, mediaIds: media.map(item => item.id) };
    const signature = JSON.stringify(draft);
    assertCurrent(captured, operation);

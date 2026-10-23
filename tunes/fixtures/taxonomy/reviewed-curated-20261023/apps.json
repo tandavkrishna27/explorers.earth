@@ -1,0 +1,230 @@
+{
+  "version": "explorers-taxonomy-import/v1",
+  "catalogVersion": 1,
+  "category": "apps",
+  "defaultLocale": "en",
+  "terms": [
+    {
+      "id": "3262dddf-3e6e-5b70-810a-edf391cd9d39",
+      "category": "apps",
+      "slug": "productivity",
+      "parentId": null,
+      "position": 0,
+      "active": true,
+      "labels": {
+        "en": "Productivity"
+      }
+    },
+    {
+      "id": "bf8f1e44-b026-589f-bc02-cd17863f3f56",
+      "category": "apps",
+      "slug": "communication",
+      "parentId": null,
+      "position": 1,
+      "active": true,
+      "labels": {
+        "en": "Communication"
+      }
+    },
+    {
+      "id": "a559a959-15b2-514b-8364-2e8f5d75d5fe",
+      "category": "apps",
+      "slug": "social",
+      "parentId": null,
+      "position": 2,
+      "active": true,
+      "labels": {
+        "en": "Social"
+      }
+    },
+    {
+      "id": "ef11666b-593f-5615-97e4-44e3906b9af4",
+      "category": "apps",
+      "slug": "design-creativity",
+      "parentId": null,
+      "position": 3,
+      "active": true,
+      "labels": {
+        "en": "Design & Creativity"
+      }
+    },
+    {
+      "id": "cd66b3f8-8106-57a6-9a00-b28ff33f9f49",
+      "category": "apps",
+      "slug": "developer-tools",
+      "parentId": null,
+      "position": 4,
+      "active": true,
+      "labels": {
+        "en": "Developer Tools"
+      }
+    },
+    {
+      "id": "fb72518e-5eb6-5b45-afbf-38959bef3c60",
+      "category": "apps",
+      "slug": "finance",
+      "parentId": null,
+      "position": 5,
+      "active": true,
+      "labels": {
+        "en": "Finance"
+      }
+    },
+    {
+      "id": "65820ce6-d906-5bf3-9420-e9758783a27b",
+      "category": "apps",
+      "slug": "education",
+      "parentId": null,
+      "position": 6,
+      "active": true,
+      "labels": {
+        "en": "Education"
+      }
+    },
+    {
+      "id": "4df08ec9-9d0e-5623-a903-45a1c58af3f0",
+      "category": "apps",
+      "slug": "health-fitness",
+      "parentId": null,
+      "position": 7,
+      "active": true,
+      "labels": {
+        "en": "Health & Fitness"
+      }
+    },
+    {
+      "id": "2766724f-4c6f-537a-ba1e-423d41aeff4a",
+      "category": "apps",
+      "slug": "travel",
+      "parentId": null,
+      "position": 8,
+      "active": true,
+      "labels": {
+        "en": "Travel & Navigation"
+      }
+    },
+    {
+      "id": "01a84591-206c-590b-ae3c-e91971b7fa77",
+      "category": "apps",
+      "slug": "food-drink",
+      "parentId": null,
+      "position": 9,
+      "active": true,
+      "labels": {
+        "en": "Food & Drink"
+      }
+    },
+    {
+      "id": "23111eeb-ac32-5011-a93f-c27e5764c02d",
+      "category": "apps",
+      "slug": "shopping",
+      "parentId": null,
+      "position": 10,
+      "active": true,
+      "labels": {
+        "en": "Shopping"
+      }
+    },
+    {
+      "id": "f86618da-7d00-5704-9aaa-ba8b9c62a4d0",
+      "category": "apps",
+      "slug": "entertainment",
+      "parentId": null,
+      "position": 11,
+      "active": true,
+      "labels": {
+        "en": "Entertainment"
+      }
+    },
+    {
+      "id": "7627346b-9dc9-5116-93f8-00ea7ab0dbdb",
+      "category": "apps",
+      "slug": "music-audio",
+      "parentId": null,
+      "position": 12,
+      "active": true,
+      "labels": {
+        "en": "Music & Audio"
+      }
+    },
+    {
+      "id": "e7e3acbd-7847-51c3-aafe-7710116a79d2",
+      "category": "apps",
+      "slug": "photo-video",
+      "parentId": null,
+      "position": 13,
+      "active": true,
+      "labels": {
+        "en": "Photo & Video"
+      }
+    },
+    {
+      "id": "548c0d41-0979-5af4-aab5-b1e78b3a86f1",
+      "category": "apps",
+      "slug": "news-reading",
+      "parentId": null,
+      "position": 14,
+      "active": true,
+      "labels": {
+        "en": "News & Reading"
+      }
+    },
+    {
+      "id": "fb0f3f8e-3071-5580-9a88-1d9d39b87fd5",
+      "category": "apps",
+      "slug": "utilities",
+      "parentId": null,
+      "position": 15,
+      "active": true,
+      "labels": {
+        "en": "Utilities"
+      }
+    },
+    {
+      "id": "2d3edf4b-e7de-55df-b4f7-4cf031890565",
+      "category": "apps",
+      "slug": "security-privacy",
+      "parentId": null,
+      "position": 16,
+      "active": true,
+      "labels": {
+        "en": "Security & Privacy"
+      }
+    },
+    {
+      "id": "6a77ca05-9bfd-5827-a461-14ecc3c266c5",
+      "category": "apps",
+      "slug": "ai-assistants",
+      "parentId": null,
+      "position": 17,
+      "active": true,
+      "labels": {
+        "en": "AI & Assistants"
+      }
+    },
+    {
+      "id": "f2823fe2-dcef-5486-9ddb-99f60070476d",
+      "category": "apps",
+      "slug": "lifestyle",
+      "parentId": null,
+      "position": 18,
+      "active": true,
+      "labels": {
+        "en": "Lifestyle"
+      }
+    },
+    {
+      "id": "b558d6f0-65bb-5ff5-9cd4-af3dd19ff438",
+      "category": "apps",
+      "slug": "kids-family",
+      "parentId": null,
+      "position": 19,
+      "active": true,
+      "labels": {
+        "en": "Kids & Family"
+      }
+    }
+  ],
+  "sourceMappings": [],
+  "legacySlugMappings": []
+}

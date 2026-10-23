@@ -1,5 +1,5 @@
 import {replaceTaxonomyAssignment} from './taxonomyAssignmentRepository';
-import type {TaxonomyAssignmentInput} from '../../shared/explorersTaxonomyContract';
+import {isFlatCuratedCategory,type TaxonomyAssignmentInput} from '../../shared/explorersTaxonomyContract';
 import {insertMovieDetails,readMovieEntity,writeMovieContext,readMovieContext,checkMovieContext,writeMovieTerms} from './movieCatalogRepository';
 import {movieDisplayFieldsSchema,movieDetailsSchema,emptyMovieDetails,resolveManualMovieSchema,type MovieContext} from '../../shared/explorersMovieContract';
 import { createHash } from 'node:crypto';
@@ -14,7 +14,7 @@ import { replaceRecommendationMedia } from './recommendationMediaWrite';
 import {insertAppDetails,readAppEntity,writeAppScreenshots} from './appCatalogRepository';
 import {insertProductDetails,readProductEntity,writeProductOffer} from './productCatalogRepository';
 import {appDisplayFieldsSchema,appEntityDetailsSchema,type AppScreenshots} from '../../shared/explorersAppContract';
-import {productDisplayFieldsSchema,productEntityDetailsSchema,emptyProductOffer,type ProductOffer} from '../../shared/explorersProductContract';
+import {productDisplayFieldsSchema,productDisplayFieldsWriteSchema,productEntityDetailsSchema,emptyProductOffer,type ProductOffer} from '../../shared/explorersProductContract';
 import {personDisplayFieldsSchema,personEntityDetailsSchema,emptyPersonDetails} from '../../shared/explorersPersonContract';
 import {insertPersonDetails,readPersonEntity} from './personCatalogRepository';
 import {insertPlaceDetails,readPlaceEntity,writePlaceContext,writePlacePhotos,writePlaceCollectionDetails} from './placeCatalogRepository';
@@ -75,7 +75,7 @@ export class ExplorersRecommendationRepository {
       const observed=recommendationOperation?(await db.query('SELECT category FROM recommendations WHERE id=$1 AND account_id=$2',[addressed.id,accountId])).rows[0]:undefined;
       if(recommendationOperation&&!observed)throw new RecommendationFailure(404,'Recommendation unavailable');
       const taxonomyCategory=observed?.category??(operation==='createRecommendation'?addressed.category:undefined);
-      if(taxonomyCategory==='places'||taxonomyCategory==='people')await db.query('SELECT lock_explorers_taxonomy_catalog($1)',[taxonomyCategory]);
+      if(taxonomyCategory==='places'||taxonomyCategory==='people'||(taxonomyCategory&&isFlatCuratedCategory(taxonomyCategory)))await db.query('SELECT lock_explorers_taxonomy_catalog($1)',[taxonomyCategory]);
       // Matches lifecycle lock order; a suspended/deleted account cannot start content writes.
       const account=await db.query('SELECT status FROM creator_accounts WHERE id=$1 FOR UPDATE',[accountId]);
       if(account.rows[0]?.status!=='active') throw new RecommendationFailure(404,'Account unavailable');
@@ -161,12 +161,12 @@ export class ExplorersRecommendationRepository {
   }
   /** A manual game with its year, platforms and genres (GMS-X01). The details row is written
    * only for the game entity just created, and only when something was given. */
-  async resolveGameEntity(accountId:string,input:{details:{title:string;releaseYear?:number|null;platforms?:string[];genres?:string[]}},key:string) {
+  async resolveGameEntity(accountId:string,input:{details:{title:string;releaseYear?:number|null;platforms?:string[];genres?:string[];developer?:string|null}},key:string) {
     return this.command(accountId,'resolveGameEntity',input,key,async db=>{
-      const {title,releaseYear=null,platforms=[],genres=[]}=input.details;
+      const {title,releaseYear=null,platforms=[],genres=[],developer=null}=input.details;
       const entity=(await db.query("INSERT INTO entities(kind,title,origin,search_document) VALUES('game',$1,'manual',to_tsvector('simple',$1)) RETURNING id,kind,title",[title])).rows[0] as {id:string;kind:CatalogKind;title:string};
-      if(releaseYear!==null||platforms.length||genres.length)
-        await db.query("INSERT INTO game_entity_details(entity_id,release_year,platforms,genres) SELECT id,$2,$3,$4 FROM entities WHERE id=$1 AND kind='game'",[entity.id,releaseYear,platforms,genres]);
+      if(releaseYear!==null||platforms.length||genres.length||developer!==null)
+        await db.query("INSERT INTO game_entity_details(entity_id,release_year,platforms,genres,developer) SELECT id,$2,$3,$4,$5 FROM entities WHERE id=$1 AND kind='game'",[entity.id,releaseYear,platforms,genres,developer]);
       return entity;
     });
   }
@@ -310,7 +310,7 @@ export class ExplorersRecommendationRepository {
   }
   async createRecommendation(accountId:string,input:{category:Exclude<ContentCategory,'guides'>;entityId:string;collectionId:string;expectedCollectionRevision:number;userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null;displayOverrides?:DisplayOverrides;bookContext?:BookRecommendationContext;movieContext?:MovieContext;movieTermIds?:string[];appScreenshots?:AppScreenshots;productOffer?:ProductOffer;placeContext?:PlaceRecommendationContext;placePhotos?:PlacePhotos}&TaxonomyAssignmentInput,key:string):Promise<RecommendationRecord> {
     return this.command(accountId,'createRecommendation',input,key,async db=>{
-      if(input.category!=='places'&&input.placesTaxonomy!==undefined||input.category!=='people'&&input.peopleSectorTermId!==undefined)throw new RecommendationFailure(422,'Category taxonomy mismatch');
+      if(input.category!=='places'&&input.placesTaxonomy!==undefined||input.category!=='people'&&input.peopleSectorTermId!==undefined||!isFlatCuratedCategory(input.category)&&input.curatedTermId!==undefined)throw new RecommendationFailure(422,'Category taxonomy mismatch');
       const list=await this.lockCollection(db,accountId,input.collectionId,input.expectedCollectionRevision);
       if(list.category!==input.category) throw new RecommendationFailure(422,'Collection category mismatch');
       const result=await db.query(`INSERT INTO recommendations(account_id,entity_id,category,user_rating,publication_state,note)
@@ -555,8 +555,10 @@ export class ExplorersRecommendationRepository {
       throw new RecommendationFailure(422,'Invalid rating');
     return this.command(accountId,'updateRecommendation',{id,expectedRevision,input},key,async db=>{
       const locked=await this.lockRecommendation(db,accountId,id,expectedRevision);
+      // DS-02: People are not rated. A stored rating stays readable; a new one is refused.
+      if(locked.category==='people'&&input.userRating!==undefined&&input.userRating!==null)throw new RecommendationFailure(422,'People are not rated');
       if(locked.category!=='books'&&input.bookContext!==undefined||locked.category!=='movies'&&(input.movieContext!==undefined||input.movieTermIds!==undefined)||locked.category!=='apps'&&input.appScreenshots!==undefined||locked.category!=='products'&&input.productOffer!==undefined||locked.category!=='places'&&(input.placeContext!==undefined||input.placePhotos!==undefined))throw new RecommendationFailure(422,'Category context mismatch');
-      if(locked.category==='movies'){const {title,...fields}=input.displayOverrides??{};if(!movieDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Movie overrides');}else if(locked.category==='books'){const {title,...fields}=input.displayOverrides??{};if(!bookDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Book overrides');}else if(locked.category==='apps'){const {title,...fields}=input.displayOverrides??{};if(!appDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid App overrides');}else if(locked.category==='products'){const {title,...fields}=input.displayOverrides??{};if(!productDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Product overrides');}else if(locked.category==='people'){const {title,...fields}=input.displayOverrides??{};if(!personDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Person overrides');}else if(locked.category==='places'){const {title,...fields}=input.displayOverrides??{};if(!placeDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Place overrides');}else if(Object.keys(input.displayOverrides??{}).some(k=>k!=='title'))throw new RecommendationFailure(422,'Category overrides mismatch');
+      if(locked.category==='movies'){const {title,...fields}=input.displayOverrides??{};if(!movieDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Movie overrides');}else if(locked.category==='books'){const {title,...fields}=input.displayOverrides??{};if(!bookDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Book overrides');}else if(locked.category==='apps'){const {title,...fields}=input.displayOverrides??{};if(!appDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid App overrides');}else if(locked.category==='products'){const {title,...fields}=input.displayOverrides??{};if(!productDisplayFieldsWriteSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Product overrides');}else if(locked.category==='people'){const {title,...fields}=input.displayOverrides??{};if(!personDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Person overrides');}else if(locked.category==='places'){const {title,...fields}=input.displayOverrides??{};if(!placeDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Place overrides');}else if(Object.keys(input.displayOverrides??{}).some(k=>k!=='title'))throw new RecommendationFailure(422,'Category overrides mismatch');
       const result=await db.query(`UPDATE recommendations SET user_rating=CASE WHEN $2 THEN $3 ELSE user_rating END,
         publication_state=coalesce($4,publication_state),note=CASE WHEN $5 THEN $6::jsonb ELSE note END,revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *`,[id,input.userRating!==undefined,input.userRating??null,input.publicationState??null,input.note!==undefined,input.note==null?null:JSON.stringify(input.note)]);
       if(input.displayOverrides!==undefined) await this.replaceOverrides(db,accountId,id,input.displayOverrides);

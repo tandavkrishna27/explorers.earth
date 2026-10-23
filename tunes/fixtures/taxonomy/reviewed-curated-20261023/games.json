@@ -1,0 +1,369 @@
+{
+  "version": "explorers-taxonomy-import/v1",
+  "catalogVersion": 1,
+  "category": "games",
+  "defaultLocale": "en",
+  "terms": [
+    {
+      "id": "b469c0a3-6010-504d-8542-4177e89f29b6",
+      "category": "games",
+      "slug": "action",
+      "parentId": null,
+      "position": 0,
+      "active": true,
+      "labels": {
+        "en": "Action"
+      }
+    },
+    {
+      "id": "f559bcd3-1c6d-5e30-ad2e-1be477a50886",
+      "category": "games",
+      "slug": "adventure",
+      "parentId": null,
+      "position": 1,
+      "active": true,
+      "labels": {
+        "en": "Adventure"
+      }
+    },
+    {
+      "id": "a40b0f19-9fc4-5090-bf9b-2317a3ebb09a",
+      "category": "games",
+      "slug": "role-playing",
+      "parentId": null,
+      "position": 2,
+      "active": true,
+      "labels": {
+        "en": "Role-playing (RPG)"
+      }
+    },
+    {
+      "id": "745c5662-aeba-535d-8373-d79b20f65c9d",
+      "category": "games",
+      "slug": "shooter",
+      "parentId": null,
+      "position": 3,
+      "active": true,
+      "labels": {
+        "en": "Shooter"
+      }
+    },
+    {
+      "id": "7b9dea47-8ce5-5f8d-b807-3da415b6ef4c",
+      "category": "games",
+      "slug": "platformer",
+      "parentId": null,
+      "position": 4,
+      "active": true,
+      "labels": {
+        "en": "Platformer"
+      }
+    },
+    {
+      "id": "bc6101e4-a231-5d72-b690-f080ad3ade95",
+      "category": "games",
+      "slug": "puzzle",
+      "parentId": null,
+      "position": 5,
+      "active": true,
+      "labels": {
+        "en": "Puzzle"
+      }
+    },
+    {
+      "id": "5c284e2d-2974-55b1-a70e-b19b42f15ce5",
+      "category": "games",
+      "slug": "strategy",
+      "parentId": null,
+      "position": 6,
+      "active": true,
+      "labels": {
+        "en": "Strategy"
+      }
+    },
+    {
+      "id": "6cdbb3ff-ada4-5dba-9556-17cc6ca1feb3",
+      "category": "games",
+      "slug": "simulation",
+      "parentId": null,
+      "position": 7,
+      "active": true,
+      "labels": {
+        "en": "Simulation"
+      }
+    },
+    {
+      "id": "54746910-48a2-52af-ad74-0102c140f2e1",
+      "category": "games",
+      "slug": "sports",
+      "parentId": null,
+      "position": 8,
+      "active": true,
+      "labels": {
+        "en": "Sports"
+      }
+    },
+    {
+      "id": "87054550-78bb-5639-aa54-8e75d32c552b",
+      "category": "games",
+      "slug": "racing",
+      "parentId": null,
+      "position": 9,
+      "active": true,
+      "labels": {
+        "en": "Racing"
+      }
+    },
+    {
+      "id": "f277d806-8c74-599b-af92-86851553b4b2",
+      "category": "games",
+      "slug": "fighting",
+      "parentId": null,
+      "position": 10,
+      "active": true,
+      "labels": {
+        "en": "Fighting"
+      }
+    },
+    {
+      "id": "9cb450e4-81bc-5e0e-98e4-790a54372f3d",
+      "category": "games",
+      "slug": "indie",
+      "parentId": null,
+      "position": 11,
+      "active": true,
+      "labels": {
+        "en": "Indie"
+      }
+    },
+    {
+      "id": "9367995d-127b-52ee-81a4-5593cc1c9bfe",
+      "category": "games",
+      "slug": "point-and-click",
+      "parentId": null,
+      "position": 12,
+      "active": true,
+      "labels": {
+        "en": "Point-and-click"
+      }
+    },
+    {
+      "id": "749c7784-6aa0-512b-84d3-5775705e1b47",
+      "category": "games",
+      "slug": "visual-novel",
+      "parentId": null,
+      "position": 13,
+      "active": true,
+      "labels": {
+        "en": "Visual Novel"
+      }
+    },
+    {
+      "id": "3600af85-2277-5b29-8c7d-79980e67a815",
+      "category": "games",
+      "slug": "card-board",
+      "parentId": null,
+      "position": 14,
+      "active": true,
+      "labels": {
+        "en": "Card & Board"
+      }
+    },
+    {
+      "id": "a47bd210-0045-5c3d-a9dc-7fa9d99f130f",
+      "category": "games",
+      "slug": "moba",
+      "parentId": null,
+      "position": 15,
+      "active": true,
+      "labels": {
+        "en": "MOBA"
+      }
+    },
+    {
+      "id": "7db5ddec-6dd1-548c-ae14-af9280665c8e",
+      "category": "games",
+      "slug": "music-rhythm",
+      "parentId": null,
+      "position": 16,
+      "active": true,
+      "labels": {
+        "en": "Music & Rhythm"
+      }
+    },
+    {
+      "id": "eb0fd49a-2730-533e-b4b6-0d07dc285184",
+      "category": "games",
+      "slug": "party-trivia",
+      "parentId": null,
+      "position": 17,
+      "active": true,
+      "labels": {
+        "en": "Party & Trivia"
+      }
+    },
+    {
+      "id": "68646376-7102-51bb-8210-5b394b6e3a77",
+      "category": "games",
+      "slug": "horror",
+      "parentId": null,
+      "position": 18,
+      "active": true,
+      "labels": {
+        "en": "Horror"
+      }
+    },
+    {
+      "id": "52a8e49f-8fac-599f-9cb7-cbf772871a35",
+      "category": "games",
+      "slug": "family-kids",
+      "parentId": null,
+      "position": 19,
+      "active": true,
+      "labels": {
+        "en": "Family & Kids"
+      }
+    }
+  ],
+  "sourceMappings": [
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "25",
+      "termId": "b469c0a3-6010-504d-8542-4177e89f29b6"
+    },
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "33",
+      "termId": "b469c0a3-6010-504d-8542-4177e89f29b6"
+    },
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "31",
+      "termId": "f559bcd3-1c6d-5e30-ad2e-1be477a50886"
+    },
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "12",
+      "termId": "a40b0f19-9fc4-5090-bf9b-2317a3ebb09a"
+    },
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "5",
+      "termId": "745c5662-aeba-535d-8373-d79b20f65c9d"
+    },
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "8",
+      "termId": "7b9dea47-8ce5-5f8d-b807-3da415b6ef4c"
+    },
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "9",
+      "termId": "bc6101e4-a231-5d72-b690-f080ad3ade95"
+    },
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "15",
+      "termId": "5c284e2d-2974-55b1-a70e-b19b42f15ce5"
+    },
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "11",
+      "termId": "5c284e2d-2974-55b1-a70e-b19b42f15ce5"
+    },
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "16",
+      "termId": "5c284e2d-2974-55b1-a70e-b19b42f15ce5"
+    },
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "24",
+      "termId": "5c284e2d-2974-55b1-a70e-b19b42f15ce5"
+    },
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "13",
+      "termId": "6cdbb3ff-ada4-5dba-9556-17cc6ca1feb3"
+    },
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "14",
+      "termId": "54746910-48a2-52af-ad74-0102c140f2e1"
+    },
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "10",
+      "termId": "87054550-78bb-5639-aa54-8e75d32c552b"
+    },
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "4",
+      "termId": "f277d806-8c74-599b-af92-86851553b4b2"
+    },
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "32",
+      "termId": "9cb450e4-81bc-5e0e-98e4-790a54372f3d"
+    },
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "2",
+      "termId": "9367995d-127b-52ee-81a4-5593cc1c9bfe"
+    },
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "34",
+      "termId": "749c7784-6aa0-512b-84d3-5775705e1b47"
+    },
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "35",
+      "termId": "3600af85-2277-5b29-8c7d-79980e67a815"
+    },
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "36",
+      "termId": "a47bd210-0045-5c3d-a9dc-7fa9d99f130f"
+    },
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "7",
+      "termId": "7db5ddec-6dd1-548c-ae14-af9280665c8e"
+    },
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "26",
+      "termId": "eb0fd49a-2730-533e-b4b6-0d07dc285184"
+    },
+    {
+      "sourceHost": "api.igdb.com",
+      "entityKind": "genre",
+      "documentId": "30",
+      "termId": "eb0fd49a-2730-533e-b4b6-0d07dc285184"
+    }
+  ],
+  "legacySlugMappings": []
+}

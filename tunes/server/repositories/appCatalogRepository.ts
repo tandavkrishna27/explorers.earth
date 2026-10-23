@@ -8,9 +8,22 @@ import {RecommendationFailure} from './explorersRecommendationRepository';
 // none at all - there is no all-null empty value to fall back on, which is why a missing
 // row is an error rather than emptyAppDetails().
 
+// Apps one link (0068): new writes keep download_url NULL and carry every extra store or
+// download link in other_links. A client that still sends a distinct downloadUrl has it
+// folded into other_links as a Download link, exactly as the 0068 backfill does, so nothing
+// it sends is lost. Rows written before 0068 keep their download_url, which the reader
+// presents as a Download link when other_links is still empty.
 export async function insertAppDetails(db:PoolClient,entityId:string,d:AppEntityDetails){
- await db.query(`INSERT INTO app_entity_details(entity_id,app_url,developer,logo_url,description,download_url,price_tier,platforms) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
-  [entityId,d.appUrl,d.developer,d.logoUrl,d.description,d.downloadUrl,d.priceTier,d.platforms]);
+ const links=d.otherLinks??[];
+ const otherLinks=!links.length&&d.downloadUrl&&d.downloadUrl!==d.appUrl?[{label:'Download',url:d.downloadUrl}]:links;
+ await db.query(`INSERT INTO app_entity_details(entity_id,app_url,developer,logo_url,description,download_url,price_tier,platforms,other_links) VALUES($1,$2,$3,$4,$5,NULL,$6,$7,$8::jsonb)`,
+  [entityId,d.appUrl,d.developer,d.logoUrl,d.description,d.priceTier,d.platforms,JSON.stringify(otherLinks)]);
+}
+
+export function appOtherLinks(row:{app_url:string;download_url:string|null;other_links:unknown}){
+ const stored=Array.isArray(row.other_links)?row.other_links:[];
+ if(stored.length||!row.download_url||row.download_url===row.app_url)return stored;
+ return [{label:'Download',url:row.download_url}];
 }
 
 export async function readAppEntity(db:Pick<Pool,'query'>,id:string){
@@ -19,7 +32,7 @@ export async function readAppEntity(db:Pick<Pool,'query'>,id:string){
  const row=(await db.query(`SELECT e.id,e.kind,e.title,e.origin,d.* FROM entities e LEFT JOIN app_entity_details d ON d.entity_id=e.id WHERE e.id=$1`,[id])).rows[0];
  if(!row)throw new Error('App catalog unavailable');
  if(!row.entity_id)throw new RecommendationFailure(409,'App entity has no typed details');
- const details=appEntityDetailsSchema.parse({appUrl:row.app_url,developer:row.developer,logoUrl:row.logo_url,description:row.description,downloadUrl:row.download_url,priceTier:row.price_tier,platforms:row.platforms});
+ const details=appEntityDetailsSchema.parse({appUrl:row.app_url,developer:row.developer,logoUrl:row.logo_url,description:row.description,downloadUrl:row.download_url,priceTier:row.price_tier,platforms:row.platforms,otherLinks:appOtherLinks(row)});
  return appEntityDtoSchema.parse({id:row.id,kind:row.kind,title:row.title,origin:row.origin,details});
 }
 

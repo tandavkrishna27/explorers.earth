@@ -38,7 +38,7 @@ it('rejects every unsafe outbound scheme and authority trick on an App URL',()=>
 
 it('round-trips every typed App field and refuses an unknown one',()=>{
  const parsed=appEntityDetailsSchema.parse(details({description:'Notes',downloadUrl:'https://example.com/get',logoUrl:'https://example.com/logo.png'}));
- expect(parsed).toEqual({appUrl:'https://example.com/app',developer:'Dev',logoUrl:'https://example.com/logo.png',description:'Notes',downloadUrl:'https://example.com/get',priceTier:'Freemium',platforms:['iOS','macOS']});
+ expect(parsed).toEqual({appUrl:'https://example.com/app',developer:'Dev',logoUrl:'https://example.com/logo.png',description:'Notes',downloadUrl:'https://example.com/get',priceTier:'Freemium',platforms:['iOS','macOS'],otherLinks:[]});
  expect(appEntityDetailsSchema.safeParse({...details(),screenshots:['https://example.com/1.png']}).success).toBe(false);
 });
 

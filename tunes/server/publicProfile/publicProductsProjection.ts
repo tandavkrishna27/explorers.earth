@@ -56,7 +56,7 @@ async function richProduct(db:PoolClient,row:any){
  // Converted once, at the display edge. An exact decimal that cannot be represented as a
  // double would round here and nowhere else; storage and the owner wire keep the string.
  price:offer.price===null?null:Number(offer.price),
- currency:offer.currencyCode,buy_url:offer.buyUrl,
+ currency:offer.currencyCode,buy_url:offer.buyUrl,affiliate_disclosed:offer.affiliateDisclosed,
  logo_url:facts.logoUrl,description:facts.description,
  specifications:facts.specifications.length?Object.fromEntries(facts.specifications.map(entry=>[entry.key,entry.value])):null,
  specification_list:facts.specifications.length?facts.specifications.map(entry=>({key:entry.key,value:entry.value})):null,

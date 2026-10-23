@@ -1,14 +1,16 @@
 import type {Pool,PoolClient} from 'pg';
 import {RecommendationFailure} from './explorersRecommendationRepository';
-import {placesTaxonomyAssignmentSchema,peopleSectorAssignmentSchema,placesTaxonomyReadSchema,peopleSectorReadSchema,type TaxonomyAssignmentInput} from '../../shared/explorersTaxonomyContract';
+import {placesTaxonomyAssignmentSchema,peopleSectorAssignmentSchema,placesTaxonomyReadSchema,peopleSectorReadSchema,curatedTermAssignmentSchema,curatedTermReadSchema,isFlatCuratedCategory,type FlatCuratedCategory,type TaxonomyAssignmentInput} from '../../shared/explorersTaxonomyContract';
 
 /** Caller holds catalog, account/category and owned recommendation locks. */
 export async function replaceTaxonomyAssignment(db:PoolClient,id:string,account:string,category:string,input:TaxonomyAssignmentInput){
- if(category!=='places'&&input.placesTaxonomy!==undefined||category!=='people'&&input.peopleSectorTermId!==undefined)throw new RecommendationFailure(422,'Category taxonomy mismatch');
- if(category==='places'?input.placesTaxonomy===undefined:category==='people'?input.peopleSectorTermId===undefined:true)return;
- const parsed=category==='places'?placesTaxonomyAssignmentSchema.safeParse(input.placesTaxonomy):peopleSectorAssignmentSchema.safeParse(input.peopleSectorTermId);
+ const flat=isFlatCuratedCategory(category);
+ if(category!=='places'&&input.placesTaxonomy!==undefined||category!=='people'&&input.peopleSectorTermId!==undefined||!flat&&input.curatedTermId!==undefined)throw new RecommendationFailure(422,'Category taxonomy mismatch');
+ const supplied=category==='places'?input.placesTaxonomy:category==='people'?input.peopleSectorTermId:flat?input.curatedTermId:undefined;
+ if(supplied===undefined)return;
+ const parsed=category==='places'?placesTaxonomyAssignmentSchema.safeParse(supplied):category==='people'?peopleSectorAssignmentSchema.safeParse(supplied):curatedTermAssignmentSchema.safeParse(supplied);
  if(!parsed.success)throw new RecommendationFailure(422,'Invalid taxonomy assignment');
- const ids=category==='places'?[input.placesTaxonomy!.categoryTermId,input.placesTaxonomy!.subcategoryTermId].filter((id):id is string=>id!==null):input.peopleSectorTermId===null?[]:[input.peopleSectorTermId!];
+ const ids=category==='places'?[input.placesTaxonomy!.categoryTermId,input.placesTaxonomy!.subcategoryTermId].filter((v):v is string=>v!==null):supplied===null?[]:[supplied as string];
  if(ids.length){
   const catalog=(await db.query('SELECT state,default_locale FROM taxonomy_catalogs WHERE category=$1',[category])).rows[0];
   if(catalog?.state!=='CONFIGURED')throw new RecommendationFailure(422,'Taxonomy catalog unavailable');
@@ -21,7 +23,7 @@ export async function replaceTaxonomyAssignment(db:PoolClient,id:string,account:
 }
 
 /** Recommendation-local hydration is independent of catalog entity details. */
-export async function readTaxonomyAssignment(db:Pick<Pool,'query'>,id:string,account:string,category:'places'|'people'){
+export async function readTaxonomyAssignment(db:Pick<Pool,'query'>,id:string,account:string,category:'places'|'people'|FlatCuratedCategory){
  const catalog=(await db.query('SELECT state,version,default_locale FROM taxonomy_catalogs WHERE category=$1',[category])).rows[0];
  const state=catalog?.state??'UNCONFIGURED';
  const rows=(await db.query(`SELECT t.id,t.slug,t.parent_id,t.active,x.label,p.active AS parent_active
@@ -32,5 +34,7 @@ export async function readTaxonomyAssignment(db:Pick<Pool,'query'>,id:string,acc
  const selection=(r:any)=>r?{id:r.id,slug:r.slug,label:r.label??null,unavailable:state!=='CONFIGURED'||!r.active||r.parent_id!==null&&!r.parent_active||!r.label}:null;
  const root=rows.find(r=>r.parent_id===null),child=rows.find(r=>r.parent_id!==null);
  const common={catalogState:state,catalogVersion:Number(catalog?.version??0),defaultLocale:catalog?.default_locale??null,selectionUnavailable:rows.some(r=>selection(r)!.unavailable)};
- return category==='places'?{placesTaxonomy:placesTaxonomyReadSchema.parse({...common,category:selection(root),subcategory:selection(child)})}:{peopleSector:peopleSectorReadSchema.parse({...common,sector:selection(root)})};
+ if(category==='places')return {placesTaxonomy:placesTaxonomyReadSchema.parse({...common,category:selection(root),subcategory:selection(child)})};
+ if(category==='people')return {peopleSector:peopleSectorReadSchema.parse({...common,sector:selection(root)})};
+ return {curatedTerm:curatedTermReadSchema.parse({...common,term:selection(root)})};
 }

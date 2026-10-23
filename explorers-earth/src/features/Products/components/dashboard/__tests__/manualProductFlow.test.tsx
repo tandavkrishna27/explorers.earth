@@ -315,7 +315,7 @@ describe('manual Products edit', () => {
   const patch = vi.mocked(ProductsClient.updateRecommendation).mock.calls[0][1] as {displayOverrides: Record<string, unknown>; productOffer: unknown};
   expect(patch.displayOverrides).not.toHaveProperty('productUrl');
   expect(patch.displayOverrides.title).toBe('Renamed');
-  expect(patch.productOffer).toEqual({price: '19.90', currencyCode: 'USD', buyUrl: null});
+  expect(patch.productOffer).toEqual({price: '19.90', currencyCode: 'USD', buyUrl: null, affiliateDisclosed: false});
  });
 
  // Rows saved before a currency was required hold a price and no currency. They stay
@@ -334,7 +334,7 @@ describe('manual Products edit', () => {
   await waitFor(() => expect(screen.getByRole('button', {name: 'Save product'})).toBeEnabled());
   fireEvent.click(screen.getByRole('button', {name: 'Save product'}));
   await waitFor(() => expect(ProductsClient.updateRecommendation).toHaveBeenCalledTimes(1));
-  expect((vi.mocked(ProductsClient.updateRecommendation).mock.calls[0][1] as {productOffer: unknown}).productOffer).toEqual({price: '19.90', currencyCode: 'GBP', buyUrl: null});
+  expect((vi.mocked(ProductsClient.updateRecommendation).mock.calls[0][1] as {productOffer: unknown}).productOffer).toEqual({price: '19.90', currencyCode: 'GBP', buyUrl: null, affiliateDisclosed: false});
  });
 
  it('waits for owner hydration instead of exposing blank editable controls', async () => {
