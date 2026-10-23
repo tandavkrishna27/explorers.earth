@@ -835,15 +835,6 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
         ) : null}
       </div>
 
-      {/* WP10 (LNK-03/04). Places has no Manage tab yet, so its linked lists and their
-          Attach/Detach controls sit under the places. */}
-      {selectedCity?.documentId && (
-        <div className="mb-20 grid gap-4 md:mb-0">
-          <LinkedListsUnderItems collectionId={selectedCity.documentId} />
-          <ManageLinkedLists collectionId={selectedCity.documentId} />
-        </div>
-      )}
-
       {/* Empty State - Show only when no recommendations */}
       {!loading && !allFilteredPlaces?.length && placesData?.recommendedPlaces && (
         <div className="col-span-2 md:col-span-3 flex flex-col items-center justify-center py-6">
@@ -855,6 +846,16 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
               {t("dashboard.recommendations.emptyState.subtitle")}
             </p>
           </div>
+        </div>
+      )}
+
+      {/* WP10 (LNK-03/04). After the places (and after the empty state on an empty list).
+          The Manage panel stays on this page, not in the Manage tab: the sealed place-links
+          lane drives Attach/Detach here without switching tabs. */}
+      {selectedCity?.documentId && (
+        <div className="mb-20 grid gap-4 md:mb-0">
+          <LinkedListsUnderItems collectionId={selectedCity.documentId} />
+          <ManageLinkedLists collectionId={selectedCity.documentId} />
         </div>
       )}
 
