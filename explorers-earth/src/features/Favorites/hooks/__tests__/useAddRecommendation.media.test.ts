@@ -140,7 +140,7 @@ describe("useAddRecommendation selected-media persistence", () => {
     expect(mocks.refresh).not.toHaveBeenCalled();
     expect(mocks.navigate).toHaveBeenCalledTimes(1);
     // The publish prompt lives on the Places page, so that is where the flow must return.
-    expect(mocks.navigate).toHaveBeenCalledWith("/recommendations/places?list=list-1", {
+    expect(mocks.navigate).toHaveBeenCalledWith("/recommendations/places/list-1", {
       state: expect.objectContaining({ justAddedRecommendationToListId: expect.anything() }),
     });
   });

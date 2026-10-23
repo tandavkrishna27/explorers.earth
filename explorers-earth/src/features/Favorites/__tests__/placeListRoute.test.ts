@@ -3,12 +3,12 @@ import { PLACE_LIST_PARAM, placeListPath } from "../placeListRoute";
 
 // OWN-05. The open Places list lives in the URL, so every return path can name it.
 describe("placeListPath", () => {
-  it("names the list in the query", () => {
+  it("names the list in the path (WP6 shared list route)", () => {
     expect(PLACE_LIST_PARAM).toBe("list");
-    expect(placeListPath("location-a")).toBe("/recommendations/places?list=location-a");
+    expect(placeListPath("location-a")).toBe("/recommendations/places/location-a");
   });
   it("encodes the id", () => {
-    expect(placeListPath("a b/c")).toBe("/recommendations/places?list=a%20b%2Fc");
+    expect(placeListPath("a b/c")).toBe("/recommendations/places/a%20b%2Fc");
   });
   it("falls back to the category page without an id", () => {
     expect(placeListPath(undefined)).toBe("/recommendations/places");
