@@ -106,6 +106,7 @@ const Favorites = memo(() => {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedListId = searchParams.get(PLACE_LIST_PARAM);
   const appliedListParam = useRef<string | null | undefined>(undefined);
+  const leftListByBack = useRef(false);
   // fetching the user details from the global state
   const { generation: sessionGeneration } = useAuthStore();
   const canonicalAccount = useCanonicalAccount();
@@ -497,9 +498,14 @@ const Favorites = memo(() => {
       const requested = requestedListId ? lists.find((list: any) => list.documentId === requestedListId) : undefined;
       if (requested) {
         if (selectedCity?.documentId !== requested.documentId) setSelectedCity(requested as unknown as selectedCity);
+        // WP10 (LNK-05). A URL naming a list opens that list, not the Places home.
+        setStep(2);
         return;
       }
     }
+    // After Back the home grid keeps a clean URL until a list is opened again.
+    if (leftListByBack.current && step === 1) return;
+    leftListByBack.current = false;
     // The first list only when nothing names one.
     if (!selectedCity) {
       setSelectedCity(lists[0] as unknown as selectedCity);
@@ -514,7 +520,14 @@ const Favorites = memo(() => {
         return next;
       }, { replace: true, state: location.state });
     }
-  }, [cities, selectedCity, requestedListId, setSelectedCity, setSearchParams, location.state]);
+  }, [cities, selectedCity, requestedListId, setSelectedCity, setSearchParams, location.state, step]);
+  const backToPlacesHome = () => {
+    leftListByBack.current = true;
+    // The URL update lands a render later; keep the old ?list= "applied" so it cannot reopen.
+    appliedListParam.current = requestedListId;
+    setStep(1);
+    setSearchParams((previous) => { const next = new URLSearchParams(previous); next.delete(PLACE_LIST_PARAM); return next; }, { replace: true, state: location.state });
+  };
 
   // filtering and sorting the cities based on pinning/display_order
   const filteredCities = useMemo(() => {
@@ -847,7 +860,7 @@ const Favorites = memo(() => {
               <div className="flex justify-between items-center mb-4 w-full">
                 <div className="flex flex-col items-start">
                   <div
-                    {...keyboardActivation(() => setStep(1))}
+                    {...keyboardActivation(backToPlacesHome)}
                     className="text-[10px] text-white/55 font-semibold cursor-pointer flex items-center gap-1 mb-1 hover:text-white transition-colors"
                   >
                     <svg className="w-1.5 h-1.5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

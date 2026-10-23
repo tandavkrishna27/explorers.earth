@@ -65,6 +65,28 @@ describe("Favorites open list in the URL (OWN-05)", () => {
     expect(screen.getByTestId("url").textContent).toBe("/recommendations/places?list=location-b");
   });
 
+  it("opens the detail view of the list named by ?list= (WP10 linked-list cards land here)", async () => {
+    renderAt("/recommendations/places?list=location-b");
+    await waitFor(() => expect(document.getElementById("step-2-list-details")).not.toBeNull());
+    expect(document.getElementById("detail-city-name")?.textContent).toBe("Beta City");
+  });
+
+  it("Back returns to the home grid, clears ?list= and does not reopen the list", async () => {
+    renderAt("/recommendations/places?list=location-b");
+    await waitFor(() => expect(document.getElementById("step-2-list-details")).not.toBeNull());
+    fireEvent.click(screen.getByText("Back"));
+    await waitFor(() => expect(screen.getByTestId("url").textContent).toBe("/recommendations/places"));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(document.getElementById("step-2-list-details")).toBeNull();
+    expect(screen.getByTestId("url").textContent).toBe("/recommendations/places");
+  });
+
+  it("does not open the detail view when ?list= is absent", async () => {
+    renderAt("/recommendations/places");
+    await waitFor(() => expect(h.selected?.documentId).toBe("location-a"));
+    expect(document.getElementById("step-2-list-details")).toBeNull();
+  });
+
   it("falls back to the first list only when ?list= is absent, and writes it to the URL", async () => {
     renderAt("/recommendations/places");
     await waitFor(() => expect(h.selected?.documentId).toBe("location-a"));
@@ -77,7 +99,8 @@ describe("Favorites open list in the URL (OWN-05)", () => {
   });
 
   it("follows a selection change into the URL", async () => {
-    renderAt("/recommendations/places?list=location-a");
+    // From the home grid: a ?list= URL now opens the list's detail view instead.
+    renderAt("/recommendations/places");
     await waitFor(() => expect(h.selected?.documentId).toBe("location-a"));
     fireEvent.click(screen.getAllByText("Beta City")[0]);
     await waitFor(() => expect(screen.getByTestId("url").textContent).toBe("/recommendations/places?list=location-b"));
