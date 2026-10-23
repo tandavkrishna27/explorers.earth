@@ -74,8 +74,8 @@ describe('Games search in the catalog service',()=>{
   const {catalog}=liveLike();
   const service=new CatalogService(db as any,{} as any,{} as any,catalog);
   const page=gameCandidatePageSchema.parse(await service.searchGames(owner,{query:'zelda',limit:'24'}));
-  expect(page.items[0]).toEqual({externalId:'7346',title:'The Legend of Zelda: Breath of the Wild',year:2017,coverUrl:'https://images.igdb.com/igdb/image/upload/t_cover_big/co3p2d.jpg',platforms:['Wii U','Nintendo Switch'],genres:['Role-playing (RPG)','Adventure']});
-  expect(page.items[2]).toEqual({externalId:'233',title:'Zelda fan game',year:null,coverUrl:null,platforms:[],genres:[]});
+  expect(page.items[0]).toEqual({externalId:'7346',title:'The Legend of Zelda: Breath of the Wild',year:2017,coverUrl:'https://images.igdb.com/igdb/image/upload/t_cover_big/co3p2d.jpg',platforms:['Wii U','Nintendo Switch'],genres:['Role-playing (RPG)','Adventure'],developer:null});
+  expect(page.items[2]).toEqual({externalId:'233',title:'Zelda fan game',year:null,coverUrl:null,platforms:[],genres:[],developer:null});
  });
  it('candidate projection keeps short lists only',()=>{
   const c=toGameCandidate({externalId:'1',title:'x',firstReleaseDate:null,coverImageId:null,platforms:Array.from({length:40},(_,i)=>({id:i+1,name:`p${i}`})),genres:[]} as any);

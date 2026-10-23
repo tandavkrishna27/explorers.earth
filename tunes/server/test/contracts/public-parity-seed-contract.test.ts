@@ -56,7 +56,7 @@ it('uses canonical publication controls rather than item visibility',()=>{
 });
 it('uses active manual Games contract and leaves unsupported Games genre pending',()=>{
  const plan=buildPublicParitySeedPlan(PUBLIC_PARITY_CASES[0]);const games=plan.categories.find(c=>c.category==='games')!;
- expect(games.items[0].details).toEqual({version:'explorers-manual-game/v1',origin:'manual',providerExternalId:null,providerFacts:null,images:[],coverMediaId:null,details:{releaseYear:null,platforms:[],genres:[]}});
+ expect(games.items[0].details).toEqual({version:'explorers-manual-game/v1',origin:'manual',providerExternalId:null,providerFacts:null,images:[],coverMediaId:null,details:{releaseYear:null,platforms:[],genres:[],developer:null}});
  expect(games.catalogFacet).toBe(null);
  expect(plan.dependencies).toContainEqual({feature:'games-catalog-genre',status:'missing',marker:'unsupported-active-manual-games-public-graph'});
 });

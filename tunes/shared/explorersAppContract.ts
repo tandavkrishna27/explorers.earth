@@ -21,6 +21,9 @@ export const appTitleSchema=text(1000).refine(v=>v.length>0&&Array.from(v).lengt
 // API boundary and the storage layer.
 export const safeAppUrlSchema=z.string().max(2048).url().refine(v=>{try{const u=new URL(v);return ['http:','https:'].includes(u.protocol)&&!u.username&&!u.password&&!u.port;}catch{return false;}},'Invalid URL');
 export const appPriceTierSchema=z.enum(['Free','Freemium','Paid','Subscription']);
+/** Apps one link (0068): the store/download links beside appUrl, at most four labelled pairs. */
+const appOtherLinkSchema=z.object({label:text(40).refine(v=>v.length>0,'Invalid label'),url:safeAppUrlSchema}).strict();
+export type AppOtherLink=z.infer<typeof appOtherLinkSchema>;
 const fields={
  appUrl:safeAppUrlSchema,
  developer:text(200).nullable(),
@@ -29,6 +32,7 @@ const fields={
  downloadUrl:safeAppUrlSchema.nullable(),
  priceTier:appPriceTierSchema.nullable(),
  platforms:z.array(text(100).refine(v=>v.length>0,'Invalid platform')).max(16),
+ otherLinks:z.array(appOtherLinkSchema).max(4).default([]),
 };
 export const appEntityDetailsSchema=z.object(fields).strict().refine(v=>new TextEncoder().encode(JSON.stringify(v)).length<=8192,'App details too large');
 // A display override re-presents a *shared* entity for one owner, so appUrl is excluded:

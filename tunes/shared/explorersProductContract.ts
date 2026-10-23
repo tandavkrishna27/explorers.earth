@@ -94,6 +94,8 @@ export const productOfferSchema=z.object({
  price:productAmountSchema.nullable(),
  currencyCode:storedCurrencyCodeSchema.nullable(),
  buyUrl:safeProductUrlSchema.nullable(),
+ /** DS-14: the owner declares the buy link is an affiliate link. 0068, default off. */
+ affiliateDisclosed:z.boolean().default(false),
 }).strict().superRefine(precision);
 
 /**
@@ -105,6 +107,7 @@ export const productOfferWriteSchema=z.object({
  price:productAmountSchema.nullable(),
  currencyCode:currencyCodeSchema.nullable(),
  buyUrl:safeProductUrlSchema.nullable(),
+ affiliateDisclosed:z.boolean().default(false),
 }).strict().superRefine((value,ctx)=>{
  if(value.price!==null&&value.currencyCode===null)ctx.addIssue({code:z.ZodIssueCode.custom,path:['currencyCode'],message:'Choose a currency for the price'});
  if(value.price===null&&value.currencyCode!==null)ctx.addIssue({code:z.ZodIssueCode.custom,path:['price'],message:'Enter a price for the currency, or clear the currency'});
@@ -123,6 +126,11 @@ export const productSpecificationsSchema=z.preprocess(value=>
  value!==null&&typeof value==='object'&&!Array.isArray(value)
   ?Object.entries(value as Record<string,unknown>).map(([key,entry])=>({key,value:entry}))
   :value,orderedSpecifications) as z.ZodType<z.infer<typeof orderedSpecifications>,z.ZodTypeDef,unknown>;
+/** DS-06: an owner writes at most 8 "key facts"; older rows keep up to 200 and stay readable. */
+export const PRODUCT_SPEC_WRITE_LIMIT=8;
+export const productSpecificationsWriteSchema=productSpecificationsSchema.refine(v=>v.length<=PRODUCT_SPEC_WRITE_LIMIT,'At most 8 key facts');
+/** DS-04: the one link a visitor follows. The offer's link wins; the entity URL is the fallback. */
+export const whereToBuy=(offer:{buyUrl:string|null},details:{productUrl:string}):string=>offer.buyUrl??details.productUrl;
 
 const fields={
  productUrl:safeProductUrlSchema,
@@ -140,9 +148,11 @@ export const productEntityDetailsSchema=z.object(fields).strict().refine(v=>new 
 // appUrl and Books excludes its provider rating for the same reason.
 const {productUrl:_identity,...overridable}=fields;
 export const productDisplayFieldsSchema=z.object(overridable).partial().strict();
+/** What an owner may now write as an override: the same fields with the 8 key-fact cap (DS-06). */
+export const productDisplayFieldsWriteSchema=productDisplayFieldsSchema.extend({specifications:productSpecificationsWriteSchema.optional()}).strict();
 
 export const productEntityDtoSchema=z.object({id:z.string().uuid(),kind:z.literal('product'),title:z.string().trim().refine(v=>v.length>0&&Array.from(v).length<=500),details:productEntityDetailsSchema,origin:z.literal('manual')}).strict();
-export const resolveManualProductSchema=z.object({kind:z.literal('manual'),category:z.literal('products'),details:z.object(fields).partial().extend({title:productTitleSchema,productUrl:safeProductUrlSchema}).strict()}).strict();
+export const resolveManualProductSchema=z.object({kind:z.literal('manual'),category:z.literal('products'),details:z.object(fields).partial().extend({title:productTitleSchema,productUrl:safeProductUrlSchema,specifications:productSpecificationsWriteSchema.optional()}).strict()}).strict();
 
 export type ProductEntityDetails=z.infer<typeof productEntityDetailsSchema>;
 export type ProductEntityDto=z.infer<typeof productEntityDtoSchema>;
@@ -153,5 +163,5 @@ export type ProductSpecifications=z.infer<typeof productSpecificationsSchema>;
 // productUrl has no empty value, so an absent product has no representable details row,
 // exactly as with an App's appUrl. An absent *offer*, by contrast, is a real state and is
 // all nulls - unknown price, unknown currency, no buy link.
-export const emptyProductOffer=():ProductOffer=>({price:null,currencyCode:null,buyUrl:null});
+export const emptyProductOffer=():ProductOffer=>({price:null,currencyCode:null,buyUrl:null,affiliateDisclosed:false});
 export const emptyProductDisplayFields=():z.infer<typeof productDisplayFieldsSchema>=>({});
