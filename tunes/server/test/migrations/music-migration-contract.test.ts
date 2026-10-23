@@ -230,7 +230,7 @@ describe("Music migration authority contracts", () => {
 
   it("declares every manifested runtime table and the durable identity tombstone", () => {
     const manifest = JSON.parse(read("fixtures/db/music-runtime-table-manifest.json")) as { tables: Array<{ name: string }> };
-    expect(manifest.tables).toHaveLength(105); // 105 = 104 + collection_slug_redirects (0066)
+    expect(manifest.tables).toHaveLength(107); // 107 = 104 + collection_slug_redirects (0066) + collection_list_links (0070) + sample_seeding_receipts (0071)
     const placesTables = ["places_collection_mutation_state", "places_pin_validation_dirty", "places_chunk_validation_dirty", "collection_place_pins", "place_pin_drafts", "place_pin_draft_chunks", "place_pin_draft_items"];
     const placesSql = read("tunes/migrations/0054_explorers_place_individual_pins.sql");
     expect([...placesSql.matchAll(/CREATE TABLE public\.([a-z_]+)/g)].map((match) => match[1])).toEqual(placesTables);
