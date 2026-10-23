@@ -4,6 +4,8 @@ import {afterAll, beforeAll, describe, expect, it} from "vitest";
 import {migrateMusicDatabase} from "../../db/migrate";
 import {ExplorersRecommendationRepository} from "../../repositories/explorersRecommendationRepository";
 import {readListLinksForCollection} from "../../repositories/listLinkRepository";
+import {RecommendationService} from "../../application/recommendations";
+import type {Actor} from "../../application/actor";
 
 /**
  * WP10. Linking any of an owner's lists to any other of their lists, against a real
@@ -67,6 +69,22 @@ async function link(owner: string, host: string, hostCategory: string, linked: s
     VALUES($1,$2,$3,$4,$5,$6,$7)`, [owner, host, hostCategory, linked, linkedCategory, role, displayOrder]);
 }
 
+/** A real owner membership, so the service's authorization passes for this account. */
+async function ownerOf(accountId: string, scopes: string[]): Promise<Actor> {
+  const userId = `u-${randomUUID()}`;
+  await pool.query("INSERT INTO auth_user(id,name,email,email_verified) VALUES($1,'Owner',$2,true)", [userId, `${userId}@example.invalid`]);
+  await pool.query("INSERT INTO user_security_state(user_id) VALUES($1)", [userId]);
+  await pool.query("INSERT INTO account_memberships(account_id,user_id,role) VALUES($1,$2,'owner')", [accountId, userId]);
+  return {userId, accountId, role: "owner", credential: {kind: "oauth", grantId: randomUUID(), scopes}};
+}
+
+async function attachVia(accountId: string, host: {id: string; category: string}, linked: {id: string; category: string}, extra: Record<string, unknown> = {}) {
+  return repository.writeListLink(accountId, {hostCollectionId: host.id, expectedHostRevision: await categoryRevision(accountId, host.category),
+    linkedCollectionId: linked.id, expectedLinkedRevision: await categoryRevision(accountId, linked.category), role: null, ...extra} as never, key());
+}
+const detachVia = async (accountId: string, hostCategory: string, linkId: string) =>
+  repository.removeListLink(accountId, {linkId, expectedHostRevision: await categoryRevision(accountId, hostCategory)}, key());
+
 beforeAll(async () => {
   if (!enabled) return;
   admin = new pg.Pool({connectionString: exactTarget, max: 1});
@@ -104,5 +122,106 @@ describePg("S3 list link reads WP10 relies on", () => {
     const a = await list(owner, "people"), b = await list(owner, "products");
     await link(owner, a.id, "people", b.id, "products", 0);
     await expect(link(owner, b.id, "products", a.id, "people", 0)).rejects.toMatchObject({code: "23505"});
+  });
+});
+
+describePg("list link commands (LNK-02, LNK-04, OWN-13)", () => {
+  it("links any category to any category and bumps both category revisions", async () => {
+    const owner = await account();
+    const pairs: Array<[string, string]> = [["places", "books"], ["places", "apps"], ["places", "people"], ["places", "products"], ["guides", "products"], ["books", "apps"]];
+    for (const [from, to] of pairs) {
+      const host = await list(owner, from), linked = await list(owner, to);
+      const before = {h: await categoryRevision(owner, from), l: await categoryRevision(owner, to)};
+      const result = await attachVia(owner, host, linked);
+      expect(result).toMatchObject({attached: true, link: {hostCollectionId: host.id, linkedCategory: to, displayOrder: 0}});
+      expect(result.revisions[from as never]).toBeGreaterThan(before.h);
+      expect(result.revisions[to as never]).toBeGreaterThan(before.l);
+      expect(result.revisions).toEqual({[from]: await categoryRevision(owner, from), [to]: await categoryRevision(owner, to)});
+    }
+  });
+
+  it("refuses a foreign linked list as 404 and writes nothing", async () => {
+    const owner = await account(), other = await account();
+    const mine = await list(owner, "places"), theirs = await list(other, "books");
+    await expect(repository.writeListLink(owner, {hostCollectionId: mine.id, expectedHostRevision: await categoryRevision(owner, "places"),
+      linkedCollectionId: theirs.id, expectedLinkedRevision: 1, role: null} as never, key())).rejects.toMatchObject({status: 404});
+    expect((await pool.query("SELECT count(*)::int n FROM collection_list_links WHERE host_collection_id=$1", [mine.id])).rows[0].n).toBe(0);
+  });
+
+  it("refuses a stale host revision with 409", async () => {
+    const owner = await account(); const s = await list(owner, "books"), t = await list(owner, "apps");
+    await expect(repository.writeListLink(owner, {hostCollectionId: s.id, expectedHostRevision: 9999, linkedCollectionId: t.id,
+      expectedLinkedRevision: await categoryRevision(owner, "apps"), role: null} as never, key())).rejects.toMatchObject({status: 409});
+  });
+
+  it("refuses the reverse of an existing link with 409 (one link per pair)", async () => {
+    const owner = await account(); const s = await list(owner, "books"), t = await list(owner, "apps");
+    await attachVia(owner, s, t);
+    await expect(attachVia(owner, t, s)).rejects.toMatchObject({status: 409});
+  });
+
+  it("refuses a self link at the service boundary with 422", async () => {
+    const owner = await account(); const s = await list(owner, "books");
+    const service = new RecommendationService(pool);
+    const actor = await ownerOf(owner, ["collections:write"]);
+    const r = await categoryRevision(owner, "books");
+    await expect(service.attachListLink(actor, s.id, {expectedHostRevision: r, linkedCollectionId: s.id, expectedLinkedRevision: r},
+      {requestId: key(), idempotencyKey: key()} as never)).rejects.toMatchObject({status: 422});
+  });
+
+  it("the service lowercases both ids, so an upper-case id addresses the same lists", async () => {
+    const owner = await account(); const s = await list(owner, "books"), t = await list(owner, "apps");
+    const service = new RecommendationService(pool);
+    const actor = await ownerOf(owner, ["collections:write"]);
+    const result = await service.attachListLink(actor, s.id.toUpperCase(), {expectedHostRevision: await categoryRevision(owner, "books"),
+      linkedCollectionId: t.id.toUpperCase(), expectedLinkedRevision: await categoryRevision(owner, "apps")}, {requestId: key(), idempotencyKey: key()} as never);
+    expect(result.link).toMatchObject({hostCollectionId: s.id, linkedCollectionId: t.id});
+  });
+
+  it("detach returns the removed link and Undo restores role and position", async () => {
+    const owner = await account(); const g = await list(owner, "guides");
+    const a = await list(owner, "products"), b = await list(owner, "places"), c = await list(owner, "apps");
+    await attachVia(owner, g, a, {role: "Packing list"}); const mid = await attachVia(owner, g, b, {role: "Places to choose from"}); await attachVia(owner, g, c);
+    const removed = await detachVia(owner, "guides", mid.link.id);
+    expect(removed).toMatchObject({attached: false, link: {linkedCollectionId: b.id, role: "Places to choose from", displayOrder: 1}});
+    const outgoing = async () => (await readListLinksForCollection(pool, g.id, owner)).filter(x => x.direction === "outgoing");
+    expect((await outgoing()).map(l => [l.collection.id, l.displayOrder])).toEqual([[a.id, 0], [c.id, 1]]);
+    await attachVia(owner, g, b, {role: removed.link.role, position: removed.link.displayOrder});
+    expect((await outgoing()).map(l => [l.collection.id, l.role, l.displayOrder])).toEqual([[a.id, "Packing list", 0], [b.id, "Places to choose from", 1], [c.id, null, 2]]);
+  });
+
+  it("detach keeps both lists and their items", async () => {
+    const owner = await account(); const s = await list(owner, "places"), t = await list(owner, "people");
+    const made = await attachVia(owner, s, t);
+    await detachVia(owner, "places", made.link.id);
+    expect((await pool.query("SELECT count(*)::int n FROM collections WHERE id=ANY($1::uuid[]) AND archived_at IS NULL", [[s.id, t.id]])).rows[0].n).toBe(2);
+  });
+
+  it("sets and clears a role", async () => {
+    const owner = await account(); const g = await list(owner, "guides"), p = await list(owner, "products");
+    const made = await attachVia(owner, g, p);
+    const set = await repository.setListLinkRole(owner, {linkId: made.link.id, expectedHostRevision: await categoryRevision(owner, "guides"), role: "Packing list"}, key());
+    expect(set.link.role).toBe("Packing list");
+    const cleared = await repository.setListLinkRole(owner, {linkId: made.link.id, expectedHostRevision: await categoryRevision(owner, "guides"), role: null}, key());
+    expect(cleared.link.role).toBeNull();
+  });
+
+  it("refuses detach of another account's link as 404", async () => {
+    const owner = await account(), other = await account();
+    const s = await list(owner, "books"), t = await list(owner, "apps");
+    await list(other, "books");
+    const made = await attachVia(owner, s, t);
+    await expect(repository.removeListLink(other, {linkId: made.link.id, expectedHostRevision: await categoryRevision(other, "books")}, key())).rejects.toMatchObject({status: 404});
+  });
+
+  it("replays an identical command key without a second row", async () => {
+    const owner = await account(); const s = await list(owner, "books"), t = await list(owner, "movies");
+    const input = {hostCollectionId: s.id, expectedHostRevision: await categoryRevision(owner, "books"), linkedCollectionId: t.id,
+      expectedLinkedRevision: await categoryRevision(owner, "movies"), role: null};
+    const k = key();
+    const first = await repository.writeListLink(owner, input as never, k);
+    const again = await repository.writeListLink(owner, input as never, k);
+    expect(again).toEqual(first);
+    expect((await readListLinksForCollection(pool, s.id, owner))).toHaveLength(1);
   });
 });

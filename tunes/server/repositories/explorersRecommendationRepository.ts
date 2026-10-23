@@ -19,6 +19,8 @@ import {personDisplayFieldsSchema,personEntityDetailsSchema,emptyPersonDetails} 
 import {insertPersonDetails,readPersonEntity} from './personCatalogRepository';
 import {insertPlaceDetails,readPlaceEntity,writePlaceContext,writePlacePhotos,writePlaceCollectionDetails} from './placeCatalogRepository';
 import {writeLocationLink,deleteLocationLink} from './placeLinkRepository';
+import {insertListLink,deleteListLink,updateListLinkRole} from './listLinkRepository';
+import type {AttachListLinkInput,DetachListLinkInput,SetListLinkRoleInput,ListLinkDto,ListLinkCommandResult} from '../../shared/explorersListLinkContract';
 import {linkableChildCategorySchema,type LinkableChildCategory} from '../../shared/explorersPlaceLinkContract';
 import {placeDisplayFieldsSchema,placeEntityDetailsSchema,emptyPlaceDetails,emptyPlaceContext,emptyPlaceCollectionDetails,type PlaceRecommendationContext,type PlacePhotos,type PlaceCollectionDetails} from '../../shared/explorersPlaceContract';
 
@@ -501,6 +503,66 @@ export class ExplorersRecommendationRepository {
       const row=await db.query('UPDATE collections SET revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *',[input.childCollectionId]);
       return{collection:await this.collectionRecord(db,row.rows[0]),attached};
     });
+  }
+  /**
+   * WP10. Links one of the owner's lists to another through S3's repository. Both categories
+   * are locked before any row (account -> category -> row), because 0070's triggers bump both
+   * categories' content revisions. insertListLink refuses a foreign, missing or archived list
+   * as 404, a self link as 422 and an existing pair or a full host as 409.
+   */
+  async writeListLink(accountId:string,input:AttachListLinkInput,key:string):Promise<ListLinkCommandResult> {
+    return this.command(accountId,'attachListLink',input,key,async db=>{
+      const [host,linked]=await this.observeLinkPair(db,accountId,input.hostCollectionId,input.linkedCollectionId);
+      await this.assertCategoryRevision(db,accountId,host.category,input.expectedHostRevision);
+      if(linked.category!==host.category)await this.assertCategoryRevision(db,accountId,linked.category,input.expectedLinkedRevision);
+      const link=await insertListLink(db,{accountId,hostCollectionId:host.id,linkedCollectionId:linked.id,role:input.role??null,position:input.position});
+      return{link,attached:true,revisions:await this.linkRevisions(db,accountId,link)};
+    });
+  }
+  async removeListLink(accountId:string,input:DetachListLinkInput,key:string):Promise<ListLinkCommandResult> {
+    return this.command(accountId,'detachListLink',input,key,async db=>{
+      const current=await this.observeLink(db,accountId,input.linkId);
+      await this.assertCategoryRevision(db,accountId,current.host_category,input.expectedHostRevision);
+      const link=await deleteListLink(db,accountId,input.linkId);
+      return{link,attached:false,revisions:await this.linkRevisions(db,accountId,link)};
+    });
+  }
+  async setListLinkRole(accountId:string,input:SetListLinkRoleInput,key:string):Promise<ListLinkCommandResult> {
+    return this.command(accountId,'setListLinkRole',input,key,async db=>{
+      const current=await this.observeLink(db,accountId,input.linkId);
+      await this.assertCategoryRevision(db,accountId,current.host_category,input.expectedHostRevision);
+      const link=await updateListLinkRole(db,accountId,input.linkId,input.role??null);
+      return{link,attached:true,revisions:await this.linkRevisions(db,accountId,link)};
+    });
+  }
+  /** Reads both lists' categories, then takes the category locks in sorted order. A missing or foreign list is a 404, never a hint that it exists. */
+  private async observeLinkPair(db:PoolClient,accountId:string,hostId:string,linkedId:string){
+    const rows=(await db.query('SELECT id,category FROM collections WHERE account_id=$1 AND id=ANY($2::uuid[])',[accountId,[hostId,linkedId]])).rows as {id:string;category:string}[];
+    const host=rows.find(r=>r.id===hostId),linked=rows.find(r=>r.id===linkedId);
+    if(!host||!linked)throw new RecommendationFailure(404,'Resource unavailable');
+    await lockContentCategories(db,accountId,[host.category,linked.category]);
+    return [host,linked] as const;
+  }
+  /** Locks the categories of an existing link of this account; 404 if it is not theirs. */
+  private async observeLink(db:PoolClient,accountId:string,linkId:string){
+    const row=(await db.query('SELECT host_category,linked_category FROM collection_list_links WHERE id=$1 AND account_id=$2',[linkId,accountId])).rows[0] as {host_category:string;linked_category:string}|undefined;
+    if(!row)throw new RecommendationFailure(404,'Resource unavailable');
+    await lockContentCategories(db,accountId,[row.host_category,row.linked_category]);
+    return row;
+  }
+  /** Category content revision (account_category_content_state); 0 when the category has never changed. */
+  private async readCategoryRevision(db:PoolClient,accountId:string,category:string){
+    return Number((await db.query("SELECT coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category=$2),'0') revision",[accountId,category])).rows[0].revision);
+  }
+  /** Checked under the category lock, so a stale view cannot change a link it was not looking at. */
+  private async assertCategoryRevision(db:PoolClient,accountId:string,category:string,expected:number){
+    if(await this.readCategoryRevision(db,accountId,category)!==expected)throw new RecommendationFailure(409,'Stale category revision');
+  }
+  /** Revisions after the statement triggers ran, for both categories of the link. */
+  private async linkRevisions(db:PoolClient,accountId:string,link:ListLinkDto){
+    const revisions:Partial<Record<ListLinkDto['hostCategory'],number>>={};
+    for(const category of new Set([link.hostCategory,link.linkedCategory]))revisions[category]=await this.readCategoryRevision(db,accountId,category);
+    return revisions;
   }
   async updateCollection(accountId:string,id:string,expectedRevision:number,input:{title?:string;slug?:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails;displayOrder?:number;pinOrder?:number|null},key:string):Promise<CollectionRecord> {
     return this.command(accountId,'updateCollection',{id,expectedRevision,input},key,async db=>{

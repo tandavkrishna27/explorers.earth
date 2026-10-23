@@ -9,6 +9,7 @@ import { ExplorersRecommendationRepository, RecommendationFailure } from '../rep
 import { normalizeRichNote } from './richNote';
 import {replaceRecommendationEntitySchema} from '../../shared/explorersBookContract';
 import {attachLocationLinkSchema,detachLocationLinkSchema} from '../../shared/explorersPlaceLinkContract';
+import {attachListLinkSchema,detachListLinkSchema,setListLinkRoleSchema,listLinkCommandResultSchema} from '../../shared/explorersListLinkContract';
 import {gameMembershipCommandSchema,gameMembershipResultSchema} from '../../shared/explorersGameOwnerContract';
 
 export function parseContent<T>(schema:z.ZodType<T,any,any>,input:unknown):T {
@@ -61,6 +62,35 @@ export class RecommendationService {
         : parseContent(detachLocationLinkSchema,{...(input as object),childCollectionId});
       const result=await this.repository.writeLocationMembership(actor.accountId,command,this.key(context),attached);
       return collectionCoreDtoSchema.parse(result.collection);
+    });
+  }
+  /**
+   * WP10 (LNK-01..08). Attach is addressed by the host list; detach and role by the link id.
+   * contentIdSchema does not lowercase and S3's repository compares ids exactly, so both ids
+   * are lowercased here before they reach storage.
+   */
+  async attachListLink(actor:Actor,hostCollectionId:string,input:unknown,context:RequestContext){
+    return this.authorized(actor,'collections:write',async()=>{
+      parseContent(contentIdSchema,hostCollectionId);
+      const body=(input??{}) as {linkedCollectionId?:unknown};
+      const command=parseContent(attachListLinkSchema,{...(input as object),hostCollectionId:hostCollectionId.toLowerCase(),
+        ...(typeof body.linkedCollectionId==='string'?{linkedCollectionId:body.linkedCollectionId.toLowerCase()}:{})});
+      return listLinkCommandResultSchema.parse(await this.repository.writeListLink(actor.accountId,command,this.key(context)));
+    });
+  }
+  /** The :id is the list whose page sent the command (host or linked side); the link id alone selects the row. */
+  async detachListLink(actor:Actor,collectionId:string,linkId:string,input:unknown,context:RequestContext){
+    return this.authorized(actor,'collections:write',async()=>{
+      parseContent(contentIdSchema,collectionId);
+      const command=parseContent(detachListLinkSchema,{...(input as object),linkId:linkId.toLowerCase()});
+      return listLinkCommandResultSchema.parse(await this.repository.removeListLink(actor.accountId,command,this.key(context)));
+    });
+  }
+  async setListLinkRole(actor:Actor,collectionId:string,linkId:string,input:unknown,context:RequestContext){
+    return this.authorized(actor,'collections:write',async()=>{
+      parseContent(contentIdSchema,collectionId);
+      const command=parseContent(setListLinkRoleSchema,{...(input as object),linkId:linkId.toLowerCase()});
+      return listLinkCommandResultSchema.parse(await this.repository.setListLinkRole(actor.accountId,command,this.key(context)));
     });
   }
   async setCategoryTopPicks(actor:Actor,category:string,input:unknown,context:RequestContext) {
