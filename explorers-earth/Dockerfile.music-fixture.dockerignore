@@ -596,7 +596,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Books/components/dashboard/AddBookPage.tsx
 !explorers-earth/src/features/Books/components/dashboard/BookListView.tsx
 !explorers-earth/src/features/Books/components/dashboard/BooksHome.tsx
-!explorers-earth/src/features/Books/components/dashboard/TopReadsManager.tsx
 !explorers-earth/src/features/Books/components/public/BookCarouselRow.tsx
 !explorers-earth/src/features/Books/components/public/BookCoverCard.tsx
 !explorers-earth/src/features/Books/components/public/BookDetailModal.tsx
@@ -642,7 +641,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Games/components/dashboard/AddGamePage.tsx
 !explorers-earth/src/features/Games/components/dashboard/GameListView.tsx
 !explorers-earth/src/features/Games/components/dashboard/GamesHome.tsx
-!explorers-earth/src/features/Games/components/dashboard/TopGamesManager.tsx
 !explorers-earth/src/features/Games/components/public/GameCarouselRow.tsx
 !explorers-earth/src/features/Games/components/public/GameCoverCard.tsx
 !explorers-earth/src/features/Games/components/public/GameDetailModal.tsx
@@ -783,7 +781,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Movies/components/dashboard/AddMoviePage.tsx
 !explorers-earth/src/features/Movies/components/dashboard/MovieListView.tsx
 !explorers-earth/src/features/Movies/components/dashboard/MoviesHome.tsx
-!explorers-earth/src/features/Movies/components/dashboard/TopPicksManager.tsx
 !explorers-earth/src/features/Movies/components/public/GenreBrowse.tsx
 !explorers-earth/src/features/Movies/components/public/MovieCarouselRow.tsx
 !explorers-earth/src/features/Movies/components/public/MovieDetailModal.tsx
@@ -950,6 +947,8 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/shared/category/controls.tsx
 !explorers-earth/src/features/shared/category/listWrites.ts
 !explorers-earth/src/features/shared/category/models.ts
+!explorers-earth/src/features/shared/category/restoreButton.tsx
+!explorers-earth/src/features/shared/category/useArchivedLists.ts
 !explorers-earth/src/features/shared/category/useCardReorder.ts
 !explorers-earth/src/features/shared/list/ListPage.tsx
 !explorers-earth/src/features/shared/list/ListTabs.tsx
