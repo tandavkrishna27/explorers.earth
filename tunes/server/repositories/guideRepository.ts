@@ -1,8 +1,9 @@
 import type {Pool,PoolClient} from 'pg';
+import {randomUUID} from 'node:crypto';
 import {
- GUIDE_SECTION_BLOCK_VERSION,GUIDE_SECTION_LIMIT,GUIDE_SECTION_PAGE_LIMIT,
- guideCollectionDetailsSchema,guideSectionBlocksSchema,guideSectionDtoSchema,
- type GuideCollectionDetails,type GuideDayPlace,type GuideSectionBlocks,type GuideSectionDto,
+ GUIDE_DAY_ITEM_LIMIT,GUIDE_SECTION_BLOCK_VERSION,GUIDE_SECTION_LIMIT,GUIDE_SECTION_PAGE_LIMIT,
+ guideCollectionDetailsSchema,guideEmptySectionBlocks,guideSectionBlocksSchema,guideSectionDtoSchema,
+ type GuideCollectionDetails,type GuideDayItem,type GuideDayPlace,type GuideSectionBlocks,type GuideSectionDto,type GuideTimeLabel,
 } from '../../shared/explorersGuideContract';
 import {RecommendationFailure} from './explorersRecommendationRepository';
 
@@ -244,6 +245,146 @@ export async function reorderGuideSections(db:PoolClient,collectionId:string,acc
     FROM unnest($3::uuid[]) WITH ORDINALITY AS ordered(id,ordinal)
     WHERE s.id=ordered.id AND s.collection_id=$1 AND s.account_id=$2`,[collectionId,accountId,sectionIds]);
  }catch(error){mapWriteFailure(error);}
+}
+
+type Day={id:string;displayOrder:number;title:string;description:string|null;blocks:GuideSectionBlocks};
+
+async function lockedDays(db:PoolClient,collectionId:string,accountId:string):Promise<Day[]>{
+ const rows=(await db.query(`SELECT id,display_order,title,description,block_version,blocks FROM guide_sections
+  WHERE collection_id=$1 AND account_id=$2 AND archived_at IS NULL ORDER BY display_order FOR UPDATE`,[collectionId,accountId])).rows;
+ return rows.map(r=>{
+  const blocks=guideSectionBlocksSchema.safeParse(r.blocks);
+  if(r.block_version!==GUIDE_SECTION_BLOCK_VERSION||!blocks.success)throw new RecommendationFailure(422,'Unsupported guide section block version');
+  return {id:r.id,displayOrder:r.display_order,title:r.title,description:r.description,blocks:blocks.data};
+ });
+}
+function dayOf(days:Day[],sectionId:string):Day{
+ const day=days.find(d=>d.id===sectionId);
+ if(!day)throw new RecommendationFailure(404,'Resource unavailable');
+ return day;
+}
+async function writeBlocks(db:PoolClient,accountId:string,day:Day,blocks:GuideSectionBlocks):Promise<void>{
+ const parsed=guideSectionBlocksSchema.safeParse(blocks);
+ if(!parsed.success)throw new RecommendationFailure(422,'Invalid guide section');
+ try{
+  await db.query('UPDATE guide_sections SET blocks=$3::jsonb,updated_at=now() WHERE id=$1 AND account_id=$2',[day.id,accountId,JSON.stringify(parsed.data)]);
+  await syncSectionPhotos(db,day.id,accountId,parsed.data);
+ }catch(error){if(error instanceof RecommendationFailure)throw error;mapWriteFailure(error);}
+}
+/** GD-20/24: Manage's day count is the live day count, written in the same command. */
+async function syncNumberOfDays(db:PoolClient,collectionId:string,accountId:string):Promise<void>{
+ await db.query(`INSERT INTO guide_collection_details(collection_id,account_id,number_of_days)
+  SELECT $1,$2,count(*)::int FROM guide_sections WHERE collection_id=$1 AND account_id=$2 AND archived_at IS NULL
+  ON CONFLICT(collection_id) DO UPDATE SET number_of_days=excluded.number_of_days`,[collectionId,accountId]);
+}
+async function renumber(db:PoolClient,collectionId:string,accountId:string,ids:string[]):Promise<void>{
+ await db.query(`UPDATE guide_sections s SET display_order=o.ordinal-1,updated_at=now() FROM unnest($3::uuid[]) WITH ORDINALITY AS o(id,ordinal)
+  WHERE s.id=o.id AND s.collection_id=$1 AND s.account_id=$2`,[collectionId,accountId,ids]);
+}
+/** Items, transport and budget lose an entry together, so no segment or price points at nothing. */
+function withoutItem(blocks:GuideSectionBlocks,localId:string):GuideSectionBlocks{
+ return {...blocks,items:blocks.items.filter(i=>i.localId!==localId),
+  transport:{segments:blocks.transport.segments.filter(s=>s.fromLocalId!==localId&&s.toLocalId!==localId)},
+  budget:{entries:blocks.budget.entries.filter(e=>e.localId!==localId)}};
+}
+const insertAt=<T,>(list:readonly T[],index:number,value:T)=>[...list.slice(0,index),value,...list.slice(index)];
+const freshId=()=>randomUUID();
+
+export async function addGuideDay(db:PoolClient,collectionId:string,accountId:string,revision:number,input:{at?:number;title:string}):Promise<string>{
+ const id=await createGuideSection(db,collectionId,accountId,revision,{title:input.title,description:null,blocks:guideEmptySectionBlocks,position:input.at});
+ await syncNumberOfDays(db,collectionId,accountId);
+ return id;
+}
+export async function moveGuideDay(db:PoolClient,collectionId:string,accountId:string,revision:number,sectionId:string,toIndex:number):Promise<void>{
+ await lockGuideAtRevision(db,collectionId,accountId,revision);
+ const days=await lockedDays(db,collectionId,accountId);
+ dayOf(days,sectionId);
+ const rest=days.map(d=>d.id).filter(id=>id!==sectionId);
+ try{await renumber(db,collectionId,accountId,insertAt(rest,Math.min(toIndex,rest.length),sectionId));}catch(error){mapWriteFailure(error);}
+}
+/** A copy with new entry handles, so moving an item later never confuses the two days. */
+export async function duplicateGuideDay(db:PoolClient,collectionId:string,accountId:string,revision:number,sectionId:string):Promise<string>{
+ await lockGuideAtRevision(db,collectionId,accountId,revision);
+ const days=await lockedDays(db,collectionId,accountId);
+ const source=dayOf(days,sectionId);
+ const map=new Map<string,string>();
+ const remap=(id:string)=>{if(!map.has(id))map.set(id,freshId());return map.get(id)!;};
+ const b=source.blocks;
+ const blocks:GuideSectionBlocks={...b,
+  items:b.items.map(i=>i.kind==='place'?{...i,localId:remap(i.localId),place:{...i.place,localId:remap(i.localId)}}:{...i,localId:remap(i.localId)}),
+  stay:{accommodations:b.stay.accommodations.map(p=>({...p,localId:remap(p.localId)}))},
+  activities:{activities:b.activities.activities.map(p=>({...p,localId:remap(p.localId)}))},
+  transport:{segments:b.transport.segments.map(s=>({...s,fromLocalId:remap(s.fromLocalId),toLocalId:remap(s.toLocalId)}))},
+  budget:{entries:b.budget.entries.map(e=>({...e,localId:remap(e.localId)}))},
+  packingList:{items:b.packingList.items.map(i=>({...i,localId:freshId()}))},
+  preTasks:{items:b.preTasks.items.map(i=>({...i,localId:freshId()}))},
+ };
+ // createGuideSection re-locks at the same revision inside this transaction; the revision has not moved yet.
+ const id=await createGuideSection(db,collectionId,accountId,revision,{title:source.title,description:source.description,blocks,position:source.displayOrder+1});
+ await syncNumberOfDays(db,collectionId,accountId);
+ return id;
+}
+export async function clearGuideDay(db:PoolClient,collectionId:string,accountId:string,revision:number,sectionId:string):Promise<void>{
+ await lockGuideAtRevision(db,collectionId,accountId,revision);
+ const day=dayOf(await lockedDays(db,collectionId,accountId),sectionId);
+ const itemIds=new Set(day.blocks.items.map(i=>i.localId));
+ await writeBlocks(db,accountId,day,{...day.blocks,items:[],
+  transport:{segments:day.blocks.transport.segments.filter(s=>!itemIds.has(s.fromLocalId)&&!itemIds.has(s.toLocalId))},
+  budget:{entries:day.blocks.budget.entries.filter(e=>!itemIds.has(e.localId))}});
+}
+export async function deleteGuideDay(db:PoolClient,collectionId:string,accountId:string,revision:number,sectionId:string):Promise<void>{
+ await lockGuideAtRevision(db,collectionId,accountId,revision);
+ const days=await lockedDays(db,collectionId,accountId);
+ dayOf(days,sectionId);
+ if(days.length<=1)throw new RecommendationFailure(422,'A guide needs at least one day');
+ await deleteGuideSection(db,collectionId,accountId,revision,sectionId);
+ await syncNumberOfDays(db,collectionId,accountId);
+}
+export async function addGuideDayItem(db:PoolClient,collectionId:string,accountId:string,revision:number,sectionId:string,item:GuideDayItem,at?:number):Promise<void>{
+ await lockGuideAtRevision(db,collectionId,accountId,revision);
+ const day=dayOf(await lockedDays(db,collectionId,accountId),sectionId);
+ if(day.blocks.items.length>=GUIDE_DAY_ITEM_LIMIT)throw new RecommendationFailure(422,'This day is full');
+ await writeBlocks(db,accountId,day,{...day.blocks,items:insertAt(day.blocks.items,Math.min(at??day.blocks.items.length,day.blocks.items.length),item)});
+}
+/** GD-26/27: one atomic move within or across days. Transport touching the item stays behind; its price travels with it. */
+export async function moveGuideDayItem(db:PoolClient,collectionId:string,accountId:string,revision:number,
+ input:{fromSectionId:string;localId:string;toSectionId:string;toIndex:number}):Promise<void>{
+ await lockGuideAtRevision(db,collectionId,accountId,revision);
+ const days=await lockedDays(db,collectionId,accountId);
+ const from=dayOf(days,input.fromSectionId),to=dayOf(days,input.toSectionId);
+ const item=from.blocks.items.find(i=>i.localId===input.localId);
+ if(!item)throw new RecommendationFailure(404,'Resource unavailable');
+ if(from.id===to.id){
+  const rest=from.blocks.items.filter(i=>i.localId!==input.localId);
+  await writeBlocks(db,accountId,from,{...from.blocks,items:insertAt(rest,Math.min(input.toIndex,rest.length),item)});
+  return;
+ }
+ if(to.blocks.items.length>=GUIDE_DAY_ITEM_LIMIT)throw new RecommendationFailure(422,'This day is full');
+ const price=from.blocks.budget.entries.filter(e=>e.localId===input.localId);
+ await writeBlocks(db,accountId,from,withoutItem(from.blocks,input.localId));
+ await writeBlocks(db,accountId,to,{...to.blocks,items:insertAt(to.blocks.items,Math.min(input.toIndex,to.blocks.items.length),item),
+  budget:{entries:[...to.blocks.budget.entries,...price]}});
+}
+export async function setGuideDayItemTimeLabel(db:PoolClient,collectionId:string,accountId:string,revision:number,sectionId:string,localId:string,timeLabel:GuideTimeLabel|null):Promise<void>{
+ await lockGuideAtRevision(db,collectionId,accountId,revision);
+ const day=dayOf(await lockedDays(db,collectionId,accountId),sectionId);
+ if(!day.blocks.items.some(i=>i.localId===localId))throw new RecommendationFailure(404,'Resource unavailable');
+ await writeBlocks(db,accountId,day,{...day.blocks,items:day.blocks.items.map(i=>i.localId===localId?{...i,timeLabel}:i)});
+}
+export async function setGuideDayNoteText(db:PoolClient,collectionId:string,accountId:string,revision:number,sectionId:string,localId:string,text:string):Promise<void>{
+ await lockGuideAtRevision(db,collectionId,accountId,revision);
+ const day=dayOf(await lockedDays(db,collectionId,accountId),sectionId);
+ const target=day.blocks.items.find(i=>i.localId===localId);
+ if(!target)throw new RecommendationFailure(404,'Resource unavailable');
+ if(target.kind!=='note')throw new RecommendationFailure(422,'Only a note has text');
+ await writeBlocks(db,accountId,day,{...day.blocks,items:day.blocks.items.map(i=>i.localId===localId&&i.kind==='note'?{...i,text}:i)});
+}
+/** GD-30: removes the day item only; the source list item is never touched. */
+export async function removeGuideDayItem(db:PoolClient,collectionId:string,accountId:string,revision:number,sectionId:string,localId:string):Promise<void>{
+ await lockGuideAtRevision(db,collectionId,accountId,revision);
+ const day=dayOf(await lockedDays(db,collectionId,accountId),sectionId);
+ if(!day.blocks.items.some(i=>i.localId===localId))throw new RecommendationFailure(404,'Resource unavailable');
+ await writeBlocks(db,accountId,day,withoutItem(day.blocks,localId));
 }
 
 /**
