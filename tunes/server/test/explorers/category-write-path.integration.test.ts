@@ -215,6 +215,31 @@ describePg("owner write path for typed categories", () => {
     expect(after).toEqual({locationEntityId: null, locationSnapshot: moved, instagramMediaUrl: null});
   });
 
+  it("allows several Places lists for the same city (NL-04)", async () => {
+    const accountId = await account();
+    const goa = {version: 1 as const, name: "Goa", address: "Goa, India", providerPlaceId: "ChIJ_goa", latitude: 15.4909, longitude: 73.8278};
+    const food = await repository.createCollection(accountId, {category: "places", title: "Goa food", slug: `goa-food-${randomUUID()}`,
+      placeLocation: {locationEntityId: null, locationSnapshot: goa, instagramMediaUrl: null}}, key());
+    const beaches = await repository.createCollection(accountId, {category: "places", title: "Goa beaches", slug: `goa-beaches-${randomUUID()}`,
+      placeLocation: {locationEntityId: null, locationSnapshot: goa, instagramMediaUrl: null}}, key());
+    expect(food.id).not.toBe(beaches.id);
+    const rows = (await pool.query(
+      "SELECT count(*)::int AS count FROM place_collection_details WHERE account_id=$1 AND location_snapshot->>'providerPlaceId'='ChIJ_goa'", [accountId])).rows[0];
+    expect(rows.count).toBe(2);
+  });
+
+  it("creates a located list without a social link or note, and sets both later on update (NL-05)", async () => {
+    const accountId = await account();
+    const snapshot = {version: 1 as const, name: "Lisbon", address: "Lisbon, Portugal", providerPlaceId: "ChIJ_lx", latitude: 38.7223, longitude: -9.1393};
+    const list = await repository.createCollection(accountId, {category: "places", title: "Lisbon", slug: `lisbon-${randomUUID()}`,
+      placeLocation: {locationEntityId: null, locationSnapshot: snapshot, instagramMediaUrl: null}}, key());
+    expect(await readPlaceCollectionDetails(pool, list.id, accountId)).toEqual({locationEntityId: null, locationSnapshot: snapshot, instagramMediaUrl: null});
+    const updated = await repository.updateCollection(accountId, list.id, list.revision,
+      {description: "Where I eat", placeLocation: {locationEntityId: null, locationSnapshot: snapshot, instagramMediaUrl: "https://example.com/reel"}}, key());
+    expect(updated.description).toBe("Where I eat");
+    expect((await readPlaceCollectionDetails(pool, list.id, accountId))?.instagramMediaUrl).toBe("https://example.com/reel");
+  });
+
   it("refuses a location aggregate on a list of another category, on create and on update", async () => {
     const accountId = await account();
     const location = {locationEntityId: null, locationSnapshot: null, instagramMediaUrl: null};
