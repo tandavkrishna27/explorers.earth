@@ -524,11 +524,12 @@ const GuidesPage: React.FC = () => {
   const guidesCount = guides.length;
   const username = user?.username || "User";
 
-  const guideCards = useMemo(() => [...allGuides].sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0)).map((guide: any) => ({
+  // Cards follow the location chips (and any other active filter), as the pre-template page did.
+  const guideCards = useMemo(() => [...guides].sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0)).map((guide: any) => ({
     id: guide.documentId, title: guide.Title ?? "", status: guide.Visibility ? ("public" as const) : ("draft" as const),
     itemCount: guide.sectionCount ?? guide.sections?.length ?? 0, pinnedCount: 0,
     covers: guide.Guide_Media?.[0]?.url ? [guide.Guide_Media[0].url] : [],
-  })), [allGuides]);
+  })), [guides]);
   // The state and handlers above stay for WP9 (ownership ruling C6), which rebuilds the Guides
   // filters, delete confirmation and pin flows on this page; the shared template does not use them yet.
   void [t, showDeleteModal, showFilters, setShowFilters, isManageModalOpen, setIsManageModalOpen, mobileDropdownOpen, setMobileDropdownOpen,

@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- captured template props */
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { I18nextProvider } from "react-i18next";
 import { englishI18n } from "../../../../test/englishI18n";
 
 const captured: Record<string, unknown>[] = [];
-vi.mock("../CategoryPage", () => ({ default: (props: Record<string, unknown>) => { captured.push(props); return <div data-testid="category-page" data-category={String(props.category)} />; } }));
+vi.mock("../CategoryPage", () => ({ default: (props: Record<string, unknown>) => { captured.push(props); return <div data-testid="category-page" data-category={String(props.category)}>{props.toolbar as React.ReactNode}</div>; } }));
 vi.mock("../../../navigation/CategoryNavigationProvider", () => ({ useCategoryNavigation: () => ({ snapshot: { visibility: { public_movie: "Yes", public_games: "No", public_apps: "No", public_products: "No", public_people: "No" } }, authority: "origin", busy: false, request: vi.fn() }) }));
 vi.mock("../../../../store/store", () => ({ default: () => ({ user: { username: "fixture" }, accountId: "acc" }) }));
 vi.mock("../../../Movies/api/explorersAdapter", () => ({
@@ -30,8 +30,8 @@ vi.mock("../../../People/hooks/usePeopleOwner", () => ({ usePeopleOwner: () => (
   { documentId: "q1", List_Name: "Design voices", Visibility: false, recommended_people: [{ documentId: "y1", name: "A type designer", is_pinned: false }] }] } }) }));
 vi.mock("../../../../components/SEO", () => ({ default: () => null }));
 vi.mock("../../../Guides/hooks/useGuidesOwner", () => ({ invalidateGuides: vi.fn(), useGuidesOwner: () => ({ loading: false, error: null, refresh: vi.fn(), content: null, guides: [
-  { documentId: "gd1", Title: "48 hours in Goa", Visibility: true, is_pinned: true, pin_order: 0, Guide_Media: [{ url: "/g.jpg" }], display_order: 0 },
-  { documentId: "gd2", Title: "Draft trip", Visibility: false, is_pinned: false, display_order: 1 },
+  { documentId: "gd1", Title: "48 hours in Goa", Visibility: true, is_pinned: true, pin_order: 0, Guide_Media: [{ url: "/g.jpg" }], display_order: 0, Place_Details: { Place_Name: "Goa" } },
+  { documentId: "gd2", Title: "Draft trip", Visibility: false, is_pinned: false, display_order: 1, Place_Details: { Place_Name: "Kochi" } },
 ] }) }));
 
 const page = (ui: React.ReactElement) => render(<I18nextProvider i18n={englishI18n}><MemoryRouter>{ui}</MemoryRouter></I18nextProvider>);
@@ -66,6 +66,15 @@ describe("category wrappers render the shared template", () => {
       lists: [{ id: "gd1", status: "public" }, { id: "gd2", status: "draft" }],
       topPicks: [{ id: "gd1", listId: "gd1", pinned: true }] });
     expect(last().pinCandidates.find((p: { id: string }) => p.id === "gd2").pinnable).toBe(false);
+  });
+
+  it("guides location chips filter the guide cards", async () => {
+    const { default: GuidesPage } = await import("../../../Guides/GuidesPage");
+    page(<GuidesPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Kochi" }));
+    expect(last().lists.map((l: { id: string }) => l.id)).toEqual(["gd2"]);
+    fireEvent.click(screen.getByRole("button", { name: "All Locations" }));
+    expect(last().lists.map((l: { id: string }) => l.id)).toEqual(["gd1", "gd2"]);
   });
 
   it("books", async () => {
