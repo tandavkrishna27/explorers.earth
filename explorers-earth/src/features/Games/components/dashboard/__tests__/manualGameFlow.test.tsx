@@ -1,4 +1,5 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
+import { useGamesListAdapter } from '../../../../shared/list/adapters/games';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { MockedProvider } from '@apollo/client/testing';
@@ -90,13 +91,16 @@ describe('native manual Games', () => {
   mount(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'My invalid draft' } }); const note = '<p>' + 'a'.repeat(256 * 1024) + '</p>'; fireEvent.change(screen.getByLabelText('Note'), { target: { value: note } }); fireEvent.click(screen.getByRole('button', { name: 'Save game' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Rich note exceeds byte limit'); expect(screen.getByLabelText('Note')).toHaveValue(note); expect(GamesClient.observeCollection).not.toHaveBeenCalled(); expect(GamesClient.createManual).not.toHaveBeenCalled(); expect(screen.getByRole('button', { name: 'Save game' })).toBeEnabled();
  });
- it('offers separate explicit recommendation publication without inheriting collection publication', async () => {
+ // LP-04: per-item publication is gone from the list page. The list's own publish pill changes
+ // only the collection; it never writes a recommendation's publication state.
+ it('list publication goes through the list pill and never writes a recommendation', async () => {
   const game = { documentId: 'game-a', title: 'Manual game', user_rating: null, user_recommendation_note: '', cover_url: null, genres: null, platforms: null, is_pinned: false, game_list: { documentId: 'list-1', List_Name: 'Published list' } };
   fixture.content.view.lists = [{ documentId: 'list-1', List_Name: 'Published list', slug: 'published', Visibility: true, recommended_games: [game], account: { documentId: 'a1', username: 'owner' } }] as never;
-  const observed = { detail: { id: 'game-a', revision: 1, publicationState: 'draft' } }; fixture.content.details.set('game-a', observed); vi.mocked(GamesClient.observeRecommendation).mockResolvedValue(observed as never); vi.mocked(GamesClient.updateRecommendation).mockResolvedValue({} as never);
+  const observed = { detail: { id: 'list-1', revision: 1 } }; vi.mocked(GamesClient.observeCollection).mockResolvedValue(observed as never); vi.mocked(GamesClient.updateCollection).mockResolvedValue({} as never);
   render(<MockedProvider><MemoryRouter initialEntries={['/recommendations/games/list-1']}><Routes><Route path="/recommendations/games/:listId" element={<GameListView />} /></Routes></MemoryRouter></MockedProvider>);
-  expect(screen.getByText('Recommendation is Draft')).toBeInTheDocument(); fireEvent.click(screen.getByRole('button', { name: 'Publish Manual game' }));
-  await waitFor(() => expect(GamesClient.updateRecommendation).toHaveBeenCalledWith(observed, { publicationState: 'published' }, expect.any(String), expect.any(AbortSignal))); expect(GamesClient.updateCollection).not.toHaveBeenCalled();
+  expect(screen.queryByRole('button', { name: 'Publish Manual game' })).toBeNull(); expect(screen.queryByText(/Recommendation is/)).toBeNull();
+  fireEvent.click(document.querySelector('[aria-haspopup="menu"]')!); fireEvent.click(screen.getByRole('menuitemradio', { name: /draft/i }));
+  await waitFor(() => expect(GamesClient.updateCollection).toHaveBeenCalledWith(observed, { visibility: 'private', publicationState: 'draft' }, expect.any(String), expect.any(AbortSignal))); expect(GamesClient.updateRecommendation).not.toHaveBeenCalled();
  });
  it('permits changing the selected ancestry of an existing pick at the category cap', async () => {
   const selected = { documentId: 'game-a', title: 'Same game', user_rating: null, user_recommendation_note: '', is_pinned: false, game_list: { documentId: 'list-1', List_Name: 'Chosen list' } };
@@ -104,22 +108,25 @@ describe('native manual Games', () => {
   fixture.content.view.lists = [{ documentId: 'list-1', List_Name: 'Chosen list', slug: 'chosen', Visibility: false, recommended_games: [selected], account: { documentId: 'a1', username: 'owner' } }, { documentId: 'other-list', List_Name: 'Other list', slug: 'other', Visibility: false, recommended_games: otherRows }] as never;
   fixture.content.details.set('game-a', { detail: { id: 'game-a', publicationState: 'draft' } }); const complete = { revision: '8', topPicks: picks, memberships: [{ recommendationId: 'game-a', collectionId: 'list-1', collectionArchived: false, recommendationArchived: false }] }; vi.mocked(GamesClient.readCompleteOwner).mockResolvedValue(complete as never); vi.mocked(GamesClient.setTopPicks).mockResolvedValue({} as never);
   render(<MockedProvider><MemoryRouter initialEntries={['/recommendations/games/list-1']}><Routes><Route path="/recommendations/games/:listId" element={<GameListView />} /></Routes></MemoryRouter></MockedProvider>);
-  fireEvent.click(screen.getByTitle('Pin to Top Picks')); await waitFor(() => expect(GamesClient.setTopPicks).toHaveBeenCalledOnce()); const submitted = vi.mocked(GamesClient.setTopPicks).mock.calls[0][1]; expect(submitted).toHaveLength(15); expect(submitted).toEqual([...picks.slice(1), { recommendationId: 'game-a', collectionId: 'list-1' }]);
+  fireEvent.click(screen.getByRole('button', { name: /^Pin .* to Top Picks$/, pressed: false })); await waitFor(() => expect(GamesClient.setTopPicks).toHaveBeenCalledOnce()); const submitted = vi.mocked(GamesClient.setTopPicks).mock.calls[0][1]; expect(submitted).toHaveLength(15); expect(submitted).toEqual([...picks.slice(1), { recommendationId: 'game-a', collectionId: 'list-1' }]);
  });
 });
 
  describe('Games list caller abandonment', () => {
   beforeEach(() => { vi.clearAllMocks(); fixture.loading = false; fixture.error = undefined; useAuthStore.getState().login({ id: 'u1', documentId: 'u1', username: 'owner', token: 'fixture' }); useAuthStore.setState({ accountId: 'a1' }); });
   afterEach(cleanup);
-  it.each(['logout', 'unmount'])('does not report publication errors after %s abandons an observation', async kind => {
+  // Per-item publication is gone (LP-04); the same abandonment guarantee now protects the list
+  // publication command the page's pill drives.
+  it.each(['logout', 'unmount'])('does not write or report list publication after %s abandons an observation', async kind => {
    const game = { documentId: 'game-a', title: 'Manual game', user_recommendation_note: '', is_pinned: false, game_list: { documentId: 'list-1', List_Name: 'Published list' } };
    fixture.content.view.lists = [{ documentId: 'list-1', List_Name: 'Published list', Visibility: true, recommended_games: [game], account: { documentId: 'a1', username: 'owner' } }] as never;
-   const pending = deferred<never>(); vi.mocked(GamesClient.observeRecommendation).mockReturnValue(pending.promise);
-   const view = render(<MockedProvider><MemoryRouter initialEntries={['/recommendations/games/list-1']}><Routes><Route path="/recommendations/games/:listId" element={<GameListView />} /></Routes></MemoryRouter></MockedProvider>);
-   fireEvent.click(screen.getByRole('button', { name: 'Publish Manual game' }));
+   const pending = deferred<never>(); vi.mocked(GamesClient.observeCollection).mockReturnValue(pending.promise);
+   const wrapper = ({ children }: { children: React.ReactNode }) => <MemoryRouter initialEntries={['/recommendations/games/list-1']}>{children}</MemoryRouter>;
+   const view = renderHook(() => useGamesListAdapter('list-1'), { wrapper });
+   let result!: Promise<void>; act(() => { result = view.result.current.setStatus('draft'); }); const rejection = expect(result).rejects.toThrow('owner or route changed');
    if (kind === 'unmount') view.unmount(); else act(() => useAuthStore.getState().logout());
-   await act(async () => pending.resolve({ detail: { id: 'game-a', revision: 1 } } as never));
-   expect(GamesClient.updateRecommendation).not.toHaveBeenCalled(); expect(toast.error).not.toHaveBeenCalled(); expect(toast.success).not.toHaveBeenCalled();
+   await act(async () => pending.resolve({ detail: { id: 'list-1', revision: 1 } } as never)); await rejection;
+   expect(GamesClient.updateCollection).not.toHaveBeenCalled(); expect(toast.error).not.toHaveBeenCalled(); expect(toast.success).not.toHaveBeenCalled();
   });
  });
 

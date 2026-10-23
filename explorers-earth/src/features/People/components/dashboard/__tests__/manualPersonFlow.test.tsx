@@ -151,21 +151,23 @@ describe('native manual People', () => {
   expect(screen.getByLabelText('Full Name')).toHaveValue('');
  });
 
- it('offers explicit recommendation publication without inheriting the list publication', async () => {
+ it('publishes the list from the publish pill without a per-recommendation publish control', async () => {
   const person = {documentId: 'person-a', name: 'Manual Person', full_name: 'Manual Person', username_handle: null, headline: null,
    location: null, avatar_path: null, media_details: null, primary_platform: null, social_urls: {}, skills_tags: null,
    user_recommendation_note: '', user_rating: null, is_pinned: false, pin_order: null, display_order: 0,
    person_list: {documentId: 'list-1', List_Name: 'Published list', slug: 'published'}, person_category: null};
-  fixture.content.view.lists = [{documentId: 'list-1', List_Name: 'Published list', slug: 'published', Visibility: true, top_picks_heading: null, recommended_people: [person], account: {documentId: 'a1', username: 'owner'}}];
-  const observed = {detail: {id: 'person-a', revision: 1, publicationState: 'draft', category: 'people'}};
-  fixture.content.details.set('person-a', observed);
-  vi.mocked(PeopleClient.observeRecommendation).mockResolvedValue(observed as never);
-  vi.mocked(PeopleClient.updateRecommendation).mockResolvedValue({} as never);
+  fixture.content.view.lists = [{documentId: 'list-1', List_Name: 'Draft list', slug: 'published', Visibility: false, top_picks_heading: null, recommended_people: [person], account: {documentId: 'a1', username: 'owner'}}];
+  const observed = {detail: {id: 'list-1', revision: 1, category: 'people'}};
+  vi.mocked(PeopleClient.observeCollection).mockResolvedValue(observed as never);
+  vi.mocked(PeopleClient.updateCollection).mockResolvedValue({} as never);
   render(<MockedProvider><MemoryRouter initialEntries={['/recommendations/people/list-1']}><Routes><Route path="/recommendations/people/:listId" element={<PersonListView />} /></Routes></MemoryRouter></MockedProvider>);
-  expect(screen.getByText('Recommendation is Draft')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', {name: 'Publish Manual Person'}));
-  await waitFor(() => expect(PeopleClient.updateRecommendation).toHaveBeenCalledWith(observed, {publicationState: 'published'}, expect.any(String), expect.any(AbortSignal)));
-  expect(PeopleClient.updateCollection).not.toHaveBeenCalled();
+  // LP-04: the per-recommendation publish row is gone; publication is the list's.
+  expect(screen.queryByText(/Recommendation is/)).toBeNull();
+  expect(screen.queryByRole('button', {name: 'Publish Manual Person'})).toBeNull();
+  fireEvent.click(document.querySelector('[aria-haspopup="menu"]')!);
+  fireEvent.click(screen.getByRole('menuitemradio', {name: /public/i}));
+  await waitFor(() => expect(PeopleClient.updateCollection).toHaveBeenCalledWith(observed, {visibility: 'public', publicationState: 'published'}, expect.any(String), expect.any(AbortSignal)));
+  expect(PeopleClient.updateRecommendation).not.toHaveBeenCalled();
  });
 });
 

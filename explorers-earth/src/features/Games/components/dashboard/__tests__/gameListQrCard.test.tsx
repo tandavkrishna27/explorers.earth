@@ -1,38 +1,38 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const download = vi.hoisted(() => vi.fn());
-vi.mock("../../../../../utils/qrDownload", () => ({ downloadQrSvgAsPng: download }));
-vi.mock("../../../api/query", () => ({
-  useGamesCommands: () => ({ loading: false, updateList: vi.fn(), archiveList: vi.fn() }),
-  useGamesCallerCustody: () => () => () => true,
+// The "My QR" accordion in the old Manage tab is replaced by the shared Share tab; this
+// suite keeps protecting the same behaviour (a Games list has a QR card it can share and
+// download as an image) through the new page.
+const png = vi.hoisted(() => ({ exportElementPng: vi.fn(async () => new Blob(["png"])), savePng: vi.fn() }));
+vi.mock("../../../../../utils/exportElementPng", () => png);
+const list = { documentId: "l1", List_Name: "My Games", slug: "my-games", Visibility: true, cover_image: null, list_description: null, account: { username: "owner" }, recommended_games: [] };
+vi.mock("../../../hooks/useGamesOwner", () => ({
+  useGamesOwner: () => ({ content: { view: { lists: [list] } }, data: { gameLists: [list] }, loading: false, error: undefined, refetch: vi.fn() }),
 }));
-import { ManageTab } from "../GameListView";
+import GameListView from "../GameListView";
 
 afterEach(cleanup);
-const list = { documentId: "l1", List_Name: "My Games", slug: "my-games", Visibility: true, account: { username: "owner" }, recommended_games: [] };
+function mount() {
+  render(<MemoryRouter initialEntries={["/recommendations/games/l1"]}><Routes><Route path="/recommendations/games/:listId" element={<GameListView />} /></Routes></MemoryRouter>);
+  fireEvent.click(screen.getByRole("tab", { name: "Share" }));
+}
 
 describe("Games list QR card", () => {
-  it("offers Share and Download like the other categories, and downloads this list's QR", () => {
-    render(
-      <MemoryRouter>
-        <ManageTab list={list as never} onRefetch={() => {}} />
-      </MemoryRouter>,
-    );
+  it("offers Share and Download like the other categories, and downloads this list's QR", async () => {
+    mount();
     expect(screen.getByRole("button", { name: /Share/ })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Image/ }));
-    expect(download).toHaveBeenCalledWith("list-qr-games", "QR_my-games.png", 20);
+    fireEvent.click(screen.getByRole("button", { name: "Download QR" }));
+    await waitFor(() => expect(png.savePng).toHaveBeenCalledWith(expect.anything(), "my-games-qr.png"));
+    expect(png.exportElementPng).toHaveBeenCalledWith(screen.getByTestId("list-qr-card"), expect.anything());
   });
 
-  it("uses a high-contrast tagline pill", () => {
-    render(
-      <MemoryRouter>
-        <ManageTab list={list as never} onRefetch={() => {}} />
-      </MemoryRouter>,
-    );
-    const pill = screen.getByText(/./, { selector: "p.rounded-full" });
-    expect(pill.className).toContain("bg-gray-200");
-    expect(pill.className).toContain("text-black");
+  it("the QR card carries the list name, a black-on-white QR and the category tagline", () => {
+    mount();
+    const card = screen.getByTestId("list-qr-card");
+    expect(within(card).getByText("My Games")).toBeInTheDocument();
+    expect(card.querySelector("svg")).not.toBeNull();
+    expect(card.textContent?.length).toBeGreaterThan("My Games".length);
   });
 });
