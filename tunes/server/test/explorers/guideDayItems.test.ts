@@ -75,3 +75,19 @@ describe("guide day items (GD-23)", () => {
     expect(parsed.startDate).toBeNull();
   });
 });
+
+import {addGuideDayItemSchema, addGuideDaySchema, moveGuideDayItemSchema, setGuideTimeLabelSchema} from "../../../shared/explorersGuideContract";
+describe("guide day commands (GD-24..30)", () => {
+  it("adds a day at a position or at the end", () => {
+    expect(addGuideDaySchema.parse({revision: 3})).toEqual({revision: 3, title: ""});
+    expect(addGuideDaySchema.safeParse({revision: 3, at: 200}).success).toBe(false);
+  });
+  it("adds each item kind; place localIds are assigned by the server", () => {
+    expect(addGuideDayItemSchema.parse({revision: 1, item: {kind: "note", text: "Ferry at 7"}}).item.timeLabel).toBeNull();
+    expect(addGuideDayItemSchema.safeParse({revision: 1, item: {kind: "listItem", ref: {recommendationId: "11111111-1111-4111-8111-111111111111"}}}).success).toBe(true);
+  });
+  it("moves with one command and labels with null to clear", () => {
+    expect(moveGuideDayItemSchema.safeParse({revision: 1, toSectionId: "11111111-1111-4111-8111-111111111111", toIndex: 0}).success).toBe(true);
+    expect(setGuideTimeLabelSchema.parse({revision: 1, timeLabel: null}).timeLabel).toBeNull();
+  });
+});
