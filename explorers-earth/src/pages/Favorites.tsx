@@ -26,7 +26,7 @@ import SwitchButton from "../components/ui/SwitchButton";
 import useAuthStore from "../store/store";
 import { useCityStore } from "../store/useCityStore";
 import { IMAGE_CONFIG } from "../config";
-import { Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { PLACE_LIST_PARAM, placeListPath } from "../features/Favorites/placeListRoute";
 import { CategoryVisibilityModal } from "../components/CategoryVisibilityModal";
 import SEO from "../components/SEO";
@@ -100,7 +100,6 @@ const FavoritesHome = memo(() => {
   const { t } = useTranslation();
   const { selectedCity, setSelectedCity } = useCityStore();
   const location = useLocation();
-  const navigate = useNavigate();
   // OWN-05. A list opens on its own route (/recommendations/places/<id>, WP6); the
   // wrapper below redirects the old ?list= deep link there.
   // fetching the user details from the global state
@@ -449,7 +448,6 @@ const FavoritesHome = memo(() => {
     const refreshed = (await refetchCities()) as { data?: { recommendationLists?: selectedCity[] } } | undefined;
     const created = refreshed?.data?.recommendationLists?.find((list) => list.documentId === id);
     setSelectedCity(created ?? ({ documentId: id } as selectedCity));
-    navigate(placeListPath(id));
     // The refresh is asynchronous: until the owner read carries the new list, the selection is a stub.
     pendingCreatedList.current = created ? null : id;
     setActiveTab(t("dashboard.recommendations.recommendationsTab"));
@@ -868,7 +866,9 @@ const FavoritesHome = memo(() => {
               categoryVisibility={categoryVisible ? "public" : "hidden"}
               visibilityBusy={navigation.busy || !navigation.authority}
               onCategoryVisibility={() => handleVisibilityToggle()}
-              onOpenList={(id) => navigate(placeListPath(id))}
+              // The list opens in place: location editing (name, point, cover) still lives on
+              // this page's Manage view. The shared list page serves /recommendations/places/<id>.
+              onOpenList={(id) => { const city = filteredCities.find((c: any) => c.documentId === id); if (city) { setSelectedCity(city as unknown as selectedCity); setStep(2); } }}
               onRetry={() => { void refetchCities(); }}
               onChanged={() => { void refetchCities(); archivedPlaces.reload(); }}
               newList={{ kind: "dialog", username: canonicalAccount.data?.handle ?? "", onCreated: (id) => { void openCreatedList(id); }, create: placesCreate }}

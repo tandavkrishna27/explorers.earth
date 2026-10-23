@@ -5,7 +5,7 @@ import type { ItemSearchResult } from "../../shared/addItem";
 import type { Places } from "../../Profile/types/types";
 
 /**
- * Place search by name (scope ADD-06), moved out of the old AddPlaceOverlay. In the browser it
+ * Place search by name (scope ADD-06), moved out of the retired add-place overlay. In the browser it
  * is the Google SDK's autocomplete; under the owned-http provider (e2e) it is that transport.
  * Must render under GoogleMapsProvider.
  */

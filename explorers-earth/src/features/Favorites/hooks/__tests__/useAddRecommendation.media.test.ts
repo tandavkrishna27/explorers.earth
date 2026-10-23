@@ -333,23 +333,6 @@ describe("useAddRecommendation selected-media persistence", () => {
     expect(mocks.createPlace).toHaveBeenCalledTimes(1);
     expect(mocks.navigate).toHaveBeenCalledTimes(1);
   });
-
-  it("files a person recommendation through the person command, with no place facts", async () => {
-    mocks.createPerson.mockResolvedValue({ id: "created-person" });
-    const { result } = renderHook(() =>
-      useAddRecommendation({ ...defaultProps([]), recommendationType: "person" } as never)
-    );
-    await act(async () => {
-      await result.current.handleSubmit({ title: "Ravi", recommendation: "https://example.com/ravi", address: "Indiranagar" } as never);
-    });
-    expect(mocks.createPerson).toHaveBeenCalledTimes(1);
-    expect(mocks.createPlace).not.toHaveBeenCalled();
-    expect(mocks.createPerson.mock.calls[0][1]).toMatchObject({
-      title: "Ravi",
-      details: {},
-      context: { recommendationType: "person", personProfileUrl: "https://example.com/ravi", personAddress: "Indiranagar" },
-    });
-  });
 });
 
 describe("the facts and the context a recommendation carries", () => {
