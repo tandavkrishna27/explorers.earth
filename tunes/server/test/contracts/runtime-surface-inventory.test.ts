@@ -96,7 +96,7 @@ describe("runtime route/event/job inventory", () => {
     // tunes/server/routes/canonicalRetiredSurfaceRoutes.ts, which answers 410 on every
     // method for a retired path and calls next() for everything else.
     expect(inventory.routes.filter((route) => route.method === "ALL"
-      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(16);
+      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(17); // 17 = 16 + WP6 places nearby
     // Decision D2. GET reports the address and must not write; POST performs it, which is
     // also what RFC 8058 one-click unsubscribe sends. Both are public: the authority is
     // the purpose-bound HMAC in the token, not the caller.
