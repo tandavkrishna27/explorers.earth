@@ -1,1 +1,12 @@
-{"set":"global","version":"v1","category":"books","lists":[]}
+{"set":"global","version":"v1","category":"books","lists":[
+ {"key":"gl-books-modern-classics","title":"Modern classics","description":"Novels I keep recommending.","topPicks":true,"items":[
+  {"note":"Simple, moving, and still relevant.","rating":10,"details":{"title":"To Kill a Mockingbird","authors":["Harper Lee"],"yearText":"1960"}},
+  {"note":"A family over a hundred years; let it wash over you.","rating":9,"details":{"title":"One Hundred Years of Solitude","authors":["Gabriel García Márquez"],"yearText":"1967"}},
+  {"note":"Quiet and heartbreaking.","rating":9,"details":{"title":"The Remains of the Day","authors":["Kazuo Ishiguro"],"yearText":"1989"}},
+  {"note":"Reads differently every decade.","rating":9,"details":{"title":"Nineteen Eighty-Four","authors":["George Orwell"],"yearText":"1949"}}]},
+ {"key":"gl-books-ideas","title":"Ideas worth reading","description":"Non-fiction that changed how I think.","topPicks":false,"items":[
+  {"note":"A big-picture history you can read on a flight.","rating":9,"details":{"title":"Sapiens","authors":["Yuval Noah Harari"],"yearText":"2011"}},
+  {"note":"Small changes, explained clearly.","rating":8,"details":{"title":"Atomic Habits","authors":["James Clear"],"yearText":"2018"}},
+  {"note":"Why we decide the way we do.","rating":8,"details":{"title":"Thinking, Fast and Slow","authors":["Daniel Kahneman"],"yearText":"2011"}},
+  {"note":"Data that makes you more hopeful.","rating":8,"details":{"title":"Factfulness","authors":["Hans Rosling"],"yearText":"2018"}}]}
+]}

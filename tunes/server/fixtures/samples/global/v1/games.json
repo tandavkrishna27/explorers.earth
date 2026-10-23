@@ -1,1 +1,12 @@
-{"set":"global","version":"v1","category":"games","lists":[]}
+{"set":"global","version":"v1","category":"games","lists":[
+ {"key":"gl-games-story-rich","title":"Story-rich adventures","description":"Games that feel like great novels.","topPicks":true,"items":[
+  {"note":"Climb anything, go anywhere. By Nintendo.","rating":10,"details":{"title":"The Legend of Zelda: Breath of the Wild","releaseYear":2017,"platforms":["Switch"],"genres":["Adventure"]}},
+  {"note":"A western you live in. By Rockstar Games.","rating":10,"details":{"title":"Red Dead Redemption 2","releaseYear":2018,"platforms":["PC","PlayStation","Xbox"],"genres":["Adventure"]}},
+  {"note":"Every escape attempt tells more of the story. By Supergiant Games.","rating":9,"details":{"title":"Hades","releaseYear":2020,"platforms":["PC","Switch","PlayStation","Xbox"],"genres":["Action"]}},
+  {"note":"A hard platformer with a kind heart. By Maddy Makes Games.","rating":9,"details":{"title":"Celeste","releaseYear":2018,"platforms":["PC","Switch"],"genres":["Platformer"]}}]},
+ {"key":"gl-games-cozy","title":"Cozy games","description":"Slow, kind games for winding down.","topPicks":false,"items":[
+  {"note":"Farm, fish, make friends. By ConcernedApe.","rating":10,"details":{"title":"Stardew Valley","releaseYear":2016,"platforms":["PC","Switch","Android","iOS"],"genres":["Simulation"]}},
+  {"note":"An island that is all yours. By Nintendo.","rating":9,"details":{"title":"Animal Crossing: New Horizons","releaseYear":2020,"platforms":["Switch"],"genres":["Simulation"]}},
+  {"note":"A story told through unpacking boxes. By Witch Beam.","rating":9,"details":{"title":"Unpacking","releaseYear":2021,"platforms":["PC","Switch"],"genres":["Puzzle"]}},
+  {"note":"Short, beautiful puzzles. By ustwo games.","rating":9,"details":{"title":"Monument Valley","releaseYear":2014,"platforms":["Android","iOS"],"genres":["Puzzle"]}}]}
+]}

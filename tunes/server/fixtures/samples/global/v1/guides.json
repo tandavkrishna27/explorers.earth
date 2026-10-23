@@ -1,1 +1,11 @@
-{"set":"global","version":"v1","category":"guides","guide":{"key":"gl-guide-placeholder","title":"Placeholder","description":"Placeholder","guideType":"itinerary","numberOfDays":1,"days":[{"day":1,"items":[{"kind":"note","localId":"placeholder","timeLabel":null,"text":"Placeholder"}]}]}}
+{"set":"global","version":"v1","category":"guides","guide":{"key":"gl-guide-48-hours-paris","title":"48 hours in Paris","description":"Two full days: museums, markets and a view at dusk.","guideType":"itinerary","numberOfDays":2,"days":[
+ {"day":1,"items":[
+  {"kind":"place","localId":"paris-d1-louvre","timeLabel":"09:00","tips":"Be at the door when it opens.","googlePlaceId":null,"details":{"title":"Louvre Museum","formattedAddress":"Rue de Rivoli, Paris","latitude":48.8606,"longitude":2.3376}},
+  {"kind":"place","localId":"paris-d1-marais","timeLabel":"afternoon","tips":"Wander, then falafel on Rue des Rosiers.","googlePlaceId":null,"details":{"title":"Le Marais","formattedAddress":"Le Marais, Paris","latitude":48.859,"longitude":2.3622}},
+  {"kind":"place","localId":"paris-d1-eiffel","timeLabel":"evening","tips":"Summit at dusk; book ahead.","googlePlaceId":null,"details":{"title":"Eiffel Tower","formattedAddress":"Champ de Mars, 5 Av. Anatole France, Paris","latitude":48.8584,"longitude":2.2945}}]},
+ {"day":2,"items":[
+  {"kind":"place","localId":"paris-d2-orsay","timeLabel":"10:00","tips":"Start on the top floor with the Impressionists.","googlePlaceId":null,"details":{"title":"Musée d'Orsay","formattedAddress":"Esplanade Valéry Giscard d'Estaing, Paris","latitude":48.86,"longitude":2.3266}},
+  {"kind":"place","localId":"paris-d2-luxembourg","timeLabel":"afternoon","tips":"A slow lunch break in the gardens.","googlePlaceId":null,"details":{"title":"Jardin du Luxembourg","formattedAddress":"Rue de Médicis, Paris","latitude":48.8462,"longitude":2.3372}},
+  {"kind":"place","localId":"paris-d2-sacre-coeur","timeLabel":"evening","tips":"Sunset from the steps.","googlePlaceId":null,"details":{"title":"Sacré-Cœur","formattedAddress":"35 Rue du Chevalier de la Barre, Paris","latitude":48.8867,"longitude":2.3431}},
+  {"kind":"note","localId":"paris-d2-note","timeLabel":"night","text":"Walk down through Montmartre for dinner."}]}
+]}}

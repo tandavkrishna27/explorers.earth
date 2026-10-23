@@ -1,1 +1,12 @@
-{"set":"global","version":"v1","category":"products","lists":[]}
+{"set":"global","version":"v1","category":"products","lists":[
+ {"key":"gl-products-coffee","title":"Home coffee setup","description":"Better coffee without a big machine.","topPicks":true,"items":[
+  {"note":"Forgiving and quick to clean.","rating":9,"details":{"title":"AeroPress Original","productUrl":"https://aeropress.com","brand":"AeroPress","description":"Manual coffee press."}},
+  {"note":"Bright pour-over once you get the pour right.","rating":8,"details":{"title":"Hario V60 Dripper","productUrl":"https://www.hario-usa.com","brand":"Hario","description":"Cone pour-over dripper."}},
+  {"note":"The upgrade that matters most.","rating":9,"details":{"title":"Baratza Encore","productUrl":"https://baratza.com","brand":"Baratza","description":"Conical burr grinder."}},
+  {"note":"Exact temperature and a beautiful pour.","rating":8,"details":{"title":"Fellow Stagg EKG","productUrl":"https://fellowproducts.com","brand":"Fellow","description":"Electric pour-over kettle."}}]},
+ {"key":"gl-products-everyday-carry","title":"Everyday carry","description":"Small things I use every single day.","topPicks":false,"items":[
+  {"note":"Reading without the glare.","rating":9,"details":{"title":"Kindle Paperwhite","productUrl":"https://www.amazon.com/kindle","brand":"Amazon","description":"E-reader with an adjustable warm light."}},
+  {"note":"Two phone charges in a pocket.","rating":8,"details":{"title":"Anker PowerCore 10000","productUrl":"https://www.anker.com","brand":"Anker","description":"Compact power bank."}},
+  {"note":"Paper still wins for thinking.","rating":8,"details":{"title":"Moleskine Classic Notebook","productUrl":"https://www.moleskine.com","brand":"Moleskine","description":"Hard-cover ruled notebook."}},
+  {"note":"Cold all day, no sweat on the bag.","rating":8,"details":{"title":"Hydro Flask Wide Mouth","productUrl":"https://www.hydroflask.com","brand":"Hydro Flask","description":"Insulated steel water bottle."}}]}
+]}

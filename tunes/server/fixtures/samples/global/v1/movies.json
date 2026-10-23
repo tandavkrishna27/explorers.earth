@@ -1,1 +1,12 @@
-{"set":"global","version":"v1","category":"movies","lists":[]}
+{"set":"global","version":"v1","category":"movies","lists":[
+ {"key":"gl-movies-modern-classics","title":"Modern classics","description":"Films worth seeing at least once.","topPicks":true,"items":[
+  {"note":"Every scene is a lesson in storytelling.","rating":10,"details":{"title":"The Godfather","mediaType":"movie","yearText":"1972","director":"Francis Ford Coppola"}},
+  {"note":"Funny, tense and sharp about class.","rating":10,"details":{"title":"Parasite","mediaType":"movie","yearText":"2019","director":"Bong Joon-ho"}},
+  {"note":"A heist inside a dream; the score is wonderful.","rating":9,"details":{"title":"Inception","mediaType":"movie","yearText":"2010","director":"Christopher Nolan"}},
+  {"note":"Paris through a warm yellow filter.","rating":9,"details":{"title":"Amélie","mediaType":"movie","yearText":"2001","director":"Jean-Pierre Jeunet"}}]},
+ {"key":"gl-movies-animated","title":"Animated favourites","description":"Not just for kids.","topPicks":false,"items":[
+  {"note":"Hand-drawn magic; every frame is a painting.","rating":10,"details":{"title":"Spirited Away","mediaType":"movie","yearText":"2001","director":"Hayao Miyazaki"}},
+  {"note":"The first ten minutes alone.","rating":9,"details":{"title":"Up","mediaType":"movie","yearText":"2009","director":"Pete Docter"}},
+  {"note":"Music, family and memory.","rating":9,"details":{"title":"Coco","mediaType":"movie","yearText":"2017","director":"Lee Unkrich"}},
+  {"note":"Where it all started.","rating":9,"details":{"title":"Toy Story","mediaType":"movie","yearText":"1995","director":"John Lasseter"}}]}
+]}
