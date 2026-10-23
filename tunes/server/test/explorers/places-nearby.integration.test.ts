@@ -47,7 +47,7 @@ it('refuses a new person-type place recommendation while a place write works',as
  expect(resolved.status,JSON.stringify(resolved.body)).toBe(200);
  const context={recommendationType:'place',sourceOfRecommendation:'self',contactName:null,contactNumber:null,contactVisibility:'private',placeSocialUrl:null,placeWebsiteUrl:null,creatorSocialUrl:null,legacyPlaceNote:null,personProfileUrl:null,personAddress:null};
  const body=(placeContext:object)=>({category:'places',entityId:resolved.body.entity.id,collectionId:collection.id,expectedCollectionRevision:collection.revision,userRating:null,publicationState:'draft',placeContext});
- const person=await command(a,'post','/recommendations',body({...context,recommendationType:'person'}));
+ const person=await command(a,'post','/recommendations',body({...context,recommendationType:'person',contactName:'Ada'}));
  expect(person.status,JSON.stringify(person.body)).toBe(422);
  expect(JSON.stringify(person.body)).toContain('Recommend people in the People category');
  collection=(await admin.query('SELECT id,revision FROM collections WHERE id=$1',[collection.id])).rows[0];collection.revision=Number(collection.revision);
