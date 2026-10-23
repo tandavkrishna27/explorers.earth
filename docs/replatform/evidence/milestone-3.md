@@ -65,3 +65,12 @@ The first drill of a real production backup, which closes the "production backup
 - Result: **passed**, `recoveryMilliseconds` 9902. Journal 63 rows, head 0063; every row count matched; restricted-role attestation passed; the app booted on the restored database. This time the proofs carry real data: 1 account with an authenticated restored session, and 23 media objects whose hashes all matched, with the gated route resolving.
 - Receipt: `recovery-receipt.json`, SHA-256 `7faae0189d16f4f3653bacae0d383cc18bf7f71bdc28a10a3550dd17ede2a9bc`.
 - Why it was needed: the deploy of `e14ac5fc` was refused with `DRILL_MARKER_MISMATCH` because the database had moved to 0063 (from #176) while the committed receipt was at 0062. Any deploy that follows a migration needs a fresh drill at the new head.
+
+## Production drill at 0064 (2026-10-23)
+
+- Backup: the nightly scheduled backup (run `ee261650`, reason `scheduled`, completed 2026-10-23T02:22Z), migration head `0064_explorers_game_details`, source commit `8063651c`.
+- Drill: `npm run platform:restore-drill` on the owner's machine from a clean checkout of `8063651c`, the commit that produced the backup.
+- Result: **passed**, `recoveryMilliseconds` 12830. Journal 64 rows, head 0064; every row count matched; restricted-role attestation passed; the app booted on the restored database. 1 account with an authenticated restored session; 107 media objects whose hashes all matched, 33 through the gated route.
+- Receipt: `recovery-receipt.json`, SHA-256 `e412ae2f257f12dbb40526a84da4f4b99055b157119db902a6418ee22861f62f`.
+- Why it was needed: dashboard-phase deploy checkpoint A (Wave 0, migrations 0065-0066). The gate compares the receipt's marker with the pre-deploy backup's marker, so the drill must be at the live head (0064), not the new one.
+- Known issue: the same drill run from `main` at `0eebdd4c` fails four times at runtime-role attestation, because Wave 0 (PR #198) changed the expected runtime privileges and the drill attests a 0064 restore against the 0066 expectations. Drilling from the backup's own commit avoids it; the drill tool needs a fix to attest against the restored marker's expectations.
