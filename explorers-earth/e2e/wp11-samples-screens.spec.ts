@@ -59,7 +59,14 @@ for (const width of [1440, 375]) {
       await shot(page, '04-delete-confirm', width);
       await page.getByRole('button', { name: 'Cancel' }).click();
 
+      // Mocks v3: no pins, item menus or Add on a sample.
+      await expect(page.getByRole('button', { name: /to Top Picks/ })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: /More actions for/ })).toHaveCount(0);
       await page.getByRole('button', { name: 'Make it mine' }).click();
+      const sheet = page.getByRole('dialog');
+      await expect(sheet.getByLabel('List name')).toBeVisible();
+      await shot(page, '05a-make-mine-sheet', width);
+      await sheet.getByRole('button', { name: 'Make it mine' }).click();
       await expect(page.getByRole('status').filter({ hasText: 'Now yours' })).toBeVisible();
       await expect(page.getByText('A sample to show how a list works.', { exact: false })).toBeHidden();
       await shot(page, '05-made-mine', width);
@@ -93,6 +100,8 @@ for (const width of [1440, 375]) {
 
       await page.goto('/recommendations/places');
       await expect(page.getByTestId('list-card')).toHaveCount(1);
+      // Places can't pin a sample, so the hero previews the sample's first place.
+      await expect(page.getByText(/From the sample list/)).toBeVisible();
       await shot(page, '08-places-category-samples', width);
     } finally { if (data.errors.length) console.log(data.errors); await closeFixture(handle); }
   });

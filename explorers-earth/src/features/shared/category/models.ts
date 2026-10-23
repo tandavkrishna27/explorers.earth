@@ -73,6 +73,22 @@ export function toItemTopPicks(
   return picks.map(({ order: _order, ...pick }) => pick);
 }
 
+/**
+ * WP11. Places pins only public lists, so a sample can never be pinned. With no pins and a sample
+ * list present, the hero shows that sample's first item, read-only (pinned: false), badged Sample.
+ */
+export function withSampleFallbackPick(picks: TopPickModel[], lists: LegacyList[], spec: { relation: string; title: (item: LegacyItem) => string; image: (item: LegacyItem) => string | null }): TopPickModel[] {
+  if (picks.length > 0) return picks;
+  for (const list of lists) {
+    const first = readIsSample(list) ? ((list[spec.relation] as LegacyItem[] | undefined) ?? [])[0] : undefined;
+    if (first) {
+      return [{ id: first.documentId, title: spec.title(first), subtitle: null, imageUrl: spec.image(first), listId: list.documentId,
+        listTitle: list.List_Name ?? "", pinned: false, pinnable: false, isSample: true }];
+    }
+  }
+  return picks;
+}
+
 /** Places and Guides: the lists themselves are the picks. */
 export function toListTopPicks(lists: (LegacyList & { is_pinned?: boolean; pin_order?: number | null })[], spec: { title: (list: LegacyList) => string; image: (list: LegacyList) => string | null; isPublic: (list: LegacyList) => boolean }, pinnedOnly = true): TopPickModel[] {
   return lists

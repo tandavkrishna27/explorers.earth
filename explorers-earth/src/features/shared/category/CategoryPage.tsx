@@ -155,7 +155,7 @@ export default function CategoryPage(props: CategoryPageProps) {
           onCreated={(id) => { setDialogOpen(false); onChanged(); (props.newList as { onCreated: (id: string) => void }).onCreated(id); }} />
       )}
       {managerOpen && (
-        <TopPicksManager category={category} mode={config.topPicks} limit={config.pinLimit} pinned={props.topPicks} candidates={props.pinCandidates}
+        <TopPicksManager category={category} mode={config.topPicks} limit={config.pinLimit} pinned={props.topPicks.filter((pick) => pick.pinned)} candidates={props.pinCandidates}
           onClose={closeManager} onSaved={() => { closeManager(); onChanged(); }} />
       )}
     </DashboardPageContainer>

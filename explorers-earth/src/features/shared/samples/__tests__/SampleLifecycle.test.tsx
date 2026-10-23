@@ -51,6 +51,9 @@ function Harness({ next, initial }: { initial: { lists: ListCardModel[]; picks: 
   return <I18nextProvider i18n={englishI18n}><CategoryPage {...props} /></I18nextProvider>;
 }
 
+/** Make it mine asks first (mocks v3); confirm the sheet with its prefilled name. */
+const confirmMine = () => userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Make it mine" }));
+
 beforeEach(() => {
   vi.clearAllMocks();
   api.getMyEditableCollection.mockResolvedValue({ resourceId: "s1", resourceRevision: 4 });
@@ -75,6 +78,7 @@ describe("Make it mine refreshes every owner cache (owner req 1)", () => {
     expect(screen.getAllByText("Sample")).toHaveLength(2);
     await userEvent.click(screen.getByRole("button", { name: /More options for Starter films|more/i }));
     await userEvent.click(screen.getByRole("menuitem", { name: "Make it mine" }));
+    await confirmMine();
     await waitFor(() => expect(screen.queryByText("Sample")).not.toBeInTheDocument());
     expect(screen.getByTestId("list-card").className).not.toContain("border-dashed");
     expect(screen.queryByText("Only you can see this")).not.toBeInTheDocument();
@@ -98,7 +102,8 @@ describe("double click sends one request (owner req 2)", () => {
 
   it("the list page sends exactly one make-it-mine request on a double click", async () => {
     render(<MemoryRouter><ListPage adapter={adapterFixture({ list: sampleView })} /></MemoryRouter>);
-    await userEvent.dblClick(screen.getByRole("button", { name: "Make it mine" }));
+    await userEvent.click(screen.getByRole("button", { name: "Make it mine" }));
+    await userEvent.dblClick(within(screen.getByRole("dialog")).getByRole("button", { name: "Make it mine" }));
     await screen.findByText("Now yours");
     expect(api.makeMyCollectionMine).toHaveBeenCalledTimes(1);
   });
@@ -111,6 +116,7 @@ describe("stale tab (owner req 3)", () => {
       const adapter = adapterFixture({ list: sampleView });
       render(<MemoryRouter><ListPage adapter={adapter} /></MemoryRouter>);
       await userEvent.click(screen.getByRole("button", { name: "Make it mine" }));
+      await confirmMine();
       expect(await screen.findByText("Now yours")).toHaveAttribute("role", "status");
       expect(adapter.retry).toHaveBeenCalled();
       expect(toast.error).not.toHaveBeenCalled();
@@ -159,6 +165,7 @@ describe("a converted list keeps its item order (owner req 6)", () => {
     const order = () => screen.getAllByText(/^Item (one|two|three)$/).map((node) => node.textContent);
     const before = order();
     await userEvent.click(screen.getByRole("button", { name: "Make it mine" }));
+    await confirmMine();
     await screen.findByText("Now yours");
     rerender(<MemoryRouter><ListPage adapter={{ ...adapter, list: { ...sampleView, isSample: undefined } }} /></MemoryRouter>);
     expect(screen.queryByText("Sample")).not.toBeInTheDocument();

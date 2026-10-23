@@ -9,6 +9,11 @@ const api = vi.hoisted(() => ({
   purgeMyCollection: vi.fn(),
 }));
 vi.mock("../../../../lib/explorersApiClient", () => ({ explorersApiClient: api }));
+vi.mock("react-i18next", async (importOriginal) => {
+  const real = await importOriginal<typeof import("react-i18next")>();
+  const { englishTranslation } = await import("./englishTranslationMock");
+  return { ...real, useTranslation: englishTranslation };
+});
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 import ListPage from "../../list/ListPage";
@@ -38,6 +43,13 @@ describe("sample list page (SMP-03, SMP-04, SMP-05)", () => {
     const adapter = adapterFixture({ list: sampleList });
     render(<MemoryRouter><ListPage adapter={adapter} /></MemoryRouter>);
     await userEvent.click(screen.getByRole("button", { name: "Make it mine" }));
+    const sheet = screen.getByRole("dialog");
+    expect(sheet).toHaveTextContent('Make "Indian fiction to start with" yours?');
+    expect(sheet).toHaveTextContent("It becomes a normal draft list with its 3");
+    expect(sheet).toHaveTextContent("Your other samples stay until you delete them.");
+    expect(within(sheet).getByLabelText("List name")).toHaveValue("Indian fiction to start with");
+    expect(api.makeMyCollectionMine).not.toHaveBeenCalled();
+    await userEvent.click(within(sheet).getByRole("button", { name: "Make it mine" }));
     expect(api.makeMyCollectionMine).toHaveBeenCalledTimes(1);
     expect(await screen.findByText("Now yours")).toHaveAttribute("role", "status");
     expect(adapter.retry).toHaveBeenCalled();

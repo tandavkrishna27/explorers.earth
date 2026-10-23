@@ -1,6 +1,6 @@
 import CategoryPage from "../features/shared/category/CategoryPage";
 import { useArchivedLists } from "../features/shared/category/useArchivedLists";
-import { toListTopPicks } from "../features/shared/category/models";
+import { toListTopPicks, withSampleFallbackPick } from "../features/shared/category/models";
 import { createList } from "../features/shared/category/listWrites";
 import type { NewListCreate } from "../features/shared/lists/NewListDialog";
 import { NavigationStatus } from "../features/navigation/NavigationStatus";
@@ -464,6 +464,8 @@ const FavoritesHome = memo(() => {
     .map((city: any) => ({ id: city.documentId, title: city.List_Name ?? "", status: city.Visibility ? ("public" as const) : ("draft" as const),
       itemCount: city.recommended_places?.length ?? 0, pinnedCount: 0, covers: city.List_Name_Details?.thumbnail ? [city.List_Name_Details.thumbnail] : [], ...(city.isSample === true ? { isSample: true } : {}) })), [cities]);
   const cityPick = { title: (c: any) => c.List_Name ?? "", image: (c: any) => c.List_Name_Details?.thumbnail ?? null, isPublic: (c: any) => Boolean(c.Visibility) };
+  // WP11: a sample place list can't be pinned; the hero previews its first place instead.
+  const samplePlacePick = { relation: "recommended_places", title: (p: any) => p.Place_Details?.Title ?? "", image: (p: any) => p.media_details?.thumbnail?.url ?? null };
 
   useEffect(() => {
     const lists = cities?.recommendationLists;
@@ -862,7 +864,7 @@ const FavoritesHome = memo(() => {
               status={{ loading: loading || !accountById, error: placesOwner.error ?? null, refreshing: loading && placeCards.length > 0 }}
               lists={placeCards}
               archivedLists={archivedPlaces.lists}
-              topPicks={toListTopPicks((cities?.recommendationLists as any[]) ?? [], cityPick)}
+              topPicks={withSampleFallbackPick(toListTopPicks((cities?.recommendationLists as any[]) ?? [], cityPick), (cities?.recommendationLists as any[]) ?? [], samplePlacePick)}
               pinCandidates={toListTopPicks((cities?.recommendationLists as any[]) ?? [], cityPick, false)}
               categoryVisibility={categoryVisible ? "public" : "hidden"}
               visibilityBusy={navigation.busy || !navigation.authority}

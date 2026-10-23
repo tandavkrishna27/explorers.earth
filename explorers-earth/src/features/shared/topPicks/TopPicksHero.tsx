@@ -47,7 +47,9 @@ export default function TopPicksHero({ category, state, picks, onOpenPick, onMan
       <div className="relative flex items-center justify-between gap-2"><Label text={t("dashboard.wp3a.topPicks.title")} />{pick.isSample && <SampleBadge />}</div>
       <div className="relative grid gap-1.5">
         <h3 className="m-0 text-[30px] font-black leading-[1.05] text-gray-50"><button type="button" className="cursor-pointer text-left" onClick={() => onOpenPick(pick)}>{pick.title}</button></h3>
-        <div className="text-xs text-gray-200">{pick.subtitle ? `${pick.subtitle} · ` : ""}<span>{t("dashboard.wp3a.topPicks.from", { list: pick.listTitle, interpolation: { escapeValue: false } })}</span></div>
+        <div className="text-xs text-gray-200">{pick.subtitle ? `${pick.subtitle} · ` : ""}<span>{pick.isSample
+          ? t("samples.fromSampleList", "From the sample list \"{{list}}\"", { list: pick.listTitle, interpolation: { escapeValue: false } })
+          : t("dashboard.wp3a.topPicks.from", { list: pick.listTitle, interpolation: { escapeValue: false } })}</span></div>
         <div className="flex flex-wrap items-center gap-2">
           {manage}
           <span className="flex-1" />

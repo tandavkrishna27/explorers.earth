@@ -35,14 +35,23 @@ const alreadySettled = (error: unknown) => error instanceof ExplorersApiError &&
 export function sampleCommands(listId: string, onChanged?: () => void, queryClient?: QueryClient | null) {
   const settle = async () => { onChanged?.(); await refreshSampleCaches(queryClient); };
   return {
-    makeMine: async () => {
+    /** Converts in place; when `name` differs from `currentTitle`, renames through the ordinary update. */
+    makeMine: async (name?: string, currentTitle?: string) => {
       try {
         const observed = await explorersApiClient.getMyEditableCollection(listId);
         await explorersApiClient.makeMyCollectionMine(observed, newKey());
       } catch (error) {
         if (!alreadySettled(error)) throw error;
       }
-      await settle();
+      try {
+        const title = name?.trim();
+        if (title && title !== currentTitle) {
+          const converted = await explorersApiClient.getMyEditableCollection(listId);
+          await explorersApiClient.updateMyCollection(converted, { title }, newKey());
+        }
+      } finally {
+        await settle();
+      }
     },
     remove: async () => {
       const observed = await explorersApiClient.getMyEditableCollection(listId);

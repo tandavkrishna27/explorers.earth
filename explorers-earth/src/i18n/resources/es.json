@@ -3042,8 +3042,12 @@
     "onlyYou": "Only you can see this",
     "onlyYouCantPublish": "Only you can see this · can't be published",
     "bar": "A sample to show how a list works. Keep it, delete it, or make it yours to edit and publish.",
-    "madeMineToast": "It's yours now. Edit it and publish when ready.",
+    "madeMineToast": "It's yours now: a draft you can edit and publish",
     "deletedToast": "Sample deleted",
-    "failed": "That didn't work. Try again."
+    "failed": "That didn't work. Try again.",
+    "makeMineTitle": "Make \"{{name}}\" yours?",
+    "makeMineBody": "It becomes a normal draft list with its {{items}}. You can rename, edit, reorder and publish it. Your other samples stay until you delete them.",
+    "listName": "List name",
+    "fromSampleList": "From the sample list \"{{list}}\""
   }
 }

@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Switch from "../../../components/ui/Switch";
 import { CATEGORY_CONFIG, type CategoryKey } from "./categoryConfig";
 import type { ListCardModel, ListStatus } from "./models";
 import { SampleBadge } from "../samples/SampleBadge";
-import { SampleDeleteDialog } from "../samples/SampleActions";
+import { MakeMineSheet, SampleDeleteDialog } from "../samples/SampleActions";
 import { useSampleCommands } from "../samples/useSampleCommands";
 import { toast } from "sonner";
 
@@ -39,13 +39,17 @@ export default function ListCard({ category, list, busy, dragging, over, picked,
   const sample = list.isSample === true;
   const commands = useSampleCommands(list.id, onSampleChanged);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [askMine, setAskMine] = useState(false);
   const [sampleBusy, setSampleBusy] = useState(false);
+  // The ref closes the gap before `sampleBusy` re-renders, so a double click sends one request.
+  const sampleInFlight = useRef(false);
   const runSample = async (work: () => Promise<void>, done: string) => {
-    if (sampleBusy) return;
+    if (sampleInFlight.current) return;
+    sampleInFlight.current = true;
     setSampleBusy(true);
     try { await work(); toast.success(done); }
     catch { toast.error(t("samples.failed", "That didn't work. Try again.")); }
-    finally { setSampleBusy(false); setConfirmDelete(false); }
+    finally { sampleInFlight.current = false; setSampleBusy(false); setConfirmDelete(false); setAskMine(false); }
   };
   return (
     <div
@@ -83,11 +87,12 @@ export default function ListCard({ category, list, busy, dragging, over, picked,
           {menu && sample && (
             <span role="menu" onClick={stop} className="absolute right-0 top-8 z-20 grid min-w-[150px] rounded-[10px] border border-white/[.09] bg-[#1f2430] p-1 text-xs text-gray-100">
               <button role="menuitem" type="button" disabled={sampleBusy} className="rounded-md px-2.5 py-1.5 text-left hover:bg-white/5 disabled:opacity-50"
-                onClick={() => { setMenu(false); void runSample(commands.makeMine, t("samples.madeMineToast", "It's yours now. Edit it and publish when ready.")); }}>{t("samples.makeMine", "Make it mine")}</button>
+                onClick={() => { setMenu(false); setAskMine(true); }}>{t("samples.makeMine", "Make it mine")}</button>
               <button role="menuitem" type="button" className="rounded-md px-2.5 py-1.5 text-left hover:bg-white/5"
                 onClick={() => { setMenu(false); onOpen(list.id); }}>{t("samples.open", "Open")}</button>
               <button role="menuitem" type="button" className="rounded-md px-2.5 py-1.5 text-left text-red-300 hover:bg-white/5"
-                onClick={() => { setMenu(false); setConfirmDelete(true); }}>{t("samples.deleteSample", "Delete sample")}</button>
+                aria-label={t("samples.deleteSample", "Delete sample")}
+                onClick={() => { setMenu(false); setConfirmDelete(true); }}>{t("samples.delete", "Delete")}</button>
             </span>
           )}
           {menu && !sample && (
@@ -119,6 +124,11 @@ export default function ListCard({ category, list, busy, dragging, over, picked,
       {confirmDelete && (
         <SampleDeleteDialog busy={sampleBusy} onCancel={() => setConfirmDelete(false)}
           onConfirm={() => void runSample(commands.remove, t("samples.deletedToast", "Sample deleted"))} />
+      )}
+      {askMine && (
+        <MakeMineSheet title={list.title} itemsLabel={t(`dashboard.wp3a.itemCount.${category}`, { count: list.itemCount })} busy={sampleBusy}
+          onCancel={() => setAskMine(false)}
+          onConfirm={(name) => void runSample(() => commands.makeMine(name, list.title), t("samples.madeMineToast", "It's yours now: a draft you can edit and publish"))} />
       )}
     </div>
   );

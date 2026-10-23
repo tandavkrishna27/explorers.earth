@@ -73,7 +73,8 @@ describe("samples UI (SMP-01, SMP-03, SMP-04, SMP-05)", () => {
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /more/i }));
     const items = screen.getAllByRole("menuitem").map((item) => item.textContent);
-    expect(items).toEqual(["Make it mine", "Open", "Delete sample"]);
+    expect(items).toEqual(["Make it mine", "Open", "Delete"]);
+    expect(screen.getByRole("menuitem", { name: "Delete sample" })).toHaveTextContent("Delete");
   });
 
   it("a normal list card has no Sample badge", () => {

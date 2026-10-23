@@ -44,6 +44,12 @@ export default function ListPage({ adapter, onMount }: Props) {
       <button type="button" onClick={back} className="justify-self-start text-[10px] uppercase tracking-[.08em] text-gray-400">
         ‹ {t("dashboard.wp3b.backTo", "Back to {{category}}", { category: adapter.categoryLabel }).replace("{{category}}", adapter.categoryLabel)}
       </button>
+      {list && sample && (
+        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400">
+          <SampleBadge />
+          <span>{t("samples.onlyYouCantPublish", "Only you can see this · can't be published")}</span>
+        </div>
+      )}
       <div className="flex items-start gap-2">
         <h1 className="min-w-0 flex-1 break-words text-xl font-bold line-clamp-2" title={list?.title}>{list?.title ?? <span className="block h-6 w-48 animate-pulse rounded bg-white/10" />}</h1>
         {list && <PublishPill kind="list" value={list.status} privateComingSoon onChange={setStatus}
@@ -51,15 +57,11 @@ export default function ListPage({ adapter, onMount }: Props) {
       </div>
       {list && sample && (
         <>
-          <div className="-mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-400">
-            <SampleBadge />
-            <span>{t("samples.onlyYouCantPublish", "Only you can see this · can't be published")}</span>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-yellow-400/30 bg-yellow-400/[.06] p-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-yellow-400/30 bg-yellow-400/[.06] p-3">
             <p className="m-0 min-w-0 flex-[1_1_16rem] text-sm text-gray-200">{t("samples.bar", "A sample to show how a list works. Keep it, delete it, or make it yours to edit and publish.")}</p>
-            <SampleActions
-              onMakeMine={async () => {
-                try { await makeMine(); toast.success(t("samples.madeMineToast", "It's yours now. Edit it and publish when ready.")); }
+            <SampleActions listTitle={list.title} itemsLabel={t(`dashboard.wp3a.itemCount.${adapter.category}`, { count: list.itemCount })}
+              onMakeMine={async (name) => {
+                try { await makeMine(name, list.title); toast.success(t("samples.madeMineToast", "It's yours now: a draft you can edit and publish")); }
                 catch (error) { toast.error((error as Error).message); throw error; }
               }}
               onDelete={async () => {
@@ -71,7 +73,7 @@ export default function ListPage({ adapter, onMount }: Props) {
       )}
       <ListTabs active={tab} onChange={setTab}
         labels={{ recs: t("dashboard.wp3b.tabRecs", "Recommendations"), share: t("dashboard.wp3b.tabShare", "Share"), manage: t("dashboard.wp3b.tabManage", "Manage") }}
-        trailing={tab === "recs" && adapter.items.length > 0 ? <button type="button" onClick={() => navigate(adapter.addPath)} className="hidden rounded-xl bg-blue-400 px-3 py-1.5 text-sm text-white sm:inline-flex">＋ {t("dashboard.wp3b.addItem", "Add item")}</button> : null}
+        trailing={tab === "recs" && adapter.items.length > 0 && !sample ? <button type="button" onClick={() => navigate(adapter.addPath)} className="hidden rounded-xl bg-blue-400 px-3 py-1.5 text-sm text-white sm:inline-flex">＋ {t("dashboard.wp3b.addItem", "Add item")}</button> : null}
         panels={{
           recs: <Mounted tab="recs" onMount={onMount}><RecommendationsTab adapter={adapter} active={tab === "recs"} /></Mounted>,
           share: <Mounted tab="share" onMount={onMount}>{sample ? <p className="pt-3 text-sm text-gray-400">{t("samples.cannotShare", "Samples can't be shared. Make it yours to publish and share it.")}</p> : <ShareTab adapter={adapter} />}</Mounted>,

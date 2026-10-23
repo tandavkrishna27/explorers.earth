@@ -33,6 +33,10 @@ type Props = {
   remove?: () => Promise<void>;
   /** Navigate away after the sample is deleted. */
   onDeleted?: () => void;
+  /** The list name; when set, Make it mine asks first and can rename (mocks v3). */
+  listTitle?: string;
+  /** "3 places": the item count for the Make it mine sheet. */
+  itemsLabel?: string;
 };
 
 /**
@@ -40,7 +44,7 @@ type Props = {
  * Delete sample) for a list or guide page. Renders nothing for an ordinary collection, so a page
  * can mount it unconditionally under its title.
  */
-export function SampleListBanner({ collection, listId, onChanged, remove, onDeleted }: Props) {
+export function SampleListBanner({ collection, listId, listTitle, itemsLabel, onChanged, remove, onDeleted }: Props) {
   const { t } = useTranslation();
   const commands = useSampleCommands(listId, onChanged);
   if (!readIsSample(collection)) return null;
@@ -50,11 +54,11 @@ export function SampleListBanner({ collection, listId, onChanged, remove, onDele
         <SampleBadge />
         <span>{t("samples.onlyYouCantPublish", "Only you can see this · can't be published")}</span>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-dashed border-yellow-400/30 bg-yellow-400/[.06] p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-yellow-400/30 bg-yellow-400/[.06] p-3">
         <p className="m-0 min-w-0 flex-[1_1_16rem] text-sm text-gray-200">{t("samples.bar", "A sample to show how a list works. Keep it, delete it, or make it yours to edit and publish.")}</p>
-        <SampleActions
-          onMakeMine={async () => {
-            try { await commands.makeMine(); toast.success(t("samples.madeMineToast", "It's yours now. Edit it and publish when ready.")); }
+        <SampleActions listTitle={listTitle} itemsLabel={itemsLabel}
+          onMakeMine={async (name) => {
+            try { await commands.makeMine(name, listTitle); toast.success(t("samples.madeMineToast", "It's yours now: a draft you can edit and publish")); }
             catch (error) { toast.error((error as Error).message); throw error; }
           }}
           onDelete={async () => {
