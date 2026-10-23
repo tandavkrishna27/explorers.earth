@@ -2,6 +2,10 @@ import { recordViewedAccount } from '../../lib/viewedRevisions';
 import { readCanonicalNavigationContent } from './canonicalNavigationContent';
 import { gql, type ApolloClient } from '@apollo/client';
 import { explorersApiClient } from '../../lib/explorersApiClient';
+import type { QueryClient } from '@tanstack/react-query';
+import type { AccountDto } from '../../../../tunes/shared/explorersContract';
+import useAuthStore from '../../store/store';
+import { canonicalAccountQuery } from '../Profile/api/useCanonicalAccount';
 import { toNavigationSnapshot, toNavigationAccountUpdate } from './canonicalNavigationMapping';
 import { selectExplorerAccountState, type ExplorerAccountCandidate } from '../../lib/explorerAccountSelection';
 import { NavigationError } from './accountNavigationWriter';
@@ -48,17 +52,27 @@ export function createCategoryNavigationApi(dependencies: {
  client?: ApolloClient<object>;
  isCurrent:(origin:IntentAuthority)=>boolean;
  eligibility?: (category:CategoryId,origin:IntentAuthority)=>Promise<Eligibility>;
+ /** The page's shared account query; a display read reuses it instead of another /me. */
+ accounts?: {client:QueryClient;identity:()=>{identityKey:string;generation:number}};
 }) {
  const profile=dependencies.profile??explorersApiClient;
  const assertCurrent=(origin:IntentAuthority)=>{if(!dependencies.isCurrent(origin))throw new NavigationError('blocked','Account changed. Reopen this control and try again.');};
- async function readAccount(scope:Scope|string):Promise<NavigationSnapshot> {
+ async function readAccount(scope:Scope|string,options:{fresh?:boolean}={}):Promise<NavigationSnapshot> {
   if(typeof scope==='string')throw new NavigationError('blocked','Canonical account scope required.');
   // Navigation intents (show or pin a tab) are applied over the latest account on purpose,
   // so what this module reads is the view it composes against.
-  const account=await profile.getMyProfile();recordViewedAccount(account.revision);
+  let account:AccountDto;
+  if(dependencies.accounts){
+   const {identityKey,generation}=dependencies.accounts.identity();
+   const query=canonicalAccountQuery(identityKey,generation);
+   // A save reads fresh (and refreshes the shared query); showing the tabs reuses it.
+   if(options.fresh)account=await dependencies.accounts.client.fetchQuery({...query,queryFn:async()=>{const fresh=await profile.getMyProfile();if(useAuthStore.getState().generation!==generation)throw new Error('Session changed');return fresh;},staleTime:0});
+   else account=await dependencies.accounts.client.fetchQuery(query);
+  } else account=await profile.getMyProfile();
+  recordViewedAccount(account.revision);
   return toNavigationSnapshot(account,scope);
  }
- async function read(origin:IntentAuthority):Promise<NavigationSnapshot> {assertCurrent(origin);const snapshot=await readAccount(origin);assertCurrent(origin);return snapshot;}
+ async function read(origin:IntentAuthority):Promise<NavigationSnapshot> {assertCurrent(origin);const snapshot=await readAccount(origin,{fresh:true});assertCurrent(origin);return snapshot;}
  async function commit(origin:IntentAuthority,patch:NavigationPatch):Promise<NavigationSnapshot> {
   assertCurrent(origin);
   const fresh=await read(origin);
