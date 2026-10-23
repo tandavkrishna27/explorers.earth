@@ -311,8 +311,6 @@ const nativeCategories = categories.filter(c => !['places', 'guides'].includes(c
 
 for (const category of nativeCategories) {
   test(`WP1 ${category.route}: Back from add returns to the origin (deep link, in-app origin, refresh, linked page)`, async ({ browser, baseURL }) => {
-    // Ruling R5: Add*Page.tsx is WP4's. WP4 deletes this line when it adopts useOriginBack.
-    test.fixme(true, 'WP4 adopts useOriginBack on add pages (see WP1 plan "Requirements for WP4"); WP4 un-fixmes');
     const state = fixtureState();
     const owner = await openFixture(browser, baseURL!, state, { owner: true });
     const list = `/recommendations/${category.route}/${category.route}-list`;

@@ -2,7 +2,7 @@ import ReorderableMediaStrip from '../../../../components/reorder/ReorderableMed
 import ReorderableFileStrip from '../../../../components/reorder/ReorderableFileStrip';
 import { useState, useEffect, useRef, useCallback } from "react";
 import { friendlyErrorMessage, urlFieldError } from "../../../../utils/friendlyError";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { explorersApiClient, type RecommendationObservation, type CollectionObservation } from "../../../../lib/explorersApiClient";
 import { useBooksOwnerContent } from "../../api/useBooksOwnerContent";
@@ -21,6 +21,8 @@ import { deduplicateBooks } from "../../utils/bookHelpers";
 import type { RecommendedBook, BuyLink, BookFormSelection } from "../../types";
 import TiptapEditor from "../../../Favorites/components/TiptapEditor";
 import {formatAuthors} from "../../utils/bookHelpers";
+import { useOriginBack } from "../../../../lib/navigation/useOriginBack";
+import { listPath } from "../../../../lib/navigation/categoryRoutes";
 
 
 // Inline Google Books Search Component
@@ -122,8 +124,9 @@ export const InlineSearch = ({ onSelect }: InlineSearchProps) => {
 // ─────────────────────────────────────────────────────────────
 const AddBookPage = () => {
   const { listId, bookId } = useParams<{ listId: string; bookId?: string }>();
-  const navigate = useNavigate();
   const { t } = useTranslation();
+  const back = useOriginBack({ to: listPath("books", listId!), label: t("dashboard.wp1.back.list") });
+  const backText = back.source === "state" && back.label ? t("dashboard.wp1.back.to", { name: back.label }) : t("dashboard.wp1.back.list");
   const generation = useAuthStore(state=>state.generation);
   const isEdit = Boolean(bookId);
 
@@ -249,7 +252,7 @@ const AddBookPage = () => {
       if(isPinned)pins.push({recommendationId,collectionId:listId});
       await explorersApiClient.setMyCategoryTopPicks(observed,pins,booksCommandKey(),signal);
       if(useAuthStore.getState().generation!==generation)return;
-      toast.success(isEdit?"Book updated!":"Book added to list!");navigate(`/recommendations/books/${listId}`,{state:{justAddedRecommendation:true}});
+      toast.success(isEdit?"Book updated!":"Book added to list!");back.goBack({state:{justAddedRecommendation:true}});
     }catch(e){if(useAuthStore.getState().generation===generation)toast.error(friendlyErrorMessage(e, "Failed to save. Please try again."));}finally{if(useAuthStore.getState().generation===generation)setSaving(false);}
   };
   return (
@@ -257,7 +260,8 @@ const AddBookPage = () => {
        {/* Sticky header */}
        <div className="border-b border-dashboard-border px-4 md:px-6 py-3 flex items-center gap-3 sticky top-0 bg-dashboard-bg z-40 w-full">
          <button
-           onClick={() => navigate(`/recommendations/books/${listId}`)}
+           aria-label={backText}
+           onClick={() => back.goBack()}
            className="text-white/40 hover:text-white transition-colors"
          >
            <ArrowLeft size={20} />
@@ -496,7 +500,7 @@ const AddBookPage = () => {
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => navigate(`/recommendations/books/${listId}`)}
+                onClick={() => back.goBack()}
                 className="px-6 py-3 rounded-xl bg-dashboard-muted hover:bg-white/10 text-sm text-white font-medium transition-colors"
               >
                 Cancel

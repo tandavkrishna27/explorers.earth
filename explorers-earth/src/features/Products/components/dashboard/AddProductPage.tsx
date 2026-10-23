@@ -2,7 +2,7 @@ import ReorderableMediaStrip from '../../../../components/reorder/ReorderableMed
 import { useEffect, useRef, useState } from 'react';
 import { friendlyErrorMessage, urlFieldError } from "../../../../utils/friendlyError";
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { ArrowDown, ArrowLeft, ArrowUp, Loader2, ShoppingBag, X } from 'lucide-react';
 import { moveItem } from '../../../../components/reorder/moveItem';
 import { useMoveAnnouncer } from '../../../../components/reorder/useMoveAnnouncer';
@@ -18,6 +18,8 @@ import { suggestedCurrency } from '../../../../lib/currencyOptions';
 import { precisionMessage } from '../../../../lib/money';
 import { richNoteFromEditor } from '../../../../../../tunes/shared/explorersRichNoteContract';
 import TiptapEditor from '../../../Favorites/components/TiptapEditor';
+import { useOriginBack } from "../../../../lib/navigation/useOriginBack";
+import { listPath } from "../../../../lib/navigation/categoryRoutes";
 
 /**
  * Ticket 4.4. Native Products add/edit page.
@@ -50,13 +52,15 @@ import TiptapEditor from '../../../Favorites/components/TiptapEditor';
  */
 export default function AddProductPage() {
  const { listId, productId } = useParams<{ listId: string; productId?: string }>();
- const location = useLocation(), navigate = useNavigate();
+ const location = useLocation();
  const generation = useAuthStore(state => state.generation), accountId = useAuthStore(state => state.accountId);
  const scope = JSON.stringify([generation, accountId, location.pathname, listId, productId]);
  const currentScope = useRef(scope); currentScope.current = scope;
  const active = useRef(0), controller = useRef<AbortController>();
  const owner = useProductsOwner(undefined, true), commands = useProductsCommands();
  const { t, i18n } = useTranslation();
+ const back = useOriginBack({ to: listPath("products", listId!), label: t("dashboard.wp1.back.list") });
+ const backText = back.source === "state" && back.label ? t("dashboard.wp1.back.to", { name: back.label }) : t("dashboard.wp1.back.list");
  // Only a new product starts on a suggestion; an existing one shows what is stored.
  const suggestion = suggestedCurrency([i18n?.language, ...(typeof navigator === 'undefined' ? [] : navigator.languages ?? [])]) ?? '';
  const initialCurrency = productId ? '' : suggestion;
@@ -119,7 +123,7 @@ export default function AddProductPage() {
 
  const attachExisting = async () => {
   const captured = scope;
-  try { await commands.membership(existingId, listId!, true); if (valid(captured)) navigate(`/recommendations/products/${listId}`); }
+  try { await commands.membership(existingId, listId!, true); if (valid(captured)) back.goBack(); }
   catch (failure) { if (valid(captured)) setError(friendlyErrorMessage(failure, 'Product could not be added')); }
  };
 
@@ -166,7 +170,7 @@ export default function AddProductPage() {
     }
     assertCurrent(captured, operation); await ProductsClient.createManual(intent.current.value, signal); assertCurrent(captured, operation);
    }
-   invalidateProducts(); toast.success('Product saved'); navigate(`/recommendations/products/${listId}`, { state: { justAddedRecommendation: true } });
+   invalidateProducts(); toast.success('Product saved'); back.goBack({ state: { justAddedRecommendation: true } });
   } catch (failure) { if (valid(captured, operation)) setError(friendlyErrorMessage(failure, 'Product could not be saved')); }
   finally { if (valid(captured, operation)) setSaving(false); }
  };
@@ -175,7 +179,7 @@ export default function AddProductPage() {
  // owned by its original observation across refreshes and never rebases.
  if (productId && initialized.current !== scope) {
   return <div className="min-h-screen text-dashboard p-4" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
-   <button aria-label="Back to product list" onClick={() => navigate(`/recommendations/products/${listId}`)}><ArrowLeft size={20} /></button>
+   <button aria-label={backText} onClick={() => back.goBack()}><ArrowLeft size={20} /></button>
    <h1 className="font-semibold">Edit Product</h1>
    {owner.loading ? <p role="status">Loading product…</p> : <div role="alert"><p>{owner.error?.message || 'Product could not be loaded. Refresh before editing.'}</p><button onClick={owner.refetch}>Retry loading product</button></div>}
   </div>;
@@ -183,7 +187,7 @@ export default function AddProductPage() {
 
  return <div className="min-h-screen text-dashboard">
   <header className="border-b border-dashboard-border px-4 md:px-6 py-3 flex items-center gap-3">
-   <button aria-label="Back to product list" onClick={() => navigate(`/recommendations/products/${listId}`)}><ArrowLeft size={20} /></button>
+   <button aria-label={backText} onClick={() => back.goBack()}><ArrowLeft size={20} /></button>
    <h1 className="font-semibold">{productId ? 'Edit Product' : 'Add Product'}</h1>
   </header>
   <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-6" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>

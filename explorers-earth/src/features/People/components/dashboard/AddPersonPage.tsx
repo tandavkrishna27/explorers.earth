@@ -2,7 +2,7 @@ import ReorderableList from '../../../../components/reorder/ReorderableList';
 import ReorderableMediaStrip from '../../../../components/reorder/ReorderableMediaStrip';
 import { useEffect, useRef, useState } from 'react';
 import { friendlyErrorMessage, urlFieldError } from "../../../../utils/friendlyError";
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, Users, X } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '../../../../store/store';
@@ -13,6 +13,9 @@ import { invalidatePeople, usePeopleOwner } from '../../hooks/usePeopleOwner';
 import { PERSON_PLATFORMS, type PersonPlatform } from '../../../../../../tunes/shared/explorersPersonContract';
 import { richNoteFromEditor } from '../../../../../../tunes/shared/explorersRichNoteContract';
 import TiptapEditor from '../../../Favorites/components/TiptapEditor';
+import { useOriginBack } from "../../../../lib/navigation/useOriginBack";
+import { listPath } from "../../../../lib/navigation/categoryRoutes";
+import { useTranslation } from "react-i18next";
 
 // twitter is stored; the form has always offered x, so the option carries both.
 const PLATFORM_LABELS: Record<PersonPlatform, string> = {
@@ -41,7 +44,10 @@ const PLATFORM_LABELS: Record<PersonPlatform, string> = {
  */
 export default function AddPersonPage() {
  const { listId, personId } = useParams<{ listId: string; personId?: string }>();
- const location = useLocation(), navigate = useNavigate();
+ const location = useLocation();
+ const { t: tBack } = useTranslation();
+ const back = useOriginBack({ to: listPath("people", listId!), label: tBack("dashboard.wp1.back.list") });
+ const backText = back.source === "state" && back.label ? tBack("dashboard.wp1.back.to", { name: back.label }) : tBack("dashboard.wp1.back.list");
  const generation = useAuthStore(state => state.generation), accountId = useAuthStore(state => state.accountId);
  const scope = JSON.stringify([generation, accountId, location.pathname, listId, personId]);
  const currentScope = useRef(scope); currentScope.current = scope;
@@ -112,7 +118,7 @@ export default function AddPersonPage() {
 
  const attachExisting = async () => {
   const captured = scope;
-  try { await commands.membership(existingId, listId!, true); if (valid(captured)) navigate(`/recommendations/people/${listId}`); }
+  try { await commands.membership(existingId, listId!, true); if (valid(captured)) back.goBack(); }
   catch (failure) { if (valid(captured)) setError(friendlyErrorMessage(failure, 'Person could not be added')); }
  };
 
@@ -160,7 +166,7 @@ export default function AddPersonPage() {
     }
     assertCurrent(captured, operation); await PeopleClient.createManual(intent.current.value, signal); assertCurrent(captured, operation);
    }
-   invalidatePeople(); toast.success('Person saved'); navigate(`/recommendations/people/${listId}`, { state: { justAddedRecommendation: true } });
+   invalidatePeople(); toast.success('Person saved'); back.goBack({ state: { justAddedRecommendation: true } });
   } catch (failure) { if (valid(captured, operation)) setError(friendlyErrorMessage(failure, 'Person could not be saved')); }
   finally { if (valid(captured, operation)) setSaving(false); }
  };
@@ -169,7 +175,7 @@ export default function AddPersonPage() {
  // owned by its original observation across refreshes and never rebases.
  if (personId && initialized.current !== scope) {
   return <div className="min-h-screen text-dashboard p-4" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
-   <button aria-label="Back to person list" onClick={() => navigate(`/recommendations/people/${listId}`)}><ArrowLeft size={20} /></button>
+   <button aria-label={backText} onClick={() => back.goBack()}><ArrowLeft size={20} /></button>
    <h1 className="font-semibold">Edit Person</h1>
    {owner.loading ? <p role="status">Loading person…</p> : <div role="alert"><p>{owner.error?.message || 'Person could not be loaded. Refresh before editing.'}</p><button onClick={owner.refetch}>Retry loading person</button></div>}
   </div>;
@@ -177,7 +183,7 @@ export default function AddPersonPage() {
 
  return <div className="min-h-screen text-dashboard">
   <header className="border-b border-dashboard-border px-4 md:px-6 py-3 flex items-center gap-3">
-   <button aria-label="Back to person list" onClick={() => navigate(`/recommendations/people/${listId}`)}><ArrowLeft size={20} /></button>
+   <button aria-label={backText} onClick={() => back.goBack()}><ArrowLeft size={20} /></button>
    <h1 className="font-semibold">{personId ? 'Edit Person' : 'Add Person'}</h1>
   </header>
   <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-6" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>

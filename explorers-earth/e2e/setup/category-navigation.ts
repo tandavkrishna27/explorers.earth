@@ -563,6 +563,10 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
         return json({ ...structuredClone(state.publicResource), revision: state.revision, permissions: state.guestControls });
       }
       if (/^\/api\/explorers\/analytics\//.test(path) && request.method() === 'POST') return json({ accepted: true }, 201);
+      // Add pages (Movies genres, People/Places taxonomy) read these catalogs; empty is enough for navigation cases.
+      if (path === '/api/explorers/v1/catalog/movie-genres' && request.method() === 'GET') return json({ version: 'explorers-movie-genres/v1', items: [] });
+      if (path === '/api/explorers/v1/catalog/taxonomy' && request.method() === 'GET') return json({ version: 'explorers-taxonomy-catalog/v1',
+        category: url.searchParams.get('category'), state: 'UNCONFIGURED', catalogVersion: 0, requestedLocale: null, defaultLocale: null, items: [], nextCursor: null });
     }
     if (isContainedMusicAuthority) {
       denied.push(`${request.method()} external ${url.hostname}${url.pathname}`);
