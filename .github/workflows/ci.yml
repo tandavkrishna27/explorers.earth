@@ -336,6 +336,12 @@ jobs:
           # fixture can intercept them instead of constructing /undefined URLs.
           VITE_PAYMENT_API_URL: http://localhost:5173
 
+      - name: Run dashboard layout geometry E2E
+        # Same contained fixture as lane b; its own config keeps lane b's discovery manifest exact.
+        if: success() || failure()
+        run: npx playwright test --config=playwright.dashboard-layout.config.ts
+        env:
+          CI: true
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
