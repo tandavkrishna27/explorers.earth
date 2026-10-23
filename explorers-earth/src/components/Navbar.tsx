@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useLayoutEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Home from "../assets/icons/Home";
@@ -42,6 +42,33 @@ const navItems = [
 const Navbar = () => {
   const { t } = useTranslation();
   const location = useLocation();
+  // Ruling R2: publish the space the phone bottom nav takes above the viewport bottom
+  // (innerHeight - top, so env(safe-area-inset-bottom) under a bottom-0 bar is included).
+  const barRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = barRef.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const publish = () => {
+      const px = Math.max(0, Math.round(window.innerHeight - el.getBoundingClientRect().top));
+      root.style.setProperty("--bottom-nav-height", `${px}px`);
+    };
+    publish();
+    let ro: ResizeObserver | null = null;
+    try {
+      ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(publish);
+      ro?.observe(el);
+    } catch {
+      // Non-constructible ResizeObserver (some test shims): the resize listener still covers it.
+      ro = null;
+    }
+    window.addEventListener("resize", publish);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", publish);
+      root.style.removeProperty("--bottom-nav-height");
+    };
+  }, []);
   const navigate = useNavigate();
 
   // Helper function to normalize paths by removing trailing slashes
@@ -81,7 +108,7 @@ const Navbar = () => {
   const allNavItems = navItems;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 md:bottom-2 md:left-1/2 md:-translate-x-1/2 md:rounded-lg z-50 w-full md:w-[450px] bg-dashboard-sidebar backdrop-blur-lg text-dashboard flex md:flex-row md:justify-center md:items-center justify-center py-2 px-2 md:p-1 shadow-lg border-t md:border-t-0 border-dashboard/50">
+    <div ref={barRef} data-testid="phone-bottom-nav" className="fixed bottom-0 left-0 right-0 md:bottom-2 md:left-1/2 md:-translate-x-1/2 md:rounded-lg z-50 w-full md:w-[450px] bg-dashboard-sidebar backdrop-blur-lg text-dashboard flex md:flex-row md:justify-center md:items-center justify-center py-2 px-2 md:p-1 shadow-lg border-t md:border-t-0 border-dashboard/50">
       <div className="flex flex-row justify-between gap-1 w-full max-w-md mx-auto">
         {allNavItems.map((item) => {
           const isActive = !(item as any).isExternal && isPathMatch(location.pathname, item.path, item.id);

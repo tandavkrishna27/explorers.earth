@@ -52,7 +52,7 @@ createRoot(document.getElementById("root")!).render(
       <ApolloProvider client={client}>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
-            <Toaster />
+            <Toaster position="bottom-center" />
             <RevisionConflictHost />
             <App />
           </ThemeProvider>

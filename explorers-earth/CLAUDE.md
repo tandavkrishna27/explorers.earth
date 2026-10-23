@@ -57,7 +57,6 @@ src/
 │   ├── useMediaViewer.ts               # Image/media viewer modal state
 │   ├── usePageTracking.ts              # GA4 page-view tracking
 │   ├── useResponsiveChart.ts           # Chart dimensions from viewport
-│   ├── useToast.ts                     # Toast notifications
 │   └── useUsernameValidation.ts        # Async username availability check
 ├── lib/
 │   ├── apolloCache.ts          # Immutable-ID GraphQL normalization policy
