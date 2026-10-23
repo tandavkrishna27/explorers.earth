@@ -7,6 +7,7 @@ import type { Pool, PoolClient } from 'pg';
 import type { CollectionCoreDto, RecommendationCoreDto, TopPickCategory, CategoryTopPicksInput, CategoryTopPicksResult,DisplayOverrides,ReorderCategoryListsInput,CategoryListsOrderResult } from '../../shared/explorersContract';
 import {createCollectionResultSchema,type CreateCollectionResult} from '../../shared/explorersContract';
 import { lockContentCategories } from '../db/explorers-content-lock';
+import { SAMPLE_PUBLISH_REFUSAL } from '../../shared/explorersSampleContract';
 import type { RichNote } from '../../shared/explorersRichNoteContract';
 import {emptyBookDetails,bookDisplayFieldsSchema,bookEntityDetailsSchema,type BookCandidate,type BookEntityDetails,type BookRecommendationContext} from '../../shared/explorersBookContract';
 import {insertBookDetails,readBookEntity,writeBookContext} from './bookCatalogRepository';
@@ -32,6 +33,7 @@ export type RecommendationRecord = RecommendationCoreDto;
 export class RecommendationFailure extends Error {
   constructor(readonly status:404|409|413|422, message:string) {super(message);}
 }
+const SAMPLE_CONSTRAINTS:ReadonlySet<string>=new Set(['collections_sample_never_public','recommendations_sample_never_published']);
 const hash=(value:string)=>createHash('sha256').update(value).digest();
 // Hash normalized domain inputs, independent of transport JSON object insertion order.
 function canonical(value:unknown):string {
@@ -40,7 +42,7 @@ function canonical(value:unknown):string {
   return `{${Object.entries(value).filter(([,v])=>v!==undefined).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>`${JSON.stringify(k)}:${canonical(v)}`).join(',')}}`;
 }
 const collectionDto=(r:any):CollectionRecord=>({id:r.id,accountId:r.account_id,category:r.category,title:r.title,slug:r.slug,
-  visibility:r.visibility,publicationState:r.publication_state,revision:Number(r.revision),description:r.description,heading:r.heading,coverMediaId:r.cover_media_id??null});
+  visibility:r.visibility,publicationState:r.publication_state,revision:Number(r.revision),description:r.description,heading:r.heading,coverMediaId:r.cover_media_id??null,isSample:r.is_sample===true});
 const recommendationDto=(r:any):RecommendationRecord=>({id:r.id,accountId:r.account_id,entityId:r.entity_id,category:r.category,userRating:r.user_rating,publicationState:r.publication_state,revision:Number(r.revision),mediaIds:r.media_ids??[]});
 
 /** Internal persistence seam: application authorization and typed transport validation precede calls. */
@@ -64,7 +66,13 @@ export class ExplorersRecommendationRepository {
   private async transaction<T>(work:(db:PoolClient)=>Promise<T>):Promise<T> {
     const db=await this.pool.connect();
     try {await db.query('BEGIN');const result=await work(db);await db.query('COMMIT');return result;}
-    catch(e) {await db.query('ROLLBACK');throw e;} finally {db.release();}
+    catch(e) {
+      await db.query('ROLLBACK');
+      // S3/0071 CHECKs are the storage backstop for sample publish refusal (SMP-03).
+      const failure=e as {code?:string;constraint?:string};
+      if(failure.code==='23514'&&SAMPLE_CONSTRAINTS.has(failure.constraint??''))throw new RecommendationFailure(422,SAMPLE_PUBLISH_REFUSAL);
+      throw e;
+    } finally {db.release();}
   }
   private async command<T>(accountId:string,operation:string,input:unknown,key:string,work:(db:PoolClient)=>Promise<T>):Promise<T> {
     if(!/^[A-Za-z0-9._~-]{8,200}$/.test(key)) throw new RecommendationFailure(422,'Idempotency key required');
@@ -261,12 +269,14 @@ export class ExplorersRecommendationRepository {
       return inserted.rows[0] as {id:string;kind:CatalogKind;title:string};
     });
   }
-  async createCollection(accountId:string,input:{category:ContentCategory;title:string;slug:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails;parentLocationCollectionId?:string;parentExpectedRevision?:number},key:string):Promise<CreateCollectionResult> {
+  async createCollection(accountId:string,input:{category:ContentCategory;title:string;slug:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails;parentLocationCollectionId?:string;parentExpectedRevision?:number;isSample?:true},key:string):Promise<CreateCollectionResult> {
     const linked=input.parentLocationCollectionId!==undefined;
     if(linked!==(input.parentExpectedRevision!==undefined))throw new RecommendationFailure(422,'Parent identity and revision are required together');
     if(linked&&(!Number.isSafeInteger(input.parentExpectedRevision)||(input.parentExpectedRevision??0)<1))throw new RecommendationFailure(422,'Invalid revision');
     if(linked&&!linkableChildCategorySchema.safeParse(input.category).success)throw new RecommendationFailure(422,'Only Products and People lists link to a location');
     const normalized={...input,visibility:input.visibility??'private',publicationState:input.publicationState??'draft'};
+    // Internal seeder flag only; the HTTP create schema is strict and has no isSample.
+    if(input.isSample&&(normalized.visibility!=='private'||normalized.publicationState!=='draft'))throw new RecommendationFailure(422,SAMPLE_PUBLISH_REFUSAL);
     return this.command(accountId,'createCollection',normalized,key,async db=>{
       const parent=linked?await this.lockCollection(db,accountId,input.parentLocationCollectionId!,input.parentExpectedRevision!):undefined;
       if(parent&&parent.category!=='places')throw new RecommendationFailure(422,'A location list is required');
@@ -276,9 +286,9 @@ export class ExplorersRecommendationRepository {
         WHERE r.account_id=$1 AND r.category=$2 AND r.old_slug=$3 AND c.archived_at IS NULL`,[accountId,input.category,input.slug]);
       if(redirected.rowCount)throw new RecommendationFailure(409,'Content conflicts with an existing resource');
       await db.query('DELETE FROM collection_slug_redirects WHERE account_id=$1 AND category=$2 AND old_slug=$3',[accountId,input.category,input.slug]);
-      const result=await db.query(`INSERT INTO collections(account_id,category,title,slug,visibility,publication_state,display_order)
-        SELECT $1,$2,$3,$4,$5,$6,coalesce(max(display_order)+1,0) FROM collections WHERE account_id=$1 AND category=$2 RETURNING *`,
-        [accountId,input.category,input.title,input.slug,normalized.visibility,normalized.publicationState]);
+      const result=await db.query(`INSERT INTO collections(account_id,category,title,slug,visibility,publication_state,display_order,is_sample)
+        SELECT $1,$2,$3,$4,$5,$6,coalesce(max(display_order)+1,0),$7 FROM collections WHERE account_id=$1 AND category=$2 RETURNING *`,
+        [accountId,input.category,input.title,input.slug,normalized.visibility,normalized.publicationState,input.isSample===true]);
       await db.query('UPDATE collections SET description=$2,heading=$3 WHERE id=$1',[result.rows[0].id,input.description??null,input.heading??null]);
       await this.replaceCover(db,accountId,result.rows[0].id,input.coverMediaId??null);
       if(input.category!=='places'&&input.placeLocation!==undefined)throw new RecommendationFailure(422,'Category context mismatch');
@@ -308,13 +318,13 @@ export class ExplorersRecommendationRepository {
     if(Number(result.rows[0].revision)!==revision) throw new RecommendationFailure(409,'Stale collection revision');
     return result.rows[0];
   }
-  async createRecommendation(accountId:string,input:{category:Exclude<ContentCategory,'guides'>;entityId:string;collectionId:string;expectedCollectionRevision:number;userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null;displayOverrides?:DisplayOverrides;bookContext?:BookRecommendationContext;movieContext?:MovieContext;movieTermIds?:string[];appScreenshots?:AppScreenshots;productOffer?:ProductOffer;placeContext?:PlaceRecommendationContext;placePhotos?:PlacePhotos}&TaxonomyAssignmentInput,key:string):Promise<RecommendationRecord> {
+  async createRecommendation(accountId:string,input:{category:Exclude<ContentCategory,'guides'>;entityId:string;collectionId:string;expectedCollectionRevision:number;userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null;displayOverrides?:DisplayOverrides;bookContext?:BookRecommendationContext;movieContext?:MovieContext;movieTermIds?:string[];appScreenshots?:AppScreenshots;productOffer?:ProductOffer;placeContext?:PlaceRecommendationContext;placePhotos?:PlacePhotos;isSample?:true}&TaxonomyAssignmentInput,key:string):Promise<RecommendationRecord> {
     return this.command(accountId,'createRecommendation',input,key,async db=>{
       if(input.category!=='places'&&input.placesTaxonomy!==undefined||input.category!=='people'&&input.peopleSectorTermId!==undefined||!isFlatCuratedCategory(input.category)&&input.curatedTermId!==undefined)throw new RecommendationFailure(422,'Category taxonomy mismatch');
       const list=await this.lockCollection(db,accountId,input.collectionId,input.expectedCollectionRevision);
       if(list.category!==input.category) throw new RecommendationFailure(422,'Collection category mismatch');
-      const result=await db.query(`INSERT INTO recommendations(account_id,entity_id,category,user_rating,publication_state,note)
-        VALUES($1,$2,$3,$4,$5,$6::jsonb) RETURNING *`,[accountId,input.entityId,input.category,input.userRating??null,input.publicationState??'draft',input.note==null?null:JSON.stringify(input.note)]);
+      const result=await db.query(`INSERT INTO recommendations(account_id,entity_id,category,user_rating,publication_state,note,is_sample)
+        VALUES($1,$2,$3,$4,$5,$6::jsonb,$7) RETURNING *`,[accountId,input.entityId,input.category,input.userRating??null,input.publicationState??'draft',input.note==null?null:JSON.stringify(input.note),input.isSample===true]);
       await db.query(`INSERT INTO collection_items(collection_id,recommendation_id,account_id,category,display_order)
         SELECT $1,$2,$3,$4,coalesce(max(display_order)+1,0) FROM collection_items WHERE collection_id=$1`,
         [input.collectionId,result.rows[0].id,accountId,input.category]);
