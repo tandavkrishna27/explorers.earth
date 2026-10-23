@@ -26,7 +26,7 @@ export function createNativeNavigationContentFixture(category: 'movies' | 'games
         title: owned.list.List_Name, slug: owned.list.slug,
         visibility: owned.list.visibility ? 'public' : 'private',
         publicationState: owned.list.canonicalPublicationState ?? (owned.list.Visibility ? 'published' : 'draft'),
-        revision: owned.list.canonicalRevision ?? 1, description: null, heading: null, coverMediaId: null,
+        revision: owned.list.canonicalRevision ?? 1, description: null, heading: null, coverMediaId: null, isSample: false,
         archived: owned.list.archived === true, displayOrder: owned.displayOrder,
         categoryRevision: String(revision), pinOrder: null,
         ...(category === 'places'
@@ -80,7 +80,7 @@ export function createNativeNavigationContentFixture(category: 'movies' | 'games
       id: bookFixtureId('collection', list.documentId), accountId: canonicalAccountFixture().id, category,
       title: list.List_Name, slug: list.slug, visibility: list.visibility ? 'public' : 'private',
       publicationState: list.canonicalPublicationState ?? (list.Visibility ? 'published' : 'draft'),
-      revision: list.canonicalRevision ?? 1, description: null, heading: null, coverMediaId: null,
+      revision: list.canonicalRevision ?? 1, description: null, heading: null, coverMediaId: null, isSample: false,
       archived: list.archived === true, displayOrder,
     }));
     let snapshotToken = params.snapshotToken;

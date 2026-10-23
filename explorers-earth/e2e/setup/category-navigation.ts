@@ -245,7 +245,7 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
         list.canonicalRevision=(list.canonicalRevision??1)+1;
         result={collection:collectionCoreDtoSchema.parse({id:bookCollectionCommand[1],accountId:canonicalAccountFixture().id,category:'books',title:list.List_Name,slug:list.slug,
           visibility:list.visibility?'public':'private',publicationState:list.Visibility?'published':'draft',revision:list.canonicalRevision,
-          description:list.list_description??null,heading:list.top_reads_heading??null,coverMediaId:null})};
+          description:list.list_description??null,heading:list.top_reads_heading??null,coverMediaId:null,isSample:false})};
       }
       booksCommands.set(replayKey,{body:serialized,result});
       return fault?.kind==='lost' ? fail('PROVIDER_UNAVAILABLE',503) : reply(result);

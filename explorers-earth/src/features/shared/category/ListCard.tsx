@@ -117,10 +117,8 @@ export default function ListCard({ category, list, busy, dragging, over, picked,
       </div>
       {sample && <div className="text-[11px] text-gray-500">{t("samples.onlyYou", "Only you can see this")}</div>}
       {confirmDelete && (
-        <span className="relative z-30" onClick={stop}>
-          <SampleDeleteDialog busy={sampleBusy} onCancel={() => setConfirmDelete(false)}
-            onConfirm={() => void runSample(commands.remove, t("samples.deletedToast", "Sample deleted"))} />
-        </span>
+        <SampleDeleteDialog busy={sampleBusy} onCancel={() => setConfirmDelete(false)}
+          onConfirm={() => void runSample(commands.remove, t("samples.deletedToast", "Sample deleted"))} />
       )}
     </div>
   );

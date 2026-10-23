@@ -1,13 +1,6 @@
 import { useContext, useMemo } from "react";
 import { QueryClientContext, type QueryClient } from "@tanstack/react-query";
 import { explorersApiClient, ExplorersApiError } from "../../../lib/explorersApiClient";
-import { invalidateApps } from "../../AppsAndTools/hooks/useAppsOwner";
-import { invalidatePlaces } from "../../Favorites/hooks/usePlacesOwner";
-import { invalidateGames } from "../../Games/hooks/useGamesOwner";
-import { invalidateGuides } from "../../Guides/hooks/useGuidesOwner";
-import { invalidateMovies } from "../../Movies/api/explorersAdapter";
-import { invalidatePeople } from "../../People/hooks/usePeopleOwner";
-import { invalidateProducts } from "../../Products/hooks/useProductsOwner";
 
 const newKey = () => crypto.randomUUID();
 
@@ -17,10 +10,18 @@ const newKey = () => crypto.randomUUID();
  * events), and React Query reads such as navigation counts. A converted or deleted sample must
  * not survive as a stale copy anywhere.
  */
-export function refreshSampleCaches(queryClient?: QueryClient | null) {
-  invalidateApps(); invalidatePlaces(); invalidateGames(); invalidateGuides();
-  invalidateMovies(); invalidatePeople(); invalidateProducts();
+// Loaded lazily so a category's import closure (e.g. the Books Strapi boundary) never gains the
+// other categories' modules; by the time a sample command runs they are already loaded.
+export async function refreshSampleCaches(queryClient?: QueryClient | null) {
   void queryClient?.invalidateQueries();
+  const [apps, places, games, guides, movies, people, products] = await Promise.all([
+    import("../../AppsAndTools/hooks/useAppsOwner"), import("../../Favorites/hooks/usePlacesOwner"),
+    import("../../Games/hooks/useGamesOwner"), import("../../Guides/hooks/useGuidesOwner"),
+    import("../../Movies/api/explorersAdapter"), import("../../People/hooks/usePeopleOwner"),
+    import("../../Products/hooks/useProductsOwner"),
+  ]);
+  apps.invalidateApps(); places.invalidatePlaces(); games.invalidateGames(); guides.invalidateGuides();
+  movies.invalidateMovies(); people.invalidatePeople(); products.invalidateProducts();
 }
 
 /** A 409/404 on Make it mine means another tab already converted (or removed) it: just refetch. */
@@ -32,7 +33,7 @@ const alreadySettled = (error: unknown) => error instanceof ExplorersApiError &&
  * purge: a deleted sample never comes back. `onChanged` lets the caller refetch its own read.
  */
 export function sampleCommands(listId: string, onChanged?: () => void, queryClient?: QueryClient | null) {
-  const settle = () => { refreshSampleCaches(queryClient); onChanged?.(); };
+  const settle = async () => { onChanged?.(); await refreshSampleCaches(queryClient); };
   return {
     makeMine: async () => {
       try {
@@ -41,12 +42,12 @@ export function sampleCommands(listId: string, onChanged?: () => void, queryClie
       } catch (error) {
         if (!alreadySettled(error)) throw error;
       }
-      settle();
+      await settle();
     },
     remove: async () => {
       const observed = await explorersApiClient.getMyEditableCollection(listId);
       await explorersApiClient.purgeMyCollection(observed, newKey());
-      settle();
+      await settle();
     },
   };
 }
