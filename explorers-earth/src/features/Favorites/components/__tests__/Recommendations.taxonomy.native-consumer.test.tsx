@@ -25,7 +25,6 @@ vi.mock("../../../../store/useSetupStore", () => ({
 
 // Heavy children are not under test here.
 vi.mock("../TopPlacesByCategory", () => ({ default: () => null }));
-vi.mock("../AddPlaceOverlay", () => ({ default: () => null }));
 vi.mock("../InstagramPostImport", () => ({ default: () => null }));
 vi.mock("../../../PublicHome/components/PlaceDetails/PlaceOverview", () => ({ default: () => null }));
 vi.mock("../../../Products/components/public/ProductDetailModal", () => ({ default: () => null }));

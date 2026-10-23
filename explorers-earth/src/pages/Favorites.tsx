@@ -21,13 +21,13 @@ import { importPlaceCover } from "../features/Favorites/hooks/useCreateLocation"
 import { usePlacesOwner } from "../features/Favorites/hooks/usePlacesOwner";
 import { usePlacesCommands } from "../features/Favorites/api/placesCommands";
 import { useMenuItems } from "../features/Favorites/hooks/useMenuItems";
-import { KeyValuePair } from "../features/Favorites/components/RecommendForm";
+import { KeyValuePair } from "../features/Favorites/formValues";
 import SwitchButton from "../components/ui/SwitchButton";
 import useAuthStore from "../store/store";
 import { useCityStore } from "../store/useCityStore";
 import { IMAGE_CONFIG } from "../config";
-import { useLocation, useSearchParams } from "react-router-dom";
-import { PLACE_LIST_PARAM } from "../features/Favorites/placeListRoute";
+import { Navigate, useLocation, useSearchParams } from "react-router-dom";
+import { PLACE_LIST_PARAM, placeListPath } from "../features/Favorites/placeListRoute";
 import { CategoryVisibilityModal } from "../components/CategoryVisibilityModal";
 import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
@@ -35,7 +35,6 @@ import { useRecommendationsWalkthrough } from "../hooks/useRecommendationsWalkth
 import Joyride from "react-joyride";
 import useSetupStore from "../store/useSetupStore";
 import { calculateIsRecommendationsComplete } from "../utils/setupStatusCalculations";
-import { ListVisibilityModal } from "../components/ListVisibilityModal";
 import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
 import { keyboardActivation } from "../utils/keyboardActivation";
 export interface Recommendation {
@@ -95,17 +94,14 @@ const FavoritesSkeleton = () => {
   );
 };
 
-const Favorites = memo(() => {
+const FavoritesHome = memo(() => {
   const navigation = useCategoryNavigation();
   const categoryVisible = navigation.snapshot?.visibility.public_recommendations === "Yes";
   const { t } = useTranslation();
   const { selectedCity, setSelectedCity } = useCityStore();
   const location = useLocation();
-  // OWN-05. The open list is in the URL; the city store follows it on entry and the URL
-  // follows the store afterwards, so a return path that names the list lands on it.
-  const [searchParams, setSearchParams] = useSearchParams();
-  const requestedListId = searchParams.get(PLACE_LIST_PARAM);
-  const appliedListParam = useRef<string | null | undefined>(undefined);
+  // OWN-05. A list opens on its own route (/recommendations/places/<id>, WP6); the
+  // wrapper below redirects the old ?list= deep link there.
   // fetching the user details from the global state
   const { generation: sessionGeneration } = useAuthStore();
   const canonicalAccount = useCanonicalAccount();
@@ -132,11 +128,6 @@ const Favorites = memo(() => {
     defaultValue: boolean;
   } | null>(null);
 
-  const [listVisibilityPrompt, setListVisibilityPrompt] = useState<{
-    isOpen: boolean;
-    listName: string;
-    listDocumentId: string;
-  } | null>(null);
 
 
   // Check if profile setup is complete
@@ -171,20 +162,6 @@ const Favorites = memo(() => {
     }
   }, [loading, accountById]);
 
-  useEffect(() => {
-    const listId = location.state?.justAddedRecommendationToListId;
-    if (listId && cities?.recommendationLists) {
-      const targetList = cities.recommendationLists.find((l: any) => l.documentId === listId);
-      if (targetList && !targetList.Visibility) {
-        setListVisibilityPrompt({
-          isOpen: true,
-          listName: targetList.List_Name,
-          listDocumentId: listId,
-        });
-      }
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state, cities]);
 
   // // local state for handling current list displayed on the carousel
   // const [selectedCity, setSelectedCity] = useState<selectedCity>(
@@ -491,30 +468,9 @@ const Favorites = memo(() => {
   useEffect(() => {
     const lists = cities?.recommendationLists;
     if (!lists?.length) return;
-    // A new ?list= (entry, or a return path) wins once over whatever the store holds.
-    if (requestedListId !== appliedListParam.current) {
-      appliedListParam.current = requestedListId;
-      const requested = requestedListId ? lists.find((list: any) => list.documentId === requestedListId) : undefined;
-      if (requested) {
-        if (selectedCity?.documentId !== requested.documentId) setSelectedCity(requested as unknown as selectedCity);
-        return;
-      }
-    }
-    // The first list only when nothing names one.
-    if (!selectedCity) {
-      setSelectedCity(lists[0] as unknown as selectedCity);
-      return;
-    }
-    // Afterwards the URL follows the selection (city carousel, a newly created list).
-    if (selectedCity.documentId && selectedCity.documentId !== requestedListId) {
-      appliedListParam.current = selectedCity.documentId;
-      setSearchParams((previous) => {
-        const next = new URLSearchParams(previous);
-        next.set(PLACE_LIST_PARAM, selectedCity.documentId!);
-        return next;
-      }, { replace: true, state: location.state });
-    }
-  }, [cities, selectedCity, requestedListId, setSelectedCity, setSearchParams, location.state]);
+    // The first list only when nothing is selected yet.
+    if (!selectedCity) setSelectedCity(lists[0] as unknown as selectedCity);
+  }, [cities, selectedCity, setSelectedCity]);
 
   // filtering and sorting the cities based on pinning/display_order
   const filteredCities = useMemo(() => {
@@ -626,14 +582,6 @@ const Favorites = memo(() => {
   // MANUAL RESURRECTION: Auto-resume walkthrough after place is added - Step 1 to Step 2 (INSTANTANEOUS)
 
   // Auto-advance after publish toggle - Step 3 to Step 4 (INSTANTANEOUS)
-
-  const handleCitySelect = (index: {
-    List_Name?: string;
-    imageUrl?: string;
-    documentId?: string;
-  }) => {
-    setSelectedCity(index);
-  };
 
   const handleConfirmDeleteModal = () => {
     setShowConfirmDeleteModal(true);
@@ -919,7 +867,9 @@ const Favorites = memo(() => {
               categoryVisibility={categoryVisible ? "public" : "hidden"}
               visibilityBusy={navigation.busy || !navigation.authority}
               onCategoryVisibility={() => handleVisibilityToggle()}
-              onOpenList={(id) => { const city = filteredCities.find((c: any) => c.documentId === id); if (city) { handleCitySelect(city); setStep(2); } }}
+              // The list opens in place: location editing (name, point, cover) still lives on
+              // this page's Manage view. The shared list page serves /recommendations/places/<id>.
+              onOpenList={(id) => { const city = filteredCities.find((c: any) => c.documentId === id); if (city) { setSelectedCity(city as unknown as selectedCity); setStep(2); } }}
               onRetry={() => { void refetchCities(); }}
               onChanged={() => { void refetchCities(); archivedPlaces.reload(); }}
               newList={{ kind: "dialog", username: canonicalAccount.data?.handle ?? "", onCreated: (id) => { void openCreatedList(id); }, create: placesCreate }}
@@ -1316,32 +1266,19 @@ const Favorites = memo(() => {
             }}
           />
         )}
-        {listVisibilityPrompt && (
-          <ListVisibilityModal
-            isOpen={listVisibilityPrompt.isOpen}
-            onClose={() => setListVisibilityPrompt(null)}
-            listName={listVisibilityPrompt.listName}
-            categoryName="Places"
-            onConfirm={async () => {
-              try {
-                await updateRecommendedList({
-                  variables: {
-                    documentId: listVisibilityPrompt.listDocumentId,
-                    data: { Visibility: true },
-                  },
-                });
-                await refetchCities();
-                toast.success(`"${listVisibilityPrompt.listName}" list published!`);
-              } catch (err) {
-                console.error(err);
-                toast.error("Failed to publish list.");
-              }
-            }}
-          />
-        )}
       </div>
     </>
   );
 });
+
+/**
+ * The Places category page. A list opens on the shared list page (WP6); the old
+ * `?list=<id>` deep link (WP0B) is redirected there.
+ */
+const Favorites = () => {
+  const [searchParams] = useSearchParams();
+  const listId = searchParams.get(PLACE_LIST_PARAM);
+  return listId ? <Navigate replace to={placeListPath(listId)} /> : <FavoritesHome />;
+};
 
 export default Favorites;

@@ -39,7 +39,9 @@ describe("runtime route/event/job inventory", () => {
     // 197 = 195 + Home's content summary GET and its fail-closed method boundary (HUB-X02).
     // 198 = 197 + the IGDB game cover import (POST /api/explorers/v1/media/game-cover, GMS-X01).
     // 202 = 198 + restore and permanent delete of a list, each with its fail-closed method boundary (WP3B, LP-08).
-    expect(inventory.routes).toHaveLength(204);
+    // 204 = 202 + WP6 places nearby (GET /api/explorers/v1/places/nearby and its ALL guard)
+    // 206 = 204 + WP11 Make it mine (POST /api/explorers/v1/collections/:id/make-it-mine and its ALL guard)
+    expect(inventory.routes).toHaveLength(206);
     expect(inventory.events).toHaveLength(15);
     // 38 = 37 + the Google profile photo fetch deadline (googleAvatarFetch.ts).
     // 39 = 38 + the place photo fetch deadline (tunes/server/services/placePhotoFetch.ts).
@@ -95,7 +97,7 @@ describe("runtime route/event/job inventory", () => {
     // tunes/server/routes/canonicalRetiredSurfaceRoutes.ts, which answers 410 on every
     // method for a retired path and calls next() for everything else.
     expect(inventory.routes.filter((route) => route.method === "ALL"
-      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(16);
+      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(17); // 17 = 16 + WP6 places nearby
     // Decision D2. GET reports the address and must not write; POST performs it, which is
     // also what RFC 8058 one-click unsubscribe sends. Both are public: the authority is
     // the purpose-bound HMAC in the token, not the caller.
@@ -104,6 +106,8 @@ describe("runtime route/event/job inventory", () => {
     expect(inventory.routes).toContainEqual(expect.objectContaining({ method: "ALL", path: "/api/explorers/v1/public/email/unsubscribe", classification: "tombstone" }));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/catalog/games',classification:'canonical-explorers-owner'}));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'ALL',path:'/api/explorers/v1/catalog/games',classification:'tombstone'}));
+    expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/places/nearby',classification:'canonical-explorers-owner'}));
+    expect(inventory.routes).toContainEqual(expect.objectContaining({method:'ALL',path:'/api/explorers/v1/places/nearby',classification:'tombstone'}));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/catalog/movie-genres',classification:'canonical-explorers-owner'}));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'ALL',path:'/api/explorers/v1/catalog/movie-genres',classification:'tombstone'}));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/catalog/movies',classification:'canonical-explorers-owner'}));

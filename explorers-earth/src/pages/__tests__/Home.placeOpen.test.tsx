@@ -118,7 +118,7 @@ describe("Home place list click (OWN-18)", () => {
   it("opens that list, not the hub", async () => {
     render(<Home />);
     fireEvent.click(await screen.findByText("Beta City"));
-    expect(navigate).toHaveBeenCalledWith("/recommendations/places?list=location-b");
+    expect(navigate).toHaveBeenCalledWith("/recommendations/places/location-b");
     expect(navigate).not.toHaveBeenCalledWith("/recommendations");
   });
 });

@@ -103,7 +103,7 @@ describe("explorers.yml renders production.env from the explorers-production env
 
   it("takes every value from a step environment variable of the same GitHub name", () => {
     const secrets = ["EXPLORERS_AUTH_SECRET", "MUSIC_GATE_ATTESTATION_KEY", "GOOGLE_CLIENT_SECRET", "GOOGLE_BOOKS_API_KEY",
-      "TMDB_ACCESS_TOKEN", "EXPLORERS_S3_ACCESS_KEY_ID", "EXPLORERS_S3_SECRET_ACCESS_KEY", "IGDB_CLIENT_SECRET"];
+      "TMDB_ACCESS_TOKEN", "EXPLORERS_S3_ACCESS_KEY_ID", "EXPLORERS_S3_SECRET_ACCESS_KEY", "IGDB_CLIENT_SECRET", "GOOGLE_PLACES_API_KEY"];
     const variables = ["GOOGLE_CLIENT_ID", "EXPLORERS_MEDIA_S3_BUCKET", "EXPLORERS_MEDIA_S3_REGION",
       "EXPLORERS_BACKUP_AGE_RECIPIENT", "EXPLORERS_TRUSTED_PROXY_IP", "IGDB_CLIENT_ID"];
     const expected = Object.fromEntries([
@@ -180,6 +180,7 @@ describe("deploy/render-production-env.sh", () => {
       EXPLORERS_BACKUP_AGE_RECIPIENT: INPUTS.EXPLORERS_BACKUP_AGE_RECIPIENT,
       IGDB_CLIENT_ID: "",
       IGDB_CLIENT_SECRET: "",
+      GOOGLE_PLACES_API_KEY: "",
     });
   });
 
@@ -271,6 +272,16 @@ describe("deploy/host/validate-production-env.sh", () => {
     expect(result.stderr).toContain("FAIL: production.env: EXPLORERS_BACKUP_AGE_RECIPIENT must be the age PUBLIC key");
   });
 
+  it("treats GOOGLE_PLACES_API_KEY as optional: blank means OpenStreetMap only, a set key passes through", () => {
+    const unset = render(INPUTS);
+    expect(unset.status, unset.output).toBe(0);
+    expect(readFileSync(unset.out, "utf8")).toMatch(/^GOOGLE_PLACES_API_KEY=$/m);
+    const set = render({ ...INPUTS, GOOGLE_PLACES_API_KEY: "placessentinelkey0123" });
+    expect(set.status, set.output).toBe(0);
+    expect(set.output).not.toContain("placessentinelkey0123");
+    expect(readFileSync(set.out, "utf8")).toMatch(/^GOOGLE_PLACES_API_KEY=placessentinelkey0123$/m);
+  });
+
   it("checks a set IGDB pair like any other value, and only the characters Twitch issues", () => {
     let file = setValue(setValue(validFile(), "IGDB_CLIENT_ID", IGDB.IGDB_CLIENT_ID), "IGDB_CLIENT_SECRET", IGDB.IGDB_CLIENT_SECRET);
     expect(validate(file).status).toBe(0);
@@ -290,6 +301,7 @@ describe("deploy/host/validate-production-env.sh", () => {
     ["AWS_SECRET_ACCESS_KEY", "aws sentinel", "AWS_SECRET_ACCESS_KEY must be one plain value"],
     ["IGDB_CLIENT_ID", "igdbclientsentinel", "IGDB_CLIENT_ID and IGDB_CLIENT_SECRET must be set together"],
     ["IGDB_CLIENT_SECRET", "igdb.secret", "IGDB_CLIENT_ID and IGDB_CLIENT_SECRET must be set together"],
+    ["GOOGLE_PLACES_API_KEY", "places.key", "GOOGLE_PLACES_API_KEY must be letters, digits, _ or -"],
     ["GOOGLE_CLIENT_SECRET", "\"quotedsentinel\"", "GOOGLE_CLIENT_SECRET must be one plain value"],
     ["EXPLORERS_PUBLIC_ORIGIN", "https://other.sentinel", `EXPLORERS_PUBLIC_ORIGIN must be exactly https://${SERVER_NAME}`],
     ["EXPLORERS_PUBLIC_ORIGIN", `https://${SERVER_NAME}/`, `EXPLORERS_PUBLIC_ORIGIN must be exactly https://${SERVER_NAME}`],
