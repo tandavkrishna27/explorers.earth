@@ -21,6 +21,9 @@ export function parseContent<T>(schema:z.ZodType<T,any,any>,input:unknown):T {
   }
   return parsed.data;
 }
+// LP-08. Lives beside the service, not in shared/: the SPA sends a plain object. The slug
+// rule is the collection DTO's own, so a restore accepts exactly what a rename does.
+const restoreCollectionSchema=contentRevisionSchema.extend({slug:collectionCoreDtoSchema.shape.slug.optional()}).strict();
 /** Shared application boundary for HTTP and future trusted adapters. */
 export class RecommendationService {
   private readonly repository:ExplorersRecommendationRepository;
@@ -119,6 +122,18 @@ export class RecommendationService {
     return this.authorized(actor,'collections:write',async()=>{
       parseContent(contentIdSchema,id);const parsed=parseContent(contentRevisionSchema,input);
       return this.repository.archiveCollection(actor.accountId,id,parsed.expectedRevision,this.key(context));
+    });
+  }
+  async restoreCollection(actor:Actor,id:string,input:unknown,context:RequestContext) {
+    return this.authorized(actor,'collections:write',async()=>{
+      parseContent(contentIdSchema,id);const parsed=parseContent(restoreCollectionSchema,input);
+      return collectionCoreDtoSchema.parse(await this.repository.restoreCollection(actor.accountId,id,parsed.expectedRevision,parsed.slug,this.key(context)));
+    });
+  }
+  async purgeCollection(actor:Actor,id:string,input:unknown,context:RequestContext) {
+    return this.authorized(actor,'collections:write',async()=>{
+      parseContent(contentIdSchema,id);const parsed=parseContent(contentRevisionSchema,input);
+      return this.repository.purgeCollection(actor.accountId,id,parsed.expectedRevision,this.key(context));
     });
   }
   async archiveRecommendation(actor:Actor,id:string,input:unknown,context:RequestContext) {
