@@ -3,6 +3,8 @@ import "../i18n/index.js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import useAuthStore from "../store/store";
 import { authClient } from "./authClient";
+import { queryClient } from "./queryClient";
+import { canonicalAccountQuery } from "../features/Profile/api/useCanonicalAccount";
 
 describe("verified browser session", () => {
   beforeEach(() => { useAuthStore.getState().setLogoutError(false); useAuthStore.getState().logout(); vi.restoreAllMocks(); });
@@ -18,6 +20,29 @@ describe("verified browser session", () => {
     expect(calls).toEqual(["/api/auth/get-session", "/api/explorers/v1/me"]);
     expect(useAuthStore.getState()).toMatchObject({ status: "active-complete", isAuthenticated: true, accountId: "account-a", token: null });
     expect(localStorage.getItem("qrtoken")).toBeNull();
+  });
+
+  it("seeds the shared account query so the first page observer does not read /me again", async () => {
+    queryClient.clear();
+    const account = { id: "account-a", handle: "alice", onboardingStatus: "complete", revision: 1 };
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => {
+      if (input === "/api/auth/get-session") return new Response(JSON.stringify({ user: { id: "user-a", email: "a@example.invalid" }, session: { id: "session-a" } }), { status: 200 });
+      return new Response(JSON.stringify({ account }), { status: 200 });
+    }));
+    await authClient.refresh();
+    const { generation } = useAuthStore.getState();
+    expect(queryClient.getQueryData(canonicalAccountQuery("user-a", generation).queryKey)).toEqual(account);
+  });
+
+  it("does not seed a never-onboarded account, whose locale save changes its revision at once", async () => {
+    queryClient.clear();
+    vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
+      if (input === "/api/auth/get-session") return new Response(JSON.stringify({ user: { id: "user-a", email: "a@example.invalid" }, session: { id: "session-a" } }), { status: 200 });
+      if (init?.method === "PATCH") return new Response(JSON.stringify({ account: { id: "account-a", onboardingStatus: "incomplete", revision: 2 } }), { status: 200 });
+      return new Response(JSON.stringify({ account: { id: "account-a", onboardingStatus: "incomplete", revision: 1, locale: "en" } }), { status: 200 });
+    }));
+    await authClient.refresh();
+    expect(queryClient.getQueryData(canonicalAccountQuery("user-a", useAuthStore.getState().generation).queryKey)).toBeUndefined();
   });
 
   it("saves the visitor's current language on a never-onboarded account instead of overriding it", async () => {

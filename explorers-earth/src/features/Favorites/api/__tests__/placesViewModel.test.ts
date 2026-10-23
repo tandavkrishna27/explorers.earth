@@ -181,5 +181,15 @@ it('leaves archived and unhydrated lists out of the owner view instead of failin
  expect(view.lists).toHaveLength(1);
  const gone=collection({id:id(6)}) as never;
  expect(()=>placesViewModel.complete({category:'places',collections:[live,gone],memberships:[],recommendations:[]} as never,new Map([[id(2),{detail:live} as never]]),new Map())).toThrow();
- expect(placesViewModel.complete({category:'places',collections:[live,gone],memberships:[],recommendations:[]} as never,new Map([[id(2),{detail:live} as never]]),new Map(),'',new Set([id(6)])).lists).toHaveLength(1);
+ expect(placesViewModel.complete({category:'places',collections:[live,gone],memberships:[],recommendations:[]} as never,new Map([[id(2),{detail:live} as never]]),new Map(),'',new Set([id(6)])).lists).toHaveLength(2);
+});
+
+// OWN-19. A list whose detail read failed used to vanish from the owner view without a
+// word, so the owner believed it was deleted. It now stays, flagged, with no places.
+it('keeps a list whose detail read failed, as an error row',()=>{
+ const live=collection(),failed=collection({id:id(6),title:'Mysuru',slug:'mysuru',visibility:'public',publicationState:'published'}) as never;
+ const view=placesViewModel.complete({category:'places',collections:[live,failed],memberships:[{recommendationId:id(1),collectionId:id(6),displayOrder:0}],recommendations:[]} as never,new Map([[id(2),{detail:live} as never]]),new Map(),'owner',new Set([id(6)]));
+ expect(view.lists.map(list=>list.documentId)).toEqual([id(2),id(6)]);
+ expect(view.lists[0].loadError).toBeUndefined();
+ expect(view.lists[1]).toMatchObject({documentId:id(6),List_Name:'Mysuru',slug:'mysuru',Visibility:true,loadError:true,recommended_places:[],account:{documentId:id(3),username:'owner'}});
 });

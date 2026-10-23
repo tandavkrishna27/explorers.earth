@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { QueryClient } from '@tanstack/react-query';
+import { explorersApiClient } from '../../../lib/explorersApiClient';
+import useAuthStore from '../../../store/store';
+import { canonicalAccountQuery } from '../../Profile/api/useCanonicalAccount';
 import { createCategoryNavigationApi } from '../categoryNavigationApi';
 import type { AccountDto } from '../../../../../tunes/shared/explorersContract';
 export const origin = { userDocumentId: 'auth-user-17', accountDocumentId: '11111111-1111-4111-8111-111111111111', generation: 1 };
@@ -51,5 +55,39 @@ describe('canonical navigation API',()=>{
   await expect(h.api.commit(origin,{public_books:'No',public_games:'Yes',pinned_nav_tabs:['public_profile','public_guides','public_books']})).rejects.toMatchObject({kind,...(kind==='conflict'?{snapshot:{revision:9}}:{})});
   expect(h.writes).toHaveLength(1);
   expect(h.counts()).toEqual({readCount:stage==='response'?1:2,legacyCount:0});
+ });
+});
+describe('canonical navigation account through the shared query',()=>{
+ afterEach(()=>{vi.restoreAllMocks();});
+ const accounts=(client:QueryClient)=>({client,identity:()=>({identityKey:'auth-user-17',generation:useAuthStore.getState().generation})});
+ it('reads the account the page already loaded without another /me',async()=>{
+  const getMyProfile=vi.spyOn(explorersApiClient,'getMyProfile').mockResolvedValue(account());
+  const client=new QueryClient();
+  await client.fetchQuery(canonicalAccountQuery('auth-user-17',useAuthStore.getState().generation));
+  const api=createCategoryNavigationApi({isCurrent:()=>true,accounts:accounts(client)});
+  expect((await api.readAccount(origin)).revision).toBe(7);
+  expect(getMyProfile).toHaveBeenCalledTimes(1);
+ });
+ it('a save still composes against a fresh read and refreshes the shared account',async()=>{
+  const fresh=account();fresh.revision=12;const saved={...fresh,revision:13,autoPinning:true};
+  const getMyProfile=vi.spyOn(explorersApiClient,'getMyProfile').mockResolvedValueOnce(account()).mockResolvedValueOnce(fresh).mockResolvedValueOnce(saved);
+  const client=new QueryClient();
+  const key=canonicalAccountQuery('auth-user-17',useAuthStore.getState().generation).queryKey;
+  await client.fetchQuery(canonicalAccountQuery('auth-user-17',useAuthStore.getState().generation));
+  const writes:unknown[]=[];
+  const api=createCategoryNavigationApi({isCurrent:()=>true,accounts:accounts(client),profile:{getMyProfile,updateAccount:async(input)=>{writes.push(input);return saved;}}});
+  expect((await api.commit(origin,{auto_pinning:true})).revision).toBe(13);
+  expect(writes).toEqual([{expectedRevision:12,autoPinning:true}]);
+  expect(client.getQueryData<AccountDto>(key)?.revision).toBe(13);
+ });
+ it('a failed save read stays out of the shared account so page observers keep their data',async()=>{
+  const getMyProfile=vi.spyOn(explorersApiClient,'getMyProfile').mockResolvedValueOnce(account()).mockRejectedValueOnce(Error('offline'));
+  const client=new QueryClient();
+  const query=canonicalAccountQuery('auth-user-17',useAuthStore.getState().generation);
+  await client.fetchQuery(query);
+  const api=createCategoryNavigationApi({isCurrent:()=>true,accounts:accounts(client),profile:{getMyProfile,updateAccount:async()=>{throw Error('no write expected');}}});
+  await expect(api.commit(origin,{auto_pinning:true})).rejects.toBeTruthy();
+  expect(client.getQueryState(query.queryKey)?.status).toBe('success');
+  expect(client.getQueryData<AccountDto>(query.queryKey)?.revision).toBe(7);
  });
 });
