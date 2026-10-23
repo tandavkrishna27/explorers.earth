@@ -1,7 +1,7 @@
 import type {Pool, PoolClient} from 'pg';
 import {listSlugPredicate} from '../application/collectionSlug';
 import {publicProfileCursorStart} from './publicProfileContract';
-import {GUIDE_BUDGET_TIER_LABELS, GUIDE_SECTION_BLOCK_VERSION, GUIDE_TYPE_LABELS, guideSectionBlocksSchema} from '../../shared/explorersGuideContract';
+import {GUIDE_BUDGET_TIER_LABELS, GUIDE_SECTION_BLOCK_VERSION, GUIDE_TYPE_LABELS, guideSectionBlocksSchema, legacyBudgetFromEntries, legacyTimelineFromItems} from '../../shared/explorersGuideContract';
 
 /**
  * Ticket 5.3. The public Guides read.
@@ -56,11 +56,11 @@ function projectSection(row: any) {
   // 0-based in storage, 1-based in the UI, resolved in exactly one place.
   Sequence: row.display_order + 1,
   Description: row.description,
-  Timeline: data.timeline,
+  Timeline: legacyTimelineFromItems(data.items),
   Transport: data.transport,
   Stay: data.stay,
   Recommendation_Activity: data.activities,
-  Budget: data.budget,
+  Budget: legacyBudgetFromEntries(data.budget.entries, data.items),
   Map_Details: data.mapDetails,
   Packing_List: data.packingList.items,
   Pre_Tasks: data.preTasks.items,

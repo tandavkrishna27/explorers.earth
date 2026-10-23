@@ -1,4 +1,4 @@
-export const EXPECTED_MUSIC_MIGRATION_ID = "0068_explorers_category_data_shape" as const;
+export const EXPECTED_MUSIC_MIGRATION_ID = "0071_explorers_samples" as const;
 export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0001_runtime_baseline",
   "0002_identity_lifecycle",
@@ -67,6 +67,9 @@ export const EXPECTED_MUSIC_MIGRATION_CHAIN = [
   "0065_explorers_collection_live_slug",
   "0066_explorers_list_redirects_and_delete",
   "0067_explorers_curated_taxonomy_catalogs",
+  "0068_explorers_category_data_shape",
+  "0069_explorers_guide_day_items",
+  "0070_explorers_list_links",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 export const LEGACY_CONTAINMENT_MIGRATION_MARKER = "containment-no-schema-change" as const;
@@ -139,6 +142,9 @@ export const DEPLOYABLE_MUSIC_MIGRATION_MARKERS = [
   "0065_explorers_collection_live_slug",
   "0066_explorers_list_redirects_and_delete",
   "0067_explorers_curated_taxonomy_catalogs",
+  "0068_explorers_category_data_shape",
+  "0069_explorers_guide_day_items",
+  "0070_explorers_list_links",
   EXPECTED_MUSIC_MIGRATION_ID,
 ] as const;
 

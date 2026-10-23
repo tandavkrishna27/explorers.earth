@@ -148,7 +148,7 @@ describePg("owned PostgreSQL transactional Music E2E restore", () => {
     const guideImage = (await fixture.query("INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,ready_at,content_sha256) VALUES($1,'guide','ready','image/png',1,now(),decode(repeat('00',32),'hex')) RETURNING id", [revisionAccount])).rows[0].id;
     await fixture.query('BEGIN');
     try {
-      const section = (await fixture.query("INSERT INTO guide_sections(collection_id,account_id,display_order,block_version,title,blocks) VALUES($1,$2,0,'guide-section-blocks/v1','Restore section',$3) RETURNING id", [guide, revisionAccount, {photos: [{mediaId: guideImage}]}])).rows[0].id;
+      const section = (await fixture.query("INSERT INTO guide_sections(collection_id,account_id,display_order,block_version,title,blocks) VALUES($1,$2,0,'guide-section-blocks/v2','Restore section',$3) RETURNING id", [guide, revisionAccount, {photos: [{mediaId: guideImage}]}])).rows[0].id;
       await fixture.query('INSERT INTO guide_section_photos(section_id,account_id,media_id) VALUES($1,$2,$3)', [section, revisionAccount, guideImage]);
       await fixture.query('COMMIT');
     } catch (error) { await fixture.query('ROLLBACK'); throw error; }

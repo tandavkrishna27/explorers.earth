@@ -53,7 +53,7 @@ export const MUSIC_FIXTURE_MIGRATION_IDS = Object.freeze(runtimeInventory.migrat
 
 const revisionTriggers = Object.freeze([
   Object.freeze({table:'collection_place_pins',name:'collection_place_pins_revision',enabled:'O',type:29,function:'explorers_place_pins_revision'}),
-  ...['collections','recommendations','collection_items','collection_media','recommendation_media','recommendation_display_overrides','book_recommendation_context','recommendation_book_covers','recommendation_movie_media','movie_recommendation_context','recommendation_taxonomy','category_recommendation_pins','account_category_pin_state','recommendation_app_screenshots','product_recommendation_context','place_recommendation_context','recommendation_place_photos','place_collection_details','collection_location_links','guide_collection_details','guide_sections'].flatMap(table =>
+  ...['collections','recommendations','collection_items','collection_media','recommendation_media','recommendation_display_overrides','book_recommendation_context','recommendation_book_covers','recommendation_movie_media','movie_recommendation_context','recommendation_taxonomy','category_recommendation_pins','account_category_pin_state','recommendation_app_screenshots','product_recommendation_context','place_recommendation_context','recommendation_place_photos','place_collection_details','collection_location_links','guide_collection_details','guide_sections','collection_list_links'].flatMap(table =>
     [['insert',4],['update',16],['delete',8]].map(([event,type]) => Object.freeze({
       table,name:`${table}_content_revision_${event}`,enabled:'O',type,
       function:`explorers_content_revision_${event}`,
