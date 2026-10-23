@@ -95,6 +95,22 @@ it('guarded parent create HTTP links Products and People and gives equal foreign
   expect((await command(a,'post','/collections',{category:'people',title:'Bare recommendation refused',slug:`bare-${randomUUID()}`,parentLocationCollectionId:bare.id,parentExpectedRevision:1})).status).toBe(404);
   expect(await parentCreateHttpState([a.accountId,b.accountId])).toEqual(before);
 });
+async function categoryContentRevision(accountId:string,category:string) {
+  return Number((await pool.query("SELECT coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category=$2),'0') revision",[accountId,category])).rows[0].revision);
+}
+it('WP10 links two own lists over HTTP, refuses the reverse pair and detaches by link id',async()=>{
+  const a=await persona(),books=await list(a,'books'),apps=await list(a,'apps');
+  const attached=await command(a,'post',`/collections/${books.id}/links`,{expectedHostRevision:await categoryContentRevision(a.accountId,'books'),linkedCollectionId:apps.id,expectedLinkedRevision:await categoryContentRevision(a.accountId,'apps')});
+  expect(attached.status).toBe(201);
+  expect(attached.body.link).toMatchObject({attached:true,link:{hostCollectionId:books.id,hostCategory:'books',linkedCollectionId:apps.id,linkedCategory:'apps',role:null,displayOrder:0}});
+  expect(attached.body.link.revisions).toEqual({books:await categoryContentRevision(a.accountId,'books'),apps:await categoryContentRevision(a.accountId,'apps')});
+  const reverse=await command(a,'post',`/collections/${apps.id}/links`,{expectedHostRevision:await categoryContentRevision(a.accountId,'apps'),linkedCollectionId:books.id,expectedLinkedRevision:await categoryContentRevision(a.accountId,'books')});
+  expect(reverse.status).toBe(409);expect(reverse.body.error.code).toBe('CONFLICT');
+  const detached=await command(a,'delete',`/collections/${books.id}/links/${attached.body.link.link.id}`,{expectedHostRevision:attached.body.link.revisions.books});
+  expect(detached.status).toBe(200);
+  expect(detached.body.link).toMatchObject({attached:false,link:{id:attached.body.link.link.id}});
+  expect((await pool.query('SELECT count(*)::int n FROM collection_list_links WHERE account_id=$1',[a.accountId])).rows[0].n).toBe(0);
+});
 it('persists independent versioned notes and preserves omitted, clear and retry semantics',async()=>{
  const a=await persona(),b=await persona(),shared=await entity(),la=await list(a),lb=await list(b);
  const note={version:1,format:'quill-html',html:'<h2>हैलो café</h2><p><strong>😀 A</strong></p>'};
