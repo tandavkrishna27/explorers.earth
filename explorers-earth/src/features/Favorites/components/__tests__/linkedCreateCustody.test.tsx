@@ -36,7 +36,7 @@ async function mount(row:Row){const Page=row.Page;const mounted=render(<MemoryRo
 async function submit(row:Row){fireEvent.submit(screen.getByRole('button',{name:row.submit}).closest('form')!);await act(async()=>{await Promise.resolve();await Promise.resolve();});}
 function retained(row:Row){expect(screen.getByPlaceholderText(row.title)).toHaveValue('Entered draft');expect(screen.getByPlaceholderText(row.description)).toHaveValue('Preserved description');expect(screen.getByPlaceholderText('my-list-url')).toHaveValue('entered-draft');}
 function key(i=0){return new Headers(posts[i].headers).get('Idempotency-Key');}
-function destination(row:Row){const url=new URL(screen.getByTestId('route').textContent!,'https://example.invalid');expect(url.pathname).toBe(`/recommendations/${row.category}/${child}/add`);expect(url.searchParams.getAll('redirectBack')).toEqual(['/recommendations']);expect([...url.searchParams.keys()]).toEqual(['redirectBack']);}
+function destination(row:Row){const url=new URL(screen.getByTestId('route').textContent!,'https://example.invalid');expect(url.pathname).toBe(`/recommendations/${row.category}/${child}/add`);expect(url.searchParams.getAll('redirectBack')).toEqual([`/recommendations/places?list=${parent}`]);expect([...url.searchParams.keys()]).toEqual(['redirectBack']);}
 function reset(){cleanup();vi.clearAllMocks();signIn();revision=4;expires=Date.now()+3600000;posts.length=0;detailReads.length=0;animation.holdExit=false;respond=category=>reply(receipt(category));transport();}
 beforeEach(reset);
 afterEach(()=>{cleanup();vi.restoreAllMocks();vi.unstubAllGlobals();useAuthStore.getState().logout();});

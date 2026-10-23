@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { placeListPath } from "../placeListRoute";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Plus, Users, ChevronRight, Loader2, X
@@ -252,11 +253,11 @@ const AddLinkedPeoplePage = () => {
   const attachableLists = allLists.filter((list) => !linkedAnywhere.has(list.documentId));
 
   const handleSelectExistingList = (listId: string) => {
-    navigate(`/recommendations/people/${listId}/add?redirectBack=/recommendations`);
+    navigate(`/recommendations/people/${listId}/add?redirectBack=${encodeURIComponent(placeListPath(locationId))}`);
   };
 
   const handleListCreated = (newListId: string) => {
-    navigate(`/recommendations/people/${newListId}/add?redirectBack=/recommendations`);
+    navigate(`/recommendations/people/${newListId}/add?redirectBack=${encodeURIComponent(placeListPath(locationId))}`);
   };
 
   const handleAttach = async (listId: string) => {
@@ -285,7 +286,7 @@ const AddLinkedPeoplePage = () => {
   };
 
   const handleBack = () => {
-    navigate("/recommendations");
+    navigate(placeListPath(locationId));
   };
 
   return (
