@@ -99,7 +99,7 @@ describe('native manual Games', () => {
   const observed = { detail: { id: 'list-1', revision: 1 } }; vi.mocked(GamesClient.observeCollection).mockResolvedValue(observed as never); vi.mocked(GamesClient.updateCollection).mockResolvedValue({} as never);
   render(<MockedProvider><MemoryRouter initialEntries={['/recommendations/games/list-1']}><Routes><Route path="/recommendations/games/:listId" element={<GameListView />} /></Routes></MemoryRouter></MockedProvider>);
   expect(screen.queryByRole('button', { name: 'Publish Manual game' })).toBeNull(); expect(screen.queryByText(/Recommendation is/)).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: /Public/ })); fireEvent.click(screen.getByRole('menuitem', { name: /Draft/ }));
+  fireEvent.click(document.querySelector('[aria-haspopup="menu"]')!); fireEvent.click(screen.getByRole('menuitemradio', { name: /draft/i }));
   await waitFor(() => expect(GamesClient.updateCollection).toHaveBeenCalledWith(observed, { visibility: 'private', publicationState: 'draft' }, expect.any(String), expect.any(AbortSignal))); expect(GamesClient.updateRecommendation).not.toHaveBeenCalled();
  });
  it('permits changing the selected ancestry of an existing pick at the category cap', async () => {

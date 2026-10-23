@@ -13,7 +13,7 @@ describe("RecommendationsTab", () => {
   it("empty list shows one big centred Add CTA and no bottom button", () => {
     view({ items: [] });
     expect(screen.getByRole("button", { name: "＋ Add movie" })).toBeInTheDocument();
-    expect(screen.queryByTestId("bottom-add")).toBeNull();
+    expect(screen.queryByTestId("bottom-add-bar")).toBeNull();
   });
 
   it("items have a grip, a pin star and a ⋯ menu; no per-item publish", () => {

@@ -150,7 +150,7 @@ describe('native manual Apps', () => {
   render(<MockedProvider><MemoryRouter initialEntries={['/recommendations/apps/list-1']}><Routes><Route path="/recommendations/apps/:listId" element={<AppListView />} /></Routes></MemoryRouter></MockedProvider>);
   expect(screen.queryByRole('button', { name: 'Publish Manual app' })).toBeNull();
   expect(screen.queryByText(/Recommendation is/)).toBeNull();
-  fireEvent.click(screen.getByRole('button', { name: /Public/ })); fireEvent.click(screen.getByRole('menuitem', { name: /Draft/ }));
+  fireEvent.click(document.querySelector('[aria-haspopup="menu"]')!); fireEvent.click(screen.getByRole('menuitemradio', { name: /draft/i }));
   await waitFor(() => expect(AppsClient.updateCollection).toHaveBeenCalledWith(observed, { visibility: 'private', publicationState: 'draft' }, expect.any(String), expect.any(AbortSignal)));
   expect(AppsClient.updateRecommendation).not.toHaveBeenCalled();
  });

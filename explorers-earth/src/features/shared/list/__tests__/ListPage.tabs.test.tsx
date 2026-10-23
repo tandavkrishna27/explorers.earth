@@ -30,7 +30,7 @@ describe("ListPage tabs", () => {
     render(<MemoryRouter><ListPage adapter={adapterFixture()} /></MemoryRouter>);
     expect(screen.getByRole("button", { name: /Back to Movies & Shows/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "Comfort movies" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Draft/ })).toHaveAttribute("aria-haspopup", "menu");
+    expect(document.querySelector("[aria-haspopup=\"menu\"]")).toBeInTheDocument(); // WP2 PublishPill
   });
 
   it("an error shows a retry row instead of an empty page (OWN-19 rule)", () => {

@@ -942,11 +942,9 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/navigation/canonicalNavigationMapping.ts
 !explorers-earth/src/features/navigation/categoryNavigationApi.ts
 !explorers-earth/src/features/navigation/categoryNavigationPolicy.ts
-!explorers-earth/src/features/shared/list/BottomAddButtonStub.tsx
 !explorers-earth/src/features/shared/list/ListPage.tsx
 !explorers-earth/src/features/shared/list/ListTabs.tsx
 !explorers-earth/src/features/shared/list/ManageTab.tsx
-!explorers-earth/src/features/shared/list/PublishPillStub.tsx
 !explorers-earth/src/features/shared/list/RecommendationsTab.tsx
 !explorers-earth/src/features/shared/list/RestoreListButton.tsx
 !explorers-earth/src/features/shared/list/ShareTab.tsx

@@ -164,8 +164,8 @@ describe('native manual People', () => {
   // LP-04: the per-recommendation publish row is gone; publication is the list's.
   expect(screen.queryByText(/Recommendation is/)).toBeNull();
   expect(screen.queryByRole('button', {name: 'Publish Manual Person'})).toBeNull();
-  fireEvent.click(screen.getByRole('button', {name: /Draft/}));
-  fireEvent.click(screen.getByRole('menuitem', {name: /Public/}));
+  fireEvent.click(document.querySelector('[aria-haspopup="menu"]')!);
+  fireEvent.click(screen.getByRole('menuitemradio', {name: /public/i}));
   await waitFor(() => expect(PeopleClient.updateCollection).toHaveBeenCalledWith(observed, {visibility: 'public', publicationState: 'published'}, expect.any(String), expect.any(AbortSignal)));
   expect(PeopleClient.updateRecommendation).not.toHaveBeenCalled();
  });

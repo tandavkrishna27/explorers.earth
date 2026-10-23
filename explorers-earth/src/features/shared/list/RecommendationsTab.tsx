@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import ReorderableList from "../../../components/reorder/ReorderableList";
-// swap for components/controls/* when WP2 merges (components/controls/BottomAddButton)
-import BottomAddButton from "./BottomAddButtonStub";
+import BottomAddButton from "../../../components/controls/BottomAddButton";
 import type { ListItemView, ListPageAdapter } from "./listPageAdapter";
 
 const messageOf = (error: unknown, fallback: string) => (error instanceof Error && error.message ? error.message : fallback);
@@ -16,7 +15,8 @@ export default function RecommendationsTab({ adapter, active }: { adapter: ListP
   const [menu, setMenu] = useState<string | null>(null);
   useEffect(() => setOrder(adapter.items), [adapter.items]);
   const add = () => navigate(adapter.addPath);
-  const addLabel = `＋ ${t("dashboard.wp3b.addNoun", "Add {{noun}}", { noun: adapter.itemNoun })}`;
+  const addNoun = t("dashboard.wp3b.addNoun", "Add {{noun}}", { noun: adapter.itemNoun });
+  const addLabel = `＋ ${addNoun}`;
 
   if (adapter.loading && !adapter.items.length) {
     return <div className="grid gap-2 pt-3">{[0, 1, 2].map((i) => <div key={i} className="h-14 animate-pulse rounded-xl bg-white/5" />)}</div>;
@@ -73,7 +73,7 @@ export default function RecommendationsTab({ adapter, active }: { adapter: ListP
           </div>
         )} />
       <button type="button" onClick={add} className="rounded-xl border border-dashed border-white/20 p-3 text-left text-sm text-gray-400 hover:border-blue-400 hover:text-blue-400">{addLabel}</button>
-      <BottomAddButton label={addLabel} onClick={add} hidden={!active} data-testid="bottom-add" />
+      <BottomAddButton label={addNoun} onClick={add} hidden={!active} />
     </div>
   );
 }

@@ -6,8 +6,7 @@ import ListTabs, { type TabKey } from "./ListTabs";
 import RecommendationsTab from "./RecommendationsTab";
 import ShareTab from "./ShareTab";
 import ManageTab from "./ManageTab";
-// swap for components/controls/* when WP2 merges (components/controls/PublishPill)
-import PublishPill from "./PublishPillStub";
+import PublishPill from "../../../components/controls/PublishPill";
 import type { ListPageAdapter } from "./listPageAdapter";
 
 type Props = { adapter: ListPageAdapter; onMount?: (tab: TabKey) => void };
