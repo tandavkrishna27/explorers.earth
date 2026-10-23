@@ -24,6 +24,8 @@ import PasteLinkField from '../../../../components/PasteLinkField';
 import CurrencyPriceInput from '../../../../components/CurrencyPriceInput';
 import { linkPreviewClient } from '../../../../lib/linkPreviewClient';
 import { precisionMessage } from '../../../../lib/money';
+import TaxonomyCombobox from '../../../../components/TaxonomyCombobox';
+import { useCuratedCatalog } from '../../../../lib/curatedTaxonomy';
 
 /**
  * Products add/edit page on the shared add-item template (WP8, DS-03..06, DS-14).
@@ -68,6 +70,10 @@ export default function AddProductPage() {
  const [note, setNote] = useState(''), [rating, setRating] = useState<number | null>(null);
  const [media, setMedia] = useState<{ id: string; url: string }[]>([]), [pending, setPending] = useState(0);
  const [filled, setFilled] = useState<Set<Field>>(new Set());
+ // Curated category (WP7). The editable read does not carry the stored term, so an edit sends
+ // one only when the owner picks it; otherwise the stored assignment is left alone.
+ const catalog = useCuratedCatalog('products');
+ const [curatedTermId, setCuratedTermId] = useState<string | null>(null), [curatedTouched, setCuratedTouched] = useState(false);
  const [linkImage, setLinkImage] = useState<string | null>(null), [importing, setImporting] = useState(false);
  const [saving, setSaving] = useState(false), [error, setError] = useState('');
  const initialized = useRef(''), draftObservation = useRef<RecommendationObservation>();
@@ -79,7 +85,7 @@ export default function AddProductPage() {
  const moveSpecification = (index: number, delta: -1 | 1) => { setSpecifications(value => moveItem(value, index, index + delta)); announceSpec(`Key fact ${index + 1}`, index + delta + 1, specifications.length); };
 
  useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.abort(); active.current++; }; }, []);
- useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setTitle(''); setLink(''); setBrand(''); setDescription(''); setAffiliateDisclosed(false); setPrice(''); setCurrency(null); setSpecifications([]); setNote(''); setRating(null); setMedia([]); setPending(0); setFilled(new Set()); setLinkImage(null); setImporting(false); setSaving(false); setError(''); setExistingId(''); }, [scope]);
+ useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setTitle(''); setLink(''); setBrand(''); setDescription(''); setAffiliateDisclosed(false); setPrice(''); setCurrency(null); setSpecifications([]); setNote(''); setRating(null); setMedia([]); setPending(0); setFilled(new Set()); setCuratedTermId(null); setCuratedTouched(false); setLinkImage(null); setImporting(false); setSaving(false); setError(''); setExistingId(''); }, [scope]);
 
  useEffect(() => {
   if (!productId || !owner.content || initialized.current === scope) return;
@@ -165,7 +171,7 @@ export default function AddProductPage() {
    const facts = { brand: blank(brand), logoUrl: null, description: blank(description), specifications: specs, imageUrls: [] as string[] };
    const amount = blank(price);
    const offer = { price: amount, currencyCode: amount === null ? null : currency, buyUrl: link.trim(), affiliateDisclosed };
-   const draft = { title: title.trim(), productUrl: link.trim(), ...facts, offer, note: richNoteFromEditor(note), userRating: rating, mediaIds: media.map(item => item.id) };
+   const draft = { title: title.trim(), productUrl: link.trim(), ...facts, offer, note: richNoteFromEditor(note), userRating: rating, mediaIds: media.map(item => item.id), curatedTermId };
    const signature = JSON.stringify(draft);
    assertCurrent(captured, operation);
    if (productId) {
@@ -174,7 +180,7 @@ export default function AddProductPage() {
     if (updateKey.current?.signature !== signature) updateKey.current = { signature, key: crypto.randomUUID() };
     assertCurrent(captured, operation);
     // productUrl is absent here on purpose: it is the shared identity, not an override.
-    await ProductsClient.updateRecommendation(observed, { displayOverrides: { title: draft.title, ...facts }, note: draft.note, userRating: rating, mediaIds: draft.mediaIds, productOffer: offer }, updateKey.current.key, signal);
+    await ProductsClient.updateRecommendation(observed, { displayOverrides: { title: draft.title, ...facts }, note: draft.note, userRating: rating, mediaIds: draft.mediaIds, productOffer: offer, ...(curatedTouched ? { curatedTermId } : {}) }, updateKey.current.key, signal);
     assertCurrent(captured, operation);
    } else {
     if (intent.current?.scope !== captured || intent.current.signature !== signature) {
@@ -224,6 +230,10 @@ export default function AddProductPage() {
   </div>}
 
   <div><label htmlFor="product-title">Title</label>{fromLink('title')}<input id="product-title" value={title} onChange={event => { setTitle(event.target.value); touched('title'); }} disabled={saving} className={input} /></div>
+  {!catalog.unconfigured && catalog.terms.length > 0 && <TaxonomyCombobox levels={1}
+   terms={catalog.terms.map((term, position) => ({ id: term.id, parentId: null, position, label: term.label }))}
+   value={{ categoryId: curatedTermId, subcategoryId: null }}
+   onChange={value => { setCuratedTermId(value.categoryId); setCuratedTouched(true); }} />}
   <div><label htmlFor="product-brand">Brand</label>{fromLink('brand')}<input id="product-brand" value={brand} onChange={event => { setBrand(event.target.value); touched('brand'); }} disabled={saving} className={input} /></div>
 
   <div>

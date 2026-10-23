@@ -16,6 +16,9 @@ vi.mock('../../../hooks/useProductsOwner', () => ({useProductsOwner: () => ({con
 vi.mock('../../../api/productsClient', () => ({ProductsClient: {observeCollection: vi.fn(), prepareManualIntent: vi.fn(), createManual: vi.fn(), upload: vi.fn(), updateRecommendation: vi.fn()}}));
 vi.mock('../../../../../lib/linkPreviewClient', () => ({linkPreviewClient: {preview: vi.fn(), importImage: vi.fn()}}));
 vi.mock('../../../../Favorites/components/TiptapEditor', () => ({default: ({value, onChange}: {value: string; onChange: (value: string) => void}) => <textarea aria-label="Note" value={value} onChange={event => onChange(event.target.value)} />}));
+vi.mock('../../../../../lib/curatedTaxonomy', () => ({useCuratedCatalog: (category: string) => ({
+ terms: category === 'products' ? [{id: '00000000-0000-4000-8000-000000000101', label: 'Footwear', parentId: null, slug: 'footwear'}, {id: '00000000-0000-4000-8000-000000000102', label: 'Kitchen', parentId: null, slug: 'kitchen'}] : [],
+ unconfigured: false, loading: false, error: null})}));
 vi.mock('sonner', () => ({toast: {success: vi.fn(), error: vi.fn(), loading: vi.fn()}}));
 
 const URL_ = 'https://shop.example/p';
@@ -92,6 +95,25 @@ describe('Products template', () => {
   await screen.findByText('Saved list');
   expect(draft()).toMatchObject({title: 'Trail Shoe', productUrl: URL_, brand: 'Acme', logoUrl: null, mediaIds: ['media-photo'],
    specifications: [{key: 'Weight', value: '240 g'}], offer: {price: '119.90', currencyCode: 'EUR', buyUrl: URL_, affiliateDisclosed: true}});
+ });
+
+ it('saves the curated category chosen from the products catalog', async () => {
+  mount(); paste(URL_);
+  await waitFor(() => expect(screen.getByLabelText('Title')).toHaveValue('Trail Shoe'));
+  const box = screen.getByRole('combobox', {name: 'Category'});
+  fireEvent.focus(box); fireEvent.change(box, {target: {value: 'Foot'}});
+  fireEvent.mouseDown(screen.getByRole('option', {name: 'Footwear'}));
+  fireEvent.click(screen.getByRole('button', {name: 'Save'}));
+  await screen.findByText('Saved list');
+  expect(draft()).toMatchObject({curatedTermId: '00000000-0000-4000-8000-000000000101'});
+ });
+
+ it('saves no curated category when none is chosen', async () => {
+  mount(); paste(URL_);
+  await waitFor(() => expect(screen.getByLabelText('Title')).toHaveValue('Trail Shoe'));
+  fireEvent.click(screen.getByRole('button', {name: 'Save'}));
+  await screen.findByText('Saved list');
+  expect(draft()).toMatchObject({curatedTermId: null});
  });
 
  it('shows the stored product link as Where to buy when an old row has no buy link', async () => {
