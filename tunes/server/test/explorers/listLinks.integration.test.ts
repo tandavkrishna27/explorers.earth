@@ -6,6 +6,7 @@ import {ExplorersRecommendationRepository} from "../../repositories/explorersRec
 import {readListLinksForCollection} from "../../repositories/listLinkRepository";
 import {RecommendationService} from "../../application/recommendations";
 import type {Actor} from "../../application/actor";
+import {OwnerContentService} from "../../application/ownerContent";
 
 /**
  * WP10. Linking any of an owner's lists to any other of their lists, against a real
@@ -223,5 +224,26 @@ describePg("list link commands (LNK-02, LNK-04, OWN-13)", () => {
     const again = await repository.writeListLink(owner, input as never, k);
     expect(again).toEqual(first);
     expect((await readListLinksForCollection(pool, s.id, owner))).toHaveLength(1);
+  });
+});
+
+describePg("owner read (LNK-04, LNK-05)", () => {
+  it("returns linkedLists for any category in both directions, one level, archived flagged", async () => {
+    const owner = await account(); const s = await list(owner, "books"), t = await list(owner, "apps"), u = await list(owner, "movies");
+    await attachVia(owner, s, t); await attachVia(owner, t, u);
+    const reader = new OwnerContentService(pool, "x".repeat(32));
+    const actor = await ownerOf(owner, ["collections:read"]);
+    const read = await reader.getCollection(actor, s.id, {}, true) as any;
+    expect(read.linkedLists.map((c: any) => [c.direction, c.collection.id])).toEqual([["outgoing", t.id]]);
+    const middle = await reader.getCollection(actor, t.id, {}, true) as any;
+    expect(middle.linkedLists.map((c: any) => [c.direction, c.collection.id])).toEqual([["outgoing", u.id], ["incoming", s.id]]);
+    expect(read).not.toHaveProperty("locationLink");
+    expect(read).not.toHaveProperty("linkedChildren");
+    for (const category of ["places", "people", "products", "guides"]) {
+      const empty = await reader.getCollection(actor, (await list(owner, category)).id, {}, true) as any;
+      expect(empty.linkedLists).toEqual([]);
+    }
+    await pool.query("UPDATE collections SET archived_at=now() WHERE id=$1", [t.id]);
+    expect(((await reader.getCollection(actor, s.id, {}, true)) as any).linkedLists.map((c: any) => c.collection.archived)).toEqual([true]);
   });
 });
