@@ -70,6 +70,8 @@ it('copies an Open Library cover through its two-hop archive.org redirect chain'
  const r=await recommendation(a,await list(a),id),before=fetchCount;redirectHops.length=0;
  const result=await command(a,'post',`/recommendations/${r.id}/book-covers`,{expectedRevision:1});expect(result.status).toBe(200);
  expect(result.body.coverImport.slots.cover.status).toBe('copied');expect(redirectHops).toEqual(['covers.openlibrary.org','archive.org']);expect(fetchCount).toBe(before+1);
+ expect((await pool.query("SELECT media_id FROM recommendation_book_covers WHERE recommendation_id=$1 AND slot='cover'",[r.id])).rows[0]?.media_id).toBe(result.body.coverImport.slots.cover.media.id);
+ const detail=await request(composed.app).get(`/api/explorers/v1/recommendations/${r.id}/editable`).set('cookie',a.cookie);expect(detail.body.recommendation.bookCovers.cover.url).toMatch(/^\/api\/explorers\/v1\/media\//);
 });
 it('deduplicates equal provider URLs while retaining both slots and references',async()=>{
  const a=await persona(),{r}=await fixtureBook(a,true),before=fetchCount;const result=await command(a,'post',`/recommendations/${r.id}/book-covers`,{expectedRevision:1});expect(result.status).toBe(200);expect(fetchCount).toBe(before+1);expect(result.body.coverImport.slots.cover.media.id).toBe(result.body.coverImport.slots.thumbnail.media.id);
