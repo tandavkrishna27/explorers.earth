@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import {createGameProviderCoordinator} from '../services/gameProviderBudget';
 import {createGameProviderTransport,type NativeTarget,type NativeResponse} from '../services/gameProviderTransport';
 import {GameCatalog} from '../services/gameCatalog';
-import {buildGameSearchQuery,parseGameProviderJson,gameCoverUrl,toGameCandidate,mapGameProviderFacts} from '../services/gameCatalogContracts';
+import {buildGameSearchQuery,parseGameProviderJson,parseGameSearchJson,GAME_SEARCH_BODY_BYTES,gameCoverUrl,toGameCandidate,mapGameProviderFacts} from '../services/gameCatalogContracts';
 import {createGameCatalogFromEnv} from '../services/gameCatalogFactory';
 import {CatalogService} from '../application/catalog';
 import {gameCandidatePageSchema} from '../../shared/explorersGameContract';
@@ -20,6 +20,10 @@ const recorded=[
 const actor:Actor={userId:'u',accountId:'a',role:'owner',credential:{kind:'web-session',sessionId:'s',sessionVersion:1}};
 const binding={accountId:'a',userId:'u',credentialKey:'web-session:s',authorizationEpoch:'1'};
 const bytes=(v:unknown)=>new TextEncoder().encode(JSON.stringify(v));
+// A big franchise: 24 rows, each with `companies` involved companies carrying nested ids.
+const franchiseRow=(i:number,companies:number)=>({id:100000+i,cover:{id:200000+i,image_id:`co${(i*7919).toString(36)}xyz`},first_release_date:1488499200+i,genres:Array.from({length:6},(_,g)=>({id:g+1,name:`Role-playing (RPG) genre ${g}`})),name:`Super Franchise Game Title Number ${i}: Deluxe Anniversary Edition`,platforms:Array.from({length:12},(_,p)=>({id:p+1,name:`PlayStation Platform ${p} Pro`})),involved_companies:Array.from({length:companies},(_,c)=>({id:300000+i*100+c,company:{id:400000+c,name:`Long Studio Company Name Interactive Entertainment Studios International Holdings ${c} Ltd.`},developer:c<2,publisher:c>=companies-2})),slug:`super-franchise-game-title-number-${i}-deluxe-anniversary-edition`,total_rating:88.123456789,url:`https://www.igdb.com/games/super-franchise-game-title-number-${i}-deluxe-anniversary-edition`});
+const franchisePage=(companies:number)=>bytes(Array.from({length:24},(_,i)=>franchiseRow(i,companies)));
+const padded=(b:Uint8Array,size:number)=>{const out=new Uint8Array(size).fill(0x20);out.set(b);return out;};
 
 describe('IGDB search contract',()=>{
  it('asks only for the fields a candidate shows, so 24 rows stay inside the body limit',()=>{
@@ -34,6 +38,14 @@ describe('IGDB search contract',()=>{
   expect(body.byteLength).toBeLessThan(65536);
   const rows=parseGameProviderJson(body);expect(rows).toHaveLength(24);
   expect(toGameCandidate(mapGameProviderFacts(rows[0],String(rows[0].id),0)).developer).toBe('Long Studio Company Name Interactive 0 Ltd.');
+ });
+ it('parses a ~150 KiB search page of 24 rows x 30 companies under the 256 KiB search cap and refuses a larger one',()=>{
+  const body=franchisePage(30);expect(body.byteLength).toBeGreaterThan(140*1024);expect(body.byteLength).toBeLessThan(GAME_SEARCH_BODY_BYTES);
+  expect(GAME_SEARCH_BODY_BYTES).toBe(262144);
+  const rows=parseGameSearchJson(body);expect(rows).toHaveLength(24);expect(rows[0].involved_companies).toHaveLength(30);
+  expect(()=>parseGameSearchJson(padded(body,GAME_SEARCH_BODY_BYTES+1))).toThrow();
+  expect(parseGameSearchJson(padded(body,GAME_SEARCH_BODY_BYTES))).toHaveLength(24);
+  expect(()=>parseGameProviderJson(body)).toThrow();
  });
  it('a 24-row page of the contract fixture stays under 64 KiB and projects its first developer',()=>{
   const [first]=JSON.parse(readFileSync(new URL('./contracts/fixtures/igdb-contract/positive.json',import.meta.url),'utf8'));
@@ -60,9 +72,9 @@ describe('IGDB search contract',()=>{
 
 const response=(json:unknown):NativeResponse=>({status:200,rawHeaders:['Content-Type','application/json'],body:(async function*(){yield Buffer.from(JSON.stringify(json));})(),complete:()=>true});
 const op=(r:NativeResponse):NativeOperation<NativeResponse>=>({outcome:Promise.resolve(r),settled:Promise.resolve(),cancel:()=>{}});
-function liveLike(){
+function liveLike(catalogBody?:Uint8Array){
  const now=()=>Date.now();const coordinator=createGameProviderCoordinator({now});const targets:NativeTarget[]=[];
- const connect=vi.fn((t:NativeTarget)=>{targets.push(t);return op(response(t.url.hostname==='id.twitch.tv'?{access_token:'synthetic-token',token_type:'bearer',expires_in:3600}:recorded));});
+ const connect=vi.fn((t:NativeTarget)=>{targets.push(t);if(t.url.hostname!=='id.twitch.tv'&&catalogBody)return op({...response([]),body:(async function*(){yield catalogBody;})()});return op(response(t.url.hostname==='id.twitch.tv'?{access_token:'synthetic-token',token_type:'bearer',expires_in:3600}:recorded));});
  const transport=createGameProviderTransport({coordinator,credentials:{clientId:'fixture-id',clientSecret:'fixture-secret'},resolve:async()=>[{address:'8.8.8.8',family:4}],connect});
  const catalog=new GameCatalog({coordinator,transport,authorize:async(a:Actor)=>({...binding,accountId:a.accountId,userId:a.userId})});
  return {catalog,targets};
@@ -78,6 +90,14 @@ describe('IGDB search end to end over the native seam',()=>{
   const igdb=targets.find(t=>t.url.href==='https://api.igdb.com/v4/games')!;
   expect(igdb.headers['Client-ID']).toBe('fixture-id');expect(igdb.headers.Authorization).toBe('Bearer synthetic-token');
   expect(igdb.body).toContain('search "zelda"');
+ });
+ it('admits a big-franchise search page over 64 KiB but refuses one over 256 KiB, while resolve keeps 64 KiB',async()=>{
+  const big=franchisePage(30);expect(big.byteLength).toBeGreaterThan(140*1024);expect(big.byteLength).toBeLessThan(GAME_SEARCH_BODY_BYTES);
+  expect((await liveLike(big).catalog.search(actor,{query:'mario',limit:24})).items).toHaveLength(24);
+  const huge=padded(franchisePage(30),GAME_SEARCH_BODY_BYTES+1);
+  await expect(liveLike(huge).catalog.search(actor,{query:'mario',limit:24})).rejects.toMatchObject({code:'PROVIDER_INVALID_RESPONSE'});
+  const resolveBody=padded(bytes([recorded[0]]),65537);
+  await expect(liveLike(resolveBody).catalog.resolve(actor,'7346')).rejects.toMatchObject({code:'PROVIDER_INVALID_RESPONSE'});
  });
 });
 
