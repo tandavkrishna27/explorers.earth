@@ -17,7 +17,7 @@ readonly compatibility_floor_schema="music-schema-floor-v2"
 readonly schema_epoch_schema="music-schema-epoch-v1"
 readonly journal_schema="music-transaction-v1"
 readonly legacy_marker="containment-no-schema-change"
-readonly production_current_marker="0066_explorers_list_redirects_and_delete"
+readonly production_current_marker="0068_explorers_category_data_shape"
 readonly -a known_markers=(
   "$legacy_marker"
   "0002_identity_lifecycle"
@@ -84,6 +84,8 @@ readonly -a known_markers=(
   "0063_explorers_open_library_books"
   "0064_explorers_game_details"
   "0065_explorers_collection_live_slug"
+  "0066_explorers_list_redirects_and_delete"
+  "0067_explorers_curated_taxonomy_catalogs"
   "$production_current_marker"
 )
 current_marker="$production_current_marker"
