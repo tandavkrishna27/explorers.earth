@@ -35,6 +35,7 @@ const DashboardRouteValidator = ({
       /^\/recommendations\/apps(\/.*)?$/, // All apps & tools routes
       /^\/recommendations\/products(\/.*)?$/, // All products routes
       /^\/recommendations\/people(\/.*)?$/, // All people routes
+      /^\/recommendations\/places\/[^/]+(\/add|\/edit\/[^/]+)?$/, // Places list, add and edit (WP6 shared routes)
       /^\/[^/]+\/new$/, // Dynamic routes like /:listId/new
       /^\/[^/]+\/edit$/, // Dynamic routes like /:placeId/edit
     ];

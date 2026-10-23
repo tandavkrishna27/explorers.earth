@@ -1146,6 +1146,44 @@
       }
     },
     {
+      "method": "GET",
+      "path": "/api/explorers/v1/places/nearby",
+      "source": "tunes/server/routes/explorersPlacesRoutes.ts",
+      "decision": "explorers-owner",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": true,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/places/nearby",
+      "source": "tunes/server/routes/explorersPlacesRoutes.ts",
+      "decision": "tombstone",
+      "allowed": {
+        "unauthenticated": false,
+        "owner": false,
+        "otherUser": false,
+        "suspended": false,
+        "pendingDeletion": false,
+        "staleEntitlement": false,
+        "guestValid": false,
+        "guestInvalid": false,
+        "guestRevoked": false,
+        "internalAdmin": false,
+        "nativeSession": false
+      }
+    },
+    {
       "method": "USE",
       "path": "/api/explorers/v1/public/recommendations",
       "source": "tunes/server/routes/explorersPublicContentRoutes.ts",

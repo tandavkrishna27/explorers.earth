@@ -36,6 +36,8 @@ import { setupExplorersAppEnrichmentRoutes } from "../routes/explorersAppEnrichm
 import {appSourceChoiceSchema,type AppSourceChoice} from '../../shared/explorersAppEnrichmentContract';
 import { setupExplorersPublicContentRoutes } from "../routes/explorersPublicContentRoutes";
 import {setupExplorersCatalogRoutes} from '../routes/explorersCatalogRoutes';
+import {setupExplorersPlacesRoutes} from '../routes/explorersPlacesRoutes';
+import {PlacesNearbyService} from '../services/placesNearby';
 import {BookCoverFetcher} from '../services/bookCoverFetch';
 import {BookCoverImportService} from '../application/bookCoverImport';
 import {BookCatalog} from '../services/bookCatalog';
@@ -51,7 +53,7 @@ function errorResponse(res: Response, status: number, code: ApiError["error"]["c
 }
 
 function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
-  options: { mediaStorage?: ObjectStorage; bookCatalog?:BookCatalog; bookCoverFetcher?:BookCoverFetcher;movieCatalog?:MovieCatalog;movieImageFetcher?:MovieImageFetcher;appEnrichmentChoices?:readonly AppSourceChoice[] } = {}, custodyMode=false,appsInput?:Omit<AppsCanonicalAdmissionOptions,'pool'>,
+  options: { mediaStorage?: ObjectStorage; bookCatalog?:BookCatalog; bookCoverFetcher?:BookCoverFetcher;movieCatalog?:MovieCatalog;movieImageFetcher?:MovieImageFetcher;appEnrichmentChoices?:readonly AppSourceChoice[];placesNearby?:Pick<PlacesNearbyService,'nearby'> } = {}, custodyMode=false,appsInput?:Omit<AppsCanonicalAdmissionOptions,'pool'>,
   ) {
   const admission=appsInput?createAppsCanonicalAdmission({pool,...appsInput}):undefined;
   const actualApp = express(), instrument=custodyMode?createCanonicalHandlerCustody(actualApp,admission):undefined;
@@ -111,6 +113,7 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   const appSourceChoices=appSourceChoiceSchema.array().parse(options.appEnrichmentChoices??[]);
   setupExplorersAppEnrichmentRoutes(app, pool, auth, config, appSourceChoices.map(choice=>choice.identity), instrument?.routerFactory,appSourceChoices);
   setupExplorersCatalogRoutes(app,pool,auth,config,books,movies);
+  setupExplorersPlacesRoutes(app,pool,auth,options.placesNearby??new PlacesNearbyService({googleApiKey:process.env.GOOGLE_PLACES_API_KEY}));
   setupExplorersPublicContentRoutes(app, pool, config.secret,instrument?.routerFactory);
   setupExplorersLifecycleRoutes(app, pool, auth, config);
   setupExplorersMediaRoutes(app, pool, auth, config, new MediaService(pool, options.mediaStorage),admission?.beforeMediaCommand);

@@ -148,6 +148,8 @@ describe("owned image CI PostgreSQL wiring", () => {
       // WP10. List links between any two own lists (replaces placeLinks).
       "server/test/explorers/listLinks.integration.test.ts",
       "server/test/explorers/people.integration.test.ts",
+      // WP6. Places nearby route and the person-type write refusal.
+      "server/test/explorers/places-nearby.integration.test.ts",
       "server/test/explorers/places.integration.test.ts",
       "server/test/explorers/products.integration.test.ts",
       // WP5. replaceMedia writes a gallery in one INSERT.
@@ -171,8 +173,8 @@ describe("owned image CI PostgreSQL wiring", () => {
        */
       "server/test/user-leak.integration.test.ts",
     ]);
-    expect(selectors).toHaveLength(58); // 58 = 57 + S3 migrations (0069-0071); 57 = 55 + curated-taxonomy + category-data-shape (S2); 55 = 54 + recommendation-media-batch (WP5); 54 = 51 + collection-slug + list-delete-analytics (0065/0066) + collection-manage (WP3B)
-    expect(new Set(selectors).size).toBe(58);
+    expect(selectors).toHaveLength(59); // 59 = 57 + S3 migrations (0069-0071) + places-nearby (WP6); 57 = 55 + curated-taxonomy + category-data-shape (S2); 55 = 54 + recommendation-media-batch (WP5); 54 = 51 + collection-slug + list-delete-analytics (0065/0066) + collection-manage (WP3B)
+    expect(new Set(selectors).size).toBe(59);
   });
 
   /*

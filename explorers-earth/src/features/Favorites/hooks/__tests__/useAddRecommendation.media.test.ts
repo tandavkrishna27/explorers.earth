@@ -140,7 +140,7 @@ describe("useAddRecommendation selected-media persistence", () => {
     expect(mocks.refresh).not.toHaveBeenCalled();
     expect(mocks.navigate).toHaveBeenCalledTimes(1);
     // The publish prompt lives on the Places page, so that is where the flow must return.
-    expect(mocks.navigate).toHaveBeenCalledWith("/recommendations/places?list=list-1", {
+    expect(mocks.navigate).toHaveBeenCalledWith("/recommendations/places/list-1", {
       state: expect.objectContaining({ justAddedRecommendationToListId: expect.anything() }),
     });
   });
@@ -332,23 +332,6 @@ describe("useAddRecommendation selected-media persistence", () => {
     expect(mocks.upload).toHaveBeenCalledTimes(1);
     expect(mocks.createPlace).toHaveBeenCalledTimes(1);
     expect(mocks.navigate).toHaveBeenCalledTimes(1);
-  });
-
-  it("files a person recommendation through the person command, with no place facts", async () => {
-    mocks.createPerson.mockResolvedValue({ id: "created-person" });
-    const { result } = renderHook(() =>
-      useAddRecommendation({ ...defaultProps([]), recommendationType: "person" } as never)
-    );
-    await act(async () => {
-      await result.current.handleSubmit({ title: "Ravi", recommendation: "https://example.com/ravi", address: "Indiranagar" } as never);
-    });
-    expect(mocks.createPerson).toHaveBeenCalledTimes(1);
-    expect(mocks.createPlace).not.toHaveBeenCalled();
-    expect(mocks.createPerson.mock.calls[0][1]).toMatchObject({
-      title: "Ravi",
-      details: {},
-      context: { recommendationType: "person", personProfileUrl: "https://example.com/ravi", personAddress: "Indiranagar" },
-    });
   });
 });
 

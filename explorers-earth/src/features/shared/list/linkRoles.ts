@@ -7,7 +7,7 @@ export const roleMax = LIST_LINK_ROLE_MAX;
 
 const isCategory = (value: string): value is CategoryKey => (CATEGORY_KEYS as readonly string[]).includes(value);
 
-/** The owner page of any list, by category (Places is still `?list=`, guides `/guides/<id>`). */
+/** The owner page of any list, by category (Places `/recommendations/places/<id>` since WP6, guides `/guides/<id>`). */
 export function linkedListPath(category: string, collectionId: string): string {
   return isCategory(category) ? CATEGORY_CONFIG[category].listRoute(collectionId) : `/recommendations/${category}/${collectionId}`;
 }

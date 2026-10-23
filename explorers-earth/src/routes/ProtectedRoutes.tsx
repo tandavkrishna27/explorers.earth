@@ -13,6 +13,7 @@ const SettingsPage = lazy(() => import("../pages/SettingsPage"));
 const Home = lazy(() => import("../pages/Home"));
 const RecommendationsHub = lazy(() => import("../pages/RecommendationsHub"));
 const AddRecommendation = lazy(() => import("../features/Favorites/components/AddRecommendation"));
+const PlacesListView = lazy(() => import("../features/Favorites/components/PlacesListView"));
 const GuidesPage = lazyNamed(() => import("../features/Guides"), "GuidesPage");
 const CreateGuidePage = lazyNamed(() => import("../features/Guides"), "CreateGuidePage");
 const GuideDetailsPage = lazyNamed(() => import("../features/Guides"), "GuideDetailsPage");
@@ -42,6 +43,9 @@ const ProtectedRoutes = (): ReactElement[] => {
       <Route path="profile" element={<Profile />} />
       <Route path="recommendations" element={<RecommendationsHub />} />
       <Route path="recommendations/places" element={<Favorites />} />
+      <Route path="recommendations/places/:listId" element={<PlacesListView />} />
+      <Route path="recommendations/places/:listId/add" element={<AddRecommendation />} />
+      <Route path="recommendations/places/:listId/edit/:placeId" element={<AddRecommendation type="edit" />} />
       <Route path="recommendations/guides" element={<GuidesPage />} />
       <Route path="recommendations/guides/new" element={<CreateGuidePage />} />
       <Route path="recommendations/guides/:guideId" element={<GuideDetailsPage />} />

@@ -17,6 +17,6 @@ describe("CATEGORY_CONFIG", () => {
     expect(CATEGORY_CONFIG.places.visibilityField).toBe("public_recommendations");
     expect(CATEGORY_CONFIG.books.listRoute("abc")).toBe("/recommendations/books/abc");
     expect(CATEGORY_CONFIG.guides.listRoute("g1")).toBe("/guides/g1");
-    expect(CATEGORY_CONFIG.places.listRoute("p1")).toBe("/recommendations/places?list=p1");
+    expect(CATEGORY_CONFIG.places.listRoute("p1")).toBe("/recommendations/places/p1");
   });
 });

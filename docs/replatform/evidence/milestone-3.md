@@ -82,3 +82,11 @@ The first drill of a real production backup, which closes the "production backup
 - Result: **passed**, `recoveryMilliseconds` 17338. Journal 66 rows, head 0066; every row count matched; restricted-role attestation passed; the app booted on the restored database. 1 account with an authenticated restored session; 100 media objects whose hashes all matched, 33 through the gated route.
 - Receipt: `recovery-receipt.json`, SHA-256 `9d2843f5cd6641c5ee49a6491e7f3de371926266741fb4c55bd77e5fd9c248cb`.
 - Why it was needed: dashboard-phase deploy checkpoint B (Wave 1). Wave 1 adds no migrations, so the live head stays 0066.
+
+## Production drill at 0068 (2026-10-23)
+
+- Backup: the refused hotfix deploy's own pre-deploy backup (run `c412d8a6`, reason `pre-deploy`, 2026-10-23T19:59Z), migration head `0068_explorers_category_data_shape`.
+- Why the head was 0068: the Wave 1 deploy was approved after S2 (PR #210, migrations 0067-0068) had merged, and the live database reached 0068 then. The layout-hotfix deploy that followed was refused with `DRILL_MARKER_MISMATCH` because the committed receipt was still at 0066.
+- Drill: `npm run platform:restore-drill` on the owner's machine from a clean checkout of `main` at `ed71ecaa`. Passed on the first attempt.
+- Result: **passed**, `recoveryMilliseconds` 12446; 86 media objects whose hashes all matched, 33 through the gated route; restricted-role attestation passed; the app booted on the restored database.
+- Receipt: `recovery-receipt.json`, SHA-256 `17f3ebecb480ae1dfea70d4f62e7a88910643263bb8d4b1c8f15fcf4d5aa8681`.

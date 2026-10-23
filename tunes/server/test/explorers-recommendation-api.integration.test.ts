@@ -249,11 +249,18 @@ it('writes purpose-compatible owned media and rolls invalid replacement back ato
   const detached=await command(a,'patch',`/recommendations/${id}`,{expectedRevision:1,mediaIds:[]},key);expect(detached.status).toBe(200);expect(detached.body.recommendation.mediaIds).toEqual([]);
   expect((await command(a,'patch',`/collections/${c.id}`,{expectedRevision:2,coverMediaId:null,description:null,heading:null})).status).toBe(200);
 });
-it.each([['places','place'],['places','person'],['books','book'],['movies','movie'],['games','game'],['apps','app'],['products','product'],['people','person']])('validates %s core against entity kind %s',async(category,kind)=>{
+it.each([['places','place'],['books','book'],['movies','movie'],['games','game'],['apps','app'],['products','product'],['people','person']])('validates %s core against entity kind %s',async(category,kind)=>{
   const a=await persona(),c=await list(a,category),entityId=await entity(kind);
   const created=await recommendation(a,c,entityId);expect(created).toMatchObject({category,entityId,userRating:category==='people'?null:8,publicationState:'draft',mediaIds:[]});
   for(const body of [{expectedRevision:1,userRating:0},{expectedRevision:1,userRating:11},{expectedRevision:1,userRating:1.5},{expectedRevision:1,userRating:'5'},{expectedRevision:1,note:{version:1,arbitrary:true}},{expectedRevision:1,entityId:randomUUID()},{expectedRevision:1,category:'books'},{expectedRevision:1}]) expect((await command(a,'patch',`/recommendations/${created.id}`,body)).status).toBe(422);
   const published=await command(a,'patch',`/recommendations/${created.id}`,{expectedRevision:1,publicationState:'published',userRating:null});expect(published.status).toBe(200);expect(published.body.recommendation).toMatchObject({publicationState:'published',userRating:null,revision:2});
+});
+// WP6 Task 6-3: a person entity in a Places list was once a supported case; people are now
+// recommended in the People category, so a new one is refused.
+it('refuses a new places recommendation over a person entity',async()=>{
+  const a=await persona(),c=await list(a,'places'),entityId=await entity('person');
+  const reply=await command(a,'post','/recommendations',{category:'places',entityId,collectionId:c.id,expectedCollectionRevision:c.revision,userRating:8,publicationState:'draft'});
+  expect(reply.status).toBe(422);expect(reply.body.error.message).toBe('Recommend people in the People category');
 });
 it('archives one recommendation with replay and leaves another owner and catalog intact',async()=>{
   const a=await persona(),b=await persona(),shared=await entity(),c=await list(a),other=await list(b),r=await recommendation(a,c,shared),rb=await recommendation(b,other,shared),key=randomUUID();

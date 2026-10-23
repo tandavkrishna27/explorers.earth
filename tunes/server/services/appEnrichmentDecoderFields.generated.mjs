@@ -4555,6 +4555,10 @@ var placeRecommendationContextSchema = external_exports.object(contextFields).st
   if (value.recommendationType !== "person" && (value.personProfileUrl !== null || value.personAddress !== null))
     ctx.addIssue({ code: external_exports.ZodIssueCode.custom, path: ["recommendationType"], message: "Person fields require a person recommendation" });
 });
+var PLACE_PERSON_TYPE_REFUSAL = "Recommend people in the People category";
+var placeRecommendationContextWriteSchema = placeRecommendationContextSchema.superRefine((value, ctx) => {
+  if (value.recommendationType === "person") ctx.addIssue({ code: external_exports.ZodIssueCode.custom, path: ["recommendationType"], message: PLACE_PERSON_TYPE_REFUSAL });
+});
 var placePhotosSchema = external_exports.object({ photoMediaIds: external_exports.array(external_exports.string().uuid()).max(10) }).strict();
 var placeLocationSnapshotSchema = external_exports.object({
   version: external_exports.literal(1),
