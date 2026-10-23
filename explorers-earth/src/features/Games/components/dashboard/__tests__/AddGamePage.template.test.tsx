@@ -61,4 +61,36 @@ describe('AddGamePage on the shared add template (WP7)', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Save' })); await screen.findByText('Saved list');
   expect(vi.mocked(GamesClient.updateRecommendation).mock.calls[0][1]).not.toHaveProperty('curatedTermId');
  });
+
+ it('Change on the picked card, then manual, drops the previous pick\'s cover, facts and category', async () => {
+  mount(); const box = screen.getByPlaceholderText('Search for a game...');
+  fireEvent.change(box, { target: { value: 'celeste' } }); fireEvent.keyDown(box, { key: 'Enter' });
+  fireEvent.click(await screen.findByRole('option', { name: /Celeste/ }));
+  await waitFor(() => expect(GamesClient.importCover).toHaveBeenCalledWith('co3byy'));
+  await waitFor(() => expect(screen.getAllByAltText('Game snapshot')).toHaveLength(1));
+  fireEvent.click(screen.getByRole('button', { name: 'Change' }));
+  fireEvent.click(screen.getAllByRole('button', { name: /add manually/i })[0]);
+  expect(screen.getByLabelText('Developer')).toHaveValue('');
+  expect(screen.getByLabelText('Release year')).toHaveValue(null);
+  expect(screen.getByLabelText('Platforms')).toHaveValue('');
+  expect(screen.getByLabelText('Genres')).toHaveValue('');
+  expect(screen.getByRole('combobox', { name: 'Category' })).toHaveValue('');
+  expect(screen.queryAllByAltText('Game snapshot')).toHaveLength(0);
+  fireEvent.change(screen.getByLabelText('Game title'), { target: { value: 'Home-made' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' })); await screen.findByText('Saved list');
+  expect(vi.mocked(GamesClient.prepareManualIntent).mock.calls[0][1]).toMatchObject({ title: 'Home-made', developer: null, releaseYear: null, platforms: [], genres: [], curatedTermId: null, mediaIds: [] });
+ });
+
+ it('a cover import still in flight when the pick is changed is not attached', async () => {
+  let finish!: (value: { id: string }) => void;
+  vi.mocked(GamesClient.importCover).mockReturnValue(new Promise(resolve => { finish = resolve; }) as never);
+  mount(); const box = screen.getByPlaceholderText('Search for a game...');
+  fireEvent.change(box, { target: { value: 'celeste' } }); fireEvent.keyDown(box, { key: 'Enter' });
+  fireEvent.click(await screen.findByRole('option', { name: /Celeste/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Change' }));
+  fireEvent.click(screen.getAllByRole('button', { name: /add manually/i })[0]);
+  finish({ id: 'late-cover' });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).not.toBeDisabled());
+  expect(screen.queryAllByAltText('Game snapshot')).toHaveLength(0);
+ });
 });

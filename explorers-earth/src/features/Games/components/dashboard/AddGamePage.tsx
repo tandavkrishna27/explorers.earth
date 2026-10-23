@@ -53,8 +53,9 @@ export default function AddGamePage() {
  const intent = useRef<{ scope: string; signature: string; value: ManualGameIntent }>();
  const updateKey = useRef<{ signature: string; key: string }>();
  const mounted = useRef(true), resetMode = addMode.reset;
+ const pickSequence = useRef(0), pickedCover = useRef<string>(), pickFilled = useRef(false);
  useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.abort(); active.current++; }; }, []);
- useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setTitle(''); setNote(''); setRating(null); setYear(''); setPlatforms(''); setGenres(''); setMedia([]); setPending(0); setSaving(false); setError(''); setExistingId(''); setDeveloper(''); setCategoryId(null); setCategoryTouched(false); setProviderOff(false); hits.current = new Map(); resetMode(); }, [scope, resetMode]);
+ useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setTitle(''); setNote(''); setRating(null); setYear(''); setPlatforms(''); setGenres(''); setMedia([]); setPending(0); setSaving(false); setError(''); setExistingId(''); setDeveloper(''); setCategoryId(null); setCategoryTouched(false); setProviderOff(false); hits.current = new Map(); pickSequence.current++; pickFilled.current = false; pickedCover.current = undefined; resetMode(); }, [scope, resetMode]);
  useEffect(() => {
   if (!gameId || !owner.content || initialized.current === scope) return;
   const game = owner.content.view.lists.find(list => list.documentId === listId)?.recommended_games.find(row => row.documentId === gameId);
@@ -114,15 +115,23 @@ export default function AddGamePage() {
   if (configured) { setCategoryId(suggestTermFromLabels(catalog.terms, candidate.genres)); setCategoryTouched(true); }
   void choose(candidate);
  };
- const addManually = () => { addMode.goManual(); setTitle(value => value || addMode.query.trim()); };
+ // Changing a pick (or going manual after one) drops everything that pick filled in, mirroring
+ // Books' clearSelection; a cover import still in flight for it is discarded on arrival.
+ const clearPick = () => {
+  pickSequence.current++; if (!pickFilled.current) return; pickFilled.current = false;
+  const cover = pickedCover.current; pickedCover.current = undefined; if (cover) setMedia(value => value.filter(item => item.id !== cover));
+  setTitle(''); setYear(''); setPlatforms(''); setGenres(''); setDeveloper(''); setCategoryId(null); setCategoryTouched(false);
+ };
+ const changePick = () => { clearPick(); addMode.change(); };
+ const addManually = () => { clearPick(); addMode.goManual(); setTitle(value => value || addMode.query.trim()); };
  // The hit's cover is imported by the API (no hot-link) and becomes the first snapshot.
  const choose = async (candidate: GameCandidate) => {
-  const captured = scope; setTitle(candidate.title); setYear(candidate.year ? String(candidate.year) : ''); setPlatforms(candidate.platforms.join(', ')); setGenres(candidate.genres.join(', '));
+  const captured = scope, sequence = ++pickSequence.current; pickFilled.current = true; setTitle(candidate.title); setYear(candidate.year ? String(candidate.year) : ''); setPlatforms(candidate.platforms.join(', ')); setGenres(candidate.genres.join(', '));
   const imageId = candidate.coverUrl?.match(/\/t_cover_big\/([A-Za-z0-9_-]+)\.jpg$/)?.[1];
   if (!imageId) return;
   setPending(value => value + 1);
-  try { const cover = await GamesClient.importCover(imageId); if (!valid(captured)) return; const item = { id: cover.id, url: `/api/explorers/v1/media/${cover.id}/content` }; setMedia(value => value.some(existing => existing.id === item.id) ? value : [item, ...value]); }
-  catch (failure) { if (valid(captured)) setError(friendlyErrorMessage(failure, 'The game cover could not be added. You can upload one below.')); }
+  try { const cover = await GamesClient.importCover(imageId); if (!valid(captured) || pickSequence.current !== sequence) return; pickedCover.current = cover.id; const item = { id: cover.id, url: `/api/explorers/v1/media/${cover.id}/content` }; setMedia(value => value.some(existing => existing.id === item.id) ? value : [item, ...value]); }
+  catch (failure) { if (valid(captured) && pickSequence.current === sequence) setError(friendlyErrorMessage(failure, 'The game cover could not be added. You can upload one below.')); }
   finally { if (valid(captured)) setPending(value => value - 1); }
  };
  // Edit controls require the actual complete owner observation. A loaded draft
@@ -140,7 +149,7 @@ export default function AddGamePage() {
   bar={{ onCancel: () => back.goBack(), onSave: () => { void save(); }, saving: saving ? 'save' : null, canSave: !saving && pending === 0 && Boolean(title.trim()) && !(gameId && initialized.current !== scope) }}>
    {mode === 'search' && <ItemSearch query={addMode.query} onQueryChange={addMode.setQuery} search={search} onPick={pickHit} onAddManually={addManually} placeholder="Search for a game..." override={providerOffNotice} />}
    {mode === 'search' && existingGames.length > 0 && <section><label>Existing game<select value={existingId} onChange={event => setExistingId(event.target.value)} disabled={commands.loading}><option value="">Select a game</option>{existingGames.map(game => <option key={game.documentId} value={game.documentId}>{game.title}</option>)}</select></label><button disabled={!existingId || commands.loading} onClick={attachExisting}>Add existing game to this list</button></section>}
-   {mode === 'picked' && addMode.picked && <PickedItemCard title={addMode.picked.title} subtitle={[addMode.picked.year, addMode.picked.developer].filter(Boolean).join(' · ') || undefined} imageUrl={addMode.picked.coverUrl} onChange={addMode.change} />}
+   {mode === 'picked' && addMode.picked && <PickedItemCard title={addMode.picked.title} subtitle={[addMode.picked.year, addMode.picked.developer].filter(Boolean).join(' · ') || undefined} imageUrl={addMode.picked.coverUrl} onChange={changePick} />}
    {mode !== 'search' && <section className="rounded-2xl border border-dashboard-border bg-dashboard-sidebar p-5 space-y-5"><h2 className="font-semibold flex gap-2"><Gamepad2 size={18} />{gameId ? 'My Game' : 'Your game'}</h2>
     {owner.error && <p role="alert">{owner.error.message}</p>}
     <label className="block">Game title<input value={title} onChange={event => setTitle(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
