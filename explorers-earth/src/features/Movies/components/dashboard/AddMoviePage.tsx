@@ -8,7 +8,7 @@ import type { MovieCandidate } from '../../../../../../tunes/shared/explorersMov
 import { richNoteFromEditor } from '../../../../../../tunes/shared/explorersRichNoteContract';
 import useAuthStore from '../../../../store/store';
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft, Film, Star, Tv, Clock,
   Loader2, Check, Search, X, CheckCircle2, User, Upload,
@@ -22,6 +22,9 @@ import {
 } from "../../utils/movieHelpers";
 
 import TiptapEditor from "../../../Favorites/components/TiptapEditor";
+import { useOriginBack } from "../../../../lib/navigation/useOriginBack";
+import { listPath } from "../../../../lib/navigation/categoryRoutes";
+import { useTranslation } from "react-i18next";
 
 const FALLBACK_POSTER = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='150' viewBox='0 0 100 150'><rect width='100' height='150' fill='%230d1117'/></svg>`;
 
@@ -144,7 +147,10 @@ interface FormState {
 // Main Page — handles both create & edit
 // ──────────────────────────────────────────────
 const AddMoviePage = () => {
- const {listId,movieId}=useParams<{listId:string;movieId?:string}>(),navigate=useNavigate(),isEdit=Boolean(movieId);
+ const {listId,movieId}=useParams<{listId:string;movieId?:string}>(),isEdit=Boolean(movieId);
+ const { t: tBack } = useTranslation();
+ const back = useOriginBack({ to: listPath("movies", listId!), label: tBack("dashboard.wp1.back.list") });
+ const backText = back.source === "state" && back.label ? tBack("dashboard.wp1.back.to", { name: back.label }) : tBack("dashboard.wp1.back.list");
  const generation=useAuthStore(state=>state.generation),selectionAttempt=useRef(0),selectionController=useRef<AbortController>();
  const initializedDraft=useRef<string>(),saveBusy=useRef(false),saveController=useRef<AbortController>();
  const commandKeys=useRef(new Map<string,string>());
@@ -245,7 +251,7 @@ const AddMoviePage = () => {
     }
    }
    if (!alive()) return;
-   invalidateMovies();toast.success(isEdit?'Movie updated!':'Movie added!');navigate(`/recommendations/movies/${listId}`,{state:{justAddedRecommendation:true}});
+   invalidateMovies();toast.success(isEdit?'Movie updated!':'Movie added!');back.goBack({state:{justAddedRecommendation:true}});
   } catch(error) {
    if (alive()) toast.error(friendlyErrorMessage(error, 'Failed to save. Your draft is preserved.'));
   } finally {
@@ -259,7 +265,8 @@ const AddMoviePage = () => {
       {/* Sticky header */}
       <div className="border-b border-dashboard-border px-4 md:px-6 py-3 flex items-center gap-3 sticky top-0 bg-dashboard-bg z-40 w-full">
         <button
-          onClick={() => navigate(`/recommendations/movies/${listId}`)}
+          aria-label={backText}
+          onClick={() => back.goBack()}
           className="text-white/40 hover:text-white transition-colors"
         >
           <ArrowLeft size={20} />
@@ -583,7 +590,7 @@ const AddMoviePage = () => {
                 <div className="flex gap-3">
                   <button
                     type="button"
-                    onClick={() => navigate(`/recommendations/movies/${listId}`)}
+                    onClick={() => back.goBack()}
                     className="px-6 py-3 rounded-xl bg-dashboard-muted hover:bg-white/10 text-sm text-white font-medium transition-colors"
                   >
                     Cancel

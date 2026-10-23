@@ -968,7 +968,6 @@
     "ZW": "Zimbabwe"
   },
   "dashboard": {
-<<<<<<< HEAD
     "wp4": {
       "actions": "Item actions",
       "addManually": "Add manually",
@@ -999,7 +998,7 @@
       "useMyLocation": "Use my current location",
       "usePin": "Use the pin as a custom place",
       "useThisPin": "Use this pin"
-=======
+    },
     "wp3b": {
       "addItem": "Add item",
       "addNoun": "Add {{noun}}",
@@ -1055,7 +1054,6 @@
       "tabShare": "Share",
       "typeToConfirm": "Type \"{{name}}\" to confirm",
       "urlSaved": "URL updated"
->>>>>>> fork/main
     },
     "categoryPages": {
       "publicVisibility": "Public Visibility",
