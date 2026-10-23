@@ -206,7 +206,8 @@ test('all eight empty list responses never mutate category publication or saved 
     };
   });
   try {
-    const taglines = ['Map your world', 'Your personal cinema', 'Build your library', 'Level up your lists', 'Your stack, curated', 'Showcase your picks', 'Celebrate great minds', 'Write the itinerary'];
+    // Every category now renders the shared template's first-visit state for an empty list response.
+    const taglines = categories.map(() => 'Your best picks go here');
     const diagnostics: Record<string, string[]> = {};
     const invalid: Record<string, unknown> = {};
     for (const [index, category] of categories.entries()) {
@@ -302,7 +303,9 @@ test('ordinary stale loaded account rereads latest pins and route/account change
     state.faults.set('/api/explorers/v1/me', [{ gate: new Promise<void>(resolve => { release = resolve; }) }]);
     const books = owner.page.getByRole('checkbox', { name: 'Books Tab', exact: true }); await submitPinnedCategoryUnpublish(owner.page, books, 'Books Tab'); await expect(books).toBeDisabled();
     state.account.documentId = 'fixture-account-b'; await owner.page.goto('/recommendations/books'); release();
-    await expect(owner.page.getByRole('checkbox').first()).toBeEnabled(); expect(state.writes).toHaveLength(writes); expect(state.account.public_books).toBe('Yes');
-    state.account.documentId = 'browser-account'; await owner.page.reload(); await expect(owner.page.getByRole('checkbox').first()).toBeChecked(); expect(state.writes).toHaveLength(writes);
+    // The page header publish control is WP2's PublishPill (a menu button), not a checkbox.
+    const pill = owner.page.getByRole('button', { name: /^Visibility: (Public|Hidden)$/ });
+    await expect(pill).toBeEnabled(); expect(state.writes).toHaveLength(writes); expect(state.account.public_books).toBe('Yes');
+    state.account.documentId = 'browser-account'; await owner.page.reload(); await expect(pill).toHaveAccessibleName('Visibility: Public'); expect(state.writes).toHaveLength(writes);
   } finally { release?.(); await closeFixture(owner); }
 });

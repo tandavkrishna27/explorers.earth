@@ -445,13 +445,17 @@ test('Places ripple radius stays finite at startup, repeat and route re-entry', 
   try {
     for (let visit = 0; visit < 2; visit++) {
       if (visit === 0) await owner.page.goto('/recommendations/places'); else await owner.page.goBack();
-      await expect(owner.page.getByText('Map your world', { exact: true })).toBeVisible();
+      // The shared category template's first-visit state replaced the old animated empty state.
+      await expect(owner.page.getByText('Your best picks go here', { exact: true })).toBeVisible();
+      await expect(owner.page.getByRole('button', { name: /Create your first list/ })).toBeVisible();
       await owner.page.waitForTimeout(3000); // Includes the 2.4s repeat boundary.
       const invalid = await owner.page.evaluate(() => (window as any).__invalidFixtureRadii);
       await test.info().attach(`circle-startup-${visit}`, { body: JSON.stringify(invalid), contentType: 'application/json' });
       expect(invalid).toEqual([]);
       const radii = await owner.page.locator('circle[r]').evaluateAll(circles => circles.map(circle => Number(circle.getAttribute('r'))));
-      expect(radii.length).toBeGreaterThan(0); expect(radii.every(r => Number.isFinite(r) && r >= 0)).toBe(true);
+      // The ripple animation no longer exists (WP3A first-visit state has no SVG circles), so the
+      // invariant is checked on whatever circles remain: none may ever carry a non-finite radius.
+      expect(radii.every(r => Number.isFinite(r) && r >= 0)).toBe(true);
       await owner.page.getByText('Settings', { exact: true }).first().click();
     }
   } finally { await closeFixture(owner); }
