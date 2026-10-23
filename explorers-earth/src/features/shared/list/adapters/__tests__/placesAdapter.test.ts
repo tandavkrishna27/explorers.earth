@@ -41,6 +41,15 @@ describe("places list adapter", () => {
     expect(result.current.editPath("p1")).toBe("/recommendations/places/l1/edit/p1");
   });
 
+  it("carries a sample flag onto the list view only for a sample (WP11)", () => {
+    fx.lists = [{ ...list([place("p1")]), isSample: true }];
+    const sample = renderHook(() => usePlacesListAdapter("l1"), { wrapper }).result.current;
+    expect(sample.list?.isSample).toBe(true);
+    fx.lists = [list([place("p1")])];
+    const mine = renderHook(() => usePlacesListAdapter("l1"), { wrapper }).result.current;
+    expect(mine.list).not.toHaveProperty("isSample");
+  });
+
   it("refuses to publish an empty list and publishes the places with the list", async () => {
     const { result, rerender } = renderHook(() => usePlacesListAdapter("l1"), { wrapper });
     await expect(result.current.setStatus("public")).rejects.toThrow(/at least one place/);
