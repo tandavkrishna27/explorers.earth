@@ -21,13 +21,13 @@ export function LinkedListsSection({ linkedLists, originLabel }: Props) {
   const label = originLabel ?? t("dashboard.wp10.linkedLists", "Linked lists");
   return (
     <section aria-labelledby={headingId} className="mt-6 grid gap-3">
-      <h2 id={headingId} className="text-base font-semibold">{t("dashboard.wp10.linkedLists", "Linked lists")}</h2>
+      <h2 id={headingId} className="text-base font-semibold text-dashboard">{t("dashboard.wp10.linkedLists", "Linked lists")}</h2>
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {live.map((card) => (
           <li key={card.linkId} className="min-w-0">
             <Link to={linkedListPath(card.collection.category, card.collection.id)} state={withOrigin(location, label)}
-              className="block h-full rounded-xl border border-white/10 bg-[#0e1218] p-4 hover:border-blue-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400">
-              <span className="block text-xs uppercase tracking-wide text-gray-400">{t(`dashboard.wp1.back.categories.${card.collection.category}`, card.collection.category)}</span>
+              className="block h-full rounded-xl border border-dashboard-border bg-dashboard-sidebar p-4 text-dashboard hover:border-blue-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400">
+              <span className="block text-xs uppercase tracking-wide text-dashboard-muted">{t(`dashboard.wp1.back.categories.${card.collection.category}`, card.collection.category)}</span>
               <span className="block break-words font-medium">{card.collection.title}</span>
               {card.role && <span className="mt-1 inline-block max-w-full break-words rounded-full bg-white/10 px-2 py-0.5 text-xs">{card.role}</span>}
             </Link>

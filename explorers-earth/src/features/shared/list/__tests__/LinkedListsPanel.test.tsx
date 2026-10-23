@@ -57,4 +57,12 @@ describe("LinkedListsPanel", () => {
     fireEvent.blur(screen.getByRole("textbox", { name: "Custom role for Packing" }));
     await waitFor(() => expect(l.setRole).toHaveBeenCalledWith(card, "Day 2 gear"));
   });
+
+  it("uses the dashboard theme text and surface tokens so it reads in dark and light", () => {
+    render(<LinkedListsPanel linkedLists={[card]} links={links() as never} onToast={vi.fn()} onAttach={() => undefined} />);
+    expect(screen.getByRole("heading", { name: "Linked lists" })).toHaveClass("text-dashboard");
+    expect(screen.getByRole("button", { name: "Attach" })).toHaveClass("text-dashboard", "border-dashboard-border");
+    expect(screen.getByRole("region", { name: "Linked lists" })).toHaveClass("bg-dashboard-sidebar", "border-dashboard-border");
+    expect(screen.getByText("Packing").closest("li")).toHaveClass("text-dashboard", "bg-dashboard-muted");
+  });
 });

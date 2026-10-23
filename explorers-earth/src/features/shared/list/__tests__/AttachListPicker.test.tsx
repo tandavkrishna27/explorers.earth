@@ -39,4 +39,13 @@ describe("AttachListPicker (LNK-02, LNK-06)", () => {
     const { container } = render(<AttachListPicker open={false} lists={lists} isAttachable={() => true} onPick={vi.fn()} onCreateNew={vi.fn()} onOpenChange={vi.fn()} />);
     expect(container).toBeEmptyDOMElement();
   });
+
+  // index.css sets `.grid { max-width: 100% }` after the utilities, which overrode max-w-lg
+  // and stretched the dialog across a 1440px viewport. The dialog must not be a .grid box.
+  it("keeps its max width: the dialog is not a .grid box", () => {
+    render(<AttachListPicker open lists={lists} isAttachable={() => true} onPick={vi.fn()} onCreateNew={vi.fn()} onOpenChange={vi.fn()} />);
+    const dialog = screen.getByRole("dialog", { name: "Attach a list" });
+    expect(dialog).toHaveClass("max-w-lg");
+    expect(dialog).not.toHaveClass("grid");
+  });
 });

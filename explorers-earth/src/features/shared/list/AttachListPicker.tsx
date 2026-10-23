@@ -36,7 +36,7 @@ export function AttachListPicker({ open, onOpenChange, lists, isAttachable, onPi
     <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm md:p-6" role="presentation" onClick={close}>
       <div role="dialog" aria-modal="true" aria-label={t("dashboard.wp10.attachTitle", "Attach a list")} onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => { if (e.key === "Escape") close(); }}
-        className="grid max-h-[85vh] w-full max-w-lg gap-3 overflow-hidden rounded-xl border border-dashboard-border bg-dashboard-sidebar p-4 shadow-2xl md:p-6">
+        className="flex max-h-[85vh] w-full max-w-lg flex-col gap-3 overflow-hidden rounded-xl border border-dashboard-border bg-dashboard-sidebar p-4 shadow-2xl md:p-6">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-bold text-dashboard">{t("dashboard.wp10.attachTitle", "Attach a list")}</h2>
           <button type="button" onClick={close} aria-label={t("dashboard.wp3a.dialog.cancel", "Cancel")} className="rounded-full bg-white/5 p-1.5 text-dashboard-muted">✕</button>
@@ -47,11 +47,11 @@ export function AttachListPicker({ open, onOpenChange, lists, isAttachable, onPi
         <div role="listbox" aria-label={t("dashboard.wp10.yourLists", "Your lists")} className="min-h-0 overflow-y-auto">
           {groups.map((g) => (
             <div key={g.category} role="group" aria-label={categoryLabel(g.category)}>
-              <p className="px-2 pt-2 text-xs uppercase tracking-wide text-gray-400" aria-hidden="true">{categoryLabel(g.category)}</p>
+              <p className="px-2 pt-2 text-xs uppercase tracking-wide text-dashboard-muted" aria-hidden="true">{categoryLabel(g.category)}</p>
               {g.items.map((l) => (
                 <div key={l.id} role="option" aria-selected={false} tabIndex={0} onClick={() => onPick(l)}
                   onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(l); } }}
-                  className="min-h-11 cursor-pointer break-words rounded-lg px-2 py-2.5 text-sm hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400">{l.title}</div>
+                  className="min-h-11 cursor-pointer break-words rounded-lg px-2 py-2.5 text-sm text-dashboard hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-400">{l.title}</div>
               ))}
             </div>
           ))}
@@ -62,7 +62,7 @@ export function AttachListPicker({ open, onOpenChange, lists, isAttachable, onPi
             className="min-h-11 rounded-lg border border-dashboard-border bg-dashboard-muted px-2 text-sm text-dashboard">
             {CATEGORY_KEYS.map((key) => <option key={key} value={key}>{categoryLabel(key)}</option>)}
           </select>
-          <button type="button" onClick={() => onCreateNew(newCategory)} className="min-h-11 flex-1 rounded-lg border border-dashed border-white/30 px-3 text-sm">
+          <button type="button" onClick={() => onCreateNew(newCategory)} className="min-h-11 flex-1 rounded-lg border border-dashed border-white/30 px-3 text-sm text-dashboard">
             {t("dashboard.wp10.createNew", "Create a new list")}
           </button>
         </div>

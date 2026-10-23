@@ -41,4 +41,11 @@ describe("LinkedListsSection", () => {
     render(<MemoryRouter><LinkedListsSection linkedLists={[...cards]} readOnly /></MemoryRouter>);
     expect(screen.queryByRole("button", { name: /detach/i })).toBeNull();
   });
+
+  it("uses the dashboard theme text and surface tokens so it reads in dark and light", () => {
+    render(<MemoryRouter><LinkedListsSection linkedLists={[...cards]} /></MemoryRouter>);
+    expect(screen.getByRole("heading", { name: "Linked lists" })).toHaveClass("text-dashboard");
+    const link = screen.getByRole("link", { name: /Packing/ });
+    expect(link).toHaveClass("text-dashboard", "bg-dashboard-sidebar", "border-dashboard-border");
+  });
 });

@@ -16,12 +16,12 @@ export function LinkedListsPanel({ linkedLists, links, onToast, onAttach, rolesE
   const headingId = useId();
   const ordered = [...linkedLists].sort((a, b) => a.displayOrder - b.displayOrder);
   return (
-    <section aria-labelledby={headingId} className="grid gap-3 rounded-2xl border border-white/10 bg-[#151a25] p-4">
+    <section aria-labelledby={headingId} className="grid gap-3 rounded-2xl border border-dashboard-border bg-dashboard-sidebar p-4 text-dashboard">
       <div className="flex items-center justify-between gap-3">
-        <h3 id={headingId} className="font-semibold">{t("dashboard.wp10.linkedLists", "Linked lists")}</h3>
-        <button type="button" onClick={onAttach} disabled={links.busy} className="min-h-11 rounded-xl border border-white/10 px-4 disabled:opacity-50">{t("dashboard.wp10.attach", "Attach")}</button>
+        <h3 id={headingId} className="font-semibold text-dashboard">{t("dashboard.wp10.linkedLists", "Linked lists")}</h3>
+        <button type="button" onClick={onAttach} disabled={links.busy} className="min-h-11 rounded-xl border border-dashboard-border px-4 text-dashboard hover:bg-white/5 disabled:opacity-50">{t("dashboard.wp10.attach", "Attach")}</button>
       </div>
-      {ordered.length === 0 && <p className="text-sm text-gray-400">{t("dashboard.wp10.emptyManage", "Link another of your lists to show it under this one.")}</p>}
+      {ordered.length === 0 && <p className="text-sm text-dashboard-muted">{t("dashboard.wp10.emptyManage", "Link another of your lists to show it under this one.")}</p>}
       {ordered.length > 0 && (
         <ul className="grid gap-2">
           {ordered.map((card) => <Row key={card.linkId} card={card} links={links} onToast={onToast} rolesEnabled={rolesEnabled} />)}
@@ -47,9 +47,9 @@ function Row({ card, links, onToast, rolesEnabled }: { card: LinkedListCard; lin
   };
   const saveRole = (role: string | null) => { links.setRole(card, role).catch((error) => fail(error, t("dashboard.wp10.roleFailed", "Couldn't save the role"))); };
   return (
-    <li className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-[#0e1218] p-2">
+    <li className="flex flex-wrap items-center gap-2 rounded-xl border border-dashboard-border bg-dashboard-muted p-2 text-dashboard">
       <span className="min-w-0 flex-1 break-words text-sm">
-        <span className="block text-xs uppercase tracking-wide text-gray-400">{t(`dashboard.wp1.back.categories.${card.collection.category}`, card.collection.category)}</span>
+        <span className="block text-xs uppercase tracking-wide text-dashboard-muted">{t(`dashboard.wp1.back.categories.${card.collection.category}`, card.collection.category)}</span>
         {title}
       </span>
       {card.collection.archived && <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs">{t("dashboard.wp10.archived", "Archived")}</span>}
@@ -57,7 +57,7 @@ function Row({ card, links, onToast, rolesEnabled }: { card: LinkedListCard; lin
         <>
           <select aria-label={t("dashboard.wp10.roleFor", "Role for {{title}}", { title })} value={mode} disabled={links.busy}
             onChange={(e) => { const v = e.target.value; setMode(v); if (v !== "__custom") saveRole(v === "" ? null : v); }}
-            className="min-h-11 rounded-lg border border-white/10 bg-[#0b0f15] px-2 text-sm">
+            className="min-h-11 rounded-lg border border-dashboard-border bg-dashboard-sidebar px-2 text-sm text-dashboard">
             <option value="">{t("dashboard.wp10.noRole", "No role")}</option>
             {roleSuggestions.map((p) => <option key={p} value={p}>{p}</option>)}
             <option value="__custom">{t("dashboard.wp10.customRole", "Custom…")}</option>
@@ -65,7 +65,7 @@ function Row({ card, links, onToast, rolesEnabled }: { card: LinkedListCard; lin
           {mode === "__custom" && (
             <input aria-label={t("dashboard.wp10.customRoleFor", "Custom role for {{title}}", { title })} maxLength={roleMax} value={custom}
               onChange={(e) => setCustom(e.target.value)} onBlur={() => { if ((custom.trim() || null) !== card.role) saveRole(custom.trim() || null); }}
-              className="min-h-11 rounded-lg border border-white/10 bg-[#0b0f15] px-2 text-sm" />
+              className="min-h-11 rounded-lg border border-dashboard-border bg-dashboard-sidebar px-2 text-sm text-dashboard" />
           )}
         </>
       )}
