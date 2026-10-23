@@ -44,8 +44,8 @@ export default function AddGamePage() {
  const [saving, setSaving] = useState(false), [error, setError] = useState('');
  const addMode = useAddItemMode<GameCandidate>(), hits = useRef(new Map<string, GameCandidate>()), [providerOff, setProviderOff] = useState(false);
  const [developer, setDeveloper] = useState('');
- // Curated category: sent only when the catalog is configured. The read model does not carry the
- // current assignment, so an edit sends it only after the owner picks one (never a silent clear).
+ // Curated category: sent only when the catalog is configured. An edit shows the stored assignment
+ // from the observation and sends it only after the owner changes it (never a silent rewrite).
  const catalog = useCuratedCatalog('games'), configured = !catalog.loading && !catalog.error && !catalog.unconfigured && catalog.terms.length > 0;
  const taxonomyTerms = useMemo(() => catalog.terms.map((term, position) => ({ id: term.id, parentId: null, position, label: term.label })), [catalog.terms]);
  const [categoryId, setCategoryId] = useState<string | null>(null), [categoryTouched, setCategoryTouched] = useState(false);
@@ -62,6 +62,7 @@ export default function AddGamePage() {
   if (!game || !observed) return;
   initialized.current = scope; draftObservation.current = observed; setTitle(game.title); setNote(typeof game.user_recommendation_note === 'string' ? game.user_recommendation_note : ''); setRating(game.user_rating);
   setMedia(game.Media.flatMap(item => item.documentId ? [{ id: item.documentId, url: item.url }] : []));
+  setCategoryId(observed.detail.curatedTerm?.term?.id ?? null); setCategoryTouched(false);
  }, [owner.content, scope, gameId, listId]);
  const valid = (captured: string, operation?: number) => mounted.current && currentScope.current === captured && (operation === undefined || active.current === operation);
  const assertCurrent = (captured: string, operation: number) => { if (!valid(captured, operation) || controller.current?.signal.aborted) throw new Error('Game owner or route changed'); };

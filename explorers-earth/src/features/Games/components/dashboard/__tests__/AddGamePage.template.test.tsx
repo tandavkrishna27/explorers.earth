@@ -7,7 +7,8 @@ import useAuthStore from '../../../../../store/store';
 
 const catalog = vi.hoisted(() => ({ value: { terms: [] as { id: string; label: string; parentId: string | null; slug: string }[], unconfigured: false, loading: false, error: null } }));
 vi.mock('../../../../../lib/curatedTaxonomy', async importOriginal => ({ ...(await importOriginal<object>()), useCuratedCatalog: () => catalog.value }));
-vi.mock('../../../hooks/useGamesOwner', () => ({ useGamesOwner: () => ({ content: { view: { lists: [] }, details: new Map() }, loading: false, error: undefined, refetch: vi.fn() }), invalidateGames: vi.fn() }));
+const owner = vi.hoisted(() => ({ content: { view: { lists: [] as unknown[] }, details: new Map<string, unknown>() }, loading: false, error: undefined, refetch: () => {} }));
+vi.mock('../../../hooks/useGamesOwner', () => ({ useGamesOwner: () => owner, invalidateGames: vi.fn() }));
 vi.mock('../../../api/gamesClient', () => ({ GamesClient: { observeCollection: vi.fn(), prepareManualIntent: vi.fn(), createManual: vi.fn(), upload: vi.fn(), importCover: vi.fn(), search: vi.fn(), updateRecommendation: vi.fn() } }));
 vi.mock('../../../../Favorites/components/TiptapEditor', () => ({ default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => <textarea aria-label="Note" value={value} onChange={event => onChange(event.target.value)} /> }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -18,7 +19,7 @@ function mount() { return render(<MemoryRouter initialEntries={['/games/list-1/a
 
 describe('AddGamePage on the shared add template (WP7)', () => {
  beforeEach(() => {
-  vi.clearAllMocks(); catalog.value = { terms, unconfigured: false, loading: false, error: null };
+  vi.clearAllMocks(); catalog.value = { terms, unconfigured: false, loading: false, error: null }; owner.content.view.lists = []; owner.content.details.clear();
   useAuthStore.getState().login({ id: 'u1', documentId: 'u1', username: 'owner', token: 'fixture' }); useAuthStore.setState({ accountId: 'a1' });
   vi.mocked(GamesClient.observeCollection).mockResolvedValue({ detail: { id: 'list-1' } } as never);
   vi.mocked(GamesClient.prepareManualIntent).mockReturnValue({} as never); vi.mocked(GamesClient.createManual).mockResolvedValue({ id: 'game-1' } as never);
@@ -49,5 +50,15 @@ describe('AddGamePage on the shared add template (WP7)', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Save' })); await screen.findByText('Saved list');
   const draft = vi.mocked(GamesClient.prepareManualIntent).mock.calls[0][1];
   expect(draft).toMatchObject({ title: 'Home-made', developer: 'Me' }); expect(draft).not.toHaveProperty('curatedTermId');
+ });
+
+ it('edit shows the stored curated category and an untouched save does not resend it', async () => {
+  owner.content.view.lists = [{ documentId: 'list-1', recommended_games: [{ documentId: 'game-1', title: 'Celeste', user_recommendation_note: '', user_rating: 4, Media: [] }] }];
+  owner.content.details.set('game-1', { detail: { curatedTerm: { term: { id: 't-action' } } } });
+  vi.mocked(GamesClient.updateRecommendation).mockResolvedValue({} as never);
+  render(<MemoryRouter initialEntries={['/games/list-1/edit/game-1']}><Routes><Route path="/games/:listId/edit/:gameId" element={<AddGamePage />} /><Route path="/recommendations/games/:listId" element={<p>Saved list</p>} /></Routes></MemoryRouter>);
+  expect(await screen.findByRole('combobox', { name: 'Category' })).toHaveValue('Action');
+  fireEvent.click(screen.getByRole('button', { name: 'Save' })); await screen.findByText('Saved list');
+  expect(vi.mocked(GamesClient.updateRecommendation).mock.calls[0][1]).not.toHaveProperty('curatedTermId');
  });
 });
