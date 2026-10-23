@@ -1,4 +1,7 @@
-import CategoryListsOrder from "../components/reorder/CategoryListsOrder";
+import CategoryPage from "../features/shared/category/CategoryPage";
+import { toListTopPicks } from "../features/shared/category/models";
+import { createList } from "../features/shared/category/listWrites";
+import type { NewListCreate } from "../features/shared/lists/NewListDialog";
 import { NavigationStatus } from "../features/navigation/NavigationStatus";
 import type { IntentAuthority } from "../features/navigation/categoryNavigationPolicy";
 import { useCategoryNavigation } from "../features/navigation/CategoryNavigationProvider";
@@ -7,14 +10,13 @@ import { useTranslation } from "react-i18next";
 import Recommendations from "../features/Favorites/components/Recommendations";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
-import { AddIcon } from "../assets/icons/AddIcon";
 import LinksAndQR from "../features/Favorites/components/LinksAndQR";
 import AddLocationModal from "../components/ui/AddLocationModal";
 import { toast } from "sonner";
 import { EarthLoader } from "../components/EarthLoader";
 import HeroSkeleton from "../components/ui/HeroSkeleton";
 import RecommendationCardSkeleton from "../components/ui/RecommendationCardSkeleton";
-import { useCreateLocation } from "../features/Favorites/hooks/useCreateLocation";
+import { importPlaceCover } from "../features/Favorites/hooks/useCreateLocation";
 import { usePlacesOwner } from "../features/Favorites/hooks/usePlacesOwner";
 import { usePlacesCommands } from "../features/Favorites/api/placesCommands";
 import { useMenuItems } from "../features/Favorites/hooks/useMenuItems";
@@ -23,9 +25,7 @@ import SwitchButton from "../components/ui/SwitchButton";
 import useAuthStore from "../store/store";
 import { useCityStore } from "../store/useCityStore";
 import { IMAGE_CONFIG } from "../config";
-import { motion, AnimatePresence } from "framer-motion";
-import CircularPlacesModal from "../components/CircularPlacesModal";
-import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { PLACE_LIST_PARAM } from "../features/Favorites/placeListRoute";
 import { CategoryVisibilityModal } from "../components/CategoryVisibilityModal";
 import SEO from "../components/SEO";
@@ -34,7 +34,6 @@ import { useRecommendationsWalkthrough } from "../hooks/useRecommendationsWalkth
 import Joyride from "react-joyride";
 import useSetupStore from "../store/useSetupStore";
 import { calculateIsRecommendationsComplete } from "../utils/setupStatusCalculations";
-import { CategoryEmptyState } from "../components/CategoryEmptyState";
 import { ListVisibilityModal } from "../components/ListVisibilityModal";
 import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
 import { keyboardActivation } from "../utils/keyboardActivation";
@@ -72,22 +71,6 @@ export interface selectedCity {
   }[];
   recommendations?: Recommendation[];
 }
-
-const PushPinIcon = ({ pinned }: { pinned: boolean }) => (
-  <svg
-    className={`w-3.5 h-3.5 transition-colors cursor-pointer ${
-      pinned ? "text-amber-400 fill-amber-400" : "text-white/45 hover:text-white/80"
-    }`}
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M19 12H5l4-4V3h6v5l4 4z" fill={pinned ? "currentColor" : "none"} />
-    <path d="M12 12v8" />
-  </svg>
-);
 
 const FavoritesSkeleton = () => {
   return (
@@ -130,7 +113,6 @@ const Favorites = memo(() => {
   const accountId = useAuthStore((state) => state.accountId);
   const accountById = accountId ? { accountId } : undefined;
 
-  const [showAllPlaces, setShowAllPlaces] = useState<boolean>(false);
   // local state for handling modal
   const [isLocationModalOpen, setIsLocationModalOpen] =
     useState<boolean>(false);
@@ -140,8 +122,6 @@ const Favorites = memo(() => {
   );
   // Two-step flow states
   const [step, setStep] = useState<1 | 2>(1);
-  const [activeDropdownListId, setActiveDropdownListId] = useState<string | null>(null);
-  const [activePinnedIndex, setActivePinnedIndex] = useState<number>(0);
   const [isManageModalOpen, setIsManageModalOpen] = useState<boolean>(false);
   const [visibilityPrompt, setVisibilityPrompt] = useState<{
     isOpen: boolean;
@@ -157,48 +137,20 @@ const Favorites = memo(() => {
     listDocumentId: string;
   } | null>(null);
 
-  const promptedLocation = useRef<string | null>(null);
-  useEffect(() => {
-    if (location.state?.justCreatedList && navigation.authority && promptedLocation.current !== location.key) {
-      promptedLocation.current = location.key;
-      const isPublic = navigation.snapshot?.visibility.public_recommendations === "Yes"; // strict opt-in
-      if (!isPublic && navigation.authority) {
-        setVisibilityPrompt({
-          origin: navigation.authority,
-          isOpen: true,
-          categoryName: "Places",
-          visibilityField: "public_recommendations",
-          defaultValue: true,
-        });
-      }
-      // Clear location state
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state, location.key, navigation.authority, navigation.snapshot]);
 
-  useEffect(() => {
-    const handleWindowClick = () => {
-      setActiveDropdownListId(null);
-    };
-    window.addEventListener("click", handleWindowClick);
-    return () => window.removeEventListener("click", handleWindowClick);
-  }, []);
-
-  const [mobileDropdownOpen, setMobileDropdownOpen] = useState<boolean>(false);
   // Check if profile setup is complete
   const { isProfileComplete, isRecommendationsComplete, setSetupStatus } = useSetupStore();
 
   const cityRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   // local state for handling edit state
   const [isEditing, setIsEditing] = useState<boolean>(false);
-  const navigate = useNavigate();
   // local state for handling the confirm delete modal
   const [showConfirmDeleteModal, setShowConfirmDeleteModal] =
     useState<boolean>(false);
   const [deleteConfirmationText, setDeleteConfirmationText] =
     useState<string>("");
   // local state for handling the loading state for adding the list name
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading] = useState<boolean>(false);
   // Ticket 5.1. The owner's Places lists come from the native owner API, which scopes
   // them to the signed-in account rather than filtering by an account id read from a
   // separate query.
@@ -294,12 +246,6 @@ const Favorites = memo(() => {
     return { data: { updateRecommendationList: { ...data, documentId: id } as Record<string, any> } };
   }, [commands, placesOwner.content, placesOwner.data, accountId, sessionGeneration]);
 
-  // Why the Public Visibility switch cannot be used right now, so a disabled switch explains itself.
-  const visibilityDisabledReason = !navigation.authority
-    ? "Checking your account. Public visibility can be changed in a moment."
-    : navigation.busy
-      ? "Saving your last change. Try again when it finishes."
-      : undefined;
   const handleVisibilityToggle = () => {
     const origin = navigation.authority;
     if (origin && !navigation.busy) void navigation.request({ category: "public_recommendations", action: categoryVisible ? "unpublish" : "publish" }, origin);
@@ -510,33 +456,35 @@ const Favorites = memo(() => {
     advanceToNextStep,
   });
 
-  // a custom hook to create the recommendation link (City)
-  const { handleLocationSubmit, accountData } = useCreateLocation({
-    setIsLocationModalOpen,
-    refetchCities,
-    setIsLoading,
-    cities,
-    onCreated: () => {
-      // Open directly into the newly-created list's detail view (BUG-3 parity
-      // with Movies): useCreateLocation already sets selectedCity to the new
-      // list, so switch the in-page view from the all-lists grid (step 1) to the
-      // list detail (step 2) and focus the Recommendations tab, where the
-      // add-place affordance lives. Without this the user was left on the grid.
-      setActiveTab(t("dashboard.recommendations.recommendationsTab"));
-      setStep(2);
-
-      const isPublic = navigation.snapshot?.visibility.public_recommendations === "Yes"; // strict opt-in
-      if (!isPublic && navigation.authority) {
-        setVisibilityPrompt({
-          origin: navigation.authority,
-          isOpen: true,
-          categoryName: "Places",
-          visibilityField: "public_recommendations",
-          defaultValue: true,
-        });
-      }
-    }
-  });
+  // The shared New list popup creates the list; Places first imports the first Google photo as its cover.
+  const placesCreate: NewListCreate = async (input, place) => {
+    const cover = place?.place_id ? await importPlaceCover(place.place_id, commands.importPlacePhoto) : { coverMediaId: undefined, coverImportFailed: false };
+    const created = await createList({ ...input, ...(cover.coverMediaId ? { coverMediaId: cover.coverMediaId } : {}) });
+    if (cover.coverImportFailed) toast.error(t("dashboard.recommendations.toastMessages.listCoverImportFailed"));
+    return created;
+  };
+  // Open directly into the new list's detail view (BUG-3 parity with Movies), on the
+  // Recommendations tab where the add-place affordance lives.
+  const openCreatedList = async (id: string) => {
+    const refreshed = (await refetchCities()) as { data?: { recommendationLists?: selectedCity[] } } | undefined;
+    const created = refreshed?.data?.recommendationLists?.find((list) => list.documentId === id);
+    setSelectedCity(created ?? ({ documentId: id } as selectedCity));
+    // The refresh is asynchronous: until the owner read carries the new list, the selection is a stub.
+    pendingCreatedList.current = created ? null : id;
+    setActiveTab(t("dashboard.recommendations.recommendationsTab"));
+    setStep(2);
+  };
+  const pendingCreatedList = useRef<string | null>(null);
+  useEffect(() => {
+    const pending = pendingCreatedList.current;
+    const created = pending ? cities?.recommendationLists?.find((list: any) => list.documentId === pending) : undefined;
+    if (created) { pendingCreatedList.current = null; setSelectedCity(created as unknown as selectedCity); }
+  }, [cities, setSelectedCity]);
+  const placeCards = useMemo(() => [...((cities?.recommendationLists as any[]) ?? [])]
+    .sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0))
+    .map((city: any) => ({ id: city.documentId, title: city.List_Name ?? "", status: city.Visibility ? ("public" as const) : ("draft" as const),
+      itemCount: city.recommended_places?.length ?? 0, pinnedCount: 0, covers: city.List_Name_Details?.thumbnail ? [city.List_Name_Details.thumbnail] : [] })), [cities]);
+  const cityPick = { title: (c: any) => c.List_Name ?? "", image: (c: any) => c.List_Name_Details?.thumbnail ?? null, isPublic: (c: any) => Boolean(c.Visibility) };
 
   useEffect(() => {
     const lists = cities?.recommendationLists;
@@ -595,7 +543,7 @@ const Favorites = memo(() => {
       const dateB = new Date(b.createdAt || 0).getTime();
       return dateA - dateB;
     });
-  }, [cities, accountData?.documentId]);
+  }, [cities]);
 
   const pinnedCities = useMemo(() => {
     return filteredCities.filter((city: any) => city.is_pinned);
@@ -605,13 +553,6 @@ const Favorites = memo(() => {
     return filteredCities.filter((city: any) => !city.is_pinned);
   }, [filteredCities]);
 
-  useEffect(() => {
-    if (pinnedCities.length <= 1) return;
-    const interval = setInterval(() => {
-      setActivePinnedIndex((prev) => (prev + 1) % pinnedCities.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [pinnedCities.length]);
   
   // Auto-advance step if tour is running
   useEffect(() => {
@@ -844,193 +785,6 @@ const Favorites = memo(() => {
       return false;
     }
   };
-  // Helper to render a location list card with pin controls
-  const renderCityCard = (city: any, idx: number) => {
-    return (
-      <div
-        key={city.documentId || idx}
-        {...keyboardActivation(() => {
-          handleCitySelect(city);
-          setStep(2);
-        })}
-        className="bg-dashboard-sidebar rounded-[14px] p-3 flex flex-col gap-2.5 cursor-pointer border border-white/5 md:border-dashboard-border/30 hover:border-dashboard-accent transition-all duration-300 relative group"
-      >
-        <div className="flex justify-between items-center gap-2">
-          <span className="text-xs md:text-sm font-bold text-white truncate max-w-[65%]">
-            {city.List_Name}
-          </span>
-          
-          <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-            {/* Visibility & Pin Badge */}
-            {city.Visibility ? (
-              <span className="text-[10px] font-semibold text-white bg-emerald-500/90 px-1.5 py-0.5 rounded-md flex items-center gap-1 uppercase tracking-wider font-poppins">
-                {city.is_pinned && (
-                  <svg className="w-2.5 h-2.5 text-amber-400 fill-amber-400" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M19 12H5l4-4V3h6v5l4 4z" />
-                    <path d="M12 12v8" />
-                  </svg>
-                )}
-                {t("dashboard.categoryPages.public")}
-              </span>
-            ) : (
-              <span className="text-[10px] font-semibold text-white bg-slate-500/90 px-1.5 py-0.5 rounded-md uppercase tracking-wider font-poppins">
-                {t("dashboard.home.draft")}
-              </span>
-            )}
-
-            {/* Triple dot menu option */}
-            <div className="relative">
-              <button
-                onClick={() => {
-                  setActiveDropdownListId(
-                    activeDropdownListId === city.documentId ? null : city.documentId
-                  );
-                }}
-                className="p-1 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center cursor-pointer border-none bg-transparent text-white/55 hover:text-white"
-                title="Options"
-              >
-                <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2 s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                </svg>
-              </button>
-
-              {activeDropdownListId === city.documentId && (
-                <div className="absolute right-0 top-6 w-32 bg-dashboard-modal border border-dashboard rounded-lg shadow-xl z-50 py-1 flex flex-col gap-0.5 font-poppins">
-                  {/* Publish/Draft toggle */}
-                  <button
-                    onClick={() => {
-                      setActiveDropdownListId(null);
-                      const docId = city.documentId;
-                      if (docId) {
-                        const currentValue = city.Visibility;
-                        const nextValue = !currentValue;
-                        const updateData: any = { Visibility: nextValue };
-                        
-                        if (!nextValue && city.is_pinned) {
-                          updateData.is_pinned = false;
-                          updateData.pin_order = null;
-                        }
-
-                        updateRecommendedList({
-                          variables: {
-                            documentId: docId,
-                            data: updateData
-                          }
-                        }).then((response) => {
-                          if (selectedCity?.documentId === docId && response.data?.updateRecommendationList) {
-                            const updatedData = response.data.updateRecommendationList;
-                            setSelectedCity({
-                              ...selectedCity,
-                              Visibility: updatedData.Visibility,
-                              is_pinned: updatedData.is_pinned,
-                              pin_order: updatedData.pin_order,
-                            });
-                          }
-                          refetchCities();
-                          toast.success(t(nextValue ? "dashboard.categoryPages.listNowPublic" : "dashboard.categoryPages.listNowDraft", { name: city.List_Name }));
-                        }).catch(() => {
-                          toast.error("Failed to update visibility");
-                        });
-                      }
-                    }}
-                    className="px-3 py-1.5 text-[10px] text-left hover:bg-white/10 text-white flex items-center gap-1.5 cursor-pointer border-none bg-transparent w-full"
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full ${city.Visibility ? "bg-red-400" : "bg-green-400"}`}></span>
-                    {city.Visibility ? "Make Draft" : "Publish"}
-                  </button>
-
-                  {/* Pin/Unpin toggle */}
-                  <button
-                    onClick={() => {
-                      if (!city.Visibility && !city.is_pinned) {
-                        toast.error("Only published locations can be pinned");
-                        return;
-                      }
-                      setActiveDropdownListId(null);
-                      const docId = city.documentId;
-                      if (docId) {
-                        const isPinned = !!city.is_pinned;
-                        const nextPinnedValue = !isPinned;
-                        
-                        let pinOrder = null;
-                        if (nextPinnedValue) {
-                          const maxPinOrder = pinnedCities.reduce((max: number, c: any) => {
-                            const po = c.pin_order || 0;
-                            return po > max ? po : max;
-                          }, 0);
-                          pinOrder = maxPinOrder + 1;
-                        }
-
-                        updateRecommendedList({
-                          variables: {
-                            documentId: docId,
-                            data: { 
-                              is_pinned: nextPinnedValue,
-                              pin_order: pinOrder
-                            }
-                          }
-                        }).then(() => {
-                          refetchCities();
-                          toast.success(`${city.List_Name} ${nextPinnedValue ? "pinned" : "unpinned"}`);
-                        }).catch(() => {
-                          toast.error("Failed to update pinning");
-                        });
-                      }
-                    }}
-                    disabled={!city.Visibility && !city.is_pinned}
-                    title={!city.Visibility && !city.is_pinned ? "Only published locations can be pinned" : undefined}
-                    className="px-3 py-1.5 text-[10px] text-left hover:bg-white/10 text-white flex items-center gap-1.5 cursor-pointer border-none bg-transparent w-full disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <PushPinIcon pinned={city.is_pinned} />
-                    {city.is_pinned ? "Unpin Pick" : "Pin Top Pick"}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* 3 Thumbnails row */}
-        <div className="flex gap-1.5 h-16">
-          {[0, 1, 2].map((imgIndex) => {
-            const place = city.recommended_places?.[imgIndex];
-            let imgUrl = IMAGE_CONFIG.defaultImages.place;
-            if (place?.media_details) {
-              try {
-                const details = typeof place.media_details === 'string'
-                  ? JSON.parse(place.media_details)
-                  : place.media_details;
-                imgUrl = details?.thumbnail?.url || details?.imageDetails?.[0]?.url || IMAGE_CONFIG.defaultImages.place;
-              } catch (e) {
-                imgUrl = (place.media_details as any)?.thumbnail?.url || (place.media_details as any)?.imageDetails?.[0]?.url || IMAGE_CONFIG.defaultImages.place;
-              }
-            }
-            return (
-              <div
-                key={imgIndex}
-                className="w-8 h-16 rounded-md overflow-hidden bg-white/5 border border-white/10 flex-1"
-              >
-                <img
-                  src={imgUrl}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="flex justify-between items-center mt-1">
-          <span className="text-[10px] text-white/50 font-medium">
-            {t("publicProfile.recommendations.counts.place", { count: city.recommended_places?.length || 0, formattedCount: String(city.recommended_places?.length || 0), suffix: "" })}
-          </span>
-          <span className="text-[10px] text-dashboard-accent font-bold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform duration-200">
-            {t("dashboard.categoryPages.open")} ➔
-          </span>
-        </div>
-      </div>
-    );
-  };
 
   if (isLoading) {
     if ((window as any).__dashboardLoaded) {
@@ -1084,439 +838,88 @@ const Favorites = memo(() => {
             <div className="flex items-center justify-center min-h-screen">
               <EarthLoader context="recommendations" size="default" />
             </div>
-          ) : (
-            <>
-              {filteredCities.length > 0 ? (
-                <>
-                  {step === 1 ? (
-                    <div id="step-1-dashboard" className="pt-2">
-                      {/* Desktop Screen actions row */}
-                      <div className="hidden md:flex justify-between items-center bg-dashboard-sidebar/40 px-4 py-3.5 rounded-2xl mb-4 border border-white/5">
-                        <div className="flex items-center gap-2 bg-dashboard-muted/50 px-3 py-2 rounded-xl" title={visibilityDisabledReason}>
-                          <SwitchButton
-                            isChecked={categoryVisible}
-                            onChange={handleVisibilityToggle}
-                            disabled={navigation.busy || !navigation.authority}
-                            variant="blue"
-                          />
-                          <span className="text-[10px] md:text-xs text-white leading-tight whitespace-nowrap font-medium">{t("dashboard.categoryPages.publicVisibility")}</span>
-                        </div>
-                        <button
-                          onClick={() => setIsLocationModalOpen(true)}
-                          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap cursor-pointer"
-                        >
-                          <AddIcon size="5" />
-                          <span>{t("dashboard.recommendations.locationButton")}</span>
-                        </button>
-                      </div>
-
-                      {/* Mobile actions row (split action button with visibility dropdown) */}
-                      <div className="md:hidden relative mb-4 w-full">
-                        <div className="flex w-full rounded-2xl overflow-hidden border border-white/10 shadow-lg shadow-blue-900/15">
-                          <button
-                            onClick={() => setIsLocationModalOpen(true)}
-                            className="flex-1 bg-dashboard-accent hover:opacity-90 text-xs font-bold text-white py-3 px-4 text-left flex items-center gap-1.5 transition-all cursor-pointer"
-                          >
-                            <AddIcon size="4" />
-                            <span>{t("dashboard.recommendations.locationButton")}</span>
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setMobileDropdownOpen(!mobileDropdownOpen);
-                            }}
-                            className="bg-dashboard-accent border-l border-white/20 px-3 flex items-center justify-center cursor-pointer transition-all hover:opacity-90"
-                          >
-                            <svg className={`w-3.5 h-3.5 text-white transform transition-transform duration-200 ${mobileDropdownOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-                        </div>
-                        {mobileDropdownOpen && (
-                          <div className="absolute top-[calc(100%+6px)] right-0 left-0 p-3.5 z-[100] border border-dashboard-accent/30 rounded-2xl bg-dashboard-sidebar/95 backdrop-blur-md shadow-xl flex justify-between items-center">
-                            <span className="text-[11px] text-white/90 font-semibold">{t("dashboard.categoryPages.managePublicVisibility")}</span>
-                            <div className="flex items-center gap-2" title={visibilityDisabledReason}>
-                              <span className={`text-[10px] font-bold uppercase ${categoryVisible ? "text-[#4ade80]" : "text-[#f87171]"}`}>
-                                {categoryVisible ? t("dashboard.categoryPages.pubShort") : t("dashboard.home.draft")}
-                              </span>
-                              <SwitchButton
-                                isChecked={categoryVisible}
-                                onChange={handleVisibilityToggle}
-                                disabled={navigation.busy || !navigation.authority}
-                                variant="blue"
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Hero Feature Card: Featured City */}
-                      {/* Hero Feature Card: Featured City */}
-                      {pinnedCities.length > 0 ? (
-                        <>
-                          {/* Desktop View Top Picks Hero */}
-                          <div className="hidden md:block relative w-full h-[60vh] min-h-[500px] max-h-[600px] rounded-2xl overflow-hidden bg-black shadow-2xl mb-8 group/hero">
-                            {(() => {
-                              const featuredCity = pinnedCities[activePinnedIndex >= pinnedCities.length ? 0 : activePinnedIndex] || pinnedCities[0];
-                              if (!featuredCity) return null;
-
-                              return (
-                                <>
-                                  <AnimatePresence mode="wait">
-                                    <motion.div
-                                      key={featuredCity.documentId}
-                                      initial={{ opacity: 0, scale: 1.02 }}
-                                      animate={{ opacity: 1, scale: 1 }}
-                                      exit={{ opacity: 0 }}
-                                      transition={{ duration: 0.6 }}
-                                      className="absolute inset-0 cursor-pointer"
-                                      onClick={() => {
-                                        handleCitySelect(featuredCity);
-                                        setStep(2);
-                                      }}
-                                    >
-                                      <img
-                                        src={featuredCity?.List_Name_Details?.thumbnail || IMAGE_CONFIG.defaultImages.place}
-                                        alt={featuredCity.List_Name}
-                                        className="w-full h-full object-cover opacity-90"
-                                      />
-                                      {/* Gradients to fade bottom and left */}
-                                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
-                                      <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/30 to-transparent" />
-                                    </motion.div>
-                                  </AnimatePresence>
-
-                                  {/* Top Picks Heading */}
-                                  <div className="absolute top-8 left-8 md:top-10 md:left-10 z-50 pointer-events-none flex flex-col gap-1">
-                                    <h2 className="text-lg md:text-xl font-bold text-white flex items-center drop-shadow-lg font-poppins">
-                                      <span className="w-1.5 h-5 bg-yellow-400 mr-2.5 rounded-full inline-block"></span>
-                                      Featured
-                                    </h2>
-                                  </div>
-
-                                  {/* Main Content Area */}
-                                  <div className="absolute inset-0 flex flex-col justify-end p-8 md:p-10 z-10 pointer-events-none">
-                                    <div className="flex justify-between items-end w-full">
-                                      {/* Left Text Detail Section */}
-                                      <div className="w-full md:w-1/2 flex flex-col gap-3 pointer-events-auto">
-                                        <motion.h1 
-                                          key={`title-${featuredCity.documentId}`}
-                                          initial={{ opacity: 0, y: 15 }}
-                                          animate={{ opacity: 1, y: 0 }}
-                                          className="text-3xl md:text-4xl lg:text-5xl font-black text-white leading-tight font-poppins"
-                                        >
-                                          {featuredCity.List_Name}
-                                        </motion.h1>
-                                        
-                                        <motion.div 
-                                          key={`meta-${featuredCity.documentId}`}
-                                          initial={{ opacity: 0 }}
-                                          animate={{ opacity: 1 }}
-                                          className="flex items-center gap-2 text-xs md:text-sm text-white/80 font-semibold"
-                                        >
-                                          <span>{featuredCity?.List_Name_Details?.note ? "Personal Guide" : "Local Curation"}</span>
-                                          <span className="text-white/40">•</span>
-                                          <span>🗼 Landmark, Food</span>
-                                          <span className="text-white/40">•</span>
-                                          <span>{t("publicProfile.recommendations.counts.place", { count: featuredCity?.recommended_places?.length || 0, formattedCount: String(featuredCity?.recommended_places?.length || 0), suffix: "" })}</span>
-                                        </motion.div>
-                            
-                                        <motion.p 
-                                          key={`desc-${featuredCity.documentId}`}
-                                          initial={{ opacity: 0, y: 10 }}
-                                          animate={{ opacity: 1, y: 0 }}
-                                          className="text-white/70 text-xs md:text-sm leading-relaxed line-clamp-2 max-w-xl"
-                                        >
-                                          {featuredCity?.List_Name_Details?.note || "Explore the absolute must-see spots, including iconic historical monuments, fine dining, and local cafes..."}
-                                        </motion.p>
-                                        
-                                        <motion.div 
-                                          key={`btns-${featuredCity.documentId}`}
-                                          initial={{ opacity: 0, y: 10 }}
-                                          animate={{ opacity: 1, y: 0 }}
-                                          className="flex items-center gap-4 mt-2"
-                                        >
-                                          <button 
-                                            onClick={(e) => { e.stopPropagation(); setIsManageModalOpen(true); }}
-                                            className="flex items-center gap-1.5 bg-dashboard-accent hover:opacity-90 text-white font-bold py-2.5 px-6 rounded-lg shadow-xl shadow-blue-500/20 transition-all hover:scale-105 cursor-pointer border-none text-xs"
-                                          >
-                                            <span className="text-amber-400">★</span> {t("dashboard.categoryPages.manageTopPicks")}
-                                          </button>
-                                        </motion.div>
-                                      </div>
-
-                                      {/* Right Bottom Top Picks Thumbnail Row */}
-                                      <div className="hidden lg:flex flex-col items-end max-w-[45%] z-20 pointer-events-auto">
-                                        <div className="flex gap-2 py-2 overflow-x-auto scrollbar-hide">
-                                          {pinnedCities.map((city: any, index: number) => {
-                                            const isSelected = index === activePinnedIndex;
-                                            return (
-                                              <button
-                                                key={`thumb-${city.documentId || index}`}
-                                                onClick={(e) => { e.stopPropagation(); setActivePinnedIndex(index); }}
-                                                className={`relative flex-shrink-0 w-24 aspect-video rounded-md overflow-hidden transition-all duration-300 border-none cursor-pointer ${
-                                                  isSelected 
-                                                    ? "ring-2 ring-white scale-105 z-10 shadow-xl opacity-100" 
-                                                    : "opacity-60 hover:opacity-100 hover:scale-102"
-                                                }`}
-                                              >
-                                                <img 
-                                                  src={city?.List_Name_Details?.thumbnail || IMAGE_CONFIG.defaultImages.place} 
-                                                  alt={city.List_Name}
-                                                  className="w-full h-full object-cover"
-                                                />
-                                                <div className="absolute inset-0 bg-black/20" />
-                                              </button>
-                                            );
-                                          })}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </>
-                              );
-                            })()}
-                          </div>
-
-                          {/* Mobile View Stack Slider */}
-                          <div className="md:hidden relative w-full h-[55vh] min-h-[420px] max-h-[500px] overflow-hidden flex items-center justify-start py-6 mb-8 mt-2 touch-pan-y">
-                            <div className="absolute inset-0 left-4 right-14">
-                              {pinnedCities.map((city: any, i: number) => {
-                                const diff = (i - activePinnedIndex + pinnedCities.length) % pinnedCities.length;
-                                
-                                let position = "hiddenRight";
-                                if (diff === 0) position = "active";
-                                else if (diff === 1) position = "next";
-                                else if (diff === 2) position = "nextNext";
-                                else if (diff === pinnedCities.length - 1) position = "hiddenLeft";
-
-                                const variants = {
-                                  active: { x: 0, scale: 1, zIndex: 10, opacity: 1 },
-                                  next: { x: "12%", scale: 0.9, zIndex: 5, opacity: 1 },
-                                  nextNext: { x: "24%", scale: 0.8, zIndex: 4, opacity: 1 },
-                                  hiddenRight: { x: "40%", scale: 0.7, zIndex: 1, opacity: 0 },
-                                  hiddenLeft: { x: "-110%", scale: 1, zIndex: 11, opacity: 0 }
-                                };
-
-                                const handleDragEnd = (_e: any, { offset, velocity }: any) => {
-                                  if (offset.x < -50 || velocity.x < -300) {
-                                    setActivePinnedIndex((prev) => (prev + 1) % pinnedCities.length);
-                                  } else if (offset.x > 50 || velocity.x > 300) {
-                                    setActivePinnedIndex((prev) => (prev - 1 + pinnedCities.length) % pinnedCities.length);
-                                  }
-                                };
-
-                                return (
-                                  <motion.div
-                                    key={city.documentId || i}
-                                    variants={variants}
-                                    initial={false}
-                                    animate={position}
-                                    transition={{ duration: 0.5, ease: [0.32, 0.72, 0, 1] }}
-                                    drag={diff === 0 ? "x" : false}
-                                    dragConstraints={{ left: 0, right: 0 }}
-                                    dragElastic={0.8}
-                                    onDragEnd={handleDragEnd}
-                                    className={`absolute inset-0 h-full rounded-2xl overflow-hidden shadow-2xl bg-[#1a2332] border border-white/10 ${diff === 0 ? 'cursor-grab active:cursor-grabbing' : 'pointer-events-none'}`}
-                                    onClick={() => {
-                                      if (diff === 0) {
-                                        handleCitySelect(city);
-                                        setStep(2);
-                                      }
-                                    }}
-                                  >
-                                    <img 
-                                      src={city?.List_Name_Details?.thumbnail || IMAGE_CONFIG.defaultImages.place} 
-                                      alt={city.List_Name}
-                                      className="w-full h-full object-cover select-none pointer-events-none filter contrast-125"
-                                    />
-                                    
-                                    {/* Gradient dark overlay */}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/10 pointer-events-none" />
-                                    
-                                    {/* Top Banner */}
-                                    <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-auto z-20">
-                                      <div className="flex items-center pointer-events-none drop-shadow-md">
-                                        <span className="w-1.5 h-5 bg-yellow-400 mr-2 rounded-full inline-block"></span>
-                                        <h2 className="text-lg font-bold text-white tracking-tight font-poppins">Featured</h2>
-                                      </div>
-                                    </div>
-                                    
-                                    {/* Title & Metadata */}
-                                    <div className="absolute bottom-0 left-0 right-0 p-5 flex flex-col gap-1.5 pointer-events-none">
-                                      <h2 className="text-2xl font-poppins font-black text-white leading-tight drop-shadow-xl select-none">
-                                        {city.List_Name}
-                                      </h2>
-                                      
-                                      <div className="flex flex-wrap items-center gap-2 text-xs text-white/80 font-semibold tracking-wide mt-1">
-                                        <span>{city?.List_Name_Details?.note ? "Personal Guide" : "Local Curation"}</span>
-                                        <span className="text-white/40">•</span>
-                                        <span>{t("publicProfile.recommendations.counts.place", { count: city?.recommended_places?.length || 0, formattedCount: String(city?.recommended_places?.length || 0), suffix: "" })}</span>
-                                      </div>
-                                      
-                                      <div className="flex items-center gap-3 mt-4 pointer-events-auto">
-                                        <button 
-                                          className="flex-1 bg-dashboard-accent hover:opacity-90 text-white font-bold py-2.5 px-4 rounded-full flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-xl border-none text-xs cursor-pointer"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setIsManageModalOpen(true);
-                                          }}
-                                        >
-                                          <span className="text-amber-400">★</span> {t("dashboard.categoryPages.manageTopPicks")}
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </motion.div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        /* Empty Placeholder banner */
-                        <div
-                          {...keyboardActivation(() => setIsManageModalOpen(true))}
-                          className="w-full flex items-center justify-between p-4 rounded-[14px] border border-amber-500/25 bg-amber-500/5 hover:bg-amber-500/10 transition-all duration-300 cursor-pointer mb-6"
-                        >
-                          <div className="flex items-center gap-2 text-xs md:text-sm font-bold text-[#fbbf24]">
-                            <span className="text-amber-400">★</span> {t("dashboard.categoryPages.manageTopPicksCount", { pinned: pinnedCities.length, total: 5 })}
-                          </div>
-                          <div className="flex items-center text-amber-500">
-                            <svg className="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                            </svg>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* The order set here is the order of your location lists on your public page. */}
-                      <CategoryListsOrder category="places" noun="List" nounPlural="lists"
-                        lists={[...((cities?.recommendationLists as any[]) ?? [])].sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0)).map((city: any) => ({ id: city.documentId, title: city.List_Name ?? "" }))}
-                        onChanged={() => { void refetchCities(); }} />
-
-                      {/* Locations Grid */}
-                      <div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-4">
-                          {filteredCities.map((city: any, idx: number) => renderCityCard(city, idx))}
-
-                          {/* Add Location Card */}
-                          <div
-                            {...keyboardActivation(() => setIsLocationModalOpen(true))}
-                            className="border-2 border-dashed border-dashboard-border rounded-[14px] flex flex-col items-center justify-center gap-1.5 p-4 min-h-[120px] cursor-pointer hover:border-dashboard-accent hover:bg-dashboard-accent/5 transition-all duration-300"
-                          >
-                            <span className="text-xl text-white/30 font-light">+</span>
-                            <span className="text-[10px] md:text-xs text-white/45 font-semibold whitespace-nowrap">{t("dashboard.categoryPages.addLocation")}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* View All button */}
-                      <div className="flex items-center justify-end w-full px-1 py-2 relative z-40">
-                        <button
-                          className="text-white/60 font-poppins text-xs transition-all duration-300 flex items-center justify-center gap-2 font-normal hover:text-white px-1 relative z-50 pointer-events-auto"
-                          onClick={() => setShowAllPlaces(true)}
-                        >
-                          {t("dashboard.recommendations.viewAll")}
-                        </button>
-                      </div>
-
-                      {/* CircularPlacesModal */}
-                      {showAllPlaces && (
-                        <CircularPlacesModal
-                          handleCitySelect={(selected) => {
-                            handleCitySelect(selected);
-                            setStep(2);
-                          }}
-                          isOpen={showAllPlaces}
-                          onClose={() => setShowAllPlaces(false)}
-                          places={filteredCities as never}
-                        />
-                      )}
-                    </div>
-                  ) : (
-                    <div id="step-2-list-details" className="pt-2">
-                      {/* Navigation Header */}
-                      <div className="flex justify-between items-center mb-4 w-full">
-                        <div className="flex flex-col items-start">
-                          <div
-                            {...keyboardActivation(() => setStep(1))}
-                            className="text-[10px] text-white/55 font-semibold cursor-pointer flex items-center gap-1 mb-1 hover:text-white transition-colors"
-                          >
-                            <svg className="w-1.5 h-1.5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.5" d="M15 19l-7-7 7-7" />
-                            </svg>
-                            Back
-                          </div>
-                          <span id="detail-city-name" className="text-lg font-black text-white leading-tight">
-                            {selectedCity?.List_Name}
-                          </span>
-                        </div>
-                        
-                        {/* Published Toggle Switch */}
-                        <div className="flex items-center gap-2" data-walkthrough="togglePublish">
-                          <span className={`text-[10px] font-semibold uppercase ${selectedCity?.Visibility ? "text-[#4ade80]" : "text-[#f87171]"}`}>
-                            {selectedCity?.Visibility ? t("dashboard.home.published") : t("dashboard.home.draft")}
-                          </span>
-                          <SwitchButton
-                            isChecked={selectedCity?.Visibility || false}
-                            onChange={handleCityVisibilityToggle}
-                            variant="green"
-                            disabled={!selectedCity?.recommended_places?.length}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Tab Switcher Pill */}
-                      <div className="flex items-center bg-dashboard-muted border border-dashboard font-poppins rounded-[24px] mx-auto w-fit p-1 mb-4">
-                        <button
-                          onClick={() => setActiveTab(t("dashboard.recommendations.recommendationsTab"))}
-                          className={`px-4 py-1.5 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
-                            activeTab === t("dashboard.recommendations.recommendationsTab")
-                              ? "bg-dashboard-accent text-[var(--dash-accent-text)] shadow-sm font-bold"
-                              : "bg-transparent text-dashboard-muted hover:text-dashboard"
-                          }`}
-                        >
-                          Recommendations
-                        </button>
-                        <button
-                          onClick={() => setActiveTab(t("dashboard.recommendations.manageTab"))}
-                          className={`px-4 py-1.5 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
-                            activeTab === t("dashboard.recommendations.manageTab")
-                              ? "bg-dashboard-accent text-[var(--dash-accent-text)] shadow-sm font-bold"
-                              : "bg-transparent text-dashboard-muted hover:text-dashboard"
-                          }`}
-                          data-walkthrough="manage-tab"
-                        >
-                          Manage
-                        </button>
-                      </div>
-
-                      {/* Active Tab Content */}
-                      <div>
-                        {activeTab === t("dashboard.recommendations.recommendationsTab") ? (
-                          tabs[t("dashboard.recommendations.recommendationsTab")]
-                        ) : (
-                          tabs[t("dashboard.recommendations.manageTab")]
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="max-w-2xl mx-auto w-full py-10">
-                  <CategoryEmptyState
-                    category="places"
-                    onAddClick={() => {
-                      if (!accountData?.documentId) {
-                        navigate("/profile");
-                      } else {
-                        setIsLocationModalOpen(true);
-                      }
-                    }}
+          ) : step === 2 && placeCards.length > 0 ? (
+            <div id="step-2-list-details" className="pt-2">
+              {/* Navigation Header */}
+              <div className="flex justify-between items-center mb-4 w-full">
+                <div className="flex flex-col items-start">
+                  <div
+                    {...keyboardActivation(() => setStep(1))}
+                    className="text-[10px] text-white/55 font-semibold cursor-pointer flex items-center gap-1 mb-1 hover:text-white transition-colors"
+                  >
+                    <svg className="w-1.5 h-1.5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.5" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Back
+                  </div>
+                  <span id="detail-city-name" className="text-lg font-black text-white leading-tight">
+                    {selectedCity?.List_Name}
+                  </span>
+                </div>
+                
+                {/* Published Toggle Switch */}
+                <div className="flex items-center gap-2" data-walkthrough="togglePublish">
+                  <span className={`text-[10px] font-semibold uppercase ${selectedCity?.Visibility ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+                    {selectedCity?.Visibility ? t("dashboard.home.published") : t("dashboard.home.draft")}
+                  </span>
+                  <SwitchButton
+                    isChecked={selectedCity?.Visibility || false}
+                    onChange={handleCityVisibilityToggle}
+                    variant="green"
+                    disabled={!selectedCity?.recommended_places?.length}
                   />
                 </div>
-              )}
-            </>
+              </div>
+
+              {/* Tab Switcher Pill */}
+              <div className="flex items-center bg-dashboard-muted border border-dashboard font-poppins rounded-[24px] mx-auto w-fit p-1 mb-4">
+                <button
+                  onClick={() => setActiveTab(t("dashboard.recommendations.recommendationsTab"))}
+                  className={`px-4 py-1.5 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
+                    activeTab === t("dashboard.recommendations.recommendationsTab")
+                      ? "bg-dashboard-accent text-[var(--dash-accent-text)] shadow-sm font-bold"
+                      : "bg-transparent text-dashboard-muted hover:text-dashboard"
+                  }`}
+                >
+                  Recommendations
+                </button>
+                <button
+                  onClick={() => setActiveTab(t("dashboard.recommendations.manageTab"))}
+                  className={`px-4 py-1.5 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
+                    activeTab === t("dashboard.recommendations.manageTab")
+                      ? "bg-dashboard-accent text-[var(--dash-accent-text)] shadow-sm font-bold"
+                      : "bg-transparent text-dashboard-muted hover:text-dashboard"
+                  }`}
+                  data-walkthrough="manage-tab"
+                >
+                  Manage
+                </button>
+              </div>
+
+              {/* Active Tab Content */}
+              <div>
+                {activeTab === t("dashboard.recommendations.recommendationsTab") ? (
+                  tabs[t("dashboard.recommendations.recommendationsTab")]
+                ) : (
+                  tabs[t("dashboard.recommendations.manageTab")]
+                )}
+              </div>
+            </div>
+          ) : (
+            <CategoryPage
+              category="places"
+              status={{ loading: loading || !accountById, error: placesOwner.error ?? null, refreshing: loading && placeCards.length > 0 }}
+              lists={placeCards}
+              topPicks={toListTopPicks((cities?.recommendationLists as any[]) ?? [], cityPick)}
+              pinCandidates={toListTopPicks((cities?.recommendationLists as any[]) ?? [], cityPick, false)}
+              categoryVisibility={categoryVisible ? "public" : "hidden"}
+              visibilityBusy={navigation.busy || !navigation.authority}
+              onCategoryVisibility={() => handleVisibilityToggle()}
+              onOpenList={(id) => { const city = filteredCities.find((c: any) => c.documentId === id); if (city) { handleCitySelect(city); setStep(2); } }}
+              onRetry={() => { void refetchCities(); }}
+              onChanged={() => { void refetchCities(); }}
+              newList={{ kind: "dialog", username: canonicalAccount.data?.handle ?? "", onCreated: (id) => { void openCreatedList(id); }, create: placesCreate }}
+            />
           )}
         </div>
         {showConfirmDeleteModal && (
@@ -1576,44 +979,44 @@ const Favorites = memo(() => {
             </div>
           </Modal>
         )}
-        <AddLocationModal
-          isOpen={isLocationModalOpen}
-          onClose={() => {
-            setIsLocationModalOpen(false);
-            setIsEditing(false);
-          }}
-          onSubmit={
-            isEditing ? handleUpdateRecommendedList : handleLocationSubmit
-          }
-          isEditing={isEditing}
-          initialValues={
-            isEditing
-              ? {
-                documentId: selectedCity?.documentId,
-                listName: selectedCity?.List_Name || "",
-                recommendationSocialLink:
-                  selectedCity?.Instagram_Media_URL || "",
-                note: selectedCity?.List_Name_Details?.note || "",
-                placeUrl: selectedCity?.slug || "",
-                placeId: (() => {
-                  // Extract place_id from List_Name_Details
-                  if (selectedCity?.List_Name_Details) {
-                    try {
-                      const details = typeof selectedCity.List_Name_Details === 'string'
-                        ? JSON.parse(selectedCity.List_Name_Details)
-                        : selectedCity.List_Name_Details;
-                      return (details as any)?.place_id || null;
-                    } catch (e) {
-                      return (selectedCity.List_Name_Details as any)?.place_id || null;
+        {isEditing && (
+          <AddLocationModal
+            isOpen={isLocationModalOpen}
+            onClose={() => {
+              setIsLocationModalOpen(false);
+              setIsEditing(false);
+            }}
+            onSubmit={handleUpdateRecommendedList}
+            isEditing={isEditing}
+            initialValues={
+              isEditing
+                ? {
+                  documentId: selectedCity?.documentId,
+                  listName: selectedCity?.List_Name || "",
+                  recommendationSocialLink:
+                    selectedCity?.Instagram_Media_URL || "",
+                  note: selectedCity?.List_Name_Details?.note || "",
+                  placeUrl: selectedCity?.slug || "",
+                  placeId: (() => {
+                    // Extract place_id from List_Name_Details
+                    if (selectedCity?.List_Name_Details) {
+                      try {
+                        const details = typeof selectedCity.List_Name_Details === 'string'
+                          ? JSON.parse(selectedCity.List_Name_Details)
+                          : selectedCity.List_Name_Details;
+                        return (details as any)?.place_id || null;
+                      } catch (e) {
+                        return (selectedCity.List_Name_Details as any)?.place_id || null;
+                      }
                     }
-                  }
-                  return null;
-                })(),
-              }
-              : {}
-          }
-          existingPlaces={cities?.recommendationLists || []}
-        />
+                    return null;
+                  })(),
+                }
+                : {}
+            }
+            existingPlaces={cities?.recommendationLists || []}
+          />
+        )}
 
         {isManageModalOpen && (
           <Modal
