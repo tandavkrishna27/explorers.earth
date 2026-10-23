@@ -32,6 +32,8 @@ import type { CompleteTaxonomyCatalog, RecommendationObservation } from "../../.
 import { useLocation } from "react-router-dom";
 import {recordViewedObservation} from '../../../lib/viewedRevisions';
 import { keyboardActivation } from "../../../utils/keyboardActivation";
+import { placeListPath } from "../placeListRoute";
+import { useCityStore } from "../../../store/useCityStore";
 
 // Add new type for Custom Search API response
 type CustomSearchImage = {
@@ -127,6 +129,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
   const [places, setPlaces] = useState<Places | null>();
   // list Id from the parameters
   const { listId } = useParams();
+  const { selectedCity } = useCityStore();
 
   // creating a temp preview url for handling the user media
 
@@ -574,7 +577,7 @@ const AddRecommendation = memo(({ type }: { type?: "edit" | "default" }) => {
             <Button
               size="xsmall"
               variant="ghost"
-              onClickHandler={() => navigate("/recommendations/places")}
+              onClickHandler={() => navigate(placeListPath(listId ?? selectedCity?.documentId))}
               startIcon={<BackIcon stroke="var(--dash-accent)" size="size-6" />}
             />
           </div>

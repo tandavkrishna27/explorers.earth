@@ -616,6 +616,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Favorites/hooks/usePlacesOwner.ts
 !explorers-earth/src/features/Favorites/hooks/useRecommedationFields.ts
 !explorers-earth/src/features/Favorites/hooks/useTaggableFields.ts
+!explorers-earth/src/features/Favorites/placeListRoute.ts
 !explorers-earth/src/features/Games/api/explorersAdapter.ts
 !explorers-earth/src/features/Games/api/gamesClient.ts
 !explorers-earth/src/features/Games/api/gamesViewModel.ts

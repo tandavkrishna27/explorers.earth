@@ -1,6 +1,7 @@
 import { runtimeOrigin } from "../lib/publicRuntimeConfig";
 import { lazy, Suspense, memo, useState, useEffect, useMemo, useRef } from "react";
 import { usePlacesOwner } from "../features/Favorites/hooks/usePlacesOwner";
+import { placeListPath } from "../features/Favorites/placeListRoute";
 import { useBooksOwnerContent } from "../features/Books/api/useBooksOwnerContent";
 import { useAppsOwner } from "../features/AppsAndTools/hooks/useAppsOwner";
 import { useProductsOwner } from "../features/Products/hooks/useProductsOwner";
@@ -997,7 +998,7 @@ const Home = memo(() => {
                                     List_Name_Details: item.List_Name_Details,
                                     recommended_places: item.recommended_places,
                                   });
-                                  navigate('/recommendations');
+                                  navigate(placeListPath(item.documentId));
                                 })}
                                 className="group relative bg-dashboard-sidebar border border-dashboard rounded-2xl p-4 hover:border-dashboard-accent/50 transition-all duration-300 hover:shadow-dashboard-elevated hover:shadow-dashboard-accent/10 hover:scale-[1.02] cursor-pointer flex items-center gap-4"
                               >

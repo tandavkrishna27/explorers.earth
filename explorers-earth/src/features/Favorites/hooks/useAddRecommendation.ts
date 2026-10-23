@@ -17,6 +17,7 @@ import { usePlacesOwner } from "./usePlacesOwner";
 import { richNoteFromEditor } from "../../../../../tunes/shared/explorersRichNoteContract";
 import { emptyPlaceContext, type PlaceEntityDetails, type PlaceRecommendationContext } from "../../../../../tunes/shared/explorersPlaceContract";
 import {placesTaxonomyAssignmentSchema} from '../../../../../tunes/shared/explorersTaxonomyContract';
+import { placeListPath } from "../placeListRoute";
 
 /**
  * Ticket 5.1. Adding and editing a place recommendation, on the native owner API.
@@ -349,7 +350,7 @@ export const useAddRecommendation = ({
       console.warn("Recommendation was saved, but refreshing its list failed:", error);
     }
 
-    navigate("/recommendations/places", {
+    navigate(placeListPath(listId), {
       state: { justAddedRecommendationToListId: listId },
     });
     if (status === "saved") {
@@ -623,7 +624,7 @@ export const useAddRecommendation = ({
       editAttempt.current=null;
       toast.success("Recommendation Updated Successfully!!!");
       setIsLoading(false);
-      navigate("/recommendations/places");
+      navigate(placeListPath(fetchedListId || listId || selectedCity?.documentId));
     } catch (error: any) {
       if(error instanceof ExplorersApiError && error.status===409)setEditConflict(true);
       console.error("Error updating place details:", error);

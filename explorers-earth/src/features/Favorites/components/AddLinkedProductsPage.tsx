@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { placeListPath } from "../placeListRoute";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Plus, ShoppingBag, ChevronRight, Loader2, X
@@ -249,11 +250,11 @@ const AddLinkedProductsPage = () => {
   const attachableLists = allLists.filter((list) => !linkedAnywhere.has(list.documentId));
 
   const handleSelectExistingList = (listId: string) => {
-    navigate(`/recommendations/products/${listId}/add?redirectBack=/recommendations`);
+    navigate(`/recommendations/products/${listId}/add?redirectBack=${encodeURIComponent(placeListPath(locationId))}`);
   };
 
   const handleListCreated = (newListId: string) => {
-    navigate(`/recommendations/products/${newListId}/add?redirectBack=/recommendations`);
+    navigate(`/recommendations/products/${newListId}/add?redirectBack=${encodeURIComponent(placeListPath(locationId))}`);
   };
 
   const handleAttach = async (listId: string) => {
@@ -282,7 +283,7 @@ const AddLinkedProductsPage = () => {
   };
 
   const handleBack = () => {
-    navigate("/recommendations");
+    navigate(placeListPath(locationId));
   };
 
   return (
