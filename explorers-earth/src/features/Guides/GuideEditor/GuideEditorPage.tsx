@@ -1,4 +1,4 @@
-import {useMemo, useState, useEffect} from 'react';
+import {useCallback, useMemo, useState, useEffect} from 'react';
 import {useNavigate, useParams, useLocation} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
 import {toast} from 'sonner';
@@ -9,7 +9,7 @@ import ManageTab from '../../shared/list/ManageTab';
 import useAuthStore from '../../../store/store';
 import type {CollectionObservation} from '../../../lib/explorersApiClient';
 import {useGuidesOwner} from '../hooks/useGuidesOwner';
-import type {GuideObservation} from '../api/guidesClient';
+import {GuidesClient, type GuideObservation} from '../api/guidesClient';
 import type {GuideDayItemInput} from '../../../../../tunes/shared/explorersGuideContract';
 import type {LinkedListCard} from '../../../../../tunes/shared/explorersListLinkContract';
 import {useGuidePlan} from './useGuidePlan';
@@ -61,7 +61,10 @@ function Editor({initial, guide, list, refresh}: {initial: GuideObservation; gui
   stay: g.sections.some((s) => s.blocks.stay.accommodations.length > 0), transport: g.sections.some((s) => s.blocks.transport.segments.length > 0),
   budget: g.sections.some((s) => s.blocks.budget.entries.length > 0), tips: g.details.tipsNotes != null,
  };
- const adapter = useMemo(() => guideListAdapter({guide, list, dayCount: days.length, username, refresh}), [guide, list, days.length, username, refresh]);
+ const {replace} = plan;
+ const collectionId = initial.collectionId;
+ const reread = useCallback(() => void GuidesClient.observeWholeGuide(collectionId).then(replace).catch(() => {/* the next plan command re-reads on 409 */}), [collectionId, replace]);
+ const adapter = useMemo(() => guideListAdapter({guide, list, dayCount: days.length, username, refresh, onWritten: reread}), [guide, list, days.length, username, refresh, reread]);
  const setStatus = async (next: 'draft' | 'public') => {
   try {
    await adapter.setStatus(next);

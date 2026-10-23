@@ -10,13 +10,15 @@ type GuideRow = {documentId: string; Title: string; Description?: string; slug?:
  * The WP3B Share and Manage tabs, fed from a guide. A guide's title, slug, visibility and archive
  * are collection fields, so they go through the same collection commands every list uses.
  */
-export function guideListAdapter(input: {guide: GuideRow; list: CollectionObservation | undefined; dayCount: number; username: string | null | undefined; refresh: () => void}): ListPageAdapter {
- const {guide, list, dayCount, username, refresh} = input;
+export function guideListAdapter(input: {guide: GuideRow; list: CollectionObservation | undefined; dayCount: number; username: string | null | undefined; refresh: () => void;
+ /** The plan holds its own guide copy; a collection write moves the guide's revision, so the page re-reads it into the plan. */
+ onWritten?: () => void}): ListPageAdapter {
+ const {guide, list, dayCount, username, refresh, onWritten} = input;
  const observed = () => {
   if (!list) throw new Error('Guide could not be loaded. Refresh and try again.');
   return list;
  };
- const done = () => {invalidateGuides(); refresh();};
+ const done = () => {invalidateGuides(); refresh(); onWritten?.();};
  const slug = guide.slug ?? '';
  return {
   // ListPageAdapter's category union predates Guides; the tabs only use it for paths and the QR tagline.
