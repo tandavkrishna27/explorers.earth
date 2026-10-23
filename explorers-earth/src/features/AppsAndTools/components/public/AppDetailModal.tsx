@@ -308,6 +308,17 @@ const AppDetailModal = ({ app, open, onClose }: AppDetailModalProps) => {
                       <ExternalLink size={14} /> Get App
                     </a>
                   )}
+                  {(app.other_links ?? []).map((link) => (
+                    <a
+                      key={link.url}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--category-card,rgba(255,255,255,0.05))] hover:bg-[var(--category-hover,rgba(255,255,255,0.1))] text-sm text-[color:var(--category-text,#fff)] font-medium transition-colors border border-[color:var(--category-border,rgba(255,255,255,0.1))]"
+                    >
+                      <ExternalLink size={14} /> {link.label}
+                    </a>
+                  ))}
                   {app.app_url && (
                     <a
                       href={app.app_url}

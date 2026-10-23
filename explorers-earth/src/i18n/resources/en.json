@@ -3332,5 +3332,14 @@
       "keyFactsLimit": "Up to 8 key facts.",
       "affiliate": "This is an affiliate link"
     }
+  },
+  "apps": {
+    "form": {
+      "search": "Search the App Store",
+      "filledFromLink": "Filled from link",
+      "useIcon": "Use this icon",
+      "otherLinks": "Other platform links",
+      "addOtherLink": "+ Add another platform link"
+    }
   }
 }
