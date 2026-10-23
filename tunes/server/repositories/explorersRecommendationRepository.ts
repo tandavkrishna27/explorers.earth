@@ -18,10 +18,8 @@ import {productDisplayFieldsSchema,productDisplayFieldsWriteSchema,productEntity
 import {personDisplayFieldsSchema,personEntityDetailsSchema,emptyPersonDetails} from '../../shared/explorersPersonContract';
 import {insertPersonDetails,readPersonEntity} from './personCatalogRepository';
 import {insertPlaceDetails,readPlaceEntity,writePlaceContext,writePlacePhotos,writePlaceCollectionDetails} from './placeCatalogRepository';
-import {writeLocationLink,deleteLocationLink} from './placeLinkRepository';
 import {insertListLink,deleteListLink,updateListLinkRole} from './listLinkRepository';
 import type {AttachListLinkInput,DetachListLinkInput,SetListLinkRoleInput,ListLinkDto,ListLinkCommandResult} from '../../shared/explorersListLinkContract';
-import {linkableChildCategorySchema,type LinkableChildCategory} from '../../shared/explorersPlaceLinkContract';
 import {placeDisplayFieldsSchema,placeEntityDetailsSchema,emptyPlaceDetails,emptyPlaceContext,emptyPlaceCollectionDetails,type PlaceRecommendationContext,type PlacePhotos,type PlaceCollectionDetails} from '../../shared/explorersPlaceContract';
 
 export type CatalogKind = 'place'|'movie'|'book'|'game'|'app'|'product'|'person';
@@ -477,38 +475,6 @@ export class ExplorersRecommendationRepository {
       const list=await db.query('UPDATE collections SET revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *',[collectionId]);
       const row=await db.query('UPDATE recommendations SET revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *',[recommendationId]);
       return{collection:await this.collectionRecord(db,list.rows[0]),recommendation:await this.recommendationRecord(db,row.rows[0]),attached};
-    });
-  }
-  /**
-   * Links an existing child list to a location, or unlinks it.
-   *
-   * Both revisions are checked under their locks, so a stale view cannot link a pair the
-   * creator was not looking at. The child's revision moves either way, because what the
-   * list belongs to is part of the list.
-   */
-  async writeLocationMembership(accountId:string,input:{childCollectionId:string;expectedChildRevision:number;locationCollectionId?:string;expectedLocationRevision?:number},key:string,attached:boolean) {
-    return this.command(accountId,attached?'attachLocationLink':'detachLocationLink',{childCollectionId:input.childCollectionId,expectedChildRevision:input.expectedChildRevision,locationCollectionId:input.locationCollectionId??null,expectedLocationRevision:input.expectedLocationRevision??null},key,async db=>{
-      // A link spans two categories, so both are locked before any row is - the
-      // wrapper derives one category from `id` and this command is addressed by the
-      // child, so it takes its own locks in the same account -> category -> row order.
-      const observed=(await db.query('SELECT category FROM collections WHERE id=$1 AND account_id=$2',[input.childCollectionId,accountId])).rows[0];
-      if(!observed)throw new RecommendationFailure(404,'Collection unavailable');
-      const childCategory=linkableChildCategorySchema.safeParse(observed.category);
-      if(!childCategory.success)throw new RecommendationFailure(422,'Only Products and People lists link to a location');
-      await lockContentCategories(db,accountId,[childCategory.data,'places']);
-      await this.lockCollection(db,accountId,input.childCollectionId,input.expectedChildRevision);
-      if(attached){
-        if(input.locationCollectionId===undefined||input.expectedLocationRevision===undefined)throw new RecommendationFailure(422,'A location list is required');
-        // Locked for its revision, and its category checked here so the refusal says which
-        // rule was broken rather than surfacing a foreign key.
-        const parent=await this.lockCollection(db,accountId,input.locationCollectionId,input.expectedLocationRevision);
-        if(parent.category!=='places')throw new RecommendationFailure(422,'A location list is required');
-        await writeLocationLink(db,{childCollectionId:input.childCollectionId,accountId,childCategory:childCategory.data,locationCollectionId:input.locationCollectionId});
-      }else{
-        await deleteLocationLink(db,input.childCollectionId,accountId);
-      }
-      const row=await db.query('UPDATE collections SET revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *',[input.childCollectionId]);
-      return{collection:await this.collectionRecord(db,row.rows[0]),attached};
     });
   }
   /**

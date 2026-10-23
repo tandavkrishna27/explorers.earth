@@ -60,11 +60,6 @@ export type RecommendationListView={
  top_picks_heading:string|null;
  account:{documentId:string;username:string};
  recommended_places:RecommendedPlaceView[];
- // Ticket 5.2. Which of the owner's Products and People lists are linked to this
- // location. The ids only: those lists belong to their own categories' reads, and
- // copying their contents here would make two sources of the same list.
- linked_person_list_ids:string[];
- linked_product_list_ids:string[];
  // OWN-19. Set when this list's own read failed: the list is shown with an error and a
  // retry instead of disappearing, and its places are not known (not empty).
  loadError?:true;
@@ -152,8 +147,6 @@ export function collectionViewModel(collection:Readonly<EditableOwnerCollection>
   top_picks_heading:collection.heading,
   account:{documentId:collection.accountId,username},
   recommended_places:places.map(place=>({...place,recommendation_list:{documentId:collection.id,List_Name:collection.title,slug:collection.slug}})),
-  linked_person_list_ids:(collection.linkedChildren??[]).filter(child=>child.childCategory==='people').map(child=>child.childCollectionId),
-  linked_product_list_ids:(collection.linkedChildren??[]).filter(child=>child.childCategory==='products').map(child=>child.childCollectionId),
  };
 }
 
@@ -169,7 +162,7 @@ function unavailableListViewModel(collection:CompletePlacesOwnerContent['collect
   cover_image:collection.coverMediaId===null?null:{url:MEDIA(collection.coverMediaId),alternativeText:null},
   top_picks_heading:collection.heading,
   account:{documentId:collection.accountId,username},
-  recommended_places:[],linked_person_list_ids:[],linked_product_list_ids:[],
+  recommended_places:[],
   loadError:true,
  };
 }

@@ -31,7 +31,6 @@ export function usePlacesCommands(listId?:string) {
  const forget=(signature:string)=>{keys.current.delete(signature);creates.current.delete(signature);collections.current.delete(signature);completeReads.current.delete(signature);recommendations.current.delete(signature);};
  const begin=(group:string,signature:string)=>{const previous=choices.current.get(group);if(previous&&previous!==signature){forget(previous);memberships.current.delete(previous);}choices.current.set(group,signature);};
  const observeCollection=async(signature:string,id:string,assert:()=>void,signal:AbortSignal)=>{let observed=collections.current.get(signature);if(!observed){observed=await PlacesClient.observeCollection(id,signal);assert();collections.current.set(signature,observed);}return observed;};
- const observeLocationChild=async(signature:string,id:string,assert:()=>void,signal:AbortSignal)=>{let observed=collections.current.get(signature);if(!observed){observed=await PlacesClient.observeLocationChild(id,signal);assert();collections.current.set(signature,observed);}return observed;};
  const observeRecommendation=async(signature:string,id:string,assert:()=>void,signal:AbortSignal)=>{let observed=recommendations.current.get(signature);if(!observed){observed=await PlacesClient.observeRecommendation(id,signal);assert();recommendations.current.set(signature,observed);}return observed;};
  const observeComplete=async(signature:string,assert:()=>void,signal:AbortSignal)=>{let observed=completeReads.current.get(signature);if(!observed){observed=await PlacesClient.readCompleteOwner(signal);assert();completeReads.current.set(signature,observed);}return observed;};
  const key=(intent:string)=>{const existing=keys.current.get(intent);if(existing)return existing;const value=crypto.randomUUID();keys.current.set(intent,value);return value;};
@@ -73,15 +72,6 @@ export function usePlacesCommands(listId?:string) {
    const parent=await observeCollection(signature,collectionId,assert,signal);assert();
    let intent=creates.current.get(signature);if(!intent){intent=PlacesClient.prepareManualPersonIntent(parent,draft);creates.current.set(signature,intent);}assert();
    const result=await PlacesClient.createManual(intent,signal);assert();forget(signature);return result;
-  }),
-  // Ticket 5.2. Linking a Products or People list to a location, and unlinking it.
-  // Keyed by both lists, so a retry of the same intent is the same command.
-  setLocationLink:(locationId:string,childId:string,attached:boolean)=>run(async(assert,signal)=>{
-   const signature=`location-link:${locationId}:${childId}:${attached}`;begin(`collection:${childId}`,signature);
-   const location=await observeCollection(`${signature}:location`,locationId,assert,signal);assert();
-   const child=await observeLocationChild(signature,childId,assert,signal);assert();
-   const result=await PlacesClient.setLocationLink(location,child,attached,key(signature),signal);assert();
-   forget(signature);forget(`${signature}:location`);return result;
   }),
   // Correcting the provider facts repoints this owner's recommendation at their own
   // corrected place rather than rewriting the shared one.

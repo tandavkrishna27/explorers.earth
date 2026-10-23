@@ -18,6 +18,9 @@ export function useListLinkState(collectionId: string | null | undefined) {
     queryFn: async ({ signal }) => {
       const observed = await explorersApiClient.getMyEditableCollection(collectionId as string, signal);
       const detail = observed.detail;
+      // The parsed read always carries linkedLists; anything else (a partial stub of the
+      // read) yields no linking UI rather than taking the host page down.
+      if (!Array.isArray(detail.linkedLists) || !Number.isSafeInteger(Number(detail.categoryRevision))) return null;
       return { id: detail.id, category: detail.category as ListLinkCategory, title: detail.title,
         categoryRevision: Number(detail.categoryRevision), linkedLists: detail.linkedLists as readonly LinkedListCard[] };
     },

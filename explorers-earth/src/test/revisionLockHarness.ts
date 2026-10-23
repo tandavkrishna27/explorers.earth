@@ -19,7 +19,7 @@ export function signIn(){
 }
 const collectionCore=(category:Category,revision:number)=>({id:listId,accountId:account,category,title:'List',slug:'list',visibility:'private',publicationState:'draft',revision,description:null,heading:null,coverMediaId:null});
 const collectionDetail=(category:Category,revision:number)=>({...collectionCore(category,revision),archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',
- ...(category==='places'?{linkedChildren:[],placeLocation:{locationEntityId:null,locationSnapshot:null,instagramMediaUrl:null}}:category==='products'||category==='people'?{locationLink:null}:{})});
+ ...(category==='places'?{placeLocation:{locationEntityId:null,locationSnapshot:null,instagramMediaUrl:null}}:{}),linkedLists:[]});
 const kind:Record<Category,string>={places:'place',products:'product',people:'person',apps:'app',games:'game',movies:'movie',books:'book'};
 const recommendationCore=(category:Category,revision:number)=>({id:itemId,accountId:account,category,entityId,userRating:null,publicationState:'draft',revision,mediaIds:[]});
 const catalogRead={catalogState:'UNCONFIGURED',catalogVersion:0,defaultLocale:null};

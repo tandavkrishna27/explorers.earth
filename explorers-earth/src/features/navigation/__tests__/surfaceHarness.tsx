@@ -70,9 +70,9 @@ export function surfaceHarness(child: React.ReactNode, options: { initial?: Reco
         title: 'My places', slug: 'places', description: null, heading: null, coverMediaId: null, visibility: 'public',
         publicationState: 'published', revision: 1, archived: false, displayOrder: 0, pinOrder: null, categoryRevision: '1',
         placeLocation: { locationEntityId: null, locationSnapshot: null, instagramMediaUrl: null },
-        // Ticket 5.2. A location list reports what is linked to it, so the editable read
-        // must carry the field even when nothing is.
-        linkedChildren: [] } });
+        // WP10. Every list reports its linked lists, so the editable read must carry the
+        // field even when nothing is linked.
+        linkedLists: [] } });
     }
     if (request.pathname !== '/api/explorers/v1/collections') return new Response('{}', { status: 404 });
     // deferContent holds owner content pending while authority is already resolved.

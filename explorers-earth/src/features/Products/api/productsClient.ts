@@ -72,7 +72,7 @@ export const ProductsClient={
  },
  // Ticket 5.2. A list created from a location is linked in the same command, so a
  // failed parent leaves no orphan list behind.
- createCollection(input:{title:string;slug:string;description?:string|null;parentLocationCollectionId?:string},commandKey:string,signal?:AbortSignal,parentObservation?:CollectionObservation){return explorersApiClient.createMyCollection({...input,category:'products',visibility:'private',publicationState:'draft'},commandKey,signal,parentObservation);},
+ createCollection(input:{title:string;slug:string;description?:string|null},commandKey:string,signal?:AbortSignal){return explorersApiClient.createMyCollection({...input,category:'products',visibility:'private',publicationState:'draft'},commandKey,signal);},
  updateCollection(observed:CollectionObservation,patch:Omit<UpdateCollectionInput,'expectedRevision'>,commandKey:string,signal?:AbortSignal){collection(observed);return explorersApiClient.updateMyCollection(observed,patch,commandKey,signal);},
  archiveCollection(observed:CollectionObservation,commandKey:string,signal?:AbortSignal){collection(observed);return explorersApiClient.archiveMyCollection(observed,commandKey,signal);},
  updateRecommendation(observed:RecommendationObservation,patch:Omit<UpdateRecommendationInput,'expectedRevision'>,commandKey:string,signal?:AbortSignal){recommendation(observed);return explorersApiClient.updateMyRecommendation(observed,patch,commandKey,signal);},
