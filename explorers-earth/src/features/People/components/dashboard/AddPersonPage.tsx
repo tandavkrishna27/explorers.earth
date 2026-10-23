@@ -2,7 +2,8 @@ import ReorderableMediaStrip from '../../../../components/reorder/ReorderableMed
 import { useEffect, useRef, useState } from 'react';
 import { friendlyErrorMessage, urlFieldError } from "../../../../utils/friendlyError";
 import { useLocation, useParams } from 'react-router-dom';
-import { ArrowLeft, X } from 'lucide-react';
+import { ArrowLeft, Upload, X } from 'lucide-react';
+import { uploadButton } from '../../../shared/addItem/formStyles';
 import { toast } from 'sonner';
 import useAuthStore from '../../../../store/store';
 import type { RecommendationObservation, CompleteTaxonomyCatalog } from '../../../../lib/explorersApiClient';
@@ -270,7 +271,7 @@ export default function AddPersonPage() {
    </select>
   </label>
   {catalogLoading&&<p role="status">Loading sectors…</p>}
-  {catalog?.state==='UNCONFIGURED'&&<p role="status">Sector catalog is not configured.</p>}
+  {catalog?.state==='UNCONFIGURED'&&<p role="status" className="-mt-2 text-xs text-dashboard-muted">Sector catalog is not configured.</p>}
   {existingSector&&(existingSector.unavailable||catalog&&!catalog.items.some(item=>item.id===existingSector.id))&&<p role="status">Existing sector is unavailable.</p>}
   {catalogError&&<div role="alert"><p>{catalogError}</p><button onClick={()=>setCatalogRetry(value=>value+1)}>Retry loading sectors</button></div>}
 
@@ -292,10 +293,10 @@ export default function AddPersonPage() {
 
   <div><h3>My Thoughts</h3><TiptapEditor value={note} onChange={setNote} placeholder="Why do you recommend this person?" /></div>
 
-  <label className="block">Snapshots<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple disabled={saving || pending > 0} onChange={event => { void upload(Array.from(event.target.files ?? [])); event.target.value = ''; }} /></label>
-  {pending > 0 && <p role="status">Uploading snapshots…</p>}
+  <label className={uploadButton}><Upload aria-hidden="true" size={16} className="text-dashboard-muted" /><span>Photos</span><input type="file" className="sr-only" accept="image/jpeg,image/png,image/webp,image/gif" multiple disabled={saving || pending > 0} onChange={event => { void upload(Array.from(event.target.files ?? [])); event.target.value = ''; }} /></label>
+  {pending > 0 && <p role="status">Uploading photos…</p>}
   {importing && <p role="status">Copying the photo…</p>}
-  <ReorderableMediaStrip items={media} onChange={setMedia} noun="Snapshot" alt="Person snapshot" removeLabel="Remove snapshot" disabled={saving} />
+  <ReorderableMediaStrip items={media} onChange={setMedia} noun="Photo" alt="Person photo" removeLabel="Remove photo" disabled={saving} />
 
   {error && <p role="alert">{error}</p>}
  </AddItemPage>;

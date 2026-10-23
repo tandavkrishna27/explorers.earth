@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { friendlyErrorMessage, urlFieldError } from "../../../../utils/friendlyError";
 import { useLocation, useParams } from 'react-router-dom';
-import { ArrowLeft, X } from 'lucide-react';
+import { ArrowLeft, Upload, X } from 'lucide-react';
+import { uploadButton } from '../../../shared/addItem/formStyles';
 import { toast } from 'sonner';
 import useAuthStore from '../../../../store/store';
 import type { RecommendationObservation } from '../../../../lib/explorersApiClient';
@@ -295,7 +296,7 @@ export default function AddAppPage() {
 
   <div><h3>My Thoughts</h3><TiptapEditor value={note} onChange={setNote} placeholder="Why do you recommend this app?" /></div>
 
-  <label className="block">Screenshots<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple disabled={saving || pending > 0} onChange={event => { void upload(Array.from(event.target.files ?? [])); event.target.value = ''; }} /></label>
+  <label className={uploadButton}><Upload aria-hidden="true" size={16} className="text-dashboard-muted" /><span>Screenshots</span><input type="file" className="sr-only" accept="image/jpeg,image/png,image/webp,image/gif" multiple disabled={saving || pending > 0} onChange={event => { void upload(Array.from(event.target.files ?? [])); event.target.value = ''; }} /></label>
   {pending > 0 && <p role="status">Uploading screenshots…</p>}
   {importing && <p role="status">Copying the icon…</p>}
   {/* Order here is the saved order and the order the public page shows; the first is the lead screenshot. */}

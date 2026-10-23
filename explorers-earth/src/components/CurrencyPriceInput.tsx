@@ -50,26 +50,26 @@ const CurrencyPriceInput: React.FC<CurrencyPriceInputProps> = ({ value, onChange
 
   return (
     <div>
-      <div className="flex min-h-[44px] items-stretch rounded-md border border-gray-300 focus-within:ring-2 focus-within:ring-blue-500">
+      <div className="flex min-h-[44px] items-stretch rounded-xl border border-dashboard-border bg-dashboard-muted text-dashboard focus-within:ring-2 focus-within:ring-blue-500">
         <input
           id={`${id}-amount`}
           aria-label={t('currency.priceLabel')}
           aria-invalid={problem ? true : undefined}
           aria-describedby={problem ? errorId : undefined}
           inputMode="decimal"
-          className="min-w-0 flex-1 rounded-l-md px-3 outline-none"
+          className="min-w-0 flex-1 rounded-l-xl bg-transparent px-3 text-dashboard outline-none"
           value={amount}
           disabled={disabled}
           onChange={(event) => { setAmount(event.target.value); emit(event.target.value, currency); }}
         />
         <select
           aria-label={t('currency.label')}
-          className="rounded-r-md border-l border-gray-300 bg-transparent px-2"
+          className="rounded-r-xl border-l border-dashboard-border bg-transparent px-2 text-dashboard outline-none"
           value={currency}
           disabled={disabled}
           onChange={(event) => { setCurrency(event.target.value); emit(amount, event.target.value); }}
         >
-          {CURRENCY_CODES.map((code) => <option key={code} value={code}>{code}</option>)}
+          {CURRENCY_CODES.map((code) => <option key={code} value={code} className="bg-dashboard-sidebar text-dashboard">{code}</option>)}
         </select>
       </div>
       {problem && <p id={errorId} role="alert" className="mt-1 text-sm text-red-600">{problem}</p>}

@@ -70,7 +70,7 @@ describe('People template', () => {
   expect(screen.getByLabelText('Headline / Role')).toHaveValue('Type designer');
   expect(screen.getByText('Instagram', {selector: '[data-detected-platform]'})).toBeInTheDocument();
   await waitFor(() => expect(linkPreviewClient.importImage).toHaveBeenCalledWith('https://cdn.example/ada.jpg'));
-  expect(await screen.findByAltText('Person snapshot')).toHaveAttribute('src', '/api/explorers/v1/media/media-photo/content');
+  expect(await screen.findByAltText('Person photo')).toHaveAttribute('src', '/api/explorers/v1/media/media-photo/content');
  });
 
  it('allows four extra social links keyed by their detected platform, a repeat platform going to other', async () => {

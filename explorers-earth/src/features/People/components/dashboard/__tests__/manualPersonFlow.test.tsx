@@ -122,7 +122,7 @@ describe('native manual People', () => {
  it('waits for uploaded snapshot readiness before saving', async () => {
   const upload = deferred<{id: string}>(); vi.mocked(PeopleClient.upload).mockReturnValue(upload.promise as never);
   mount(); await chooseSector(); fill('Full Name', 'Shot');
-  fireEvent.change(screen.getByLabelText('Snapshots'), {target: {files: [new File(['bytes'], 'shot.png', {type: 'image/png'})]}});
+  fireEvent.change(screen.getByLabelText('Photos'), {target: {files: [new File(['bytes'], 'shot.png', {type: 'image/png'})]}});
   expect(screen.getByRole('button', {name: 'Save'})).toBeDisabled();
   await act(async () => upload.resolve({id: 'media-1'}));
   await waitFor(() => expect(screen.getByRole('button', {name: 'Save'})).toBeEnabled());
@@ -208,7 +208,7 @@ describe('manual People edit', () => {
  it('keeps previously uploaded snapshots through a re-edit', async () => {
   const existing = '22222222-3333-4444-5555-666666666666';
   loaded([existing]); render(editElement());
-  expect(await screen.findByAltText('Person snapshot')).toHaveAttribute('src', `/api/explorers/v1/media/${existing}/content`);
+  expect(await screen.findByAltText('Person photo')).toHaveAttribute('src', `/api/explorers/v1/media/${existing}/content`);
   fireEvent.click(screen.getByRole('button', {name: 'Save'}));
   await waitFor(() => expect(PeopleClient.updateRecommendation).toHaveBeenCalledTimes(1));
   expect(vi.mocked(PeopleClient.updateRecommendation).mock.calls[0][1]).toMatchObject({mediaIds: [existing]});
@@ -217,8 +217,8 @@ describe('manual People edit', () => {
  it('saves snapshots in the order the owner arranged them', async () => {
   const [a, b] = ['22222222-3333-4444-5555-666666666661', '22222222-3333-4444-5555-666666666662'];
   loaded([a, b]); render(editElement());
-  await screen.findAllByAltText('Person snapshot');
-  fireEvent.click(screen.getByRole('button', {name: 'Move Snapshot 2 up'}));
+  await screen.findAllByAltText('Person photo');
+  fireEvent.click(screen.getByRole('button', {name: 'Move Photo 2 up'}));
   fireEvent.click(screen.getByRole('button', {name: 'Save'}));
   await waitFor(() => expect(PeopleClient.updateRecommendation).toHaveBeenCalledTimes(1));
   expect(vi.mocked(PeopleClient.updateRecommendation).mock.calls[0][1]).toMatchObject({mediaIds: [b, a]});

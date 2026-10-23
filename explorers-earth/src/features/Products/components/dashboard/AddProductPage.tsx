@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { friendlyErrorMessage, urlFieldError } from "../../../../utils/friendlyError";
 import { useTranslation } from 'react-i18next';
 import { useLocation, useParams } from 'react-router-dom';
-import { ArrowDown, ArrowLeft, ArrowUp, X } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, Upload, X } from 'lucide-react';
+import { uploadButton } from '../../../shared/addItem/formStyles';
 import { moveItem } from '../../../../components/reorder/moveItem';
 import { useMoveAnnouncer } from '../../../../components/reorder/useMoveAnnouncer';
 import { toast } from 'sonner';
@@ -268,7 +269,7 @@ export default function AddProductPage() {
 
   <div><h3>My Thoughts</h3><TiptapEditor value={note} onChange={setNote} placeholder="Share why you recommend this product..." /></div>
 
-  <label className="block">Photos<input type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple disabled={saving || pending > 0} onChange={event => { void upload(Array.from(event.target.files ?? [])); event.target.value = ''; }} /></label>
+  <label className={uploadButton}><Upload aria-hidden="true" size={16} className="text-dashboard-muted" /><span>Photos</span><input type="file" className="sr-only" accept="image/jpeg,image/png,image/webp,image/gif" multiple disabled={saving || pending > 0} onChange={event => { void upload(Array.from(event.target.files ?? [])); event.target.value = ''; }} /></label>
   {pending > 0 && <p role="status">Uploading photos…</p>}
   {importing && <p role="status">Copying the photo…</p>}
   <ReorderableMediaStrip items={media} onChange={setMedia} noun="Photo" alt="Product photo" removeLabel="Remove photo" disabled={saving} />
