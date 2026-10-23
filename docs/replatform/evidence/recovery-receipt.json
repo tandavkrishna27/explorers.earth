@@ -1,63 +1,63 @@
 {
   "version": "explorers-platform-restore-drill/v1",
-  "runId": "b32fc16930a0b488d21bb3d08b28d1f0",
+  "runId": "ef769b56f98118d089ed924b37f5283e",
   "result": "passed",
-  "drilledAt": "2026-10-23T05:24:39.802Z",
-  "drillCommit": "8063651c12b73d86482a9d21626e0999c7a3b18c",
-  "manifestDigest": "d734e909bc4e7a8023ba1dc252d61a38b303eae21db573bf36c81efb735bf575",
-  "migrationMarker": "0064_explorers_game_details",
-  "schemaChecksum": "06642032c1c5aa49d42353520de2f2a3c49c08658ee813f6438e4555045de7ee",
+  "drilledAt": "2026-10-23T12:42:47.753Z",
+  "drillCommit": "86a72fc2240accaa9525a776a4343c9e860a08bb",
+  "manifestDigest": "da1582a9e63902724d015b105d9bf5381bd41de7ca0326153abd4a828eb44741",
+  "migrationMarker": "0066_explorers_list_redirects_and_delete",
+  "schemaChecksum": "5c621bb7afbc74e357378f5eb663744ee2920842641f13c3d13376aa39c60f04",
   "cleanup": "database-dropped-container-removed",
   "phases": [
     {
       "phase": "download",
-      "milliseconds": 4013
+      "milliseconds": 9282
     },
     {
       "phase": "decrypt",
-      "milliseconds": 701
+      "milliseconds": 657
     },
     {
       "phase": "acquire-target",
-      "milliseconds": 1876
+      "milliseconds": 1833
     },
     {
       "phase": "bootstrap-roles",
-      "milliseconds": 8
-    },
-    {
-      "phase": "pg-restore",
-      "milliseconds": 1012
-    },
-    {
-      "phase": "repair-known-drift",
       "milliseconds": 10
     },
     {
+      "phase": "pg-restore",
+      "milliseconds": 1045
+    },
+    {
+      "phase": "repair-known-drift",
+      "milliseconds": 9
+    },
+    {
       "phase": "attest-schema",
-      "milliseconds": 286
+      "milliseconds": 256
     },
     {
       "phase": "attest-runtime-role",
-      "milliseconds": 340
+      "milliseconds": 312
     },
     {
       "phase": "boot",
-      "milliseconds": 2417
+      "milliseconds": 1871
     },
     {
       "phase": "probe",
-      "milliseconds": 314
+      "milliseconds": 294
     },
     {
       "phase": "media",
-      "milliseconds": 1853
+      "milliseconds": 1769
     }
   ],
   "proofs": {
     "journal": {
-      "rows": 64,
-      "currentId": "0064_explorers_game_details"
+      "rows": 66,
+      "currentId": "0066_explorers_list_redirects_and_delete"
     },
     "identity": {
       "authUsers": 1,
@@ -71,11 +71,11 @@
       "products": 18
     },
     "media": {
-      "objects": 107,
-      "hashesMatched": 107,
+      "objects": 100,
+      "hashesMatched": 100,
       "gatedRouteResolved": 33
     },
     "rowCountsMatched": true
   },
-  "recoveryMilliseconds": 12830
+  "recoveryMilliseconds": 17338
 }
