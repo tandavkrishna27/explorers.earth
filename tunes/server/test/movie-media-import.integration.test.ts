@@ -450,6 +450,18 @@ it('a resumed import after a crash mid-batch never exceeds the lineage caps',asy
  for(const w of writes){expect(w.counters.download+w.counters.put).toBeLessThanOrEqual(24);expect(w.counters.received+w.counters.reserved).toBeLessThanOrEqual(LINEAGE);}
 });
 
+it('durably counts storage puts whose ready write never committed before any later resume',async()=>{
+ const f=await wideFixture(),bytes=Buffer.from([137,80,78,71,13,10,26,10]);let puts=0;
+ const fetcher=new MovieImageFetcher({mode:'deterministic-fixture',resolve:async()=>[{address:'8.8.8.8',family:4}],connect:async()=>({status:200,mimeType:'image/png',length:8,body:(async function*(){yield bytes;})()})});
+ // The native put is issued and then fails, so no ready transaction ever records it.
+ const storage:ObjectStorage={environment:'local',put:async()=>{throw Error('ordinary put');},putOwned:()=>{puts++;const nativeResult=Promise.reject(Error('put lost after send'));nativeResult.catch(()=>undefined);return {completion:nativeResult,nativeResult,settlement:Promise.resolve()};},get:async()=>bytes,delete:async()=>undefined};
+ const {wrapped,writes}=countingPool();
+ const result=await new MovieMediaImportService(wrapped,new MediaService(wrapped,storage),fetcher).import(ownerOf(f),f.r.id,{expectedRevision:f.r.revision},{requestId:'lost-puts',idempotencyKey:randomUUID()});
+ expect(result.slots.every(s=>s.status==='unavailable')).toBe(true);expect(puts).toBe(12);
+ // Every durable snapshot must already count the requests a resume could otherwise repeat past the 24 cap.
+ const last=writes[writes.length-1].counters;expect(last.download+last.put).toBeGreaterThanOrEqual(24);expect(last.put).toBeGreaterThanOrEqual(puts);
+});
+
 it('the caller deadline aborts every in-flight provider fetch of a batch',async()=>{
  const f=await wideFixture();let started=0,aborted=0,releaseAll!:()=>void,reached!:()=>void;const gate=new Promise<void>(r=>{releaseAll=r;}),three=new Promise<void>(r=>{reached=r;});
  const fetcher=new MovieImageFetcher({mode:'deterministic-fixture',resolve:async()=>[{address:'8.8.8.8',family:4}],connect:async target=>{started++;if(started===3)reached();target.signal.addEventListener('abort',()=>{aborted++;});await gate;throw Error('aborted');}});

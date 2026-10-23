@@ -115,7 +115,7 @@ export class MovieMediaImportService {
      let release:(()=>void)|undefined,staged:Progress|undefined;
      try {
       const put=this.media.createMediaOwned(actor,{purpose:'recommendation',filename:'movie-provider-image',mimeType:image.mimeType,length:image.bytes.length,bytes:image.bytes},context,async(connection,media)=>{
-       release=await turn();await assertCurrent();staged=patched(index,{status:'copied',media:movieOwnedImageSchema.parse(media),reused:false},{reserved:-IMAGE,received:received!,put:1,...phases});await save(connection,staged);
+       release=await turn();await assertCurrent();staged=patched(index,{status:'copied',media:movieOwnedImageSchema.parse(media),reused:false},{reserved:-IMAGE,received:received!,...phases});await save(connection,staged);
       });
       try{copied=movieOwnedImageSchema.parse(await put.completion);}finally{await put.settlement;}
       newlyOwned.add(copied.id);if(staged)progress=staged;
@@ -136,7 +136,8 @@ export class MovieMediaImportService {
      batch.push(index);
     }
     if(!batch.length)break;
-    await apply(-1,{},{download:batch.length,reserved:batch.length*IMAGE});
+    // Download and put are both counted durably before any request leaves: a put whose ready write never commits is still counted.
+    await apply(-1,{},{download:batch.length,put:batch.length,reserved:batch.length*IMAGE});
     const settled=await Promise.allSettled(batch.map(copy));const failed=settled.find(s=>s.status==='rejected');if(failed)throw (failed as PromiseRejectedResult).reason;
    }
    const response=await this.transaction(db,async()=>{
