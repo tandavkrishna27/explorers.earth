@@ -2,6 +2,7 @@ import { convertPublicGuideSection } from "../utils/publicGuidePhotoViewModel";
 import { memo, useState, useMemo, useEffect, useRef, useCallback, type CSSProperties } from "react";
 import { useParams, useNavigate, useOutletContext, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import JourneyIcon from "../../../assets/icons/JourneyIcon";
 import TransportationIcon from "../../../assets/icons/TransportationIcon";
 import StayIcon from "../../../assets/icons/StayIcon";
@@ -87,6 +88,7 @@ const normalizeRenderableGuide = (value: unknown) => {
 };
 
 const PublicGuideDetailPage = memo(() => {
+  const { t } = useTranslation();
   const formatMoney = useFormatMoney();
   const { username, guideSlug } = useParams<{ username: string; guideSlug: string }>();
   const navigate = useNavigate();
@@ -784,7 +786,7 @@ const PublicGuideDetailPage = memo(() => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                   <span className="text-white text-[9px] sm:text-[10px] md:text-xs font-black font-poppins tracking-wider whitespace-nowrap drop-shadow-xl relative z-10">
-                    {guideFormat}
+                    {t(`dashboard.wp7.guideType.${guideFormat}`, String(guideFormat))}
                   </span>
                 </motion.div>
 
