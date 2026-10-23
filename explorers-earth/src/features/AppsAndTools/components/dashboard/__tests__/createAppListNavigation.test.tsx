@@ -17,7 +17,7 @@ vi.mock("react-router-dom", async (importOriginal) => {
 
 const createFn = vi.hoisted(() => vi.fn(async () => ({ id: 'app-1' })));
 const ownerFixture = vi.hoisted(() => ({ lists: [] as unknown[] }));
-vi.mock('../../../api/appsClient', () => ({ AppsClient: { createCollection: createFn } }));
+import { explorersApiClient } from "../../../../../lib/explorersApiClient";
 vi.mock('../../../hooks/useAppsOwner', () => ({ useAppsOwner: () => ({ data: { appLists: ownerFixture.lists }, loading: false, refetch: vi.fn() }), invalidateApps: vi.fn() }));
 import AppsHome from "../AppsHome";
 // VACUITY GUARD (path): this file's oracles are *extracted from* the Playwright spec, so if
@@ -78,16 +78,17 @@ describe("AppsHome create-list navigation (BUG-3)", () => {
     loginSurface();
     navigateSpy.mockClear();
     createFn.mockClear();
+    vi.spyOn(explorersApiClient, "createMyCollection").mockImplementation(createFn as never);
     ownerFixture.lists=[];
   });
 
   it('opens the zero-pin manager through a native keyboard-accessible button', async () => {
     ownerFixture.lists=[{documentId:'list-1',List_Name:'Tools',slug:'tools',recommended_apps:[{documentId:'app-1',title:'Focus Timer',is_pinned:false,platforms:[],screenshots:[]}]}];
     const h=surfaceHarness(<AppsHome />, {initial:{documentId:'acc-1',public_apps:'No'}});await h.ready();
-    const button=screen.getByRole('button',{name:/^Manage Top Picks \(0\/1\)/});
+    const button=screen.getAllByRole('button',{name:/Manage Top Picks/})[0];
     expect(button.tagName).toBe('BUTTON');expect(button.getAttribute('type')).toBe('button');
     button.focus();await userEvent.keyboard('{Enter}');
-    expect(await screen.findByRole('heading',{name:'Manage Top Picks (0/15)'})).toBeInTheDocument();
+    expect(await screen.findByRole('dialog',{name:'Manage Top Picks'})).toHaveTextContent('0 of 15 pinned');
   });
 
   it('the actual persisted-note oracle renders serialized nonbreaking spaces as exact fixture text',()=>{
@@ -149,12 +150,7 @@ describe("AppsHome create-list navigation (BUG-3)", () => {
     });
     await userEvent.click(newListButtons[0]);
 
-    await waitFor(() =>
-      expect(document.querySelector('input[name="List_Name"]')).toBeTruthy()
-    );
-    const nameInput = document.querySelector(
-      'input[name="List_Name"]'
-    ) as HTMLInputElement;
+    const nameInput = await screen.findByLabelText("Name");
     await userEvent.type(nameInput, "Dev Tools");
 
     await userEvent.click(screen.getByRole("button", { name: /Create List/i }));

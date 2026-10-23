@@ -10,7 +10,7 @@ vi.mock("react-router-dom", async (importOriginal) => {
 });
 
 const createFn = vi.hoisted(() => vi.fn(async () => ({ id: 'game-1' })));
-vi.mock('../../../api/gamesClient', () => ({ GamesClient: { createCollection: createFn } }));
+import { explorersApiClient } from "../../../../../lib/explorersApiClient";
 vi.mock('../../../hooks/useGamesOwner', () => ({ useGamesOwner: () => ({ data: { gameLists: [] }, loading: false, refetch: vi.fn() }), invalidateGames: vi.fn() }));
 import GamesHome from "../GamesHome";
 
@@ -19,6 +19,7 @@ describe("GamesHome create-list navigation (BUG-3)", () => {
     loginSurface();
     navigateSpy.mockClear();
     createFn.mockClear();
+    vi.spyOn(explorersApiClient, "createMyCollection").mockImplementation(createFn as never);
   });
 
   it("navigates into the newly created list with justCreatedList state", async () => {
@@ -32,10 +33,7 @@ describe("GamesHome create-list navigation (BUG-3)", () => {
     });
     await userEvent.click(newListButtons[0]);
 
-    await screen.findByText("Create New List");
-    const nameInput = document.querySelector(
-      'input[name="List_Name"]'
-    ) as HTMLInputElement;
+    const nameInput = await screen.findByLabelText("Name");
     await userEvent.type(nameInput, "Cozy RPGs");
 
     await userEvent.click(screen.getByRole("button", { name: /Create List/i }));

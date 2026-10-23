@@ -1,5 +1,57 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`category wrappers render the shared template > apps 1`] = `
+{
+  "category": "apps",
+  "categoryVisibility": "hidden",
+  "lists": [
+    {
+      "covers": [],
+      "id": "a1",
+      "itemCount": 1,
+      "pinnedCount": 1,
+      "status": "public",
+      "title": "Focus toolkit",
+    },
+  ],
+  "newList": Any<Object>,
+  "onCategoryVisibility": Any<Function>,
+  "onChanged": Any<Function>,
+  "onOpenList": Any<Function>,
+  "onRetry": Any<Function>,
+  "pinCandidates": [
+    {
+      "id": "x1",
+      "imageUrl": null,
+      "listId": "a1",
+      "listTitle": "Focus toolkit",
+      "pinnable": true,
+      "pinned": true,
+      "subtitle": null,
+      "title": "Forest",
+    },
+  ],
+  "status": {
+    "error": null,
+    "loading": false,
+    "refreshing": false,
+  },
+  "topPicks": [
+    {
+      "id": "x1",
+      "imageUrl": null,
+      "listId": "a1",
+      "listTitle": "Focus toolkit",
+      "pinnable": true,
+      "pinned": true,
+      "subtitle": null,
+      "title": "Forest",
+    },
+  ],
+  "visibilityBusy": false,
+}
+`;
+
 exports[`category wrappers render the shared template > books 1`] = `
 {
   "category": "books",
@@ -31,6 +83,36 @@ exports[`category wrappers render the shared template > books 1`] = `
       "title": "Siddhartha",
     },
   ],
+  "status": {
+    "error": null,
+    "loading": false,
+    "refreshing": false,
+  },
+  "topPicks": [],
+  "visibilityBusy": false,
+}
+`;
+
+exports[`category wrappers render the shared template > games 1`] = `
+{
+  "category": "games",
+  "categoryVisibility": "hidden",
+  "lists": [
+    {
+      "covers": [],
+      "id": "g1",
+      "itemCount": 0,
+      "pinnedCount": 0,
+      "status": "draft",
+      "title": "Couch co-op",
+    },
+  ],
+  "newList": Any<Object>,
+  "onCategoryVisibility": Any<Function>,
+  "onChanged": Any<Function>,
+  "onOpenList": Any<Function>,
+  "onRetry": Any<Function>,
+  "pinCandidates": [],
   "status": {
     "error": null,
     "loading": false,
@@ -91,6 +173,77 @@ exports[`category wrappers render the shared template > movies 1`] = `
       "title": "Chef",
     },
   ],
+  "visibilityBusy": false,
+}
+`;
+
+exports[`category wrappers render the shared template > people 1`] = `
+{
+  "category": "people",
+  "categoryVisibility": "hidden",
+  "lists": [
+    {
+      "covers": [],
+      "id": "q1",
+      "itemCount": 1,
+      "pinnedCount": 0,
+      "status": "draft",
+      "title": "Design voices",
+    },
+  ],
+  "newList": Any<Object>,
+  "onCategoryVisibility": Any<Function>,
+  "onChanged": Any<Function>,
+  "onOpenList": Any<Function>,
+  "onRetry": Any<Function>,
+  "pinCandidates": [
+    {
+      "id": "y1",
+      "imageUrl": null,
+      "listId": "q1",
+      "listTitle": "Design voices",
+      "pinnable": true,
+      "pinned": false,
+      "subtitle": null,
+      "title": "A type designer",
+    },
+  ],
+  "status": {
+    "error": null,
+    "loading": false,
+    "refreshing": false,
+  },
+  "topPicks": [],
+  "visibilityBusy": false,
+}
+`;
+
+exports[`category wrappers render the shared template > products 1`] = `
+{
+  "category": "products",
+  "categoryVisibility": "hidden",
+  "lists": [
+    {
+      "covers": [],
+      "id": "p1",
+      "itemCount": 0,
+      "pinnedCount": 0,
+      "status": "draft",
+      "title": "Desk setup",
+    },
+  ],
+  "newList": Any<Object>,
+  "onCategoryVisibility": Any<Function>,
+  "onChanged": Any<Function>,
+  "onOpenList": Any<Function>,
+  "onRetry": Any<Function>,
+  "pinCandidates": [],
+  "status": {
+    "error": null,
+    "loading": false,
+    "refreshing": false,
+  },
+  "topPicks": [],
   "visibilityBusy": false,
 }
 `;

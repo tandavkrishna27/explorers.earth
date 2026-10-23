@@ -20,7 +20,16 @@ vi.mock("../../../Books/api/useBooksOwnerContent", () => ({ useBooksOwnerContent
   { documentId: "b1", List_Name: "Read in a weekend", visibility: false, recommended_books: [{ documentId: "k1", title: "Siddhartha", cover_url: null, is_pinned: false }] },
 ] } }) }));
 
-const page =(ui: React.ReactElement) => render(<I18nextProvider i18n={englishI18n}><MemoryRouter>{ui}</MemoryRouter></I18nextProvider>);
+vi.mock("../../../Games/hooks/useGamesOwner", () => ({ useGamesOwner: () => ({ loading: false, error: null, refetch: vi.fn(), data: { gameLists: [
+  { documentId: "g1", List_Name: "Couch co-op", Visibility: false, recommended_games: [] }] } }) }));
+vi.mock("../../../AppsAndTools/hooks/useAppsOwner", () => ({ useAppsOwner: () => ({ loading: false, error: null, refetch: vi.fn(), data: { appLists: [
+  { documentId: "a1", List_Name: "Focus toolkit", Visibility: true, recommended_apps: [{ documentId: "x1", title: "Forest", logo_url: null, is_pinned: true, pin_order: 0 }] }] } }) }));
+vi.mock("../../../Products/hooks/useProductsOwner", () => ({ useProductsOwner: () => ({ loading: false, error: null, refetch: vi.fn(), data: { productLists: [
+  { documentId: "p1", List_Name: "Desk setup", Visibility: false, recommended_products: [] }] } }) }));
+vi.mock("../../../People/hooks/usePeopleOwner", () => ({ usePeopleOwner: () => ({ loading: false, error: null, refetch: vi.fn(), data: { personLists: [
+  { documentId: "q1", List_Name: "Design voices", Visibility: false, recommended_people: [{ documentId: "y1", name: "A type designer", is_pinned: false }] }] } }) }));
+
+const page = (ui: React.ReactElement) => render(<I18nextProvider i18n={englishI18n}><MemoryRouter>{ui}</MemoryRouter></I18nextProvider>);
 const last = () => captured[captured.length - 1] as Record<string, any>;
 
 describe("category wrappers render the shared template", () => {
@@ -30,6 +39,18 @@ describe("category wrappers render the shared template", () => {
     expect(screen.getByTestId("category-page")).toHaveAttribute("data-category", "movies");
     expect(last()).toMatchObject({ categoryVisibility: "public", lists: [{ id: "l1", title: "Comfort movies", status: "public", itemCount: 1, pinnedCount: 1 }] });
     expect(last().topPicks.map((p: { id: string }) => p.id)).toEqual(["m1"]);
+    expect(last()).toMatchSnapshot({ onCategoryVisibility: expect.any(Function), onOpenList: expect.any(Function), onRetry: expect.any(Function), onChanged: expect.any(Function), newList: expect.any(Object) });
+  });
+
+  it.each([
+    ["games", "../../../Games/components/dashboard/GamesHome", { lists: [{ id: "g1", status: "draft", itemCount: 0 }], topPicks: [] }],
+    ["apps", "../../../AppsAndTools/components/dashboard/AppsHome", { lists: [{ id: "a1", status: "public", itemCount: 1, pinnedCount: 1 }] }],
+    ["products", "../../../Products/components/dashboard/ProductsHome", { lists: [{ id: "p1", status: "draft" }] }],
+    ["people", "../../../People/components/dashboard/PeopleHome", { lists: [{ id: "q1", itemCount: 1 }] }],
+  ])("%s", async (category, path, expected) => {
+    const { default: Home } = await import(/* @vite-ignore */ path);
+    page(<Home />);
+    expect(last()).toMatchObject({ category, ...expected });
     expect(last()).toMatchSnapshot({ onCategoryVisibility: expect.any(Function), onOpenList: expect.any(Function), onRetry: expect.any(Function), onChanged: expect.any(Function), newList: expect.any(Object) });
   });
 

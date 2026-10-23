@@ -10,7 +10,7 @@ vi.mock("react-router-dom", async (importOriginal) => {
 });
 
 const createFn = vi.hoisted(() => vi.fn(async () => ({ id: 'product-1' })));
-vi.mock('../../../api/productsClient', () => ({ ProductsClient: { createCollection: createFn } }));
+import { explorersApiClient } from "../../../../../lib/explorersApiClient";
 vi.mock('../../../hooks/useProductsOwner', () => ({ useProductsOwner: () => ({ data: { productLists: [] }, loading: false, refetch: vi.fn() }), invalidateProducts: vi.fn() }));
 import ProductsHome from "../ProductsHome";
 
@@ -19,6 +19,7 @@ describe("ProductsHome create-list navigation (BUG-3)", () => {
     loginSurface();
     navigateSpy.mockClear();
     createFn.mockClear();
+    vi.spyOn(explorersApiClient, "createMyCollection").mockImplementation(createFn as never);
   });
 
   it("navigates into the newly created list with justCreatedList state", async () => {
@@ -32,12 +33,7 @@ describe("ProductsHome create-list navigation (BUG-3)", () => {
     });
     await userEvent.click(newListButtons[0]);
 
-    await waitFor(() =>
-      expect(document.querySelector('input[name="List_Name"]')).toBeTruthy()
-    );
-    const nameInput = document.querySelector(
-      'input[name="List_Name"]'
-    ) as HTMLInputElement;
+    const nameInput = await screen.findByLabelText("Name");
     await userEvent.type(nameInput, "Kitchen Gear");
 
     await userEvent.click(screen.getByRole("button", { name: /Create List/i }));
