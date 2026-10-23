@@ -10,7 +10,9 @@ describe("StickyActionBar", () => {
     render(<StickyActionBar {...base} />);
     const bar = screen.getByRole("toolbar", { name: "Item actions" });
     expect(bar.className).toContain("sticky");
-    expect(bar.className).toContain("bottom-0");
+    // Phone: above the fixed bottom nav; desktop (no bottom nav): at the bottom edge.
+    expect(bar.className).toContain("bottom-[var(--bottom-nav-height,0px)]");
+    expect(bar.className).toContain("md:bottom-0");
     expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual(["Cancel", "Save and add another", "Save"]);
   });
 

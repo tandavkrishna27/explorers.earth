@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import StickyActionBar from "./StickyActionBar";
+import DashboardPageContainer from "../../../components/layout/DashboardPageContainer";
 import type { AddItemMode } from "./useAddItemMode";
 
 type Props = {
@@ -17,7 +18,8 @@ type Props = {
 export default function AddItemPage({ title, backLabel, onBack, mode, onBackToSearch, bar, children }: Props) {
   const { t } = useTranslation();
   return (
-    <main className="mx-auto grid w-full max-w-[560px] gap-4 px-4 pt-2">
+    // Phone: the bottom padding lets the sticky action bar rest above the fixed bottom nav at the end of the page.
+    <DashboardPageContainer width="form" as="main" className="grid gap-4 pt-2 pb-[var(--bottom-nav-height,0px)] md:pb-0">
       <button type="button" onClick={onBack} className="justify-self-start text-[10px] uppercase tracking-[.08em] text-gray-400">‹ {backLabel}</button>
       <h1 className="text-xl font-bold">{title}</h1>
       {mode === "manual" && onBackToSearch && (
@@ -27,6 +29,6 @@ export default function AddItemPage({ title, backLabel, onBack, mode, onBackToSe
       )}
       <div className="grid gap-4 pb-4">{children}</div>
       {mode !== "search" && <StickyActionBar {...bar} />}
-    </main>
+    </DashboardPageContainer>
   );
 }
