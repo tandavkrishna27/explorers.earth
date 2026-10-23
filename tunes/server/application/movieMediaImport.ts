@@ -94,29 +94,50 @@ export class MovieMediaImportService {
     const initial:Progress={source,expectedRevision,slots:extractMovieImageSlots(entity.details).map(({slot,url})=>{const media=reused.get(movieMediaSlotIndex(slot));return {slot,url,status:media?'copied':url?'pending':'absent',...(media?{media}:{}),reused:!!media};}),counters:{received:0,reserved:0,download:0,put:0,dns:0,connect:0,body:0}};
     await db.query("INSERT INTO application_command_receipts(account_id,operation,idempotency_key_hash,request_hash,status,response) VALUES($1,'importMovieMedia',$2,$3,'pending',$4)",[actor.accountId,keyHash,requestHash,encode(progressSchema.parse(initial))]);return initial;
    });
-   await assertCurrent();
-   for(let index=0;index<progress.slots.length;index++){
-    const slot=progress.slots[index];if(slot.status!=='pending')continue;await assertCurrent();
-    const alias=progress.slots.find(s=>s.url===slot.url&&s.status==='copied');
-    if(alias?.media){const next={...progress,slots:progress.slots.map((s,i)=>i===index?{...s,status:'copied' as const,media:alias.media,reused:alias.reused}:s)};await save(db,next);progress=next;continue;}
-    let copied:z.infer<typeof movieOwnedImageSchema>|undefined;
+   // Up to BATCH provider downloads run at once. The receipt row has one writer at a time: a staged media
+   // write holds its turn until its ready transaction settles, so no write is built from stale progress.
+   const BATCH=3,aborts=new Set<()=>void>();let writes:Promise<void>=Promise.resolve();setAbort(()=>aborts.forEach(abort=>abort()));
+   const turn=async()=>{let release!:()=>void;const held=new Promise<void>(r=>{release=r;}),prior=writes;writes=prior.then(()=>held);await prior;return release;};
+   const patched=(index:number,patch:Partial<Progress['slots'][number]>,delta:Partial<Progress['counters']>={}):Progress=>{const counters={...progress.counters};for(const k of Object.keys(delta) as Array<keyof Progress['counters']>)counters[k]+=delta[k]!;return {...progress,slots:progress.slots.map((s,i)=>i===index?{...s,...patch}:s),counters};};
+   const apply=async(index:number,patch:Partial<Progress['slots'][number]>,delta:Partial<Progress['counters']>={})=>{const release=await turn();try{const next=patched(index,patch,delta);await save(db,next);progress=next;}finally{release();}};
+   // Concurrent phase checks share one connection: callers arriving during a check share the next one,
+   // which starts after their arrival, so every phase is still admitted by a check newer than itself.
+   let running:Promise<void>|undefined,queued:Promise<void>|undefined;
+   const checkFresh=():Promise<void>=>{if(!running){running=assertCurrent().finally(()=>{running=undefined;});return running;}if(!queued)queued=running.catch(()=>undefined).then(()=>{queued=undefined;return checkFresh();});return queued;};
+   const expected=(error:unknown)=>error instanceof MovieImageFailure||error instanceof MediaUnavailable||error instanceof RecommendationFailure&&error.status===413;
+   // Budget for this slot (download and put, IMAGE bytes) was reserved by its batch; phases persist with the image's one progress write.
+   const copy=async(index:number)=>{
+    const slot=progress.slots[index],phases={dns:0,connect:0,body:0};let copied:z.infer<typeof movieOwnedImageSchema>|undefined,received:number|undefined;
     try {
-     canonicalMovieImageUrl(slot.url!,slot.slot.kind);
-     if(progress.counters.download+progress.counters.put>=24||progress.counters.received+progress.counters.reserved+IMAGE>LINEAGE)throw new RecommendationFailure(413,'Movie import lineage exhausted');
-     let next:Progress={...progress,counters:{...progress.counters,download:progress.counters.download+1,reserved:progress.counters.reserved+IMAGE}};await save(db,next);progress=next;
-     const fetched=this.fetcher.fetchOwned(slot.url!,slot.slot.kind,async phase=>{await assertCurrent();const next={...progress!,counters:{...progress!.counters,[phase]:progress!.counters[phase]+1}};await save(db,next);progress=next;});setAbort(fetched.abort);
-     let image:{bytes:Buffer;mimeType:string};try{image=await fetched.completion;}finally{await fetched.settlement;setAbort(undefined);}
-     await assertCurrent();next={...progress,counters:{...progress.counters,reserved:progress.counters.reserved-IMAGE,received:progress.counters.received+image.bytes.length}};await save(db,next);progress=next;
-     if(progress.counters.download+progress.counters.put>=24)throw new RecommendationFailure(413,'Movie import lineage exhausted');
-     next={...progress,counters:{...progress.counters,put:progress.counters.put+1}};await save(db,next);progress=next;
-     let staged:Progress|undefined;
-     const put=this.media.createMediaOwned(actor,{purpose:'recommendation',filename:'movie-provider-image',mimeType:image.mimeType,length:image.bytes.length,bytes:image.bytes},context,async(connection,media)=>{
-      await assertCurrent();staged={...progress!,slots:progress!.slots.map((s,i)=>i===index?{...s,status:'copied' as const,media:movieOwnedImageSchema.parse(media),reused:false}:s)};await save(connection,staged);
-     });
-     try{copied=movieOwnedImageSchema.parse(await put.completion);}finally{await put.settlement;}
-     newlyOwned.add(copied.id);if(staged)progress=staged;
-    }catch(error){if(!(error instanceof MovieImageFailure||error instanceof MediaUnavailable||error instanceof RecommendationFailure&&error.status===413))throw error;}
-    if(!copied){const next={...progress,slots:progress.slots.map((s,i)=>i===index?{...s,status:'unavailable' as const}:s)};await save(db,next);progress=next;}
+     const fetched=this.fetcher.fetchOwned(slot.url!,slot.slot.kind,async phase=>{await checkFresh();phases[phase]++;});aborts.add(fetched.abort);
+     let image:{bytes:Buffer;mimeType:string};try{image=await fetched.completion;}finally{await fetched.settlement;aborts.delete(fetched.abort);}
+     received=image.bytes.length;await assertCurrent();
+     let release:(()=>void)|undefined,staged:Progress|undefined;
+     try {
+      const put=this.media.createMediaOwned(actor,{purpose:'recommendation',filename:'movie-provider-image',mimeType:image.mimeType,length:image.bytes.length,bytes:image.bytes},context,async(connection,media)=>{
+       release=await turn();await assertCurrent();staged=patched(index,{status:'copied',media:movieOwnedImageSchema.parse(media),reused:false},{reserved:-IMAGE,received:received!,put:1,...phases});await save(connection,staged);
+      });
+      try{copied=movieOwnedImageSchema.parse(await put.completion);}finally{await put.settlement;}
+      newlyOwned.add(copied.id);if(staged)progress=staged;
+     }finally{release?.();}
+    }catch(error){if(!expected(error))throw error;}
+    if(!copied)await apply(index,{status:'unavailable'},{...phases,...(received===undefined?{}:{reserved:-IMAGE,received})});
+   };
+   for(;;){
+    await assertCurrent();
+    for(let index=0;index<progress.slots.length;index++){const slot=progress.slots[index];if(slot.status!=='pending')continue;const alias=progress.slots.find(s=>s.url===slot.url&&s.status==='copied');if(alias?.media)await apply(index,{status:'copied',media:alias.media,reused:alias.reused});}
+    // Same-URL slots wait for the next batch so they resolve as aliases instead of a second download.
+    const batch:number[]=[];
+    for(let index=0;index<progress.slots.length&&batch.length<BATCH;index++){
+     const slot=progress.slots[index];if(slot.status!=='pending'||batch.some(i=>progress.slots[i].url===slot.url))continue;
+     try{canonicalMovieImageUrl(slot.url!,slot.slot.kind);}catch(error){if(!expected(error))throw error;await apply(index,{status:'unavailable'});continue;}
+     const {download,put,received,reserved}=progress.counters,n=batch.length+1;
+     if(download+put+2*n>24||received+reserved+n*IMAGE>LINEAGE){await apply(index,{status:'unavailable'});continue;}
+     batch.push(index);
+    }
+    if(!batch.length)break;
+    await apply(-1,{},{download:batch.length,reserved:batch.length*IMAGE});
+    const settled=await Promise.allSettled(batch.map(copy));const failed=settled.find(s=>s.status==='rejected');if(failed)throw (failed as PromiseRejectedResult).reason;
    }
    const response=await this.transaction(db,async()=>{
     const account=(await db.query("SELECT id FROM creator_accounts WHERE id=$1 AND status='active' FOR UPDATE",[actor.accountId])).rows[0];if(!account)throw new RecommendationFailure(404,'Account unavailable');
