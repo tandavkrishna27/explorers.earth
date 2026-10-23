@@ -451,6 +451,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/OnboardingCheckError.tsx
 !explorers-earth/src/components/ProfileSetupAccordion.tsx
 !explorers-earth/src/components/ProtectedRoute.tsx
+!explorers-earth/src/components/ProviderRatingChip.tsx
 !explorers-earth/src/components/PublicNav.tsx
 !explorers-earth/src/components/QrCardTagline.tsx
 !explorers-earth/src/components/RevisionConflictHost.tsx
@@ -1060,6 +1061,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/lib/browserPlacesProvider.ts
 !explorers-earth/src/lib/canonicalMedia.ts
 !explorers-earth/src/lib/conflictToast.ts
+!explorers-earth/src/lib/curatedTaxonomy.ts
 !explorers-earth/src/lib/currencyOptions.ts
 !explorers-earth/src/lib/explorerAccountSelection.ts
 !explorers-earth/src/lib/explorersApiClient.ts
