@@ -10,7 +10,7 @@ const seed = buildGuidesSeedPlan(GUIDES_CASES[1]);
 const collection = ownerCollectionDtoSchema.parse({
  id: uuid(1), accountId: uuid(2), category: 'guides', title: 'यात्रा café', slug: 'journey',
  visibility: 'public', publicationState: 'published', revision: 3, description: 'भारत',
- heading: null, coverMediaId: uuid(3), archived: false, displayOrder: 0,
+ heading: null, coverMediaId: uuid(3), isSample: false, archived: false, displayOrder: 0,
 });
 function aggregate(orders: number[], empty = false, total = orders.length) {
  return guideAggregateDtoSchema.parse({
