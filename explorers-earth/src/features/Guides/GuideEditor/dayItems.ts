@@ -12,7 +12,7 @@ export function groupByTimeLabel(items: readonly GuideDayItem[]): {headed: boole
  const groups: DayGroup[] = [];
  for (const item of items) {
   const heading = item.timeLabel === null ? 'Any time' : timeLabelText(item.timeLabel);
-  const last = groups.at(-1);
+  const last = groups[groups.length - 1];
   if (last && last.heading === heading) last.items.push(item); else groups.push({heading, items: [item]});
  }
  return {headed: true, groups};

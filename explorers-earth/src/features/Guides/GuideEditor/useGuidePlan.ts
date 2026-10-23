@@ -1,7 +1,7 @@
 import {useCallback, useRef, useState} from 'react';
 import {toast} from 'sonner';
 import {explorersApiClient} from '../../../lib/explorersApiClient';
-import {GuidesClient} from '../api/guidesClient';
+import {GuidesClient, type GuideObservation} from '../api/guidesClient';
 import type {GuideAggregateDto, GuideDayItem, GuideDayItemInput, GuideTimeLabel} from '../../../../../tunes/shared/explorersGuideContract';
 
 type Call = (id: string, revision: number, key: string) => Promise<unknown>;
@@ -13,21 +13,22 @@ const toInput = (item: GuideDayItem): GuideDayItemInput => item.kind === 'place'
  * Every plan action is one server command (GD-24..30). Commands run strictly one after another,
  * each against the revision the previous one returned, so fast clicks never 409 each other.
  * A failure keeps the last good guide (the UI snaps back) and offers Retry; moves and deletes offer Undo.
+ * It holds the branded observation GuidesClient issues (prepareIntent refuses anything else) and exposes its aggregate as guide.
  */
-export function useGuidePlan(initial: GuideAggregateDto) {
- const [guide, setGuide] = useState(initial);
+export function useGuidePlan(initial: GuideObservation) {
+ const [observation, setObservation] = useState(initial);
  const current = useRef(initial);
  const queue = useRef<Promise<unknown>>(Promise.resolve());
- const dayNumber = (sectionId: string) => current.current.sections.findIndex((s) => s.id === sectionId) + 1;
+ const dayNumber = (sectionId: string) => current.current.aggregate.sections.findIndex((s) => s.id === sectionId) + 1;
 
  const send = useCallback((call: Call, done?: {message: string; undo?: () => void}): Promise<void> => {
   const next = queue.current.then(async () => {
    try {
-    const updated = await GuidesClient.run(GuidesClient.prepareIntent(current.current as never), call) as GuideAggregateDto;
-    current.current = updated; setGuide(updated);
+    const updated = await GuidesClient.run(GuidesClient.prepareIntent(current.current), call);
+    current.current = updated; setObservation(updated);
     if (done) toast.success(done.message, done.undo ? {action: {label: 'Undo', onClick: done.undo}} : undefined);
    } catch {
-    setGuide(current.current);
+    setObservation(current.current);
     toast.error("Couldn't save that change", {action: {label: 'Retry', onClick: () => void send(call, done)}});
    }
   });
@@ -42,7 +43,7 @@ export function useGuidePlan(initial: GuideAggregateDto) {
  const duplicateDay = (sectionId: string) => send((id, revision, key) => explorersApiClient.duplicateMyGuideDay(id, sectionId, revision, key));
  const clearDay = (sectionId: string) => send((id, revision, key) => explorersApiClient.clearMyGuideDay(id, sectionId, revision, key));
  const deleteDay = (sectionId: string) => {
-  const section = current.current.sections.find((s) => s.id === sectionId);
+  const section = current.current.aggregate.sections.find((s) => s.id === sectionId);
   return send((id, revision, key) => explorersApiClient.deleteMyGuideDay(id, sectionId, revision, key), section && {
    message: 'Day deleted', undo: () => void send((id, revision, key) => explorersApiClient.addMyGuideSection(id,
     {revision, title: section.title, description: section.description, blocks: section.blocks, position: section.displayOrder}, key))});
@@ -61,7 +62,8 @@ export function useGuidePlan(initial: GuideAggregateDto) {
  const removeItem = (sectionId: string, localId: string, origin: {index: number; item: GuideDayItem}) => send(
   (id, revision, key) => explorersApiClient.removeMyGuideDayItem(id, sectionId, localId, revision, key),
   {message: 'Removed from guide', undo: () => void addItem(sectionId, toInput(origin.item), origin.index)});
- const replace = (next: GuideAggregateDto) => {current.current = next; setGuide(next);};
+ const replace = (next: GuideObservation) => {current.current = next; setObservation(next);};
+ const guide: GuideAggregateDto = observation.aggregate;
 
- return {guide, replace, addDay, moveDay, duplicateDay, clearDay, deleteDay, addItem, moveItem, setTimeLabel, setNoteText, removeItem};
+ return {guide, observation, replace, addDay, moveDay, duplicateDay, clearDay, deleteDay, addItem, moveItem, setTimeLabel, setNoteText, removeItem};
 }
