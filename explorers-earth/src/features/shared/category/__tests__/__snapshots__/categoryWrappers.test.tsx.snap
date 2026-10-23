@@ -1,5 +1,46 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`category wrappers render the shared template > books 1`] = `
+{
+  "category": "books",
+  "categoryVisibility": "hidden",
+  "lists": [
+    {
+      "covers": [],
+      "id": "b1",
+      "itemCount": 1,
+      "pinnedCount": 0,
+      "status": "draft",
+      "title": "Read in a weekend",
+    },
+  ],
+  "newList": Any<Object>,
+  "onCategoryVisibility": Any<Function>,
+  "onChanged": Any<Function>,
+  "onOpenList": Any<Function>,
+  "onRetry": Any<Function>,
+  "pinCandidates": [
+    {
+      "id": "k1",
+      "imageUrl": null,
+      "listId": "b1",
+      "listTitle": "Read in a weekend",
+      "pinnable": true,
+      "pinned": false,
+      "subtitle": null,
+      "title": "Siddhartha",
+    },
+  ],
+  "status": {
+    "error": null,
+    "loading": false,
+    "refreshing": false,
+  },
+  "topPicks": [],
+  "visibilityBusy": false,
+}
+`;
+
 exports[`category wrappers render the shared template > movies 1`] = `
 {
   "category": "movies",
