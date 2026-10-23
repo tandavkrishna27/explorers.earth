@@ -15,6 +15,9 @@ vi.mock('../../../hooks/useAppsOwner', () => ({useAppsOwner: () => ({content: fi
 vi.mock('../../../api/appsClient', () => ({AppsClient: {observeCollection: vi.fn(), prepareManualIntent: vi.fn(), createManual: vi.fn(), upload: vi.fn(), updateRecommendation: vi.fn()}}));
 vi.mock('../../../../../lib/linkPreviewClient', () => ({linkPreviewClient: {preview: vi.fn(), importImage: vi.fn(), searchApps: vi.fn()}}));
 vi.mock('../../../../Favorites/components/TiptapEditor', () => ({default: ({value, onChange}: {value: string; onChange: (value: string) => void}) => <textarea aria-label="Note" value={value} onChange={event => onChange(event.target.value)} />}));
+vi.mock('../../../../../lib/curatedTaxonomy', () => ({useCuratedCatalog: (category: string) => ({
+ terms: category === 'apps' ? [{id: '00000000-0000-4000-8000-000000000201', label: 'Productivity', parentId: null, slug: 'productivity'}, {id: '00000000-0000-4000-8000-000000000202', label: 'Games', parentId: null, slug: 'games'}] : [],
+ unconfigured: false, loading: false, error: null})}));
 vi.mock('sonner', () => ({toast: {success: vi.fn(), error: vi.fn(), loading: vi.fn()}}));
 
 const hit = {title: 'Notion', developer: 'Notion Labs', appUrl: 'https://apps.apple.com/app/notion/id1232780281', iconUrl: 'https://is1.example/notion.png',
@@ -83,6 +86,26 @@ describe('Apps template', () => {
    otherLinks: [{label: 'Google Play', url: 'https://play.google.com/store/apps/details?id=notion.id'}], mediaIds: ['media-icon']});
  });
 
+ it('saves the curated category chosen from the apps catalog', async () => {
+  mount(); await searchAndPick();
+  await waitFor(() => expect(linkPreviewClient.importImage).toHaveBeenCalled());
+  const box = screen.getByRole('combobox', {name: 'Category'});
+  fireEvent.focus(box); fireEvent.change(box, {target: {value: 'Produ'}});
+  fireEvent.mouseDown(screen.getByRole('option', {name: 'Productivity'}));
+  await waitFor(() => expect(screen.getByRole('button', {name: 'Save'})).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', {name: 'Save'}));
+  await screen.findByText('Saved list');
+  expect(draft()).toMatchObject({curatedTermId: '00000000-0000-4000-8000-000000000201'});
+ });
+
+ it('saves no curated category when none is chosen, and sends none on edit unless picked', async () => {
+  mount(); await searchAndPick();
+  await waitFor(() => expect(screen.getByRole('button', {name: 'Save'})).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', {name: 'Save'}));
+  await screen.findByText('Saved list');
+  expect(draft()).toMatchObject({curatedTermId: null});
+ });
+
  it('prefills empty fields from a pasted store or web link', async () => {
   mount();
   const field = screen.getByLabelText('App URL');
@@ -104,5 +127,7 @@ describe('Apps template', () => {
   await waitFor(() => expect(AppsClient.updateRecommendation).toHaveBeenCalledTimes(1));
   const patch = vi.mocked(AppsClient.updateRecommendation).mock.calls[0][1] as {displayOverrides: Record<string, unknown>};
   expect(patch.displayOverrides).toMatchObject({downloadUrl: null, otherLinks: [{label: 'Link', url: 'https://dl.example/app'}]});
+  // The editable read does not carry the stored curated term, so an untouched edit leaves it alone.
+  expect(patch).not.toHaveProperty('curatedTermId');
  });
 });

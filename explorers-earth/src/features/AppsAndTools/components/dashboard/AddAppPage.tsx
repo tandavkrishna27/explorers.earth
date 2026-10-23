@@ -22,6 +22,8 @@ import PickedItemCard from '../../../shared/addItem/PickedItemCard';
 import StarRating from '../../../../components/StarRating';
 import PasteLinkField from '../../../../components/PasteLinkField';
 import { linkPreviewClient, type AppCandidate } from '../../../../lib/linkPreviewClient';
+import TaxonomyCombobox from '../../../../components/TaxonomyCombobox';
+import { useCuratedCatalog } from '../../../../lib/curatedTaxonomy';
 
 const PRICE_TIERS = ['Free', 'Freemium', 'Paid', 'Subscription'] as const;
 const ALL_PLATFORMS = ['iOS', 'iPadOS', 'macOS', 'Android', 'Windows', 'Web', 'Linux', 'Chrome Extension'];
@@ -82,6 +84,10 @@ export default function AddAppPage() {
  const [icon, setIcon] = useState<{ id: string; url: string } | null>(null), [importing, setImporting] = useState(false);
  const [linkImage, setLinkImage] = useState<string | null>(null);
  const [filled, setFilled] = useState<Set<Field>>(new Set());
+ // Curated category (WP7). The editable read does not carry the stored term, so an edit sends
+ // one only when the owner picks it; otherwise the stored assignment is left alone.
+ const catalog = useCuratedCatalog('apps');
+ const [curatedTermId, setCuratedTermId] = useState<string | null>(null), [curatedTouched, setCuratedTouched] = useState(false);
  const [screenshots, setScreenshots] = useState<{ id: string; url: string }[]>([]), [pending, setPending] = useState(0);
  const [saving, setSaving] = useState(false), [error, setError] = useState('');
  const [enrichmentBusy, setEnrichmentBusy] = useState(false);
@@ -98,7 +104,7 @@ export default function AddAppPage() {
  const mounted = useRef(true);
 
  useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.abort(); active.current++; }; }, []);
- useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; savedDraft.current=undefined; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setQuery(''); setSearchOpen(true); setPicked(null); setTitle(''); setAppUrl(''); setDeveloper(''); setLogoUrl(''); setDescription(''); setOtherLinks([]); setPriceTier(''); setPlatforms([]); setNote(''); setRating(null); setIcon(null); setImporting(false); setLinkImage(null); setFilled(new Set()); setScreenshots([]); setPending(0); setSaving(false); setError(''); setExistingId(''); }, [scope]);
+ useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; savedDraft.current=undefined; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setQuery(''); setSearchOpen(true); setPicked(null); setTitle(''); setAppUrl(''); setDeveloper(''); setLogoUrl(''); setDescription(''); setOtherLinks([]); setPriceTier(''); setPlatforms([]); setNote(''); setRating(null); setIcon(null); setImporting(false); setLinkImage(null); setFilled(new Set()); setCuratedTermId(null); setCuratedTouched(false); setScreenshots([]); setPending(0); setSaving(false); setError(''); setExistingId(''); }, [scope]);
 
  useEffect(() => {
   if (!appId || !owner.content || initialized.current === scope) return;
@@ -191,7 +197,7 @@ export default function AddAppPage() {
    const links = otherLinks.map(link => ({ label: link.label, url: link.url.trim() })).filter(link => link.url);
    const facts = { developer: blank(developer), logoUrl: blank(logoUrl), description: blank(description), downloadUrl: null, priceTier: priceTier === '' ? null : priceTier, platforms, otherLinks: links };
    const screenshotMediaIds = screenshots.map(item => item.id);
-   const draft = { title: title.trim(), appUrl: appUrl.trim(), ...facts, note: richNoteFromEditor(note), userRating: rating, mediaIds: icon ? [icon.id] : [], screenshotMediaIds };
+   const draft = { title: title.trim(), appUrl: appUrl.trim(), ...facts, note: richNoteFromEditor(note), userRating: rating, mediaIds: icon ? [icon.id] : [], screenshotMediaIds, curatedTermId };
    const signature = JSON.stringify(draft);
    assertCurrent(captured, operation);
    if (appId) {
@@ -200,7 +206,7 @@ export default function AddAppPage() {
     if (updateKey.current?.signature !== signature) updateKey.current = { signature, key: crypto.randomUUID() };
     assertCurrent(captured, operation);
     // appUrl is absent here on purpose: it is not in the override vocabulary.
-    await AppsClient.updateRecommendation(observed, { displayOverrides: { title: draft.title, ...facts }, note: draft.note, userRating: rating, appScreenshots: { screenshotMediaIds } }, updateKey.current.key, signal);
+    await AppsClient.updateRecommendation(observed, { displayOverrides: { title: draft.title, ...facts }, note: draft.note, userRating: rating, appScreenshots: { screenshotMediaIds }, ...(curatedTouched ? { curatedTermId } : {}) }, updateKey.current.key, signal);
     assertCurrent(captured, operation);
    } else {
     if (intent.current?.scope !== captured || intent.current.signature !== signature) {
@@ -265,6 +271,10 @@ export default function AddAppPage() {
   </fieldset>
 
   <div><label htmlFor="app-title">App title</label>{fromLink('title')}<input id="app-title" value={title} onChange={event => { setTitle(event.target.value); touched('title'); }} disabled={saving} className={input} /></div>
+  {!catalog.unconfigured && catalog.terms.length > 0 && <TaxonomyCombobox levels={1}
+   terms={catalog.terms.map((term, position) => ({ id: term.id, parentId: null, position, label: term.label }))}
+   value={{ categoryId: curatedTermId, subcategoryId: null }}
+   onChange={value => { setCuratedTermId(value.categoryId); setCuratedTouched(true); }} />}
   <div><label htmlFor="app-developer">Developer</label>{fromLink('developer')}<input id="app-developer" value={developer} onChange={event => { setDeveloper(event.target.value); touched('developer'); }} disabled={saving} className={input} /></div>
   <div><label htmlFor="app-description">Description</label>{fromLink('description')}<textarea id="app-description" value={description} onChange={event => { setDescription(event.target.value); touched('description'); }} disabled={saving} rows={3} className={`${input} resize-none`} /></div>
 

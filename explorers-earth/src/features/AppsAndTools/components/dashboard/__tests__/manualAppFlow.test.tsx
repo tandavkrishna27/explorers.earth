@@ -55,7 +55,7 @@ describe('native manual Apps', () => {
    title: 'Focus Timer', appUrl: 'https://example.com/focus', developer: 'Quiet Software',
    logoUrl: null, description: null, downloadUrl: null, priceTier: 'Paid',
    platforms: ['iOS', 'Web'], otherLinks: [{ label: 'Link', url: 'https://example.com/get' }], note: { version: 1, format: 'quill-html', html: '<p>Keeps me honest</p>' },
-   userRating: null, mediaIds: [], screenshotMediaIds: [],
+   userRating: null, mediaIds: [], screenshotMediaIds: [], curatedTermId: null,
   });
  });
 

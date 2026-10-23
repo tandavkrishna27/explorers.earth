@@ -14,6 +14,8 @@ export type ManualAppDraft={
  title:string;appUrl:string;developer:string|null;logoUrl:string|null;description:string|null;
  downloadUrl:string|null;priceTier:'Free'|'Freemium'|'Paid'|'Subscription'|null;platforms:string[];
  otherLinks:AppOtherLink[];
+ /** WP7 curated category. Absent leaves the assignment alone; null clears it. */
+ curatedTermId?:string|null;
  note:RichNote|null;userRating:number|null;mediaIds:string[];screenshotMediaIds:string[];
 };
 export type ManualAppIntent=Readonly<{entityKey:string;recommendationKey:string;parent:CollectionObservation;draft:Readonly<ManualAppDraft>}>;
@@ -56,7 +58,7 @@ export const AppsClient={
    description:draft.description,downloadUrl:draft.downloadUrl,priceTier:draft.priceTier,platforms:draft.platforms,otherLinks:draft.otherLinks,
   }}).details;
   const normalized=createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict()
-   .parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft',appScreenshots:{screenshotMediaIds:draft.screenshotMediaIds}});
+   .parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft',appScreenshots:{screenshotMediaIds:draft.screenshotMediaIds},...(draft.curatedTermId===undefined?{}:{curatedTermId:draft.curatedTermId})});
   const screenshots=appScreenshotsSchema.parse({screenshotMediaIds:draft.screenshotMediaIds});
   const intent=freeze({entityKey:key(),recommendationKey:key(),parent,draft:{
    ...draft,...details,note:normalized.note,userRating:normalized.userRating,
@@ -69,7 +71,7 @@ export const AppsClient={
   const {title,appUrl,developer,logoUrl,description,downloadUrl,priceTier,platforms,otherLinks}=intent.draft;
   const entity=await explorersApiClient.resolveAppEntity({kind:'manual',category:'apps',details:{title,appUrl,developer,logoUrl,description,downloadUrl,priceTier,platforms:[...platforms],otherLinks:otherLinks.map(link=>({...link}))}},intent.entityKey,signal);
   current(scope,signal);collection(intent.parent);
-  const result=await explorersApiClient.createMyRecommendation(intent.parent,{entityId:entity.id,note:intent.draft.note,userRating:intent.draft.userRating,mediaIds:[...intent.draft.mediaIds],publicationState:'draft',appScreenshots:{screenshotMediaIds:[...intent.draft.screenshotMediaIds]}},intent.recommendationKey,signal);
+  const result=await explorersApiClient.createMyRecommendation(intent.parent,{entityId:entity.id,note:intent.draft.note,userRating:intent.draft.userRating,mediaIds:[...intent.draft.mediaIds],publicationState:'draft',appScreenshots:{screenshotMediaIds:[...intent.draft.screenshotMediaIds]},...(intent.draft.curatedTermId===undefined?{}:{curatedTermId:intent.draft.curatedTermId})},intent.recommendationKey,signal);
   current(scope,signal);return result;
  },
  createCollection(input:{title:string;slug:string;description?:string|null},commandKey:string,signal?:AbortSignal){return explorersApiClient.createMyCollection({...input,category:'apps',visibility:'private',publicationState:'draft'},commandKey,signal);},
