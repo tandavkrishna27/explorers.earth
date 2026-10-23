@@ -13,8 +13,8 @@ const surfaces = [
   "features/shared/list/adapters/apps.ts",
   "features/Books/components/public/TopReadsHero.tsx",
   "features/PublicHome/components/PublicHome.tsx",
-  // UAT BKS-X01: every category's list rows, including Places.
-  "features/Favorites/components/Recommendations.tsx",
+  // Places (Favorites/components/Recommendations.tsx) previewed only the descriptions of the
+  // linked People/Products lists, which WP10 retired; its place cards show no note preview.
   "features/shared/list/adapters/games.ts",
   "features/shared/list/adapters/movies.ts",
   // The *Home.tsx category pages render the shared template (WP3A), which shows no note previews.

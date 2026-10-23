@@ -2,7 +2,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import store from '../../store/store';
 import { explorersApiClient } from '../explorersApiClient';
 const account='00000000-0000-4000-8000-000000000001',id='00000000-0000-4000-8000-000000000002',entityId='00000000-0000-4000-8000-000000000003';
-const collection={id,accountId:account,category:'books',title:'List',slug:'list',visibility:'private',publicationState:'draft',revision:4,description:null,heading:null,coverMediaId:null,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9'};
+const collection={id,accountId:account,category:'books',title:'List',slug:'list',visibility:'private',publicationState:'draft',revision:4,description:null,heading:null,coverMediaId:null,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',linkedLists:[]};
 const child={id,accountId:account,category:'books',entityId,userRating:null,publicationState:'draft',revision:2,mediaIds:[],archived:false,pin:null,note:null,categoryRevision:'9',entity:{id:entityId,kind:'book',title:'Canonical'},displayOverrides:{},displayTitle:'Canonical'};
 const response=(value:unknown,status=200)=>new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json'}});
 beforeEach(()=>{vi.unstubAllGlobals();store.setState({accountId:account,isAuthenticated:true,generation:900});});
