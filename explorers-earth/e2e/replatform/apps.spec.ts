@@ -203,7 +203,7 @@ async function edit(page:Page,listId:string,id:string,title:string){
 // here; the form treats a failed read as "fill it in yourself" and never blocks saving.
 async function refuseLinkPreview(page:Page){await page.route('**/catalog/link-preview**',route=>route.abort());}
 // New add flow is search-first (App Store). This lane types every field itself, so it leaves
-// the search for manual entry; the search itself is covered by the general-lane e2e/apps.spec.ts.
+// the search for manual entry; the search itself is covered by the general-lane e2e/apps-add.spec.ts.
 async function manualEntry(page:Page){
  await expect(page.getByPlaceholder('Search the App Store',{exact:true})).toBeVisible();await page.getByRole('button',{name:"Can't find it? Add manually",exact:true}).click();await expect(page.getByPlaceholder('Search the App Store',{exact:true})).toHaveCount(0);
  await expect(page.getByLabel('Download URL',{exact:true})).toHaveCount(0);await expect(page.getByLabel('Logo URL',{exact:true})).toHaveCount(0);
