@@ -84,6 +84,12 @@ export const placeRecommendationContextSchema=z.object(contextFields).strict().s
  if(value.recommendationType!=='person'&&(value.personProfileUrl!==null||value.personAddress!==null))
   ctx.addIssue({code:z.ZodIssueCode.custom,path:['recommendationType'],message:'Person fields require a person recommendation'});
 });
+// WP6: people are recommended in the People category. Existing 'person' rows inside
+// Places still read through placeRecommendationContextSchema; no new write may store one.
+export const PLACE_PERSON_TYPE_REFUSAL='Recommend people in the People category';
+export const placeRecommendationContextWriteSchema=placeRecommendationContextSchema.superRefine((value,ctx)=>{
+ if(value.recommendationType==='person')ctx.addIssue({code:z.ZodIssueCode.custom,path:['recommendationType'],message:PLACE_PERSON_TYPE_REFUSAL});
+});
 
 /**
  * The only path by which a creator's contact details may reach a public reader.
