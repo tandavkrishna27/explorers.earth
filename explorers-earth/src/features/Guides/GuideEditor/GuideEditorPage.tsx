@@ -71,7 +71,7 @@ function Editor({initial, guide, list, refresh}: {initial: GuideObservation; gui
  const index = Math.max(0, days.findIndex((d) => d.id === selected));
  const dayName = (i: number) => dayChipLabel(i, g.details.startDate, i18n.language);
  const place = g.details.place as {name?: string};
- const meta = [place?.name || null, `${days.length} ${days.length === 1 ? 'day' : 'days'}`].filter(Boolean).join(' · ');
+ const meta = [place?.name || null, days.length === 1 ? t('dashboard.wp9.oneDay', {defaultValue: '1 day'}) : t('dashboard.wp9.dayCount', {defaultValue: '{{count}} days', count: days.length})].filter(Boolean).join(' · ');
  const add = (sectionId: string) => (item: GuideDayItemInput) => void plan.addItem(sectionId, item);
  const filled = {
   stay: g.sections.some((s) => s.blocks.stay.accommodations.length > 0), transport: g.sections.some((s) => s.blocks.transport.segments.length > 0),

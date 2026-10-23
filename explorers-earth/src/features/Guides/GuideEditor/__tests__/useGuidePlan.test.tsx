@@ -3,6 +3,7 @@ import {beforeEach, describe, expect, it, vi} from 'vitest';
 const {toast, run, observeWholeGuide, api} = vi.hoisted(() => ({toast: {success: vi.fn(), error: vi.fn()}, run: vi.fn(), observeWholeGuide: vi.fn(),
  api: {addMyGuideDay: vi.fn(), addMyGuideDayItem: vi.fn(), deleteMyGuideDay: vi.fn(), addMyGuideSection: vi.fn()}}));
 vi.mock('sonner', () => ({toast}));
+vi.mock('react-i18next', async () => (await import('./i18nMock')).i18nMock);
 vi.mock('../../../../lib/explorersApiClient', () => ({explorersApiClient: api, ExplorersApiError: class extends Error {constructor(public status: number) {super('x');}}}));
 vi.mock('../../api/guidesClient', () => ({GuidesClient: {prepareIntent: (g: {revision: number}) => ({collectionId: 'g', revision: g.revision, commandKey: 'k'}), run, observeWholeGuide}}));
 import {ExplorersApiError} from '../../../../lib/explorersApiClient';

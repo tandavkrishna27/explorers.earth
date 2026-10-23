@@ -1713,7 +1713,20 @@
       "template": "Template",
       "title": "Title",
       "topicLater": "Topic guide (Later)",
-      "trip": "Trip"
+      "trip": "Trip",
+      "addedToDay": "Added to Day {{day}}",
+      "dayCount": "{{count}} days",
+      "dayDeleted": "Day deleted",
+      "google": "Google",
+      "listItemsFailed": "Couldn't load this list.",
+      "loadingLists": "Loading your lists…",
+      "movedToDay": "Moved to Day {{day}}",
+      "noLists": "No lists yet.",
+      "oneDay": "1 day",
+      "orderSaved": "Order saved",
+      "removedFromGuide": "Removed from guide",
+      "saveFailed": "Couldn't save that change",
+      "undo": "Undo"
     }
   },
   "emailVerification": {
