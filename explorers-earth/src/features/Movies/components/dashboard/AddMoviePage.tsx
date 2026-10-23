@@ -2,21 +2,23 @@ import ReorderableMediaStrip from '../../../../components/reorder/ReorderableMed
 import ReorderableFileStrip from '../../../../components/reorder/ReorderableFileStrip';
 import { explorersApiClient } from '../../../../lib/explorersApiClient';
 import { friendlyErrorMessage } from "../../../../utils/friendlyError";
-import { useMoviesOwner, useMovieGenres, invalidateMovies } from '../../api/explorersAdapter';
+import { useMoviesOwner, invalidateMovies } from '../../api/explorersAdapter';
+import { useCuratedCatalog } from '../../../../lib/curatedTaxonomy';
+import ProviderRatingChip from '../../../../components/ProviderRatingChip';
+import StarRating from '../../../../components/StarRating';
+import AddItemPage from '../../../shared/addItem/AddItemPage';
+import ItemSearch, { type ItemSearchResult } from '../../../shared/addItem/ItemSearch';
+import PickedItemCard from '../../../shared/addItem/PickedItemCard';
 import { moviesCommandKey } from '../../api/moviesClient';
 import { startMovieImport } from '../../api/backgroundMovieImport';
 import type { MovieCandidate } from '../../../../../../tunes/shared/explorersMovieContract';
 import { richNoteFromEditor } from '../../../../../../tunes/shared/explorersRichNoteContract';
 import useAuthStore from '../../../../store/store';
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
-import {
-  ArrowLeft, Film, Star, Tv, Clock,
-  Loader2, Check, Search, X, CheckCircle2, User, Upload,
-} from "lucide-react";
+import { Clock, Loader2, User, Upload } from "lucide-react";
 import { toast } from "sonner";
 const PROVIDER_DETAILS_UNAVAILABLE='Provider details unavailable. Your draft is preserved; retry or add manually.';
-import { useTMDBSearch } from "../../hooks/useTMDBSearch";
 import type { WatchProvider, TMDBCastMember } from "../../types";
 import {
   buildPosterUrl, buildBackdropUrl, extractNoteText, getGenreNames,
@@ -29,102 +31,11 @@ import { useTranslation } from "react-i18next";
 
 const FALLBACK_POSTER = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='150' viewBox='0 0 100 150'><rect width='100' height='150' fill='%230d1117'/></svg>`;
 
-// ──────────────────────────────────────────────
-// Inline Search (only in create mode)
-// ──────────────────────────────────────────────
-const InlineSearch = ({
-  onSelect,
-  onClear,
-  selectedTitle,
-}: {
-  onSelect: (r: MovieCandidate) => void;
-  onClear: () => void;
-  selectedTitle?: string;
-}) => {
-  const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(!selectedTitle);
-  const { results, loading, error, hasMore, loadingMore, loadMore, retry } = useTMDBSearch(query);
-
-  if (selectedTitle && !open) {
-    return (
-      <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl px-4 py-3 mb-6">
-        <CheckCircle2 size={16} className="text-green-400 flex-shrink-0" />
-        <span className="text-sm text-white flex-1 truncate">{selectedTitle}</span>
-        <button
-          onClick={() => { onClear(); setOpen(true); setQuery(""); }}
-          className="text-white/30 hover:text-white transition-colors"
-        >
-          <X size={15} />
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mb-6">
-      <div className="relative">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-        <input
-          autoFocus
-          type="text"
-          placeholder='Search "Interstellar", "Breaking Bad"...'
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="w-full bg-dashboard-muted border border-dashboard-border rounded-xl pl-9 pr-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent transition-all"
-        />
-        {loading && (
-          <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 animate-spin" />
-        )}
-      </div>
-
-      {results.length > 0 && (
-        <div className="mt-2 bg-dashboard-sidebar border border-dashboard-border rounded-xl overflow-hidden max-h-72 overflow-y-auto">
-          {results.map((result) => {
-            const title = result.title;
-            const year = result.yearText ?? "";
-            const posterUrl = buildPosterUrl(result.posterUrl, "w185");
-            return (
-              <button
-                key={`${result.externalKind}:${result.externalId}`}
-                onClick={() => { onSelect(result); setOpen(false); }}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-dashboard-muted border-b border-dashboard-border last:border-b-0 transition-colors text-left"
-              >
-                <div className="w-8 flex-shrink-0 rounded overflow-hidden bg-dashboard-muted">
-                  <div className="aspect-[2/3]">
-                    <img
-                      src={posterUrl || FALLBACK_POSTER}
-                      alt={title}
-                      className="w-full h-full object-cover"
-                      onError={(e) => { (e.currentTarget as HTMLImageElement).src = FALLBACK_POSTER; }}
-                    />
-                  </div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{title}</p>
-                  <div className="flex items-center gap-2 text-xs text-white/40">
-                    <span>{year}</span>
-                    {result.externalKind === "tv"
-                      ? <span className="flex items-center gap-0.5 text-blue-400"><Tv size={10} /> TV</span>
-                      : <span className="flex items-center gap-0.5"><Film size={10} /> Movie</span>}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {error && <div><p role="alert">{error}</p><button type="button" onClick={() => void retry()} disabled={loading || loadingMore}>Retry search</button></div>}
-      {hasMore && <button onClick={() => void loadMore()} disabled={loadingMore}>Load more results</button>}
-      {query.length > 2 && !loading && results.length === 0 && (
-        <p className="text-sm text-white/30 text-center py-4">No results found.</p>
-      )}
-      {query.length === 0 && (
-        <p className="text-xs text-white/30 mt-2">Start typing to search movies & TV shows on TMDB</p>
-      )}
-    </div>
-  );
-};
+/** Facts row text: runtime for a movie, season count for a show. */
+function movieFacts(mediaType:'movie'|'tv',runtime:string,seasonCount:string):string|null{
+ if(mediaType==='tv'){if(seasonCount==='')return null;const n=Number(seasonCount);return `${n} ${n===1?'season':'seasons'}`;}
+ return runtime===''?null:`${Number(runtime)} min`;
+}
 
 // ──────────────────────────────────────────────
 // Form state interface
@@ -166,7 +77,15 @@ const AddMoviePage = () => {
  useEffect(()=>()=>snapshotPreviews.forEach(preview=>URL.revokeObjectURL(preview.url)),[snapshotPreviews]);
  const emptyForm:FormState={title:'',originalTitle:'',year:'',director:'',runtime:'',seasonCount:'',rating:'',overview:'',genres:'',note:'',userRating:null,categoryIds:[]};
  const [form,setForm]=useState<FormState>(emptyForm);
- const {data:categoriesData,error:genreError}=useMovieGenres(),categories=categoriesData?.movieCategories??[];
+ // Genres are the curated Movies catalog (the TMDB-mapped terms); ids are the movie term ids the save sends.
+ const catalog=useCuratedCatalog('movies'),genreError=catalog.error;
+ const categories=useMemo(()=>catalog.terms.map(term=>({documentId:term.id,genre_name:term.label})),[catalog.terms]);
+ const [query,setQuery]=useState(''),candidates=useRef(new Map<string,MovieCandidate>());
+ const searchMovies=useCallback(async(text:string,signal:AbortSignal):Promise<ItemSearchResult[]>=>{
+  const page=await explorersApiClient.searchMovieCandidates({query:text,limit:24},signal);
+  candidates.current=new Map(page.items.map(item=>[`${item.externalKind}:${item.externalId}`,item]));
+  return page.items.map(item=>({id:`${item.externalKind}:${item.externalId}`,title:item.title,subtitle:[item.yearText,item.externalKind==='tv'?'TV show':'Movie'].filter(Boolean).join(' · '),imageUrl:buildPosterUrl(item.posterUrl,'w185')||null}));
+ },[]);
  const owner=useMoviesOwner(listId,isEdit),observed=movieId?owner.content?.details.get(movieId):undefined;
  const draftObservation=useRef<typeof observed>();
  const formScope=JSON.stringify([generation,listId,movieId]);
@@ -245,52 +164,44 @@ const AddMoviePage = () => {
   }
  };
  const movieNotFound=isEdit&&!owner.loading&&!owner.error&&Boolean(owner.data)&&!owner.data!.movieLists[0]?.recommended_movies.some(value=>value.documentId===movieId);
- const posterUrl=buildPosterUrl(posterPath,'w342'),backdropUrl=buildBackdropUrl(backdropPath,'w780'),showForm=isEdit?formReady:Boolean(selected)||manual;
+ const backdropUrl=buildBackdropUrl(backdropPath,'w780'),showForm=isEdit?formReady:Boolean(selected)||manual;
+ const mode=isEdit||selected?'picked' as const:manual?'manual' as const:'search' as const;
+ const facts=movieFacts(mediaType,form.runtime,form.seasonCount);
+ const toggleGenre=(id:string)=>setForm(previous=>({...previous,categoryIds:previous.categoryIds.includes(id)?previous.categoryIds.filter(value=>value!==id):[...previous.categoryIds,id]}));
+ const fieldClass='w-full bg-dashboard-muted border border-dashboard-border rounded-xl px-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:outline-none focus:border-dashboard-accent transition-colors';
   return (
     <div className="min-h-screen text-dashboard">
-      {/* Sticky header */}
-      <div className="border-b border-dashboard-border px-4 md:px-6 py-3 flex items-center gap-3 sticky top-0 bg-dashboard-bg z-40 w-full">
-        <button
-          aria-label={backText}
-          onClick={() => back.goBack()}
-          className="text-white/40 hover:text-white transition-colors"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <div className="flex-1">
-          <h1 className="text-base font-semibold text-dashboard">
-            {isEdit ? "Edit Movie" : "Add Movie or Show"}
-          </h1>
-          <p className="text-xs text-dashboard-muted mt-0.5">
-            {isEdit
-              ? "Update the details and save your changes"
-              : selected
-                ? "Edit the details below before saving"
-                : "Search and select a title from TMDB"}
-          </p>
-        </div>
-        {loadingDetails && (
-          <div className="flex items-center gap-2 text-xs text-blue-400">
-            <Loader2 size={14} className="animate-spin" />
-            Loading details…
-          </div>
-        )}
-      </div>
-
-      {/* Single-column form */}
-      <div className="max-w-2xl mx-auto px-6 pt-6 pb-40 md:pb-8 space-y-5">
-
-        {/* Search — only in create mode */}
-        {!isEdit && (
-          <InlineSearch
-            onSelect={handleSelect}
-            onClear={handleClear}
-            selectedTitle={selected ? (selected.title) : undefined}
+    <AddItemPage
+      title={isEdit ? "Edit Movie" : "Add Movie or Show"}
+      backLabel={backText}
+      onBack={() => back.goBack()}
+      mode={mode}
+      onBackToSearch={() => { handleClear(); }}
+      bar={{ onCancel: () => back.goBack(), onSave: () => { void handleSave(); }, saving: saving ? "save" : null, canSave: Boolean(form.title.trim()) && !loadingDetails && (!isEdit || formReady) }}
+    >
+        {mode === "search" && (
+          <ItemSearch
+            query={query}
+            onQueryChange={setQuery}
+            search={searchMovies}
+            onPick={(result) => { const candidate = candidates.current.get(result.id); if (candidate) void handleSelect(candidate); }}
+            onAddManually={() => { handleClear(); setManual(true); setForm(previous => ({ ...previous, title: query.trim() })); }}
+            placeholder='Search "Interstellar", "Breaking Bad"...'
           />
         )}
-        {!isEdit && selectError && <p role="alert" className="text-sm text-red-400 -mt-3">{selectError}</p>}
-
-        {!isEdit && <button onClick={()=>{handleClear();setManual(true);}}>Add manually</button>}
+        {loadingDetails && (
+          <p className="flex items-center gap-2 text-xs text-blue-400"><Loader2 size={14} className="animate-spin" /> Loading details…</p>
+        )}
+        {!isEdit && selectError && <p role="alert" className="text-sm text-red-400">{selectError}</p>}
+        {mode === "picked" && (isEdit ? formReady : true) && (
+          <PickedItemCard
+            title={form.title}
+            subtitle={[form.year, mediaType === "tv" ? "TV show" : "Movie"].filter(Boolean).join(" · ")}
+            imageUrl={buildPosterUrl(posterPath, 'w185') || null}
+            onChange={handleClear}
+            locked={isEdit}
+          />
+        )}
         {manual && <label className="flex items-center gap-2 text-sm text-dashboard">Type <select value={mediaType} onChange={event=>setMediaType(event.target.value==='tv'?'tv':'movie')} className="dt-input bg-dashboard-muted text-dashboard border border-dashboard-border rounded-lg px-3 py-2"><option value="movie" className="bg-dashboard-sidebar text-dashboard">Movie</option><option value="tv" className="bg-dashboard-sidebar text-dashboard">TV show</option></select></label>}
         {genreError && <p role="alert">Genres could not be loaded. Your existing selection is preserved.</p>}
         {owner.error && <p role="alert">Movie could not be loaded. <button onClick={owner.refetch}>Retry</button></p>}
@@ -298,43 +209,19 @@ const AddMoviePage = () => {
         {/* Form — shown when movie selected (create) or data loaded (edit) */}
         {showForm && (
           <>
-            {/* Backdrop + poster strip */}
-            {(backdropUrl || posterUrl) && (
-              <div className="relative rounded-xl overflow-hidden bg-white/5 mb-2">
-                {backdropUrl ? (
-                  <img src={backdropUrl} alt="" className="w-full h-32 object-cover opacity-25" />
-                ) : (
-                  <div className="w-full h-32 bg-gradient-to-r from-blue-900/20 to-purple-900/20" />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-dashboard-bg via-transparent to-transparent" />
-                <div className="absolute bottom-3 left-4 flex items-end gap-3">
-                  {posterUrl && (
-                    <div className="w-12 rounded-lg overflow-hidden shadow-xl border border-white/10 flex-shrink-0">
-                      <div className="aspect-[2/3]">
-                        <img
-                          src={posterUrl}
-                          alt={form.title}
-                          className="w-full h-full object-cover"
-                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = FALLBACK_POSTER; }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                  <div className="pb-0.5 flex items-center gap-2 text-xs text-dashboard-muted">
-                    {mediaType === "tv"
-                      ? <span className="flex items-center gap-0.5 text-blue-400"><Tv size={10} /> TV Show</span>
-                      : <span className="flex items-center gap-0.5"><Film size={10} /> Movie</span>}
-                    {form.rating && (
-                      <span className="flex items-center gap-0.5 text-yellow-400/70">
-                        <Star size={10} fill="currentColor" /> {form.rating}
-                      </span>
-                    )}
-                  </div>
-                </div>
+            {backdropUrl && <img src={backdropUrl} alt="" className="w-full h-24 rounded-xl object-cover opacity-25" onError={(e) => { (e.currentTarget as HTMLImageElement).src = FALLBACK_POSTER; }} />}
+            {/* Facts row: runtime or seasons, and the provider's score as a source chip (never on the owner's stars). */}
+            {!manual && (facts || form.rating !== '') && (
+              <div className="flex flex-wrap items-center gap-2 text-sm text-dashboard-muted">
+                {facts && <span className="flex items-center gap-1"><Clock size={12} aria-hidden />{facts}</span>}
+                <ProviderRatingChip source="TMDB" value={form.rating === '' ? null : Number(form.rating)} />
               </div>
             )}
 
             <div className="grid grid-cols-1 gap-5">
+            <details open={manual} className="group grid gap-5">
+              <summary className="cursor-pointer text-sm text-dashboard-muted">{manual ? "Details" : "Edit details"}</summary>
+              <div className="grid grid-cols-1 gap-5 pt-3">
 
               {/* Title */}
               <div>
@@ -405,10 +292,9 @@ const AddMoviePage = () => {
                     />
                   </div>
                 </div>
+                {manual && (
                 <div>
                   <label className="text-sm font-semibold text-dashboard mb-2 block">TMDB Rating</label>
-                  <div className="relative">
-                    <Star size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-yellow-400/60" fill="currentColor" />
                     <input
                       type="number"
                       step="0.1"
@@ -416,25 +302,33 @@ const AddMoviePage = () => {
                       max="10"
                       value={form.rating}
                       onChange={setField("rating")}
-                  readOnly={!manual}
                       placeholder="e.g. 9.5"
-                      className={`w-full bg-dashboard-muted border border-dashboard-border rounded-xl pl-9 pr-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:outline-none transition-colors ${isEdit ? "opacity-60 cursor-not-allowed" : "focus:border-dashboard-accent"}`}
+                      className={fieldClass}
                     />
-                  </div>
                 </div>
+                )}
               </div>
 
-              {/* Genres */}
-              <div>
-                <label className="text-sm font-semibold text-white/90 mb-2 block">Genres</label>
-                <input
-                  type="text"
-                  value={form.genres}
-                  readOnly
-                  placeholder="e.g. Drama, Crime, Thriller"
-                  className={`w-full bg-dashboard-muted border border-dashboard-border rounded-xl px-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:outline-none transition-colors ${isEdit ? "opacity-60 cursor-not-allowed" : "focus:border-dashboard-accent"}`}
-                />
               </div>
+            </details>
+
+              {/* Genres: curated Movies terms, pre-selected from the provider mapping; the owner can change them. */}
+              {categories.length > 0 && (
+                <div role="group" aria-label="Genres">
+                  <p className="text-sm font-semibold text-white/90 mb-2">Genres</p>
+                  <div className="flex flex-wrap gap-2">
+                    {categories.map(term => {
+                      const on = form.categoryIds.includes(term.documentId);
+                      return (
+                        <button key={term.documentId} type="button" aria-pressed={on} onClick={() => toggleGenre(term.documentId)}
+                          className={`min-h-9 rounded-full border px-3 text-xs transition-colors ${on ? "border-blue-400 bg-blue-400/15 text-blue-200" : "border-dashboard-border text-dashboard-muted hover:text-dashboard"}`}>
+                          {term.genre_name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Cast Members Preview */}
               {castMembers.length > 0 && (
@@ -522,19 +416,8 @@ const AddMoviePage = () => {
 
               {/* User Rating */}
               <div className="mt-4">
-                <label className="text-sm font-semibold text-dashboard mb-2 block">Your Rating</label>
-                <div className="flex gap-1.5 flex-wrap">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setForm(f => ({ ...f, userRating: star }))}
-                      className={`p-1 transition-all hover:scale-110 active:scale-95 ${form.userRating && form.userRating >= star ? "text-yellow-400" : "text-white/20 hover:text-white/40"}`}
-                    >
-                      <Star size={24} fill={form.userRating && form.userRating >= star ? "currentColor" : "none"} />
-                    </button>
-                  ))}
-                </div>
+                <p className="text-sm font-semibold text-dashboard mb-2">Your Rating</p>
+                <StarRating value={form.userRating} onChange={(value) => setForm(f => ({ ...f, userRating: value }))} label="Your rating" disabled={saving} />
               </div>
 
               {/* Snapshots Upload */}
@@ -571,30 +454,10 @@ const AddMoviePage = () => {
 
 
 
-              {/* Actions */}
-              <div className="pt-4 border-t border-dashboard-border">
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => back.goBack()}
-                    className="px-6 py-3 rounded-xl bg-dashboard-muted hover:bg-white/10 text-sm text-white font-medium transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={saving || !form.title.trim()}
-                    className="flex-1 py-3 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-                  >
-                    {saving ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
-                    {isEdit ? "Save Changes" : "Add to List"}
-                  </button>
-                </div>
-              </div>
             </div>
           </>
         )}
-      </div>
+    </AddItemPage>
     </div>
   );
 };
