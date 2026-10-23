@@ -1231,6 +1231,49 @@
       "copied": "복사됨!",
       "copyLink": "링크 복사",
       "linkCopiedToast": "링크가 복사되었습니다!!"
+    },
+    "wp2": {
+      "pill": {
+        "buttonLabel": "Visibility: {{state}}",
+        "comingSoon": "Coming soon",
+        "state": {
+          "public": "Public",
+          "hidden": "Hidden",
+          "draft": "Draft",
+          "private": "Private"
+        },
+        "explain": {
+          "categoryPublic": "{{category}} shows on your profile",
+          "categoryPublicGeneric": "Shows on your profile",
+          "categoryHidden": "Not on your profile; your public lists still work by link",
+          "listDraft": "Only you can see it",
+          "listPublic": "Anyone with the link, and on your profile",
+          "listPrivate": "Coming soon: only people you invite by email"
+        },
+        "toast": {
+          "public": "Now public",
+          "hidden": "Hidden from your profile",
+          "draft": "Back to draft"
+        }
+      },
+      "bottomAdd": {
+        "newList": "New list",
+        "newGuide": "New guide",
+        "addItem": "Add item",
+        "addToDay": "Add to Day {{day}}"
+      },
+      "nudge": {
+        "title": {
+          "list": "Publish this list?",
+          "guide": "Publish this guide?"
+        },
+        "body": {
+          "reachedThree": "\"{{name}}\" has 3 items now. Publish it so anyone with the link can see it, and it shows on your profile.",
+          "leaving": "\"{{name}}\" is still a draft, so only you can see it. Publish it so anyone with the link can see it, and it shows on your profile."
+        },
+        "notNow": "Not now",
+        "publish": "Publish"
+      }
     }
   },
   "emailVerification": {
