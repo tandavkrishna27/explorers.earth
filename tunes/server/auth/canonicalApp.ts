@@ -38,6 +38,7 @@ import { setupExplorersPublicContentRoutes } from "../routes/explorersPublicCont
 import {setupExplorersCatalogRoutes} from '../routes/explorersCatalogRoutes';
 import {BookCoverFetcher} from '../services/bookCoverFetch';
 import {BookCoverImportService} from '../application/bookCoverImport';
+import {createLinkPreviewService,type LinkPreviewService} from '../application/linkPreview';
 import {BookCatalog} from '../services/bookCatalog';
 import { resolveTrustedProxy, setupCanonicalTerminator } from "../middleware/canonicalTerminator";
 import { setupCanonicalRetiredSurfaces } from "../routes/canonicalRetiredSurfaceRoutes";
@@ -51,7 +52,7 @@ function errorResponse(res: Response, status: number, code: ApiError["error"]["c
 }
 
 function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
-  options: { mediaStorage?: ObjectStorage; bookCatalog?:BookCatalog; bookCoverFetcher?:BookCoverFetcher;movieCatalog?:MovieCatalog;movieImageFetcher?:MovieImageFetcher;appEnrichmentChoices?:readonly AppSourceChoice[] } = {}, custodyMode=false,appsInput?:Omit<AppsCanonicalAdmissionOptions,'pool'>,
+  options: { mediaStorage?: ObjectStorage; bookCatalog?:BookCatalog; bookCoverFetcher?:BookCoverFetcher;movieCatalog?:MovieCatalog;movieImageFetcher?:MovieImageFetcher;appEnrichmentChoices?:readonly AppSourceChoice[];linkPreviewService?:LinkPreviewService } = {}, custodyMode=false,appsInput?:Omit<AppsCanonicalAdmissionOptions,'pool'>,
   ) {
   const admission=appsInput?createAppsCanonicalAdmission({pool,...appsInput}):undefined;
   const actualApp = express(), instrument=custodyMode?createCanonicalHandlerCustody(actualApp,admission):undefined;
@@ -110,7 +111,7 @@ function constructCanonicalApp(pool: Pool, config: ExplorersAuthConfig,
   setupExplorersRecommendationRoutes(app, pool, auth, config,books,new BookCoverImportService(pool,new MediaService(pool,options.mediaStorage),options.bookCoverFetcher),movies,new MovieMediaImportService(pool,new MediaService(pool,options.mediaStorage),options.movieImageFetcher),instrument?.routerFactory);
   const appSourceChoices=appSourceChoiceSchema.array().parse(options.appEnrichmentChoices??[]);
   setupExplorersAppEnrichmentRoutes(app, pool, auth, config, appSourceChoices.map(choice=>choice.identity), instrument?.routerFactory,appSourceChoices);
-  setupExplorersCatalogRoutes(app,pool,auth,config,books,movies);
+  setupExplorersCatalogRoutes(app,pool,auth,config,books,movies,options.linkPreviewService??createLinkPreviewService(pool,options.mediaStorage));
   setupExplorersPublicContentRoutes(app, pool, config.secret,instrument?.routerFactory);
   setupExplorersLifecycleRoutes(app, pool, auth, config);
   setupExplorersMediaRoutes(app, pool, auth, config, new MediaService(pool, options.mediaStorage),admission?.beforeMediaCommand);
