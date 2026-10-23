@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { friendlyErrorMessage, urlFieldError } from "../../../../utils/friendlyError";
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '../../../../store/store';
@@ -12,6 +12,9 @@ import { richNoteFromEditor } from '../../../../../../tunes/shared/explorersRich
 import TiptapEditor from '../../../Favorites/components/TiptapEditor';
 import AppEnrichmentPanel from './AppEnrichmentPanel';
 import ReorderableMediaStrip from '../../../../components/reorder/ReorderableMediaStrip';
+import { useOriginBack } from "../../../../lib/navigation/useOriginBack";
+import { listPath } from "../../../../lib/navigation/categoryRoutes";
+import { useTranslation } from "react-i18next";
 
 const PRICE_TIERS = ['Free', 'Freemium', 'Paid', 'Subscription'] as const;
 const ALL_PLATFORMS = ['iOS', 'iPadOS', 'macOS', 'Android', 'Windows', 'Web', 'Linux', 'Chrome Extension'];
@@ -38,7 +41,10 @@ type PriceTier = (typeof PRICE_TIERS)[number];
  */
 export default function AddAppPage() {
  const { listId, appId } = useParams<{ listId: string; appId?: string }>();
- const location = useLocation(), navigate = useNavigate();
+ const location = useLocation();
+ const { t: tBack } = useTranslation();
+ const back = useOriginBack({ to: listPath("apps", listId!), label: tBack("dashboard.wp1.back.list") });
+ const backText = back.source === "state" && back.label ? tBack("dashboard.wp1.back.to", { name: back.label }) : tBack("dashboard.wp1.back.list");
  const generation = useAuthStore(state => state.generation), accountId = useAuthStore(state => state.accountId);
  const scope = JSON.stringify([generation, accountId, location.pathname, listId, appId]);
  const currentScope = useRef(scope); currentScope.current = scope;
@@ -95,7 +101,7 @@ export default function AddAppPage() {
 
  const attachExisting = async () => {
   const captured = scope;
-  try { await commands.membership(existingId, listId!, true); if (valid(captured)) navigate(`/recommendations/apps/${listId}`); }
+  try { await commands.membership(existingId, listId!, true); if (valid(captured)) back.goBack(); }
   catch (failure) { if (valid(captured)) setError(friendlyErrorMessage(failure, 'App could not be added')); }
  };
 
@@ -139,7 +145,7 @@ export default function AddAppPage() {
     }
     assertCurrent(captured, operation); await AppsClient.createManual(intent.current.value, signal); assertCurrent(captured, operation);
    }
-   invalidateApps(); toast.success('App saved'); navigate(`/recommendations/apps/${listId}`, { state: { justAddedRecommendation: true } });
+   invalidateApps(); toast.success('App saved'); back.goBack({ state: { justAddedRecommendation: true } });
   } catch (failure) { if (valid(captured, operation)) setError(friendlyErrorMessage(failure, 'App could not be saved')); }
   finally { if (valid(captured, operation)) setSaving(false); }
  };
@@ -148,7 +154,7 @@ export default function AddAppPage() {
  // owned by its original observation across refreshes and never rebases.
  if (appId && initialized.current !== scope) {
   return <div className="min-h-screen text-dashboard p-4" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
-   <button aria-label="Back to app list" onClick={() => navigate(`/recommendations/apps/${listId}`)}><ArrowLeft size={20} /></button>
+   <button aria-label={backText} onClick={() => back.goBack()}><ArrowLeft size={20} /></button>
    <h1 className="font-semibold">Edit App</h1>
    {owner.loading ? <p role="status">Loading app…</p> : <div role="alert"><p>{owner.error?.message || 'App could not be loaded. Refresh before editing.'}</p><button onClick={owner.refetch}>Retry loading app</button></div>}
   </div>;
@@ -156,7 +162,7 @@ export default function AddAppPage() {
 
  return <div className="min-h-screen text-dashboard">
   <header className="border-b border-dashboard-border px-4 md:px-6 py-3 flex items-center gap-3">
-   <button aria-label="Back to app list" onClick={() => navigate(`/recommendations/apps/${listId}`)}><ArrowLeft size={20} /></button>
+   <button aria-label={backText} onClick={() => back.goBack()}><ArrowLeft size={20} /></button>
    <h1 className="font-semibold">{appId ? 'Edit App' : 'Add App'}</h1>
   </header>
   <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-6" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
@@ -170,7 +176,7 @@ export default function AddAppPage() {
     <button disabled={!existingId || commands.loading} onClick={attachExisting}>Add existing app to this list</button>
    </section>}
 
-   {appId && initialized.current === scope && draftObservation.current && <AppEnrichmentPanel key={scope} observed={draftObservation.current} disabled={saving || pending > 0} manualDirty={manualDirty} onBusyChange={setEnrichmentBusy} onReload={() => window.location.reload()} onAccepted={() => { invalidateApps(); toast.success('Selected app details accepted'); navigate(`/recommendations/apps/${listId}`); }} />}
+   {appId && initialized.current === scope && draftObservation.current && <AppEnrichmentPanel key={scope} observed={draftObservation.current} disabled={saving || pending > 0} manualDirty={manualDirty} onBusyChange={setEnrichmentBusy} onReload={() => window.location.reload()} onAccepted={() => { invalidateApps(); toast.success('Selected app details accepted'); back.goBack(); }} />}
    <section className="rounded-2xl border border-dashboard-border bg-dashboard-sidebar p-5 space-y-5">
     <h2 className="font-semibold flex gap-2"><Smartphone size={18} />{appId ? 'My App' : 'Add manually'}</h2>
     {appId && owner.loading && <p role="status">Loading app…</p>}
