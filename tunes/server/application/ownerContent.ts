@@ -1,5 +1,6 @@
 import {placePinsReadInteger,placePinJoin,placePinBucket,placeSortPosition} from './placePinsRead';
 import {readTaxonomyAssignment} from '../repositories/taxonomyAssignmentRepository';
+import {isFlatCuratedCategory} from '../../shared/explorersTaxonomyContract';
 import {readManualGamePresentation} from '../repositories/gameManualRepository';
 import {readMovieProviderMedia} from '../repositories/movieMedia';
 import {readMovieEntity,readMovieContext,readMovieTerms,effectiveMovieDetails} from '../repositories/movieCatalogRepository';
@@ -264,7 +265,7 @@ export class OwnerContentService {
    // A Places list may hold a person recommendation, so the place entity read is
    // conditional on the entity kind while the context always travels.
    const place= row.category==='places'&&detail.kind==='place'?await readPlaceEntity(db,detail.entity_id):undefined;const movie=row.category==='movies'&&(await db.query('SELECT 1 FROM movie_entity_details WHERE entity_id=$1',[detail.entity_id])).rowCount?await readMovieEntity(db,detail.entity_id):undefined;
-   const taxonomy=row.category==='places'||row.category==='people'?await readTaxonomyAssignment(db,id,actor.accountId,row.category):{};
+   const taxonomy=row.category==='places'||row.category==='people'||isFlatCuratedCategory(row.category)?await readTaxonomyAssignment(db,id,actor.accountId,row.category):{};
    const result=wire.editableOwnerRecommendationSchema.parse({...recommendation,...taxonomy,note:normalizeRichNote(detail.note),categoryRevision:detail.category_revision,entity:book??movie??app??product??person??place??entity.data,displayOverrides:values.data,displayTitle,...(row.category==='games'?{gamePresentation:await readManualGamePresentation(db,id,actor.accountId)}:{}),...(book?{bookCovers:await readBookCovers(db,id),bookContext:await readBookContext(db,id,actor.accountId),effectiveBookDetails:effectiveBookDetails(book.details,values.data)}:{}),...(movie?{movieContext:await readMovieContext(db,id,actor.accountId),effectiveMovieDetails:effectiveMovieDetails(movie.details,values.data),movieTerms:await readMovieTerms(db,id,actor.accountId),providerMedia:await readMovieProviderMedia(db,id,actor.accountId)}:{}),...(app?{appScreenshots:{screenshotMediaIds:await readAppScreenshotMediaIds(db,id,actor.accountId)},effectiveAppDetails:effectiveAppDetails(app.details,values.data)}:{}),...(product?{productOffer:await readProductOffer(db,id,actor.accountId),effectiveProductDetails:effectiveProductDetails(product.details,values.data)}:{}),...(person?{effectivePersonDetails:effectivePersonDetails(person.details,values.data)}:{}),...(row.category==='places'?{placeContext:await readPlaceContext(db,id,actor.accountId),placePhotos:{photoMediaIds:await readPlacePhotoMediaIds(db,id,actor.accountId)},...(place?{effectivePlaceDetails:effectivePlaceDetails(place.details,values.data)}:{})}:{})});
    if(Buffer.byteLength(JSON.stringify({recommendation:result}),'utf8')>OWNER_PAGE_BYTES)throw new RecommendationFailure(413,'Owner resource exceeds the response byte budget');return result;
   });

@@ -1,5 +1,5 @@
 import {replaceTaxonomyAssignment} from './taxonomyAssignmentRepository';
-import type {TaxonomyAssignmentInput} from '../../shared/explorersTaxonomyContract';
+import {isFlatCuratedCategory,type TaxonomyAssignmentInput} from '../../shared/explorersTaxonomyContract';
 import {insertMovieDetails,readMovieEntity,writeMovieContext,readMovieContext,checkMovieContext,writeMovieTerms} from './movieCatalogRepository';
 import {movieDisplayFieldsSchema,movieDetailsSchema,emptyMovieDetails,resolveManualMovieSchema,type MovieContext} from '../../shared/explorersMovieContract';
 import { createHash } from 'node:crypto';
@@ -75,7 +75,7 @@ export class ExplorersRecommendationRepository {
       const observed=recommendationOperation?(await db.query('SELECT category FROM recommendations WHERE id=$1 AND account_id=$2',[addressed.id,accountId])).rows[0]:undefined;
       if(recommendationOperation&&!observed)throw new RecommendationFailure(404,'Recommendation unavailable');
       const taxonomyCategory=observed?.category??(operation==='createRecommendation'?addressed.category:undefined);
-      if(taxonomyCategory==='places'||taxonomyCategory==='people')await db.query('SELECT lock_explorers_taxonomy_catalog($1)',[taxonomyCategory]);
+      if(taxonomyCategory==='places'||taxonomyCategory==='people'||(taxonomyCategory&&isFlatCuratedCategory(taxonomyCategory)))await db.query('SELECT lock_explorers_taxonomy_catalog($1)',[taxonomyCategory]);
       // Matches lifecycle lock order; a suspended/deleted account cannot start content writes.
       const account=await db.query('SELECT status FROM creator_accounts WHERE id=$1 FOR UPDATE',[accountId]);
       if(account.rows[0]?.status!=='active') throw new RecommendationFailure(404,'Account unavailable');
@@ -310,7 +310,7 @@ export class ExplorersRecommendationRepository {
   }
   async createRecommendation(accountId:string,input:{category:Exclude<ContentCategory,'guides'>;entityId:string;collectionId:string;expectedCollectionRevision:number;userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null;displayOverrides?:DisplayOverrides;bookContext?:BookRecommendationContext;movieContext?:MovieContext;movieTermIds?:string[];appScreenshots?:AppScreenshots;productOffer?:ProductOffer;placeContext?:PlaceRecommendationContext;placePhotos?:PlacePhotos}&TaxonomyAssignmentInput,key:string):Promise<RecommendationRecord> {
     return this.command(accountId,'createRecommendation',input,key,async db=>{
-      if(input.category!=='places'&&input.placesTaxonomy!==undefined||input.category!=='people'&&input.peopleSectorTermId!==undefined)throw new RecommendationFailure(422,'Category taxonomy mismatch');
+      if(input.category!=='places'&&input.placesTaxonomy!==undefined||input.category!=='people'&&input.peopleSectorTermId!==undefined||!isFlatCuratedCategory(input.category)&&input.curatedTermId!==undefined)throw new RecommendationFailure(422,'Category taxonomy mismatch');
       const list=await this.lockCollection(db,accountId,input.collectionId,input.expectedCollectionRevision);
       if(list.category!==input.category) throw new RecommendationFailure(422,'Collection category mismatch');
       const result=await db.query(`INSERT INTO recommendations(account_id,entity_id,category,user_rating,publication_state,note)

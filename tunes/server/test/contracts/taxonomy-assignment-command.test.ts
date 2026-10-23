@@ -1,6 +1,33 @@
-import {it,expect} from 'vitest';
+import {describe,it,expect,vi} from 'vitest';
 import {RecommendationService} from '../../application/recommendations';
 import {ExplorersRecommendationRepository} from '../../repositories/explorersRecommendationRepository';
+import {replaceTaxonomyAssignment} from '../../repositories/taxonomyAssignmentRepository';
+import {createRecommendationSchema} from '../../../shared/explorersContract';
+
+const flatId='00000000-0000-5000-8000-000000000001';
+function flatDb(rows:Record<string,unknown[]>){return {query:vi.fn(async(sql:string)=>({rows:Object.entries(rows).find(([k])=>sql.includes(k))?.[1]??[],rowCount:1}))};}
+
+describe('flat curated assignment (S2)',()=>{
+ it('writes one position-0 term for books',async()=>{
+  const fake=flatDb({'FROM taxonomy_catalogs':[{state:'CONFIGURED',default_locale:'en'}],'FROM taxonomy_terms':[{id:flatId,parent_id:null,active:true}]});
+  await replaceTaxonomyAssignment(fake as never,'r1','a1','books',{curatedTermId:flatId});
+  expect(fake.query).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO recommendation_taxonomy'),['r1','a1','books',flatId,0]);
+ });
+ it('clears with null and refuses curatedTermId on places/people/movies',async()=>{
+  const fake=flatDb({});
+  await replaceTaxonomyAssignment(fake as never,'r1','a1','games',{curatedTermId:null});
+  expect(fake.query).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM recommendation_taxonomy'),['r1','a1','games']);
+  for(const c of ['places','people','movies'])await expect(replaceTaxonomyAssignment(flatDb({}) as never,'r1','a1',c,{curatedTermId:flatId})).rejects.toThrow(/mismatch/);
+ });
+ it('refuses an unconfigured catalog',async()=>{
+  await expect(replaceTaxonomyAssignment(flatDb({'FROM taxonomy_catalogs':[{state:'UNCONFIGURED'}]}) as never,'r1','a1','apps',{curatedTermId:flatId})).rejects.toThrow(/unavailable/);
+ });
+ it('create schema accepts curatedTermId only for the four flat categories',()=>{
+  const base={entityId:flatId,collectionId:flatId,expectedCollectionRevision:1};
+  expect(createRecommendationSchema.safeParse({...base,category:'products',curatedTermId:flatId}).success).toBe(true);
+  expect(createRecommendationSchema.safeParse({...base,category:'places',curatedTermId:flatId}).success).toBe(false);
+ });
+});
 const id=(n:number)=>`aaaaaaaa-0000-4000-8000-${String(n).padStart(12,'0')}`;
 function harness(options:{category?:string;inactive?:boolean;wrongParent?:boolean;foreign?:boolean;unconfigured?:boolean;changedCategory?:boolean}={}){
  const sql:string[]=[],writes:any[]=[];let observed=0;const receipts=new Map<string,any>();let assignments:string[]=[id(1)];let revision=1;let backup:any;

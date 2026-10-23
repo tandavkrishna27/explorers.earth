@@ -10,7 +10,10 @@ it('0067 adds four unconfigured catalogs and configures movies over its 0037 voc
  expect(rows.map(r=>r.category)).toEqual(['apps','books','games','movies','people','places','products']);
  for(const c of ['apps','books','games','products'])expect(rows.find(r=>r.category===c)).toMatchObject({state:'UNCONFIGURED',version:'0',default_locale:null});
  expect(rows.find(r=>r.category==='movies')).toMatchObject({state:'CONFIGURED',version:'1',default_locale:'en'});
- expect(Number((await admin.query("SELECT count(*) n FROM taxonomy_terms WHERE category='movies'")).rows[0].n)).toBe(27);
+ // The suite shares one database and other files add fixture movies terms, so count the
+ // 0037 vocabulary through its reviewed TMDB mappings (999999 is the suites' fixture genre).
+ expect(Number((await admin.query("SELECT count(DISTINCT t.id) n FROM taxonomy_terms t JOIN movie_provider_genre_terms m ON m.term_id=t.id WHERE t.category='movies' AND m.provider_genre_id<>999999")).rows[0].n)).toBe(27);
+ expect(Number((await admin.query("SELECT count(*) n FROM taxonomy_terms t WHERE t.category='movies' AND NOT EXISTS(SELECT 1 FROM taxonomy_term_translations x WHERE x.term_id=t.id AND x.locale='en')")).rows[0].n)).toBe(0);
 });
 
 it('0067 refuses a parented flat term and a guides catalog',async()=>{
