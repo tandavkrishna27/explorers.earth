@@ -1,4 +1,5 @@
 import CategoryPage from "../features/shared/category/CategoryPage";
+import { useArchivedLists } from "../features/shared/category/useArchivedLists";
 import { toListTopPicks } from "../features/shared/category/models";
 import { createList } from "../features/shared/category/listWrites";
 import type { NewListCreate } from "../features/shared/lists/NewListDialog";
@@ -155,6 +156,7 @@ const Favorites = memo(() => {
   // them to the signed-in account rather than filtering by an account id read from a
   // separate query.
   const placesOwner = usePlacesOwner(undefined, true, true);
+  const archivedPlaces = useArchivedLists("places");
   const commands = usePlacesCommands();
   const cities = placesOwner.data;
   const loading = placesOwner.loading;
@@ -910,6 +912,7 @@ const Favorites = memo(() => {
               category="places"
               status={{ loading: loading || !accountById, error: placesOwner.error ?? null, refreshing: loading && placeCards.length > 0 }}
               lists={placeCards}
+              archivedLists={archivedPlaces.lists}
               topPicks={toListTopPicks((cities?.recommendationLists as any[]) ?? [], cityPick)}
               pinCandidates={toListTopPicks((cities?.recommendationLists as any[]) ?? [], cityPick, false)}
               categoryVisibility={categoryVisible ? "public" : "hidden"}
@@ -917,7 +920,7 @@ const Favorites = memo(() => {
               onCategoryVisibility={() => handleVisibilityToggle()}
               onOpenList={(id) => { const city = filteredCities.find((c: any) => c.documentId === id); if (city) { handleCitySelect(city); setStep(2); } }}
               onRetry={() => { void refetchCities(); }}
-              onChanged={() => { void refetchCities(); }}
+              onChanged={() => { void refetchCities(); archivedPlaces.reload(); }}
               newList={{ kind: "dialog", username: canonicalAccount.data?.handle ?? "", onCreated: (id) => { void openCreatedList(id); }, create: placesCreate }}
             />
           )}

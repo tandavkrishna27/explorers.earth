@@ -2,6 +2,7 @@
 
 exports[`category wrappers render the shared template > apps 1`] = `
 {
+  "archivedLists": [],
   "category": "apps",
   "categoryVisibility": "hidden",
   "lists": [
@@ -54,6 +55,7 @@ exports[`category wrappers render the shared template > apps 1`] = `
 
 exports[`category wrappers render the shared template > books 1`] = `
 {
+  "archivedLists": [],
   "category": "books",
   "categoryVisibility": "hidden",
   "lists": [
@@ -95,6 +97,7 @@ exports[`category wrappers render the shared template > books 1`] = `
 
 exports[`category wrappers render the shared template > games 1`] = `
 {
+  "archivedLists": [],
   "category": "games",
   "categoryVisibility": "hidden",
   "lists": [
@@ -125,6 +128,16 @@ exports[`category wrappers render the shared template > games 1`] = `
 
 exports[`category wrappers render the shared template > movies 1`] = `
 {
+  "archivedLists": [
+    {
+      "covers": [],
+      "id": "movies-old",
+      "itemCount": 0,
+      "pinnedCount": 0,
+      "status": "draft",
+      "title": "Old",
+    },
+  ],
   "category": "movies",
   "categoryVisibility": "public",
   "lists": [
@@ -179,6 +192,7 @@ exports[`category wrappers render the shared template > movies 1`] = `
 
 exports[`category wrappers render the shared template > people 1`] = `
 {
+  "archivedLists": [],
   "category": "people",
   "categoryVisibility": "hidden",
   "lists": [
@@ -220,6 +234,7 @@ exports[`category wrappers render the shared template > people 1`] = `
 
 exports[`category wrappers render the shared template > products 1`] = `
 {
+  "archivedLists": [],
   "category": "products",
   "categoryVisibility": "hidden",
   "lists": [

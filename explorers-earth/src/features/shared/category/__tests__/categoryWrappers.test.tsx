@@ -29,6 +29,12 @@ vi.mock("../../../Products/hooks/useProductsOwner", () => ({ useProductsOwner: (
 vi.mock("../../../People/hooks/usePeopleOwner", () => ({ usePeopleOwner: () => ({ loading: false, error: null, refetch: vi.fn(), data: { personLists: [
   { documentId: "q1", List_Name: "Design voices", Visibility: false, recommended_people: [{ documentId: "y1", name: "A type designer", is_pinned: false }] }] } }) }));
 vi.mock("../../../../components/SEO", () => ({ default: () => null }));
+const archivedReads = vi.hoisted(() => ({ categories: [] as string[], reload: vi.fn() }));
+vi.mock("../useArchivedLists", () => ({ useArchivedLists: (category: string) => {
+  archivedReads.categories.push(category);
+  const lists = category === "movies" || category === "guides" ? [{ id: `${category}-old`, title: "Old", status: "draft", itemCount: 0, pinnedCount: 0, covers: [] }] : [];
+  return { lists, reload: archivedReads.reload };
+} }));
 vi.mock("../../../Guides/hooks/useGuidesOwner", () => ({ invalidateGuides: vi.fn(), useGuidesOwner: () => ({ loading: false, error: null, refresh: vi.fn(), content: null, guides: [
   { documentId: "gd1", Title: "48 hours in Goa", Visibility: true, is_pinned: true, pin_order: 0, Guide_Media: [{ url: "/g.jpg" }], display_order: 0, Place_Details: { Place_Name: "Goa" } },
   { documentId: "gd2", Title: "Draft trip", Visibility: false, is_pinned: false, display_order: 1, Place_Details: { Place_Name: "Kochi" } },
@@ -82,5 +88,22 @@ describe("category wrappers render the shared template", () => {
     page(<BooksHome />);
     expect(last()).toMatchObject({ category: "books", categoryVisibility: "hidden", lists: [{ id: "b1", status: "draft", itemCount: 1, pinnedCount: 0 }], topPicks: [] });
     expect(last()).toMatchSnapshot({ onCategoryVisibility: expect.any(Function), onOpenList: expect.any(Function), onRetry: expect.any(Function), onChanged: expect.any(Function), newList: expect.any(Object) });
+  });
+});
+
+describe("wrappers pass archived lists separately (ruling R8)", () => {
+  it.each([
+    ["movies", "../../../Movies/components/dashboard/MoviesHome", "l1"],
+    ["guides", "../../../Guides/GuidesPage", "gd1"],
+  ])("%s: the archived list is only in archivedLists, and a change reloads it", async (category, path, activeId) => {
+    archivedReads.reload.mockClear();
+    const { default: Home } = await import(/* @vite-ignore */ path);
+    page(<Home />);
+    expect(archivedReads.categories).toContain(category);
+    expect(last().archivedLists.map((l: { id: string }) => l.id)).toEqual([`${category}-old`]);
+    expect(last().lists.map((l: { id: string }) => l.id)).toContain(activeId);
+    expect(last().lists.map((l: { id: string }) => l.id)).not.toContain(`${category}-old`);
+    last().onChanged();
+    expect(archivedReads.reload).toHaveBeenCalled();
   });
 });

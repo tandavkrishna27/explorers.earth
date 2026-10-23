@@ -7,6 +7,7 @@ import { useMoviesOwner, invalidateMovies } from "../../api/explorersAdapter";
 import { buildPosterUrl } from "../../utils/movieHelpers";
 import useAuthStore from "../../../../store/store";
 import CategoryPage from "../../../shared/category/CategoryPage";
+import { useArchivedLists } from "../../../shared/category/useArchivedLists";
 import { toItemTopPicks, toListCards } from "../../../shared/category/models";
 import { createLegacyListModal } from "../../../shared/lists/NewListDialog";
 
@@ -26,14 +27,15 @@ const MoviesHome = () => {
   const cards = useMemo(() => toListCards(lists, { relation, visibility: "Visibility", cover: (m) => (m.poster_path ? buildPosterUrl(m.poster_path, "w185") : null) }), [lists]);
   const picks = useMemo(() => toItemTopPicks(lists, item), [lists]);
   const candidates = useMemo(() => toItemTopPicks(lists, item, false), [lists]);
-  const changed = () => { invalidateMovies(); refetch(); };
+  const archived = useArchivedLists("movies");
+  const changed = () => { invalidateMovies(); refetch(); archived.reload(); };
   return (
     <>
       <NavigationStatus navigation={navigation} />
       <CategoryPage
         category="movies"
         status={{ loading, error: (error as Error | null) ?? null, refreshing: loading && lists.length > 0 }}
-        lists={cards} topPicks={picks} pinCandidates={candidates}
+        lists={cards} archivedLists={archived.lists} topPicks={picks} pinCandidates={candidates}
         categoryVisibility={navigation.snapshot?.visibility.public_movie === "Yes" ? "public" : "hidden"}
         visibilityBusy={navigation.busy || !navigation.authority}
         onCategoryVisibility={(next) => { if (navigation.authority && !navigation.busy) void navigation.request({ category: "public_movie", action: next === "public" ? "publish" : "unpublish" }, navigation.authority); }}

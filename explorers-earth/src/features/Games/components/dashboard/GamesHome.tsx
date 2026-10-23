@@ -7,6 +7,7 @@ import { useGamesOwner } from "../../hooks/useGamesOwner";
 import { buildCoverUrl } from "../../utils/gameHelpers";
 import useAuthStore from "../../../../store/store";
 import CategoryPage from "../../../shared/category/CategoryPage";
+import { useArchivedLists } from "../../../shared/category/useArchivedLists";
 import { toItemTopPicks, toListCards } from "../../../shared/category/models";
 import { createLegacyListModal } from "../../../shared/lists/NewListDialog";
 
@@ -26,18 +27,19 @@ const GamesHome = () => {
   const cards = useMemo(() => toListCards(lists, { relation, visibility: "Visibility", cover: (g) => (g.cover_url ? buildCoverUrl(g.cover_url) : null) }), [lists]);
   const picks = useMemo(() => toItemTopPicks(lists, item), [lists]);
   const candidates = useMemo(() => toItemTopPicks(lists, item, false), [lists]);
+  const archived = useArchivedLists("games");
   return (
     <>
       <NavigationStatus navigation={navigation} />
       <CategoryPage
         category="games"
         status={{ loading, error: (error as Error | null | undefined) ?? null, refreshing: loading && lists.length > 0 }}
-        lists={cards} topPicks={picks} pinCandidates={candidates}
+        lists={cards} archivedLists={archived.lists} topPicks={picks} pinCandidates={candidates}
         categoryVisibility={navigation.snapshot?.visibility.public_games === "Yes" ? "public" : "hidden"}
         visibilityBusy={navigation.busy || !navigation.authority}
         onCategoryVisibility={(next) => { if (navigation.authority && !navigation.busy) void navigation.request({ category: "public_games", action: next === "public" ? "publish" : "unpublish" }, navigation.authority); }}
         onOpenList={(id) => navigate(`/recommendations/games/${id}`)}
-        onRetry={() => { void refetch(); }} onChanged={() => { void refetch(); }}
+        onRetry={() => { void refetch(); }} onChanged={() => { void refetch(); archived.reload(); }}
         newList={{ kind: "dialog", username: user?.username ?? "", onCreated: (id) => navigate(`/recommendations/games/${id}`, { state: { justCreatedList: true } }) }}
       />
     </>

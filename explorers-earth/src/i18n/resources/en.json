@@ -1733,6 +1733,11 @@
         "listPublic": "Anyone with the link, and on your profile",
         "listPrivate": "Coming soon: only people you invite by email",
         "label": "Visibility: {{state}}"
+      },
+      "archive": {
+        "active": "Active",
+        "archived": "Archived",
+        "empty": "No archived lists"
       }
     },
     "wp2": {

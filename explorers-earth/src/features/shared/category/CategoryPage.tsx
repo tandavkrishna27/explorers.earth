@@ -10,11 +10,14 @@ import { useCardReorder } from "./useCardReorder";
 import TopPicksHero from "../topPicks/TopPicksHero";
 import TopPicksManager from "../topPicks/TopPicksManager";
 import NewListDialog, { type NewListCreate } from "../lists/NewListDialog";
+import { RestoreListButton } from "./restoreButton";
 
 export interface CategoryPageProps {
   category: CategoryKey;
   status: { loading: boolean; error: Error | null; refreshing: boolean };
   lists: ListCardModel[];
+  /** Archived lists of this category; the Archived filter shows only when non-empty. */
+  archivedLists?: ListCardModel[];
   /** Current pins in order. */
   topPicks: TopPickModel[];
   /** Everything that can be pinned (items mode: every unique item; lists mode: every list). */
@@ -46,6 +49,8 @@ export default function CategoryPage(props: CategoryPageProps) {
   const openManager = () => { managerOpener.current = document.activeElement as HTMLElement | null; setManagerOpen(true); };
   const closeManager = () => { setManagerOpen(false); const opener = managerOpener.current; managerOpener.current = null; requestAnimationFrame(() => opener?.focus()); };
   const [busyId, setBusyId] = useState<string | null>(null);
+  const archived = props.archivedLists ?? [];
+  const [filter, setFilter] = useState<"active" | "archived">("active");
 
   const startNew = () => (props.newList.kind === "navigate" ? props.newList.onNew() : setDialogOpen(true));
   const commitOrder = useCallback(async (ids: string[]) => {
@@ -79,6 +84,16 @@ export default function CategoryPage(props: CategoryPageProps) {
           className="hidden md:inline-flex rounded-xl bg-[#60a5fa] px-3.5 py-[7px] text-[13px] font-medium text-white whitespace-nowrap">＋ {newLabel}</button>
       </div>
       {props.toolbar}
+      {archived.length > 0 && (
+        <div role="radiogroup" aria-label={t("dashboard.wp3a.archive.archived")} className="flex gap-2">
+          {(["active", "archived"] as const).map((key) => (
+            <button key={key} type="button" role="radio" aria-checked={filter === key} onClick={() => setFilter(key)}
+              className={`min-h-[44px] rounded-full px-3 text-xs ${filter === key ? "bg-white/10 text-gray-50" : "text-gray-400"}`}>
+              {t(`dashboard.wp3a.archive.${key}`)}
+            </button>
+          ))}
+        </div>
+      )}
       {status.refreshing && lists.length > 0 && <p className="m-0 text-xs text-gray-400" aria-live="polite">{t("dashboard.wp3a.states.refreshing")}</p>}
       {showError && (
         <div role="alert" className="flex items-center gap-3 rounded-xl border border-red-400/40 bg-red-400/5 px-3 py-2.5 text-sm text-red-300">
@@ -86,7 +101,16 @@ export default function CategoryPage(props: CategoryPageProps) {
           <button type="button" onClick={props.onRetry} className="rounded-xl border border-white/10 px-3 py-1.5 text-gray-100">{t("dashboard.wp3a.states.retry")}</button>
         </div>
       )}
-      {showSkeleton ? (
+      {filter === "archived" && archived.length > 0 ? (
+        <ul data-testid="archived-lists" className="m-0 grid list-none gap-2 p-0">
+          {archived.map((list) => (
+            <li key={list.id} className="flex items-center gap-3 rounded-[14px] border border-white/10 px-3 py-2.5">
+              <span className="min-w-0 flex-1 truncate text-sm text-gray-100">{list.title}</span>
+              <RestoreListButton listId={list.id} category={category} onRestored={() => { setFilter("active"); onChanged(); }} />
+            </li>
+          ))}
+        </ul>
+      ) : showSkeleton ? (
         <div role="status" aria-label={t("dashboard.wp3a.states.loading")} className="grid gap-3.5">
           <div className="h-60 rounded-[18px] skeleton-shimmer bg-[#151a25]" />
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3">{[0, 1, 2].map((i) => <div key={i} className="h-[130px] rounded-[14px] bg-[#151a25] skeleton-shimmer" />)}</div>

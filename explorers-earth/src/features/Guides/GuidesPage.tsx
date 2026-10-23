@@ -1,4 +1,5 @@
 import CategoryPage from "../shared/category/CategoryPage";
+import { useArchivedLists } from "../shared/category/useArchivedLists";
 import { toListTopPicks } from "../shared/category/models";
 import { NavigationStatus } from "../navigation/NavigationStatus";
 import { useCategoryNavigation } from "../navigation/CategoryNavigationProvider";
@@ -52,6 +53,7 @@ const GuidesPage: React.FC = () => {
   // One bracketed owner read for every guide and its sections, replacing the Strapi
   // guides query. `lists` carries the editable collection observation each write needs.
   const { guides: ownedGuides, content, loading, error, refresh: refetch } = useGuidesOwner(undefined, true, { keepWhileRefreshing: true });
+  const archived = useArchivedLists("guides");
   const [isDeleting, setIsDeleting] = useState(false);
   const observedList = (documentId: string) => content?.lists.get(documentId);
 
@@ -551,6 +553,7 @@ const GuidesPage: React.FC = () => {
         category="guides"
         status={{ loading: isLoading, error: error ? (error instanceof Error ? error : new Error(String(error))) : null, refreshing: isLoading && allGuides.length > 0 }}
         lists={guideCards}
+        archivedLists={archived.lists}
         topPicks={toListTopPicks(allGuides as any[], guidePick)}
         pinCandidates={toListTopPicks(allGuides as any[], guidePick, false)}
         categoryVisibility={categoryVisible ? "public" : "hidden"}
@@ -558,7 +561,7 @@ const GuidesPage: React.FC = () => {
         onCategoryVisibility={() => handleVisibilityToggle()}
         onOpenList={(id) => navigate(`/guides/${id}`)}
         onRetry={() => refetch()}
-        onChanged={() => { invalidateGuides(); refetch(); }}
+        onChanged={() => { invalidateGuides(); refetch(); archived.reload(); }}
         onSetListStatus={async (id, next) => { await handleToggleVisibility(id, next !== "public"); }}
         newList={{ kind: "navigate", onNew: () => navigate("/guides/new") }}
         toolbar={<>
