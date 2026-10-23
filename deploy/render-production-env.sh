@@ -25,6 +25,8 @@
 #   optional   IGDB_CLIENT_ID (variable) + IGDB_CLIENT_SECRET (secret): Games search.
 #              Both or neither; with neither the lines are blank and Games stays
 #              manual-only, so a deploy never waits on the Twitch app.
+#   optional   GOOGLE_PLACES_API_KEY (secret): Places nearby lookup. Blank means
+#              OpenStreetMap only.
 #
 # The two database password FILES are generated on the host by
 # explorers-bootstrap.sh and never leave it; this file only names their paths.
@@ -76,6 +78,7 @@ for source in "${SOURCES[@]}"; do
 done
 single_line IGDB_CLIENT_ID
 single_line IGDB_CLIENT_SECRET
+single_line GOOGLE_PLACES_API_KEY
 if [[ -n "${IGDB_CLIENT_ID-}" && -z "${IGDB_CLIENT_SECRET-}" ]]; then
   echo "::error::Environment secret IGDB_CLIENT_SECRET is not set in explorers-production; IGDB needs both IGDB_CLIENT_ID and IGDB_CLIENT_SECRET, or neither." >&2; missing=1
 elif [[ -z "${IGDB_CLIENT_ID-}" && -n "${IGDB_CLIENT_SECRET-}" ]]; then
@@ -121,6 +124,7 @@ rm -f "$out"
   done
   printf 'IGDB_CLIENT_ID=%s\n' "${IGDB_CLIENT_ID-}"
   printf 'IGDB_CLIENT_SECRET=%s\n' "${IGDB_CLIENT_SECRET-}"
+  printf 'GOOGLE_PLACES_API_KEY=%s\n' "${GOOGLE_PLACES_API_KEY-}"
 } > "$out"
 chmod 0600 "$out"
 

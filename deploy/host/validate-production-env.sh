@@ -75,6 +75,13 @@ if [[ -n "$igdb_id" || -n "$igdb_secret" ]]; then
   fi
 fi
 
+# Places nearby (Google Places) is optional: blank means OpenStreetMap only.
+places_key="$(env_value GOOGLE_PLACES_API_KEY)"
+if [[ -n "$places_key" ]]; then
+  (( $(env_count GOOGLE_PLACES_API_KEY) == 1 )) || problem "GOOGLE_PLACES_API_KEY is set more than once"
+  [[ "$places_key" =~ ^[A-Za-z0-9_-]+$ && ${#places_key} -le 512 ]] || problem "GOOGLE_PLACES_API_KEY must be letters, digits, _ or -"
+fi
+
 origin="$(env_value EXPLORERS_PUBLIC_ORIGIN)"
 [[ "$origin" == "https://$server_name" ]] || problem "EXPLORERS_PUBLIC_ORIGIN must be exactly https://$server_name (no path, no trailing slash)"
 
