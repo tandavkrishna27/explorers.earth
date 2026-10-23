@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { canonicalCategoryAccount, categories, closeFixture, fixtureState, fixtureUser, openFixture, settings, toggle } from './setup/category-navigation';
+import { canonicalCategoryAccount, categories, closeFixture, fixtureState, fixtureUser, openFixture, settings, setHeaderVisibility, toggle } from './setup/category-navigation';
 import { submitPinnedCategoryUnpublish } from './setup/category-navigation-helpers';
 import { bookFixtureId } from './setup/books-owner-content';
 
@@ -34,7 +34,7 @@ for (const category of categories) {
       await expect(guest.page).toHaveURL(`${baseURL}/${fixtureUser.username}?utm_source=browser`);
       await owner.page.goto(`/recommendations/${category.route}`);
       const beforeOn = canonicalCategoryAccount(state);
-      await toggle(owner.page.getByRole('checkbox').first(), true);
+      await setHeaderVisibility(owner.page, true);
       expect(state.writes.at(-1)?.variables).toEqual(preferenceWrite(beforeOn, { category: category.route, isPublic: true }));
       expect(state.account.pinned_nav_tabs).toEqual(['public_profile', other]);
       await settings(owner.page, true);
@@ -169,22 +169,22 @@ test('last list Draft and Delete preserve category settings/pins, private items 
     await expect(guest.page.getByText('Public books', { exact: true }).first()).toBeVisible();
     await expect(guest.page.getByText('Private fixture list', { exact: true })).toHaveCount(0);
     await owner.page.goto('/recommendations/books');
-    const card = owner.page.locator('div.group').filter({ has: owner.page.getByRole('heading', { name: 'Public books', exact: true }) });
-    await card.getByRole('switch', { name: 'Toggle', exact: true }).click();
+    const card = owner.page.getByTestId('list-card').filter({ has: owner.page.getByRole('link', { name: 'Public books', exact: true }) });
+    await card.getByRole('switch', { name: 'Public: Public books', exact: true }).click();
     await expect(card.getByText('Draft', { exact: true })).toBeVisible();
     expect(state.writes.map(r => r.name)).toEqual([`PATCH ${publicCollectionPath}`]);
     await owner.page.reload(); await expect(card.getByText('Draft', { exact: true })).toBeVisible();
     await guest.page.reload(); await expect(guest.page.getByText('Public books', { exact: true })).toHaveCount(0);
-    await owner.page.getByRole('heading', { name: 'Public books', exact: true }).click();
+    await owner.page.getByRole('link', { name: 'Public books', exact: true }).click();
     await owner.page.getByRole('tab', { name: 'Manage', exact: true }).click();
     await owner.page.getByRole('button', { name: 'Archive list', exact: true }).click();
     await owner.page.getByRole('button', { name: 'Archive', exact: true }).click();
     await expect(owner.page).toHaveURL(`${baseURL}/recommendations/books`);
     expect(state.writes.map(r => r.name)).toEqual([`PATCH ${publicCollectionPath}`, `DELETE ${publicCollectionPath}`]);
-    await owner.page.getByRole('heading', { name: 'Private fixture list', exact: true }).click();
+    await owner.page.getByRole('link', { name: 'Private fixture list', exact: true }).click();
     await owner.page.getByRole('tab', { name: 'Manage', exact: true }).click();
     await owner.page.getByRole('button', { name: 'Archive list', exact: true }).click(); await owner.page.getByRole('button', { name: 'Archive', exact: true }).click();
-    await expect(owner.page.getByText('Build your library', { exact: true })).toBeVisible();
+    await expect(owner.page.getByRole('button', { name: /Create your first list$/ }).first()).toBeVisible();
     expect(state.lists.bookLists).toEqual([]); expect(state.writes.map(r => r.name)).toEqual([`PATCH ${publicCollectionPath}`, `DELETE ${publicCollectionPath}`, `DELETE ${privateCollectionPath}`]);
     expect({ public_books: state.account.public_books, pins: state.account.pinned_nav_tabs }).toEqual(before);
     await settings(owner.page, true); await expect(owner.page.getByRole('checkbox', { name: 'Books Tab', exact: true })).toBeChecked();

@@ -624,6 +624,22 @@ export async function toggle(control: Locator, checked: boolean) {
   if (await control.isChecked() !== checked) { await control.focus(); await control.press('Space'); }
   await expect(control).toBeChecked({ checked });
 }
+/** The category page header publish control: WP2's PublishPill menu button. */
+export function headerVisibility(page: Page) {
+  return page.getByRole('button', { name: /^Visibility: (Public|Hidden)$/ });
+}
+/** Header equivalent of toggle(): enabled = not aria-disabled; checked = "Visibility: Public". */
+export async function setHeaderVisibility(page: Page, isPublic: boolean) {
+  const pill = headerVisibility(page);
+  const target = isPublic ? 'Public' : 'Hidden';
+  await expect(pill).toBeVisible();
+  await expect(pill).not.toHaveAttribute('aria-disabled', 'true');
+  if (await pill.getAttribute('aria-label') !== `Visibility: ${target}`) {
+    await pill.click();
+    await page.getByRole('menuitemradio', { name: new RegExp(`^${target}`) }).click();
+  }
+  await expect(pill).toHaveAccessibleName(`Visibility: ${target}`);
+}
 export async function closeFixture(handle: Awaited<ReturnType<typeof openFixture>>) {
   try {
     await test.info().attach('fixture-boundary', { contentType: 'application/json', body: JSON.stringify({ denied: handle.guard.denied, unexpectedConsole: handle.guard.errors, expectedHttp: handle.guard.observedHttpErrors, vendorAttempts: handle.guard.vendors }) });

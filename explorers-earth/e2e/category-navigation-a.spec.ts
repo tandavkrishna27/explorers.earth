@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { canonicalCategoryAccount, categories, closeFixture, fixtureState, fixtureUser, openFixture, settings, toggle } from './setup/category-navigation';
+import { canonicalCategoryAccount, categories, closeFixture, fixtureState, fixtureUser, openFixture, settings, headerVisibility, setHeaderVisibility, toggle } from './setup/category-navigation';
 import { TOP_LEVEL_DESTINATIONS } from './setup/public-shell-continuity';
 import { expectTask6Shell, submitPinnedCategoryUnpublish, beginTask6FrameAudit, finishTask6FrameAudit, assertTask6FrameWindow, computedContrast, seedTask6App } from './setup/category-navigation-helpers';
 
@@ -481,8 +481,8 @@ for (const category of categories) {
     const guest = await openFixture(browser, baseURL!, state);
     try {
       await owner.page.goto(`/recommendations/${category.route}`);
-      await toggle(owner.page.getByRole('checkbox').first(), false);
-      await owner.page.reload(); await expect(owner.page.getByRole('checkbox').first()).not.toBeChecked();
+      await setHeaderVisibility(owner.page, false);
+      await owner.page.reload(); await expect(headerVisibility(owner.page)).toHaveAccessibleName('Visibility: Hidden');
       expect(state.account.pinned_nav_tabs).toEqual(['public_profile', other]); expect(state.account.auto_pinning).toBe(true);
       await guest.page.goto(`/${fixtureUser.username}/${category.route}`); await expect(guest.page).toHaveURL(`${baseURL}/${fixtureUser.username}`);
       await owner.page.goto('/recommendations');
