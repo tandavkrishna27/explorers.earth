@@ -36,9 +36,9 @@ function NewGuideForm({onOpenChange, defaultTitle = ''}: Omit<Props, 'open'>) {
   } finally {setSaving(false);}
  };
  return (
-  <div role="dialog" aria-modal="true" aria-labelledby="new-guide-title" className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 md:items-center"
+  <div role="dialog" aria-modal="true" aria-labelledby="new-guide-title" className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 md:items-center"
    onKeyDown={(e) => {if (e.key === 'Escape') onOpenChange(false);}}>
-   <form className="w-full max-w-md rounded-t-2xl bg-white p-5 md:rounded-2xl" onSubmit={(e) => {e.preventDefault(); if (valid && !saving) void submit();}}>
+   <form className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-dashboard bg-dashboard-modal p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-dashboard md:rounded-2xl [&_input:not([type=radio])]:border-dashboard [&_input:not([type=radio])]:bg-transparent [&_input]:text-dashboard" onSubmit={(e) => {e.preventDefault(); if (valid && !saving) void submit();}}>
     <h2 id="new-guide-title" className="text-lg font-semibold">{t('dashboard.wp9.newGuide', {defaultValue: 'New guide'})}</h2>
     <fieldset className="mt-3 flex gap-2">
      <legend className="sr-only">{t('dashboard.wp9.template', {defaultValue: 'Template'})}</legend>
@@ -61,13 +61,13 @@ function NewGuideForm({onOpenChange, defaultTitle = ''}: Omit<Props, 'open'>) {
       onKeyDown={(e) => {if (e.key === 'Enter' && tagDraft.trim()) {e.preventDefault(); setTags((v) => [...new Set([...v, tagDraft.trim()])].slice(0, 50)); setTagDraft('');}}}
       className="mt-1 w-full rounded border px-3 py-2" /></label>
     <div className="mt-2 flex flex-wrap gap-1">{tags.map((tag) => (
-     <button key={tag} type="button" onClick={() => setTags((v) => v.filter((x) => x !== tag))} className="rounded-full bg-gray-100 px-2 py-1 text-xs">{tag} ×</button>
+     <button key={tag} type="button" onClick={() => setTags((v) => v.filter((x) => x !== tag))} className="rounded-full border border-dashboard px-2 py-1 text-xs">{tag} ×</button>
     ))}</div>
-    <p className="mt-3 text-sm text-gray-500">{t('dashboard.wp9.startsDraft', {defaultValue: 'Starts as a draft only you can see'})}</p>
+    <p className="mt-3 text-sm text-dashboard-muted">{t('dashboard.wp9.startsDraft', {defaultValue: 'Starts as a draft only you can see'})}</p>
     {error && <p role="alert" className="mt-2 text-sm text-red-600">{error}</p>}
     <div className="mt-4 flex justify-end gap-2">
      <button type="button" onClick={() => onOpenChange(false)} className="min-h-[44px] px-4">{t('dashboard.wp9.cancel', {defaultValue: 'Cancel'})}</button>
-     <button type="submit" disabled={!valid || saving} className="min-h-[44px] rounded-lg bg-gray-900 px-4 text-white disabled:opacity-40">
+     <button type="submit" disabled={!valid || saving} className="min-h-[44px] rounded-lg bg-blue-600 px-4 text-white disabled:opacity-40">
       {saving ? '…' : t('dashboard.wp9.createGuide', {defaultValue: 'Create guide'})}</button>
     </div>
    </form>

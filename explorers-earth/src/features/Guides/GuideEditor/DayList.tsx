@@ -57,7 +57,7 @@ function DayCard({day, index, days, startDate, addBox, onDropNew, ...a}: DayList
  const item = (it: GuideDayItem) => {
   position += 1;
   const at = position;
-  return <ItemRow key={it.localId} item={it} index={at} day={day} days={days} startDate={startDate} onDrop={dropAt(at)} {...a} />;
+  return <ItemRow key={it.localId} item={it} index={at} day={day} days={days} startDate={startDate} onDrop={dropAt(at)} number={headed ? undefined : at + 1} {...a} />;
  };
  return (
   <section id={`guide-day-${day.id}`} aria-label={name} className="rounded-xl border border-white/10 bg-white/5 p-4 text-white"
@@ -85,7 +85,7 @@ function DayCard({day, index, days, startDate, addBox, onDropNew, ...a}: DayList
    {groups.map((group, g) => (
     <div key={g}>
      {group.heading && <h4 className="mb-1 mt-3 text-xs font-semibold uppercase tracking-wide text-gray-400">{group.heading}</h4>}
-     <ol className={headed ? 'space-y-1' : 'list-decimal space-y-1 pl-5 marker:text-gray-400'}>{group.items.map(item)}</ol>
+     <ol className="space-y-1">{group.items.map(item)}</ol>
     </div>
    ))}
    {addBox?.(day.id) ?? (
@@ -97,7 +97,7 @@ function DayCard({day, index, days, startDate, addBox, onDropNew, ...a}: DayList
  );
 }
 
-function ItemRow({item, index, day, days, startDate, onDrop, ...a}: DayListActions & {item: GuideDayItem; index: number; day: PlanDay; days: PlanDay[]; startDate: string | null; onDrop: (e: React.DragEvent) => void}) {
+function ItemRow({item, index, day, days, startDate, onDrop, number, ...a}: DayListActions & {item: GuideDayItem; index: number; day: PlanDay; days: PlanDay[]; startDate: string | null; onDrop: (e: React.DragEvent) => void; number?: number}) {
  const {t, i18n} = useTranslation();
  const [menu, setMenu] = useState<'closed' | 'main' | 'days'>('closed');
  const [held, setHeld] = useState<number | null>(null);
@@ -114,6 +114,7 @@ function ItemRow({item, index, day, days, startDate, onDrop, ...a}: DayListActio
      else if (held !== null && e.key === 'ArrowUp') {e.preventDefault(); setHeld(Math.max(held - 1, 0));}
      else if (e.key === 'Escape') setHeld(null);
     }}>⠿</button>
+   {number !== undefined && <span aria-hidden="true" className="w-5 shrink-0 text-right text-sm tabular-nums text-gray-400">{number}.</span>}
    <span className="min-w-0 flex-1 truncate" title={title}>{title}</span>
    <TimeLabelChip value={item.timeLabel} onChange={(label) => a.onSetTimeLabel(day.id, item.localId, label)} />
    <span className="hidden rounded bg-white/10 px-2 py-0.5 text-xs text-gray-300 sm:inline">{itemSourceText(item)}</span>

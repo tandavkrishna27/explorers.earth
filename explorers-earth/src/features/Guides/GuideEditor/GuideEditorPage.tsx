@@ -98,17 +98,17 @@ function Editor({initial, guide, list, refresh}: {initial: GuideObservation; gui
     ‹ {t('dashboard.wp9.back', {defaultValue: 'BACK TO GUIDES'})}</button>
    <header className="mt-2 flex items-start gap-3">
     <div className="min-w-0 flex-1">
-     <h1 className="line-clamp-2 text-2xl font-semibold" title={guide.Title}>{guide.Title}</h1>
-     <p className="text-sm text-gray-600">{meta}</p>
+     <h1 className="line-clamp-2 text-2xl font-semibold text-dashboard" title={guide.Title}>{guide.Title}</h1>
+     <p className="text-sm text-dashboard-muted">{meta}</p>
     </div>
-    {!wide && tab === 'plan' && <button type="button" onClick={() => setSheet(true)} className="min-h-[44px] rounded-full border px-3 text-sm md:hidden">
+    {!wide && tab === 'plan' && <button type="button" onClick={() => setSheet(true)} className="min-h-[44px] rounded-full border border-dashboard px-3 text-sm text-dashboard md:hidden">
      {t('dashboard.wp9.myLists', {defaultValue: 'My lists'})}</button>}
     <PublishPill kind="guide" value={guide.Visibility ? 'public' : 'draft'} privateComingSoon disabled={guide.isSample === true} onChange={setStatus} />
    </header>
-   <div role="tablist" className="mt-4 flex gap-4 border-b">
+   <div role="tablist" className="mt-4 flex justify-center gap-6 border-b border-dashboard">
     {(['plan', 'share', 'manage'] as const).map((k) => (
      <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
-      className={`min-h-[44px] px-1 text-sm ${tab === k ? 'border-b-2 border-gray-900 font-semibold' : 'text-gray-500'}`}>
+      className={`min-h-[44px] px-1 text-sm ${tab === k ? 'border-b-2 border-current font-semibold text-dashboard' : 'text-dashboard-muted'}`}>
       {t(`dashboard.wp9.tab.${k}`, {defaultValue: k === 'plan' ? 'Plan' : k === 'share' ? 'Share' : 'Manage'})}</button>
     ))}
    </div>
@@ -137,15 +137,15 @@ function Editor({initial, guide, list, refresh}: {initial: GuideObservation; gui
      {wide && <div className="hidden md:block">{panel}</div>}
     </div>
     {sheet && !wide && (
-     <div role="dialog" aria-modal="true" aria-label={t('dashboard.wp9.myLists', {defaultValue: 'My lists'})} className="fixed inset-0 z-50 flex items-end bg-black/40 md:hidden"
+     <div role="dialog" aria-modal="true" aria-label={t('dashboard.wp9.myLists', {defaultValue: 'My lists'})} className="fixed inset-0 z-[60] flex items-end bg-black/40 md:hidden"
       onClick={(e) => {if (e.target === e.currentTarget) setSheet(false);}} onKeyDown={(e) => {if (e.key === 'Escape') setSheet(false);}}>
-      <div className="max-h-[80vh] w-full overflow-y-auto rounded-t-2xl bg-slate-900 p-4">
-       <div className="mb-2 text-right"><button type="button" onClick={() => setSheet(false)} className="min-h-[44px] px-3 text-sm text-gray-300">{t('dashboard.wp9.done', {defaultValue: 'Done'})}</button></div>
+      <div className="max-h-[80vh] w-full overflow-y-auto rounded-t-2xl bg-slate-900 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+       <div className="mb-2 text-right"><button type="button" autoFocus onClick={() => setSheet(false)} className="min-h-[44px] px-3 text-sm text-gray-300">{t('dashboard.wp9.done', {defaultValue: 'Done'})}</button></div>
        {panel}
       </div>
      </div>
     )}
-    <BottomAddButton label={t('dashboard.wp9.addToDayButton', {defaultValue: '+ Add to {{day}}', day: dayName(index)})} onClick={() => setAdding(selected)} hidden={tab !== 'plan'} />
+    <BottomAddButton label={t('dashboard.wp9.addToDayLabel', {defaultValue: 'Add to {{day}}', day: dayName(index)})} onClick={() => setAdding(selected)} hidden={tab !== 'plan'} />
    </div>
    <div hidden={tab !== 'share'}><ShareTab adapter={adapter} /></div>
    <div hidden={tab !== 'manage'}><ManageTab adapter={adapter} /></div>

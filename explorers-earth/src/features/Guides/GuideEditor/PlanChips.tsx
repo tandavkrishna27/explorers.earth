@@ -6,7 +6,7 @@ export default function PlanChips({filled, active, onSelect}: {filled: Record<Ex
  const {t} = useTranslation();
  const chip = (s: PlanSection, label: string) => (
   <button key={s} type="button" role="tab" aria-selected={active === s} onClick={() => onSelect(s)}
-   className={`min-h-[40px] rounded-full px-4 text-sm ${active === s ? 'bg-gray-900 text-white' : 'bg-gray-100'}`}>{label}</button>);
+   className={`min-h-[40px] rounded-full px-4 text-sm ${active === s ? 'bg-blue-500/20 font-semibold text-dashboard ring-1 ring-blue-400/60' : 'border border-dashboard text-dashboard-muted hover:bg-white/5'}`}>{label}</button>);
  return (
   <div role="tablist" aria-label={t('dashboard.wp9.planSections', {defaultValue: 'Plan sections'})} className="flex flex-wrap gap-2">
    {chip('itinerary', t('dashboard.wp9.itinerary', {defaultValue: 'Itinerary'}))}

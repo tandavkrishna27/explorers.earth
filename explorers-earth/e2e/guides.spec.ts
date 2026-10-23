@@ -500,7 +500,7 @@ test.describe('Trip editor (WP9)', () => {
 
       // 7. Phone width: the bottom button adds to the selected day.
       await page.setViewportSize({ width: 375, height: 812 });
-      const bottom = page.getByTestId('bottom-add-bar').getByRole('button', { name: '+ Add to Day 1' });
+      const bottom = page.getByTestId('bottom-add-bar').getByRole('button', { name: 'Add to Day 1', exact: true });
       await expect(bottom).toBeVisible();
       await bottom.click();
       const box = page.getByRole('combobox', { name: 'Add to Day 1' });
