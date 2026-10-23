@@ -38,14 +38,15 @@ export default function ManageTab({ adapter }: { adapter: ListPageAdapter }) {
         <button type="button" disabled={busy || !title.trim()} onClick={() => run(() => adapter.rename({ title: title.trim(), description: description.trim() || null }), t("dashboard.wp3b.saved", "Saved"))}
           className="justify-self-start min-h-11 rounded-xl bg-blue-400 px-4 text-white disabled:opacity-50">{t("dashboard.wp3b.saveDetails", "Save details")}</button>
       </section>
-      <section className="grid gap-2 rounded-2xl border border-white/10 bg-[#151a25] p-4">
+      {/* WP11: a sample has no public URL to rename until it is made yours. */}
+      {!list.isSample && <section className="grid gap-2 rounded-2xl border border-white/10 bg-[#151a25] p-4">
         <label className="grid gap-1 text-xs">{t("dashboard.wp3b.listUrl", "List URL")}
           <input className={field} value={slug} onChange={(e) => setSlug(e.target.value.trim())} aria-invalid={!!slugError} /></label>
         {slugError ? <p className="text-xs text-red-300">{slugError}</p>
           : slug !== list.slug && <p className="text-xs text-gray-400">{t("dashboard.wp3b.slugKeepsWorking", "Old links and printed QR codes keep working.")}</p>}
         <button type="button" disabled={busy || slug === list.slug || !!slugError} onClick={() => run(() => adapter.rename({ slug }), t("dashboard.wp3b.urlSaved", "URL updated"))}
           className="justify-self-start min-h-11 rounded-xl border border-white/10 px-4 disabled:opacity-50">{t("dashboard.wp3b.saveUrl", "Save URL")}</button>
-      </section>
+      </section>}
       <section className="grid gap-3 rounded-2xl border border-red-400/30 p-4">
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setConfirming("archive")} className="min-h-11 rounded-xl border border-white/10 px-4">{t("dashboard.wp3b.archiveList", "Archive list")}</button>

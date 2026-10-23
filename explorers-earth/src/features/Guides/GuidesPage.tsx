@@ -531,6 +531,7 @@ const GuidesPage: React.FC = () => {
     id: guide.documentId, title: guide.Title ?? "", status: guide.Visibility ? ("public" as const) : ("draft" as const),
     itemCount: guide.sectionCount ?? guide.sections?.length ?? 0, pinnedCount: 0,
     covers: guide.Guide_Media?.[0]?.url ? [guide.Guide_Media[0].url] : [],
+    ...(guide.isSample === true ? { isSample: true } : {}),
   })), [guides]);
   // The state and handlers above stay for WP9 (ownership ruling C6), which rebuilds the Guides
   // filters, delete confirmation and pin flows on this page; the shared template does not use them yet.

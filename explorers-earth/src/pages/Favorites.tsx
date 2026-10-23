@@ -485,7 +485,7 @@ const Favorites = memo(() => {
   const placeCards = useMemo(() => [...((cities?.recommendationLists as any[]) ?? [])]
     .sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0))
     .map((city: any) => ({ id: city.documentId, title: city.List_Name ?? "", status: city.Visibility ? ("public" as const) : ("draft" as const),
-      itemCount: city.recommended_places?.length ?? 0, pinnedCount: 0, covers: city.List_Name_Details?.thumbnail ? [city.List_Name_Details.thumbnail] : [] })), [cities]);
+      itemCount: city.recommended_places?.length ?? 0, pinnedCount: 0, covers: city.List_Name_Details?.thumbnail ? [city.List_Name_Details.thumbnail] : [], ...(city.isSample === true ? { isSample: true } : {}) })), [cities]);
   const cityPick = { title: (c: any) => c.List_Name ?? "", image: (c: any) => c.List_Name_Details?.thumbnail ?? null, isPublic: (c: any) => Boolean(c.Visibility) };
 
   useEffect(() => {

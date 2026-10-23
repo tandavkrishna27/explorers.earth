@@ -1,3 +1,4 @@
+import {withSampleFlag} from '../../shared/samples/readIsSample';
 import {
  GUIDE_BUDGET_TIER_LABELS, GUIDE_SECTION_BLOCK_VERSION, GUIDE_TYPE_LABELS,
  budgetEntriesFromLegacy, legacyBudgetFromEntries, legacyTimelineFromItems, mergeLegacyTimeline,
@@ -196,7 +197,7 @@ export function toPlaceDetails(place: GuideAggregateDto['details']['place']): Pl
  * and the sections live on the aggregate. Keeping them separate in storage is what lets a
  * guide be pinned, ordered, published and archived by the same machinery as every list.
  */
-export function toGuide(collection: OwnerCollectionDto, aggregate: GuideAggregateDto, pinOrder: number | null = null): Guide {
+function toGuideBase(collection: OwnerCollectionDto, aggregate: GuideAggregateDto, pinOrder: number | null = null): Guide {
  const {details} = aggregate;
  return {
   documentId: collection.id,
@@ -329,3 +330,6 @@ export function toCanonicalSectionBlocks(input: {
   tags: input.Section_tags ?? [],
  };
 }
+
+/** WP11: a sample guide carries isSample (only when true). */
+export const toGuide: typeof toGuideBase = (...args) => withSampleFlag(args[0], toGuideBase(...args));

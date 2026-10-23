@@ -2588,5 +2588,24 @@
       "title": "অ্যাকাউন্ট মুছে ফেলা বাতিল করুন"
     },
     "scheduledForDeletion": "আপনার অ্যাকাউন্ট {{date}} তারিখে মুছে ফেলার জন্য নির্ধারিত। মুছে ফেলা বাতিল করতে Google দিয়ে চালিয়ে যান।"
+  },
+  "samples": {
+    "badge": "Sample",
+    "makeMine": "Make it mine",
+    "nowYours": "Now yours",
+    "deleteSample": "Delete sample",
+    "deleteTitle": "Delete this sample?",
+    "deleteBody": "It won't come back.",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "open": "Open",
+    "cannotPublish": "Samples can't be published. Make it mine to edit and publish it.",
+    "cannotShare": "Samples can't be shared. Make it yours to publish and share it.",
+    "onlyYou": "Only you can see this",
+    "onlyYouCantPublish": "Only you can see this · can't be published",
+    "bar": "A sample to show how a list works. Keep it, delete it, or make it yours to edit and publish.",
+    "madeMineToast": "It's yours now. Edit it and publish when ready.",
+    "deletedToast": "Sample deleted",
+    "failed": "That didn't work. Try again."
   }
 }

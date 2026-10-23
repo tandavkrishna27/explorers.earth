@@ -7,7 +7,7 @@ const account='00000000-0000-4000-8000-000000000701';
 const locationId='00000000-0000-4000-8000-000000000702';
 const childId='00000000-0000-4000-8000-000000000703';
 function signIn(){const generation=useAuthStore.getState().beginVerification();useAuthStore.getState().acceptVerified(generation,{id:account,userId:'link-user',username:'links',email:'links@example.invalid',onboardingStatus:'complete',revision:1});}
-function core(id:string,category:string,revision:number){return {id,accountId:account,category,title:'List',slug:'list',visibility:'private',publicationState:'draft',revision,description:null,heading:null,coverMediaId:null};}
+function core(id:string,category:string,revision:number){return {id,accountId:account,category,title:'List',slug:'list',visibility:'private',publicationState:'draft',revision,description:null,heading:null,coverMediaId:null,isSample:false};}
 function detail(id:string,category:string){return {...core(id,category,id===locationId?4:7),archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',...(category==='places'?{linkedChildren:[],placeLocation:{locationEntityId:null,locationSnapshot:null,instagramMediaUrl:null}}:category==='products'||category==='people'?{locationLink:null}:{})};}
 const reply=(value:unknown)=>new Response(JSON.stringify(value),{status:200});
 const observeChild=(id:string)=> (PlacesClient as typeof PlacesClient & {observeLocationChild:(id:string)=>Promise<CollectionObservation>}).observeLocationChild(id);

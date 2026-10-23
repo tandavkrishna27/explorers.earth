@@ -22,7 +22,7 @@ const writes:{url:string;options:RequestInit}[]=[];
 let editing=false,currentRevision=1,categoryRevision='9',expiresAt=Date.now()+60000;
 let storedCoordinates:{latitude:number|null;longitude:number|null}={latitude:null,longitude:null},storedContext=emptyPlaceContext(),storedMedia:string[]=[];
 let assignment={categoryTermId:id(25) as string|null,subcategoryTermId:id(26) as string|null};
-const collection={id:list,accountId:account,category:'places',title:'Synthetic list',slug:'synthetic-list',visibility:'private',publicationState:'draft',revision:4,description:null,heading:null,coverMediaId:null,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',linkedChildren:[],placeLocation:{locationEntityId:null,locationSnapshot:null,instagramMediaUrl:null}};
+const collection={id:list,accountId:account,category:'places',title:'Synthetic list',slug:'synthetic-list',visibility:'private',publicationState:'draft',revision:4,description:null,heading:null,coverMediaId:null,isSample:false,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',linkedChildren:[],placeLocation:{locationEntityId:null,locationSnapshot:null,instagramMediaUrl:null}};
 beforeEach(()=>{
  editing=false;currentRevision=1;categoryRevision='9';expiresAt=Date.now()+60000;assignment={categoryTermId:id(25),subcategoryTermId:id(26)};
  storedCoordinates={latitude:null,longitude:null};storedContext=emptyPlaceContext();storedMedia=[];

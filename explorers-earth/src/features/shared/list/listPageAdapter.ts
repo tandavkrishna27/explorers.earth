@@ -7,6 +7,8 @@ export type ListItemView = { id: string; title: string; subtitle?: string; note?
 export type ListView = {
   id: string; title: string; description: string | null; slug: string; coverUrl: string | null;
   status: "draft" | "public"; itemCount: number; publicUrl: string;
+  /** WP11: a first-visit sample list. */
+  isSample?: boolean;
 };
 
 // Built per category from that category's existing query/command hooks.

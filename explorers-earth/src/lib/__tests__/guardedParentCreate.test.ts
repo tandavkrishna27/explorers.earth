@@ -8,7 +8,7 @@ import type {CreateCollectionInput} from '../../../../tunes/shared/explorersCont
 
 const account='00000000-0000-4000-8000-000000000101',parentId='00000000-0000-4000-8000-000000000102',childId='00000000-0000-4000-8000-000000000103',otherId='00000000-0000-4000-8000-000000000104';
 const input=(category='products')=>({category,title:'Child',slug:'child',visibility:'private',publicationState:'draft'} as CreateCollectionInput);
-const core=(category='products')=>({id:childId,accountId:account,category,title:'Child',slug:'child',visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null});
+const core=(category='products')=>({id:childId,accountId:account,category,title:'Child',slug:'child',visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null,isSample:false});
 const receipt=(category='products')=>({collection:{...core(category),parentLocation:{id:parentId,revision:5}}});
 const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status});
 function signIn(id=account){const generation=useAuthStore.getState().beginVerification();useAuthStore.getState().acceptVerified(generation,{id,userId:otherId,username:'owner',email:'owner@example.invalid',onboardingStatus:'complete',revision:1});}

@@ -1,3 +1,4 @@
+import {withSampleFlag} from '../../shared/samples/readIsSample';
 import type {EditableOwnerRecommendation,OwnerCollectionDto,OwnerMembershipDto} from '../../../../../tunes/shared/explorersOwnerContentContract';
 import {personEntityDetailsSchema} from '../../../../../tunes/shared/explorersPersonContract';
 import type {PersonList,RecommendedPerson} from '../types';
@@ -66,7 +67,7 @@ export function personViewModel(detail:Readonly<EditableOwnerRecommendation>,mem
  };
 }
 
-export function collectionViewModel(collection:Readonly<OwnerCollectionDto>,people:RecommendedPerson[],username=''):PersonList{
+function collectionViewModelBase(collection:Readonly<OwnerCollectionDto>,people:RecommendedPerson[],username=''):PersonList{
  return {
   documentId:collection.id,
   List_Name:collection.title,
@@ -104,3 +105,6 @@ export const peopleViewModel={
   ))};
  },
 };
+
+/** WP11: the legacy list carries isSample (only when true) so cards, picks and the list page can badge it. */
+export const collectionViewModel:typeof collectionViewModelBase=(...args)=>withSampleFlag(args[0],collectionViewModelBase(...args));

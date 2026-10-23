@@ -74,7 +74,10 @@ export default function CategoryPage(props: CategoryPageProps) {
 
   const showSkeleton = status.loading && lists.length === 0;
   const showError = Boolean(status.error) && !status.loading;
-  const heroState = lists.length === 0 ? "firstVisit" : props.topPicks.length === 0 ? "empty" : "picks";
+  // WP11: once the owner removes their last sample, the page shows the ordinary empty state, not first-visit.
+  const [sampleTouched, setSampleTouched] = useState(false);
+  const sampleChanged = useCallback(() => { setSampleTouched(true); onChanged(); }, [onChanged]);
+  const heroState = lists.length === 0 ? (sampleTouched ? "empty" : "firstVisit") : props.topPicks.length === 0 ? "empty" : "picks";
 
   return (
     <DashboardPageContainer className="grid gap-3.5 pb-28 pt-2 md:pb-6">
@@ -134,7 +137,7 @@ export default function CategoryPage(props: CategoryPageProps) {
               {reorder.order.map((id) => byId.get(id)).filter((list): list is ListCardModel => Boolean(list)).map((list) => (
                 <ListCard key={list.id} category={category} list={list} busy={busyId === list.id}
                   dragging={reorder.dragging === list.id} over={reorder.over === list.id} picked={reorder.picked === list.id}
-                  onOpen={props.onOpenList} onSetStatus={setStatus} onMove={reorder.moveBy}
+                  onOpen={props.onOpenList} onSetStatus={setStatus} onMove={reorder.moveBy} onSampleChanged={sampleChanged}
                   grip={{
                     onKeyDown: (event) => reorder.onGripKey(list.id, event.nativeEvent),
                     onDragStart: () => reorder.dragStart(list.id), onDragOver: () => reorder.dragOver(list.id),

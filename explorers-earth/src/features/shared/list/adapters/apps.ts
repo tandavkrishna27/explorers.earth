@@ -9,6 +9,7 @@ import type { AppList } from "../../../AppsAndTools/types";
 import { explorersApiClient } from "../../../../lib/explorersApiClient";
 import { reorderListItems } from "../../../../lib/reorderListItems";
 import { buildListPublicUrl } from "../../../../utils/listShareUrls";
+import { readIsSample } from "../../samples/readIsSample";
 import type { ListPageAdapter } from "../listPageAdapter";
 
 const MAX_PINS = 15;
@@ -33,6 +34,7 @@ export function useAppsListAdapter(listId: string): ListPageAdapter {
         status: listData.Visibility ? ("public" as const) : ("draft" as const),
         itemCount: apps.length,
         publicUrl: buildListPublicUrl(user?.username ?? listData.account?.username, "apps", listData.slug),
+        ...(readIsSample(listData) ? { isSample: true } : {}),
       }
     : null;
 

@@ -9,6 +9,7 @@ import type { ProductList } from "../../../Products/types";
 import { explorersApiClient } from "../../../../lib/explorersApiClient";
 import { reorderListItems } from "../../../../lib/reorderListItems";
 import { buildListPublicUrl } from "../../../../utils/listShareUrls";
+import { readIsSample } from "../../samples/readIsSample";
 import type { ListPageAdapter, ListItemView, ListView } from "../listPageAdapter";
 
 const MAX_PINS = 15;
@@ -30,6 +31,7 @@ export function useProductsListAdapter(listId: string): ListPageAdapter {
     status: listData.Visibility ? "public" : "draft",
     itemCount: products.length,
     publicUrl: buildListPublicUrl(user?.username, "products", listData.slug),
+    ...(readIsSample(listData) ? { isSample: true } : {}),
   } : null;
 
   const items: ListItemView[] = products.map((p) => ({

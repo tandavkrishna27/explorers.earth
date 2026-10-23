@@ -15,7 +15,7 @@ vi.mock('framer-motion',async original=>{const actual=await original<typeof impo
 const account='00000000-0000-4000-8000-000000000101',parent='00000000-0000-4000-8000-000000000102',child='00000000-0000-4000-8000-000000000103',other='00000000-0000-4000-8000-000000000104';
 const rows=[{category:'products',Page:AddLinkedProductsPage,open:'Create a New Product List',submit:'Create & Add Products',title:'e.g. Paris Essentials, Travel Gear',description:"Describe what's in this product collection"},{category:'people',Page:AddLinkedPeoplePage,open:'Create a New People List',submit:'Create & Add People',title:'e.g. Local Creators, Inspiring Founders',description:'Describe the people in this collection'}] as const;
 type Row=typeof rows[number];
-const core=(category:string,id=child,rev=1)=>({id,accountId:account,category,title:id===parent?'Location':'Entered draft',slug:id===parent?'location':'entered-draft',description:'Preserved description',heading:null,coverMediaId:null,visibility:'private',publicationState:'draft',revision:rev});
+const core=(category:string,id=child,rev=1)=>({id,accountId:account,category,title:id===parent?'Location':'Entered draft',slug:id===parent?'location':'entered-draft',description:'Preserved description',heading:null,coverMediaId:null,isSample:false,visibility:'private',publicationState:'draft',revision:rev});
 const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status});
 const receipt=(category:string)=>({collection:{...core(category),parentLocation:{id:parent,revision:revision+1}}});
 const refusal=()=>reply({error:{code:'CONFLICT',message:'Refused',requestId:other}},409);

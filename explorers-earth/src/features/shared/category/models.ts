@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- legacy owner-read shapes differ per category */
+import { readIsSample } from "../samples/readIsSample";
+
 export type ListStatus = "public" | "draft";
 
 export interface ListCardModel {
@@ -8,6 +10,8 @@ export interface ListCardModel {
   itemCount: number;
   pinnedCount: number;
   covers: string[];
+  /** WP11: a first-visit sample (badged, private, can't be published). */
+  isSample?: boolean;
 }
 
 export interface TopPickModel {
@@ -20,6 +24,8 @@ export interface TopPickModel {
   pinned: boolean;
   /** Lists mode only: a draft list cannot be pinned. */
   pinnable: boolean;
+  /** WP11: the pick comes from a sample list. */
+  isSample?: boolean;
 }
 
 type LegacyItem = Record<string, any> & { documentId: string; is_pinned?: boolean; pin_order?: number | null };
@@ -40,6 +46,7 @@ export function toListCards(lists: LegacyList[], spec: { relation: string; visib
       itemCount: items.length,
       pinnedCount: items.filter((item) => item.is_pinned).length,
       covers: items.map(spec.cover).filter((url): url is string => Boolean(url)).slice(0, 4),
+      ...(readIsSample(list) ? { isSample: true } : {}),
     };
   });
 }
@@ -56,6 +63,7 @@ export function toItemTopPicks(
       seen.set(item.documentId, {
         id: item.documentId, title: spec.title(item), subtitle: spec.subtitle(item), imageUrl: spec.image(item),
         listId: list.documentId, listTitle: list.List_Name ?? "", pinned: Boolean(item.is_pinned), pinnable: true,
+        ...(readIsSample(item) || readIsSample(list) ? { isSample: true } : {}),
         order: item.pin_order ?? 999,
       });
     }
@@ -71,5 +79,5 @@ export function toListTopPicks(lists: (LegacyList & { is_pinned?: boolean; pin_o
     .filter((list) => !pinnedOnly || list.is_pinned)
     .sort((a, b) => (pinnedOnly ? (a.pin_order ?? 999) - (b.pin_order ?? 999) : 0))
     .map((list) => ({ id: list.documentId, title: spec.title(list), subtitle: null, imageUrl: spec.image(list), listId: list.documentId,
-      listTitle: spec.title(list), pinned: Boolean(list.is_pinned), pinnable: spec.isPublic(list) }));
+      listTitle: spec.title(list), pinned: Boolean(list.is_pinned), pinnable: spec.isPublic(list), ...(readIsSample(list) ? { isSample: true } : {}) }));
 }
