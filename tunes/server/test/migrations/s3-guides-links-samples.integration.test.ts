@@ -71,8 +71,12 @@ describePostgres("S3 migrations 0069-0071", () => {
     seeded.products = await collection("products", "Beach kit", 2);
     seeded.people = await collection("people", "Goa guides", 3);
     seeded.books = await collection("books", "Goa reads", 4);
-    await pool.query(`INSERT INTO collection_location_links(child_collection_id,account_id,child_category,location_collection_id) VALUES
-      ($1,$3,'products',$4),($2,$3,'people',$4)`, [seeded.products, seeded.people, accountId, seeded.places]);
+    // Two statements, so the links carry distinct created_at values: the backfill orders by
+    // created_at and only falls back to the (random) child id on a tie.
+    for (const [child, category] of [[seeded.products, "products"], [seeded.people, "people"]]) {
+      await pool.query(`INSERT INTO collection_location_links(child_collection_id,account_id,child_category,location_collection_id)
+        VALUES($1,$2,$3,$4)`, [child, accountId, category, seeded.places]);
+    }
 
     const upgraded = await migrateMusicDatabase(pool);
     expect(upgraded.appliedIds).toEqual([FIRST, "0070_explorers_list_links", "0071_explorers_samples"]);
