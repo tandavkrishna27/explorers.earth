@@ -1888,6 +1888,31 @@
       "useMyLocation": "Use my current location",
       "usePin": "Use the pin as a custom place",
       "useThisPin": "Use this pin"
+    },
+    "wp10": {
+      "linkedLists": "Linked lists",
+      "attach": "Attach",
+      "attachTitle": "Attach a list",
+      "findList": "Find a list",
+      "yourLists": "Your lists",
+      "noLists": "No other lists to attach yet.",
+      "createNew": "Create a new list",
+      "newListCategory": "Category for the new list",
+      "emptyManage": "Link another of your lists to show it under this one.",
+      "detach": "Detach",
+      "detachNamed": "Detach {{title}}",
+      "detached": "Detached {{title}}",
+      "attached": "Attached {{title}}",
+      "attachFailed": "Couldn't attach the list",
+      "detachFailed": "Couldn't detach the list",
+      "undo": "Undo",
+      "undoFailed": "Couldn't undo",
+      "archived": "Archived",
+      "roleFor": "Role for {{title}}",
+      "noRole": "No role",
+      "customRole": "Custom…",
+      "customRoleFor": "Custom role for {{title}}",
+      "roleFailed": "Couldn't save the role"
     }
   },
   "emailVerification": {
