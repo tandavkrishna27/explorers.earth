@@ -59,11 +59,11 @@ describe('category and publishing discovery', () => {
     ]);
   });
 
-  it('keeps the 45 baseline project/title identities once across both PR lanes and nightly discovery', () => {
+  it('keeps the 52 baseline project/title identities once across both PR lanes and nightly discovery', () => {
     const category = discover('playwright.category-navigation.config.ts');
     const a = discover('playwright.category-navigation-a.config.ts');
     const b = discover('playwright.category-navigation-b.config.ts');
-    expect(category).toHaveLength(45);
+    expect(category).toHaveLength(52);
     expect(keys(category)).toEqual(keys(manifest));
     expect(keys([...a, ...b])).toEqual(keys(manifest));
     expect(new Set(keys(a)).size).toBe(a.length);
