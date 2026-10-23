@@ -48,6 +48,38 @@ describe('DayList', () => {
   fireEvent.drop(target, {dataTransfer});
   expect(a.onMoveItem).toHaveBeenCalledWith('d1', 'c', 'd2', 0, {fromIndex: 2});
  });
+ // The server removes the item first and inserts at toIndex, so a drop "before row j" below the item is j - 1.
+ const dragWithinDay = (from: string, to: string | null) => {
+  const a = actions();
+  render(<DayList days={days} startDate={null} {...a} />);
+  const data = new Map<string, string>();
+  const dataTransfer = {setData: (k: string, v: string) => data.set(k, v), getData: (k: string) => data.get(k) ?? '', effectAllowed: '', dropEffect: ''};
+  fireEvent.dragStart(screen.getByText(from).closest('li')!, {dataTransfer});
+  fireEvent.drop(to ? screen.getByText(to).closest('li')! : screen.getByRole('region', {name: 'Day 1'}), {dataTransfer});
+  return a.onMoveItem;
+ };
+ it('drag down within a day lands before the target row', () => {
+  expect(dragWithinDay('Note a', 'Note c')).toHaveBeenCalledWith('d1', 'a', 'd1', 1, {fromIndex: 0});
+ });
+ it('drag down to the end of a day lands last', () => {
+  expect(dragWithinDay('Note a', null)).toHaveBeenCalledWith('d1', 'a', 'd1', 2, {fromIndex: 0});
+ });
+ it('drag up within a day lands before the target row', () => {
+  expect(dragWithinDay('Note c', 'Note a')).toHaveBeenCalledWith('d1', 'c', 'd1', 0, {fromIndex: 2});
+ });
+ it('dropping an item on itself does nothing', () => {
+  expect(dragWithinDay('Note b', 'Note b')).not.toHaveBeenCalled();
+ });
+ it('keyboard move down one and up one send the final position', async () => {
+  const a = actions();
+  render(<DayList days={days} startDate={null} {...a} />);
+  screen.getByRole('button', {name: 'Reorder Note a'}).focus();
+  await userEvent.keyboard(' {ArrowDown} ');
+  expect(a.onMoveItem).toHaveBeenLastCalledWith('d1', 'a', 'd1', 1, {fromIndex: 0});
+  screen.getByRole('button', {name: 'Reorder Note c'}).focus();
+  await userEvent.keyboard(' {ArrowUp} ');
+  expect(a.onMoveItem).toHaveBeenLastCalledWith('d1', 'c', 'd1', 1, {fromIndex: 2});
+ });
  it('drops a new item from My lists at the drop position', () => {
   const a = actions(), onDropNew = vi.fn();
   render(<DayList days={days} startDate={null} {...a} onDropNew={onDropNew} />);

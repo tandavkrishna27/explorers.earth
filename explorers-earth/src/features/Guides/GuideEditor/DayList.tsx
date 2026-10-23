@@ -44,7 +44,15 @@ function DayCard({day, index, days, startDate, addBox, onDropNew, ...a}: DayList
    return;
   }
   const raw = e.dataTransfer.getData(DRAG_TYPE) || e.dataTransfer.getData('text/plain');
-  try {const src = JSON.parse(raw); if (src.localId) a.onMoveItem(src.sectionId, src.localId, day.id, toIndex, {fromIndex: src.index});} catch {/* ignore */}
+  try {
+   const src = JSON.parse(raw);
+   if (!src.localId) return;
+   // toIndex is "before row toIndex" of the list as shown; the server inserts after removing the item, so below it that is one less.
+   const sameDay = src.sectionId === day.id && typeof src.index === 'number';
+   const target = sameDay && toIndex > src.index ? toIndex - 1 : toIndex;
+   if (sameDay && target === src.index) return;
+   a.onMoveItem(src.sectionId, src.localId, day.id, target, {fromIndex: src.index});
+  } catch {/* ignore */}
  };
  const item = (it: GuideDayItem) => {
   position += 1;
