@@ -25,7 +25,8 @@ import { useCityStore } from "../store/useCityStore";
 import { IMAGE_CONFIG } from "../config";
 import { motion, AnimatePresence } from "framer-motion";
 import CircularPlacesModal from "../components/CircularPlacesModal";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import { PLACE_LIST_PARAM } from "../features/Favorites/placeListRoute";
 import { CategoryVisibilityModal } from "../components/CategoryVisibilityModal";
 import SEO from "../components/SEO";
 import { createCanonicalUrl } from "../utils/getCurrentDomain";
@@ -116,6 +117,11 @@ const Favorites = memo(() => {
   const { t } = useTranslation();
   const { selectedCity, setSelectedCity } = useCityStore();
   const location = useLocation();
+  // OWN-05. The open list is in the URL; the city store follows it on entry and the URL
+  // follows the store afterwards, so a return path that names the list lands on it.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedListId = searchParams.get(PLACE_LIST_PARAM);
+  const appliedListParam = useRef<string | null | undefined>(undefined);
   // fetching the user details from the global state
   const { generation: sessionGeneration } = useAuthStore();
   const canonicalAccount = useCanonicalAccount();
@@ -533,17 +539,32 @@ const Favorites = memo(() => {
   });
 
   useEffect(() => {
-    // Set the default city when data is available
-    if (cities?.recommendationLists?.length && !selectedCity) {
-      setSelectedCity(cities?.recommendationLists?.[0] as unknown as selectedCity);
+    const lists = cities?.recommendationLists;
+    if (!lists?.length) return;
+    // A new ?list= (entry, or a return path) wins once over whatever the store holds.
+    if (requestedListId !== appliedListParam.current) {
+      appliedListParam.current = requestedListId;
+      const requested = requestedListId ? lists.find((list: any) => list.documentId === requestedListId) : undefined;
+      if (requested) {
+        if (selectedCity?.documentId !== requested.documentId) setSelectedCity(requested as unknown as selectedCity);
+        return;
+      }
     }
-  }, [
-    cities,
-    selectedCity,
-    handleLocationSubmit,
-    refetchCities,
-    setSelectedCity,
-  ]);
+    // The first list only when nothing names one.
+    if (!selectedCity) {
+      setSelectedCity(lists[0] as unknown as selectedCity);
+      return;
+    }
+    // Afterwards the URL follows the selection (city carousel, a newly created list).
+    if (selectedCity.documentId && selectedCity.documentId !== requestedListId) {
+      appliedListParam.current = selectedCity.documentId;
+      setSearchParams((previous) => {
+        const next = new URLSearchParams(previous);
+        next.set(PLACE_LIST_PARAM, selectedCity.documentId!);
+        return next;
+      }, { replace: true, state: location.state });
+    }
+  }, [cities, selectedCity, requestedListId, setSelectedCity, setSearchParams, location.state]);
 
   // filtering and sorting the cities based on pinning/display_order
   const filteredCities = useMemo(() => {
@@ -1058,7 +1079,8 @@ const Favorites = memo(() => {
       <div className="bg-dashboard-bg">
         <NavigationStatus navigation={navigation} />
         <div className="bg-dashboard-bg min-h-screen max-w-6xl mx-auto px-4 pt-0 md:pt-4 pb-4">
-          {(loading || !accountById) ? (
+          {/* OWN-06. Only a cold load replaces the page; a refresh keeps the last read. */}
+          {((loading && !cities) || !accountById) ? (
             <div className="flex items-center justify-center min-h-screen">
               <EarthLoader context="recommendations" size="default" />
             </div>
@@ -1457,10 +1479,7 @@ const Favorites = memo(() => {
                           Recommendations
                         </button>
                         <button
-                          onClick={() => {
-                            setActiveTab(t("dashboard.recommendations.manageTab"));
-                            refetchCities();
-                          }}
+                          onClick={() => setActiveTab(t("dashboard.recommendations.manageTab"))}
                           className={`px-4 py-1.5 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
                             activeTab === t("dashboard.recommendations.manageTab")
                               ? "bg-dashboard-accent text-[var(--dash-accent-text)] shadow-sm font-bold"
