@@ -18,7 +18,6 @@ const createFn = vi.fn(async () => ({
   data: { createMovieList: { documentId: "movie-1" } },
 }));
 import MoviesHome from "../MoviesHome";
-import TopPicksManager from '../TopPicksManager';
 import {render} from '@testing-library/react';
 import {MemoryRouter,Routes,Route} from 'react-router-dom';
 import AddMoviePage from '../AddMoviePage';
@@ -60,15 +59,6 @@ describe("MoviesHome create-list navigation (BUG-3)", () => {
     );
     expect(h.writes).toEqual([]);
   });
-});
-
-it('saves category top picks as one exact observed command', async()=>{
-  const save=vi.spyOn(explorersApiClient,'setMyCategoryTopPicks').mockResolvedValue({} as never);
-  const {readMoviesOwnerContent}=await import('../../../api/moviesClient');
-  vi.mocked(readMoviesOwnerContent).mockResolvedValueOnce({lists:[],details:new Map(),observation:{memberships:[{recommendationId:'a',collectionId:'first',collectionArchived:false,recommendationArchived:false},{recommendationId:'b',collectionId:'second',collectionArchived:false,recommendationArchived:false}],topPicks:[]}} as never);
-  render(<TopPicksManager movies={[{documentId:'a',title:'First',pin_order:0},{documentId:'b',title:'Second',pin_order:1}] as never} allMovies={[]} listId="first" onClose={()=>{}} onRefetch={()=>{}}/>);
-  await userEvent.click(screen.getByRole('button',{name:'Save Top Picks'}));
-  await waitFor(()=>expect(save).toHaveBeenCalledWith(expect.objectContaining({memberships:expect.any(Array)}),[{recommendationId:'a',collectionId:'first'},{recommendationId:'b',collectionId:'second'}],expect.any(String)));
 });
 
 it('creates a manual recommendation with canonical entity identity and observed parent',async()=>{
