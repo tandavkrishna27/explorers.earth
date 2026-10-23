@@ -4,13 +4,18 @@ import type {FlatCuratedCategory} from '../../../tunes/shared/explorersTaxonomyC
 
 export type CuratedTerm={id:string;label:string;parentId:string|null;slug:string};
 type State={terms:CuratedTerm[];unconfigured:boolean;loading:boolean;error:Error|null};
-const cache=new Map<string,Promise<{terms:CuratedTerm[];unconfigured:boolean}>>();
+/** A cached catalog is reused for 5 minutes, so admin edits reach a long-lived tab without a reload. */
+const CACHE_TTL_MS=5*60_000;
+type Entry={at:number;promise:Promise<{terms:CuratedTerm[];unconfigured:boolean}>};
+const cache=new Map<string,Entry>();
 
 export function useCuratedCatalog(category:FlatCuratedCategory|'movies'):State{
  const [state,setState]=useState<State>({terms:[],unconfigured:false,loading:true,error:null});
  useEffect(()=>{let live=true;
-  const pending=cache.get(category)??explorersApiClient.getCompleteTaxonomyCatalog({category}).then(page=>({unconfigured:page.state!=='CONFIGURED',terms:page.items.map(i=>({id:i.id,label:i.label,parentId:i.parentId,slug:i.slug}))}));
-  cache.set(category,pending);pending.catch(()=>cache.delete(category));
+  const now=Date.now(),cached=cache.get(category);
+  const entry=cached&&now-cached.at<CACHE_TTL_MS?cached:{at:now,promise:explorersApiClient.getCompleteTaxonomyCatalog({category}).then(page=>({unconfigured:page.state!=='CONFIGURED',terms:page.items.map(i=>({id:i.id,label:i.label,parentId:i.parentId,slug:i.slug}))}))};
+  const pending=entry.promise;
+  cache.set(category,entry);pending.catch(()=>{if(cache.get(category)===entry)cache.delete(category);});
   pending.then(v=>{if(live)setState({...v,loading:false,error:null});},(error:Error)=>{if(live)setState(s=>({...s,loading:false,error}));});
   return ()=>{live=false;};},[category]);
  return state;
