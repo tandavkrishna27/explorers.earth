@@ -150,6 +150,8 @@ async function editable(kind:'collections'|'recommendations',id:string,persona=m
   const body=await json(`/${kind}/${id}/editable?status=active`,persona);
   const value=body[kind==='collections'?'collection':'recommendation'];
   expect(value.id===id && value.accountId===persona.accountId && Number.isSafeInteger(value.revision)).toBe(true);
+  // The category content revision is a bigint carried as a decimal string; commands send a number.
+  if(value.categoryRevision!==undefined)value.categoryRevision=Number(value.categoryRevision);
   return value as Dto;
 }
 async function patchCollection(id:string,patch:Dto,persona=manifest.personas.ownerA) {
