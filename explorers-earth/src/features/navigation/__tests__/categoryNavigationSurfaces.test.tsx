@@ -93,8 +93,8 @@ function canonicalWrite(category?: string, isPublic?: boolean, pins = ['public_p
 }
 
 // The shared category template's publish pill (WP3A) replaced the per-page desktop and mobile switches.
-const categoryPill = () => screen.getByRole('button', { name: /^(🌐 Public|🔒 Hidden) ▾$/ });
-const findCategoryPill = () => screen.findByRole('button', { name: /^(🌐 Public|🔒 Hidden) ▾$/ });
+const categoryPill = () => screen.getByRole('button', { name: /^Visibility: (Public|Hidden)$/ });
+const findCategoryPill = () => screen.findByRole('button', { name: /^Visibility: (Public|Hidden)$/ });
 async function chooseCategoryVisibility(label: 'Public' | 'Hidden') {
   fireEvent.click(await findCategoryPill());
   const option = screen.getAllByRole('menuitemradio').find(node => node.textContent?.includes(label));
@@ -281,8 +281,13 @@ describe('ordinary category headers use verified navigation', () => {
     const h = surfaceHarness(<Component />, { lists: listFixture }); await h.ready();
     let release!: () => void; h.pauseMutation(new Promise(resolve => { release = resolve; }));
     await chooseCategoryVisibility('Hidden');
-    await waitFor(() => expect(categoryPill()).toBeDisabled());
+    // WP2's pill stays focusable while disabled (aria-disabled), so prove it is inert:
+    // it announces disabled and a click cannot open the menu to start a second save.
+    await waitFor(() => expect(categoryPill()).toHaveAttribute('aria-disabled', 'true'));
     expect(categoryPill()).toHaveTextContent('Public');
+    fireEvent.click(categoryPill());
+    expect(categoryPill()).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryAllByRole('menuitemradio')).toHaveLength(0);
     await act(async () => { release(); }); await waitFor(() => expect(h.navigation.busy).toBe(false));
     expect(h.saved[category]).toBe('No');
   });

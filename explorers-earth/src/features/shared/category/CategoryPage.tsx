@@ -74,7 +74,7 @@ export default function CategoryPage(props: CategoryPageProps) {
     <div className="mx-auto grid max-w-[720px] gap-3.5 px-4 pb-28 pt-2 md:px-1 md:pb-6">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="m-0 min-w-0 flex-1 text-xl font-bold text-gray-50">{title}</h2>
-        <PublishPill kind="category" value={props.categoryVisibility} categoryLabel={title} disabled={props.visibilityBusy} onChange={props.onCategoryVisibility} />
+        <PublishPill kind="category" value={props.categoryVisibility} categoryName={title} disabled={props.visibilityBusy} onChange={props.onCategoryVisibility} />
         <button type="button" onClick={startNew}
           className="hidden md:inline-flex rounded-xl bg-[#60a5fa] px-3.5 py-[7px] text-[13px] font-medium text-white whitespace-nowrap">＋ {newLabel}</button>
       </div>

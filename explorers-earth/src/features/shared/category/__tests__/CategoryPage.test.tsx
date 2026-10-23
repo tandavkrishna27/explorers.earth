@@ -29,7 +29,7 @@ describe("CategoryPage", () => {
   it("success: header, pill, New list, hero, dashed first card then cards", async () => {
     wrap(base());
     expect(screen.getByRole("heading", { level: 2, name: "Movies & Shows" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /🔒 Hidden/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Visibility: Hidden/ })).toBeInTheDocument();
     const grid = screen.getByTestId("list-grid");
     expect(within(grid).getAllByRole("button")[0]).toHaveTextContent("New list");
     expect(within(grid).getAllByTestId("list-card")).toHaveLength(2);
