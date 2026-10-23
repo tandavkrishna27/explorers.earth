@@ -80,4 +80,14 @@ describe('canonical navigation account through the shared query',()=>{
   expect(writes).toEqual([{expectedRevision:12,autoPinning:true}]);
   expect(client.getQueryData<AccountDto>(key)?.revision).toBe(13);
  });
+ it('a failed save read stays out of the shared account so page observers keep their data',async()=>{
+  const getMyProfile=vi.spyOn(explorersApiClient,'getMyProfile').mockResolvedValueOnce(account()).mockRejectedValueOnce(Error('offline'));
+  const client=new QueryClient();
+  const query=canonicalAccountQuery('auth-user-17',useAuthStore.getState().generation);
+  await client.fetchQuery(query);
+  const api=createCategoryNavigationApi({isCurrent:()=>true,accounts:accounts(client),profile:{getMyProfile,updateAccount:async()=>{throw Error('no write expected');}}});
+  await expect(api.commit(origin,{auto_pinning:true})).rejects.toBeTruthy();
+  expect(client.getQueryState(query.queryKey)?.status).toBe('success');
+  expect(client.getQueryData<AccountDto>(query.queryKey)?.revision).toBe(7);
+ });
 });

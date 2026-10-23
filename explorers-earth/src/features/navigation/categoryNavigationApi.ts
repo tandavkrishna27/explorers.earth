@@ -66,7 +66,9 @@ export function createCategoryNavigationApi(dependencies: {
    const {identityKey,generation}=dependencies.accounts.identity();
    const query=canonicalAccountQuery(identityKey,generation);
    // A save reads fresh (and refreshes the shared query); showing the tabs reuses it.
-   if(options.fresh)account=await dependencies.accounts.client.fetchQuery({...query,queryFn:async()=>{const fresh=await profile.getMyProfile();if(useAuthStore.getState().generation!==generation)throw new Error('Session changed');return fresh;},staleTime:0});
+   // A save's read stays outside the shared query so its failure cannot put the page's
+   // other account observers into an error state; only a success refreshes the cache.
+   if(options.fresh){account=await profile.getMyProfile();if(useAuthStore.getState().generation===generation)dependencies.accounts.client.setQueryData(query.queryKey,account);}
    else account=await dependencies.accounts.client.fetchQuery(query);
   } else account=await profile.getMyProfile();
   recordViewedAccount(account.revision);
