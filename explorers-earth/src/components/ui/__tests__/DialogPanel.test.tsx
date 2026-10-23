@@ -85,7 +85,6 @@ const NOT_A_DIALOG: Record<string, string> = {
   "features/PublicHome/components/PublicGuideControlPortal.tsx": "map surface portal, not an overlay dialog",
   "features/PublicHome/components/PublicGuideViews/GuideMapView.tsx": "map surface; place detail is GooglePlaceModal (DialogPanel)",
   "features/PublicHome/components/PublicProfileChromePrimitives.tsx": "decorative wallpaper layers",
-  "features/Favorites/components/RecommendForm.tsx": "busy indicator (role=status), not interactive",
   "features/Guides/pages/GuideDetailsPage.tsx": "backdrop host; place detail is GooglePlaceModal (DialogPanel)",
   "features/PublicHome/components/PublicGuideViews/PublicGuideStayView.tsx": "backdrop host; place detail is GooglePlaceModal (DialogPanel)",
   "features/PublicHome/components/PublicGuideViews/DayNavigationView.tsx": "backdrop host; place detail is PlaceOverview (DialogPanel)",

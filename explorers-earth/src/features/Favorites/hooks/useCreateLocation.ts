@@ -1,7 +1,7 @@
 import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
 import { ExplorersApiError } from "../../../lib/explorersApiClient";
 import useAuthStore from "../../../store/store";
-import { KeyValuePair } from "../components/RecommendForm";
+import { KeyValuePair } from "../formValues";
 import { toast } from "sonner";
 import { selectedCity, useCityStore } from "../../../store/useCityStore";
 import axios from "axios";

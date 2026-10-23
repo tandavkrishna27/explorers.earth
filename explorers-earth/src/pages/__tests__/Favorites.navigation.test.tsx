@@ -51,37 +51,34 @@ function renderAt(url: string) {
 const listA = { documentId: "location-a", List_Name: "Alpha City", slug: "alpha", Visibility: true, recommended_places: [], List_Name_Details: {} };
 const listB = { documentId: "location-b", List_Name: "Beta City", slug: "beta", Visibility: false, recommended_places: [], List_Name_Details: {} };
 
-describe("Favorites open list in the URL (OWN-05)", () => {
+describe("Favorites open list in the URL (OWN-05, WP6)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     h.lists = [listA, listB]; h.loading = false; h.row = undefined as any; h.selected = undefined as any;
     Element.prototype.scrollIntoView = vi.fn();
   });
 
-  it("opens the list named by ?list= even when the store holds another", async () => {
-    h.row = listA;
-    renderAt("/recommendations/places?list=location-b");
-    await waitFor(() => expect(h.selected?.documentId).toBe("location-b"));
-    expect(screen.getByTestId("url").textContent).toBe("/recommendations/places?list=location-b");
+  it("redirects the legacy ?list= deep link to the shared list route", async () => {
+    render(<MemoryRouter initialEntries={["/recommendations/places?list=location-b"]}><Routes>
+      <Route path="/recommendations/places" element={<><Favorites /><Probe /></>} />
+      <Route path="/recommendations/places/:listId" element={<Probe />} />
+    </Routes></MemoryRouter>);
+    await waitFor(() => expect(screen.getByTestId("url").textContent).toBe("/recommendations/places/location-b"));
+    expect(h.selectedChanged).not.toHaveBeenCalled();
   });
 
-  it("falls back to the first list only when ?list= is absent, and writes it to the URL", async () => {
+  it("falls back to the first list and leaves the URL alone", async () => {
     renderAt("/recommendations/places");
     await waitFor(() => expect(h.selected?.documentId).toBe("location-a"));
-    await waitFor(() => expect(screen.getByTestId("url").textContent).toBe("/recommendations/places?list=location-a"));
+    expect(screen.getByTestId("url").textContent).toBe("/recommendations/places");
   });
 
-  it("ignores an unknown ?list= and keeps a valid selection", async () => {
-    renderAt("/recommendations/places?list=gone");
-    await waitFor(() => expect(h.selected?.documentId).toBe("location-a"));
-  });
-
-  it("follows a selection change into the URL", async () => {
-    renderAt("/recommendations/places?list=location-a");
+  it("opens a list in place from the Places page", async () => {
+    renderAt("/recommendations/places");
     await waitFor(() => expect(h.selected?.documentId).toBe("location-a"));
     fireEvent.click(screen.getAllByText("Beta City")[0]);
-    await waitFor(() => expect(screen.getByTestId("url").textContent).toBe("/recommendations/places?list=location-b"));
-    expect(h.selected?.documentId).toBe("location-b");
+    await waitFor(() => expect(h.selected?.documentId).toBe("location-b"));
+    expect(screen.getByTestId("url").textContent).toBe("/recommendations/places");
   });
 });
 
@@ -90,7 +87,7 @@ describe("Favorites tab switch (OWN-06)", () => {
 
   it("keeps the page during a background refresh", async () => {
     h.loading = true;
-    renderAt("/recommendations/places?list=location-a");
+    renderAt("/recommendations/places");
     expect(screen.queryByTestId("earth-loader")).toBeNull();
     expect(screen.getAllByText("Alpha City").length).toBeGreaterThan(0);
   });
@@ -102,7 +99,7 @@ describe("Favorites tab switch (OWN-06)", () => {
   });
 
   it("switching to Manage does not refetch", async () => {
-    renderAt("/recommendations/places?list=location-a");
+    renderAt("/recommendations/places");
     fireEvent.click(screen.getAllByText("Alpha City")[0]);
     fireEvent.click(screen.getByRole("button", { name: "Manage" }));
     expect(h.refetch).not.toHaveBeenCalled();

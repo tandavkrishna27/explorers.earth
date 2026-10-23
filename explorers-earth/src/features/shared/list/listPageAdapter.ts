@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export type ListCategory = "movies" | "books" | "games" | "apps" | "products" | "people";
+export type ListCategory = "places" | "movies" | "books" | "games" | "apps" | "products" | "people";
 
 export type ListItemView = { id: string; title: string; subtitle?: string; note?: string; imageUrl?: string | null; rating?: number | null; pinned: boolean };
 
@@ -29,4 +29,5 @@ export type ListPageAdapter = {
   archive: () => Promise<void>;
   purge: () => Promise<void>;
   renderItemDetail?: (itemId: string) => ReactNode; // the category's existing detail modal
+  renderManageExtras?: () => ReactNode; // category-only list settings on the Manage tab (Places: social link)
 };

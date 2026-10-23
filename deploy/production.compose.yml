@@ -115,6 +115,8 @@ services:
       # Optional: Games search (IGDB). Blank keeps Games manual-only.
       IGDB_CLIENT_ID: ${IGDB_CLIENT_ID:-}
       IGDB_CLIENT_SECRET: ${IGDB_CLIENT_SECRET:-}
+      # Optional: Places nearby lookup (Google Places basic tier). Blank = OpenStreetMap only.
+      GOOGLE_PLACES_API_KEY: ${GOOGLE_PLACES_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy

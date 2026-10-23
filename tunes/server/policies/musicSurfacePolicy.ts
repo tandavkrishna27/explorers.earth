@@ -176,6 +176,7 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
   if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/movies')return 'explorers-owner';
   if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/games')return 'explorers-owner';
   if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/taxonomy')return 'explorers-owner';
+  if(route.source==='tunes/server/routes/explorersPlacesRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/places/nearby')return 'explorers-owner';
   if (route.source === 'tunes/server/routes/explorersAppEnrichmentRoutes.ts'
       && [
         ['PUT', '/api/explorers/v1/recommendations/:id/app-enrichment/binding'],
