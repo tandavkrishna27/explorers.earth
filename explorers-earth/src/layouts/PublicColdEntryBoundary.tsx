@@ -29,6 +29,8 @@ type PublicColdEntryValue = {
   contentRouteKey: string;
   routeReady: boolean;
   shellRevealed: boolean;
+  /** True while the cold-entry overlay is the visible loader (it owns loading). */
+  overlayVisible: boolean;
   reportValidation(status: "pending" | "valid" | "terminal-invalid"): void;
   reportIdentity(status: PublicIdentityStatus): void;
   reportRouteReady(ready: boolean): void;
@@ -90,11 +92,19 @@ export function PublicColdEntryBoundary({ children }: { children: ReactNode }) {
   const reportRouteReady = useCallback((ready: boolean) => {
     dispatch({ type: "route", contentRouteKey, ready });
   }, [contentRouteKey]);
+  // Keep the completed shell hidden for one layout frame before replacing the
+  // cold overlay. This lets newly mounted route content acquire its geometry
+  // without producing a visible cumulative layout shift.
+  const stageReadyIdentity = readiness.validation !== "terminal-invalid"
+    && readiness.shellRevealed
+    && paintedUsernameKey !== usernameKey;
+  const showOverlay = shouldShowColdEntryOverlay(readiness) || stageReadyIdentity;
   const value: PublicColdEntryValue = {
     usernameKey,
     contentRouteKey,
     routeReady: readiness.routeReady,
     shellRevealed: readiness.shellRevealed,
+    overlayVisible: showOverlay,
     reportValidation,
     reportIdentity,
     reportRouteReady,
@@ -105,13 +115,6 @@ export function PublicColdEntryBoundary({ children }: { children: ReactNode }) {
     return () => window.cancelAnimationFrame(frame);
   }, [paintedUsernameKey, readiness.shellRevealed, usernameKey]);
 
-  // Keep the completed shell hidden for one layout frame before replacing the
-  // cold overlay. This lets newly mounted route content acquire its geometry
-  // without producing a visible cumulative layout shift.
-  const stageReadyIdentity = readiness.validation !== "terminal-invalid"
-    && readiness.shellRevealed
-    && paintedUsernameKey !== usernameKey;
-  const showOverlay = shouldShowColdEntryOverlay(readiness) || stageReadyIdentity;
   const interactionGuard = showOverlay ? { inert: "" } : {};
 
   return <PublicColdEntryContext.Provider value={value}>

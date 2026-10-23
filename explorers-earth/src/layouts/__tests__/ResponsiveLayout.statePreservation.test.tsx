@@ -6,8 +6,7 @@ import ResponsiveLayout from '../ResponsiveLayout';
 vi.mock('../../components/Header', () => ({ default: () => <header data-testid="header" /> }));
 vi.mock('../../components/Navbar', () => ({ default: () => <nav data-testid="navbar" /> }));
 vi.mock('../../components/Sidenav', () => ({ default: () => <aside data-testid="sidebar" /> }));
-vi.mock('../../components/RouteLoader', () => ({ default: () => null }));
-vi.mock('../../components/EarthLoader', () => ({ EarthLoader: () => null }));
+vi.mock('../../components/EarthLoader', () => ({ EarthLoader: () => null, BootSplash: () => null }));
 vi.mock('../../routes/validators', () => ({ DashboardRouteValidator: ({ children }: any) => children }));
 vi.mock('../../features/navigation/CategoryNavigationProvider', () => ({ CategoryNavigationProvider: ({ children }: any) => children }));
 

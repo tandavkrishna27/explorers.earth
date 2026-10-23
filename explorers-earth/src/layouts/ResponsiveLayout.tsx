@@ -5,9 +5,8 @@ import Header from "../components/Header";
 import Navbar from "../components/Navbar";
 import { DashboardRouteValidator } from "../routes/validators";
 import { DashboardThemeProvider } from "../contexts/DashboardThemeContext";
-import RouteLoader from "../components/RouteLoader";
 import RouteFallback from "../components/RouteFallback";
-import { EarthLoader } from "../components/EarthLoader";
+import { BootSplash } from "../components/EarthLoader";
 import { CategoryNavigationProvider } from "../features/navigation/CategoryNavigationProvider";
 import useDeviceDetection from "../hooks/useDeviceDetection";
 
@@ -16,14 +15,9 @@ const isMainLandingPage = (path: string): boolean => {
     /^\/home$/,
     /^\/profile$/,
     /^\/recommendations$/,
-    /^\/recommendations\/places$/,
+    /^\/recommendations\/(places|movies|books|games|apps|products|people|guides)$/,
     /^\/analytics$/,
     /^\/settings$/,
-    /^\/recommendations\/movies$/,
-    /^\/recommendations\/books$/,
-    /^\/recommendations\/games$/,
-    /^\/recommendations\/apps$/,
-    /^\/recommendations\/products$/,
     /^\/guides$/,
   ];
   return mainPaths.some((regex) => regex.test(path));
@@ -116,11 +110,7 @@ const ResponsiveLayout = () => {
           ? "dashboard-theme flex h-screen bg-dashboard-bg overflow-hidden"
           : "dashboard-theme bg-dashboard-bg min-h-screen"}
         >
-          {isInitialLoading && (
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-dashboard-bg">
-              <EarthLoader context="general" size="default" />
-            </div>
-          )}
+          {isInitialLoading && <BootSplash overlay />}
           {isDesktop ? <Sidebar /> : null}
 
           {/* width/margin driven by body[data-sidebar-open] via CSS on desktop */}
@@ -128,7 +118,6 @@ const ResponsiveLayout = () => {
             ? "dashboard-content relative flex flex-col bg-dashboard-bg min-w-0"
             : undefined}
           >
-            <RouteLoader />
             <Header />
             <div
               ref={scrollContainerRef}
