@@ -73,4 +73,12 @@ The first drill of a real production backup, which closes the "production backup
 - Result: **passed**, `recoveryMilliseconds` 12830. Journal 64 rows, head 0064; every row count matched; restricted-role attestation passed; the app booted on the restored database. 1 account with an authenticated restored session; 107 media objects whose hashes all matched, 33 through the gated route.
 - Receipt: `recovery-receipt.json`, SHA-256 `e412ae2f257f12dbb40526a84da4f4b99055b157119db902a6418ee22861f62f`.
 - Why it was needed: dashboard-phase deploy checkpoint A (Wave 0, migrations 0065-0066). The gate compares the receipt's marker with the pre-deploy backup's marker, so the drill must be at the live head (0064), not the new one.
-- Known issue: the same drill run from `main` at `0eebdd4c` fails four times at runtime-role attestation, because Wave 0 (PR #198) changed the expected runtime privileges and the drill attests a 0064 restore against the 0066 expectations. Drilling from the backup's own commit avoids it; the drill tool needs a fix to attest against the restored marker's expectations.
+- Known issue: the same drill run from `main` at `0eebdd4c` fails four times at runtime-role attestation, because Wave 0 (PR #198) changed the expected runtime privileges and the drill attests a 0064 restore against the 0066 expectations. Drilling from the backup's own commit avoids it; the drill tool needs a fix to attest against the restored marker's expectations. Fixed by PR #201.
+
+## Production drill at 0066 (2026-10-23)
+
+- Backup: a manual backup taken for this drill (run `eb15b160`, reason `manual`, 2026-10-23T12:09Z), migration head `0066_explorers_list_redirects_and_delete`.
+- Drill: `npm run platform:restore-drill` on the owner's machine from a clean checkout of `main` at `86a72fc2`. It passed on the first attempt, which also confirms the PR #201 fix: drilling from current `main` works again.
+- Result: **passed**, `recoveryMilliseconds` 17338. Journal 66 rows, head 0066; every row count matched; restricted-role attestation passed; the app booted on the restored database. 1 account with an authenticated restored session; 100 media objects whose hashes all matched, 33 through the gated route.
+- Receipt: `recovery-receipt.json`, SHA-256 `9d2843f5cd6641c5ee49a6491e7f3de371926266741fb4c55bd77e5fd9c248cb`.
+- Why it was needed: dashboard-phase deploy checkpoint B (Wave 1). Wave 1 adds no migrations, so the live head stays 0066.
