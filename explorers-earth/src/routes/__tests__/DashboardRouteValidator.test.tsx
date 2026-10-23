@@ -71,4 +71,17 @@ describe('DashboardRouteValidator', () => {
     render(<DashboardRouteValidator><div>Child</div></DashboardRouteValidator>);
     expect(mockNavigate).not.toHaveBeenCalled();
   });
+
+  it.each(['/recommendations/places/list-1', '/recommendations/places/list-1/add', '/recommendations/places/list-1/edit/place-1'])(
+    'allows the shared Places list, add and edit route %s', (path) => {
+      mockLocationPathname = path;
+      render(<DashboardRouteValidator><div>Child</div></DashboardRouteValidator>);
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+  it('still refuses an unknown Places sub-route', () => {
+    mockLocationPathname = '/recommendations/places/list-1/unknown';
+    render(<DashboardRouteValidator><div>Child</div></DashboardRouteValidator>);
+    expect(mockNavigate).toHaveBeenCalled();
+  });
 });

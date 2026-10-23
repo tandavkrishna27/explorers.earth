@@ -20,7 +20,7 @@ const items = (key: ItemTopPickCategory, visibilityField: CategoryConfig["visibi
 });
 
 export const CATEGORY_CONFIG: Record<CategoryKey, CategoryConfig> = {
-  // WP0B's Places deep link (features/Favorites/placeListRoute.ts): /recommendations/places?list=<id>.
+  // Places lists live on the shared list page (features/Favorites/placeListRoute.ts): /recommendations/places/<id>.
   places: { key: "places", topPicks: "lists", pinLimit: 5, visibilityField: "public_recommendations", coverShape: "landscape", listRoute: (id) => placeListPath(id) },
   movies: items("movies", "public_movie", "portrait"),
   books: items("books", "public_books", "portrait"),

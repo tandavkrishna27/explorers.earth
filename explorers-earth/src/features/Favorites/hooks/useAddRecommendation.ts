@@ -2,7 +2,7 @@ import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
 import { normalizeRecommendationLink, normalizeSocialProfileUrl } from "../../../utils/url";
 import { validateImageFiles, maxImageMegabytes, type RejectedImage } from "../../../utils/imageFileValidation";
 import { useRef, useState } from "react";
-import { KeyValuePair } from "../components/RecommendForm";
+import { KeyValuePair } from "../formValues";
 import axios from "axios";
 import { Places } from "../../Profile/types/types";
 import useAuthStore from "../../../store/store";
@@ -126,7 +126,8 @@ interface AddRecommendation {
   setIsLoading: (boolean: boolean) => void;
   userInputRef: React.RefObject<HTMLInputElement>;
   isCustom: boolean;
-  recommendationType?: "place" | "person";
+  /** Where a create lands instead of the list (Save and add another). Read at completion. */
+  afterCreatePathRef?: { current: string | null };
   media_details?: {
     scalarId?: string;
     imageDetails?: { id: string; documentId: string }[];
@@ -237,7 +238,7 @@ export const useAddRecommendation = ({
   setPreviewUrl,
   setIsLoading,
   userInputRef,
-  recommendationType = "place",
+  afterCreatePathRef,
   fetchedPlace: fetchedPlaceResult,
   editObservation,
 }: AddRecommendation) => {
@@ -365,7 +366,7 @@ export const useAddRecommendation = ({
       console.warn("Recommendation was saved, but refreshing its list failed:", error);
     }
 
-    navigate(placeListPath(listId), {
+    navigate(afterCreatePathRef?.current ?? placeListPath(listId), {
       state: { justAddedRecommendationToListId: listId },
     });
     if (status === "saved") {
@@ -473,8 +474,7 @@ export const useAddRecommendation = ({
         return existingTitle === normalizedNewTitle && normalizedNewTitle !== "";
       });
       if (isDuplicate) {
-        const itemType = recommendationType === "person" ? "person" : "place";
-        toast.error(t("toast.error.placeAlreadyExists", { itemType }));
+        toast.error(t("toast.error.placeAlreadyExists", { itemType: "place" }));
         setIsLoading(false);
         return;
       }
@@ -497,23 +497,21 @@ export const useAddRecommendation = ({
         return;
       }
 
-      const provider = isCustom && recommendationType === "place" ? await fetchProviderFacts(places?.place_id) : null;
+      const provider = isCustom ? await fetchProviderFacts(places?.place_id) : null;
       const source = determineRecommendationSource(new URLSearchParams(window.location.search));
       const title = provider?.displayName?.text || values.title || "Untitled";
       const draft = {
         ...(values.placesTaxonomy===undefined?{}:{placesTaxonomy:placesTaxonomyAssignmentSchema.parse(values.placesTaxonomy)}),
         title,
-        details: recommendationType === "person" ? {} : placeFacts({ address: values.address, geoCoords: values.geoCoords, places, provider }),
-        context: recommendationContext(values, { recommendationType, source }),
+        details: placeFacts({ address: values.address, geoCoords: values.geoCoords, places, provider }),
+        context: recommendationContext(values, { recommendationType: "place", source }),
         note: richNoteFromEditor(typeof values.reason === "string" ? values.reason : ""),
         userRating: toNumberOrNull(values.userRating),
         photoMediaIds,
       };
 
       // The create command refreshes the owner view once; the uploads before it did not.
-      const created = recommendationType === "person"
-        ? await commands.createPerson(listId, draft)
-        : await commands.createPlace(listId, draft);
+      const created = await commands.createPlace(listId, draft);
       if (!created?.id) {
         throw new Error("Recommendation creation returned no persisted record");
       }
@@ -596,7 +594,8 @@ export const useAddRecommendation = ({
         userRating: toNumberOrNull(values.userRating),
         placePhotos: { photoMediaIds: [...existingPhotoMediaIds, ...uploadedIds] },
         placeContext: recommendationContext(values, {
-          recommendationType,
+          // A legacy person row keeps its stored type; new writes are always places (ADD-09).
+          recommendationType: fetchedPlace?.Recommendation_Type === "person" ? "person" : "place",
           source: determineRecommendationSource(new URLSearchParams(window.location.search)),
           existing: existingContext,
         }),
@@ -607,7 +606,7 @@ export const useAddRecommendation = ({
 
       // Correcting the place's own facts repoints this recommendation at a corrected
       // place; it never rewrites the place everyone else recommends.
-      if (recommendationType === "place") {
+      if (fetchedPlace?.Recommendation_Type !== "person") {
         const facts = placeFacts({ address: values.address, geoCoords: values.geoCoords, places, provider });
         const changed = facts.formattedAddress !== (fetchedPlace?.Place_Details?.Place_Address ?? null)
           || facts.latitude !== (fetchedPlace?.Place_Details?.Geometry?.lat ?? null)
