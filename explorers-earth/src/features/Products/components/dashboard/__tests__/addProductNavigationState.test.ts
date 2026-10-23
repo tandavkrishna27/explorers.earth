@@ -13,7 +13,7 @@ describe("AddProductPage success navigation", () => {
     // page also passed refetch: true, which nothing in Products read - the native
     // command invalidates the owner read itself.
     expect(source()).toContain("justAddedRecommendation: true");
-    expect(source()).toContain("navigate(`/recommendations/products/${listId}`, { state: { justAddedRecommendation: true } })");
+    expect(source()).toContain("back.goBack({ state: { justAddedRecommendation: true } })");
   });
 
   it("does not call the retired product scraper or the Strapi upload", () => {

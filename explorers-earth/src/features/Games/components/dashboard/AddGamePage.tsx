@@ -1,7 +1,7 @@
 import ReorderableMediaStrip from '../../../../components/reorder/ReorderableMediaStrip';
 import { useEffect, useRef, useState } from 'react';
 import { friendlyErrorMessage } from "../../../../utils/friendlyError";
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { ArrowLeft, Gamepad2, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import useAuthStore from '../../../../store/store';
@@ -12,13 +12,19 @@ import { useGamesCommands } from '../../api/query';
 import { invalidateGames, useGamesOwner } from '../../hooks/useGamesOwner';
 import { richNoteFromEditor } from '../../../../../../tunes/shared/explorersRichNoteContract';
 import TiptapEditor from '../../../Favorites/components/TiptapEditor';
+import { useOriginBack } from "../../../../lib/navigation/useOriginBack";
+import { listPath } from "../../../../lib/navigation/categoryRoutes";
+import { useTranslation } from "react-i18next";
 
 /** A comma-separated field as at most 12 trimmed, non-empty labels. */
 const labels = (value: string) => value.split(',').map(item => item.trim()).filter(Boolean).slice(0, 12);
 
 export default function AddGamePage() {
  const { listId, gameId } = useParams<{ listId: string; gameId?: string }>();
- const location = useLocation(), navigate = useNavigate();
+ const location = useLocation();
+ const { t: tBack } = useTranslation();
+ const back = useOriginBack({ to: listPath("games", listId!), label: tBack("dashboard.wp1.back.list") });
+ const backText = back.source === "state" && back.label ? tBack("dashboard.wp1.back.to", { name: back.label }) : tBack("dashboard.wp1.back.list");
  const generation = useAuthStore(state => state.generation), accountId = useAuthStore(state => state.accountId);
  const scope = JSON.stringify([generation, accountId, location.pathname, listId, gameId]);
  const currentScope = useRef(scope); currentScope.current = scope;
@@ -26,7 +32,7 @@ export default function AddGamePage() {
  const owner = useGamesOwner(undefined, true), commands = useGamesCommands();
  const [existingId, setExistingId] = useState('');
  const existingGames = [...new Map((owner.content?.view.lists.flatMap(list => list.recommended_games) ?? []).filter(game => !owner.content?.view.lists.find(list => list.documentId === listId)?.recommended_games.some(member => member.documentId === game.documentId)).map(game => [game.documentId, game])).values()];
- const attachExisting = async () => { const captured = scope; try { await commands.membership(existingId, listId!, true); if (valid(captured)) navigate(`/recommendations/games/${listId}`); } catch (failure) { if (valid(captured)) setError(friendlyErrorMessage(failure, 'Game could not be added')); } };
+ const attachExisting = async () => { const captured = scope; try { await commands.membership(existingId, listId!, true); if (valid(captured)) back.goBack(); } catch (failure) { if (valid(captured)) setError(friendlyErrorMessage(failure, 'Game could not be added')); } };
  const [title, setTitle] = useState(''), [note, setNote] = useState(''), [rating, setRating] = useState<number | null>(null);
  // Year, platforms and genres (GMS-X01): filled from an IGDB hit or typed; lists are comma-separated.
  const [year, setYear] = useState(''), [platforms, setPlatforms] = useState(''), [genres, setGenres] = useState('');
@@ -77,7 +83,7 @@ export default function AddGamePage() {
     }
     assertCurrent(captured, operation); await GamesClient.createManual(intent.current.value, signal); assertCurrent(captured, operation);
    }
-   invalidateGames(); toast.success('Game saved'); navigate(`/recommendations/games/${listId}`, { state: { justAddedRecommendation: true } });
+   invalidateGames(); toast.success('Game saved'); back.goBack({ state: { justAddedRecommendation: true } });
   } catch (failure) { if (valid(captured, operation)) setError(friendlyErrorMessage(failure, 'Game could not be saved')); }
   finally { if (valid(captured, operation)) setSaving(false); }
  };
@@ -102,12 +108,12 @@ export default function AddGamePage() {
  // stays owned by its original observation across refreshes and never rebases.
  if (gameId && initialized.current !== scope) {
   return <div className="min-h-screen text-dashboard p-4" style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom))" }}>
-   <button aria-label="Back to game list" onClick={() => navigate(`/recommendations/games/${listId}`)}><ArrowLeft size={20} /></button>
+   <button aria-label={backText} onClick={() => back.goBack()}><ArrowLeft size={20} /></button>
    <h1 className="font-semibold">Edit Game</h1>
    {owner.loading ? <p role="status">Loading game…</p> : <div role="alert"><p>{owner.error?.message || 'Game could not be loaded. Refresh before editing.'}</p><button onClick={owner.refetch}>Retry loading game</button></div>}
   </div>;
  }
- return <div className="min-h-screen text-dashboard"><header className="border-b border-dashboard-border px-4 md:px-6 py-3 flex items-center gap-3"><button aria-label="Back to game list" onClick={() => navigate(`/recommendations/games/${listId}`)}><ArrowLeft size={20} /></button><h1 className="font-semibold">{gameId ? 'Edit Game' : 'Add Game'}</h1></header>
+ return <div className="min-h-screen text-dashboard"><header className="border-b border-dashboard-border px-4 md:px-6 py-3 flex items-center gap-3"><button aria-label={backText} onClick={() => back.goBack()}><ArrowLeft size={20} /></button><h1 className="font-semibold">{gameId ? 'Edit Game' : 'Add Game'}</h1></header>
   <div className="max-w-3xl mx-auto p-4 md:p-6 space-y-6" style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom))" }}>
    {!gameId && <section className="rounded-2xl border border-dashboard-border bg-dashboard-sidebar p-5 space-y-3"><h2 className="font-semibold flex gap-2"><Search size={18} />Find a game</h2><input aria-label="Search for a game" placeholder="Search for a game..." value={query} onChange={event => setQuery(event.target.value)} className="w-full bg-dashboard-muted rounded-xl p-3" /><button disabled={!query.trim() || searching} onClick={search}>Search</button>{searching && <Loader2 className="inline animate-spin ml-2" size={16} aria-hidden />}{searchError && <p role="status">{searchError}</p>}
     {candidates.length > 0 && <ul className="space-y-2">{candidates.map(candidate => { const label = candidate.year ? `${candidate.title} (${candidate.year})` : candidate.title; return <li key={candidate.externalId}><button type="button" aria-label={`Use ${label}`} onClick={() => { void choose(candidate); }} className="flex w-full items-center gap-3 rounded-xl bg-dashboard-muted p-2 text-left">
