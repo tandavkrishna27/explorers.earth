@@ -317,7 +317,7 @@ for (const category of nativeCategories) {
     const state = fixtureState();
     const owner = await openFixture(browser, baseURL!, state, { owner: true });
     const list = `/recommendations/${category.route}/${category.route}-list`;
-    const back = () => owner.page.getByRole('button', { name: /^Back to / }).first();
+    const back = () => owner.page.getByRole('button', { name: /^(‹ )?Back to / }).first();
     try {
       // Deep link: no origin -> the list.
       await owner.page.goto(`${list}/add`);
@@ -331,8 +331,8 @@ for (const category of nativeCategories) {
         window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
       }, `${list}/add`);
       await owner.page.reload();
-      await expect(owner.page.getByRole('button', { name: 'Back to Home' })).toBeVisible();
-      await owner.page.getByRole('button', { name: 'Back to Home' }).click();
+      await expect(owner.page.getByRole('button', { name: /^(‹ )?Back to Home$/ })).toBeVisible();
+      await owner.page.getByRole('button', { name: /^(‹ )?Back to Home$/ }).click();
       await expect(owner.page).toHaveURL(`${baseURL}/home`);
 
       // Linked page (Places -> add person/product) passes redirectBack.
