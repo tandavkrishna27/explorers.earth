@@ -253,16 +253,33 @@ test.beforeEach(async ({},info)=>{manifest=await control('reset',info) as Places
 function child(category:'products'|'people') {
   return manifest.collections.find(c=>c.accountId===manifest.personas.ownerA.accountId && c.category===category && c.title===`Owned ${category==='products'?'Products':'People'}`)!;
 }
-function linkButton(page:Page,title:string,name:string) {
-  // This actual wrapper contains the h3 selection card and its sibling action.
-  return page.locator('div.flex.flex-col.gap-2').filter({has:page.getByRole('heading',{name:title,exact:true})})
-    .getByRole('button',{name,exact:true});
+// WP10. A Places list page has no tabs: the read-only "Linked lists" section and the Manage
+// panel (with Attach) both sit under the places, and both are regions named "Linked lists".
+const placeListPath=(id:string)=>`/recommendations/places?list=${encodeURIComponent(id)}`;
+const onPlaceList=(id:string)=>(url:URL)=>url.origin===fixture.origin && url.pathname==='/recommendations/places' && url.searchParams.get('list')===id && url.hash==='';
+function managePanel(page:Page) {
+  return page.getByRole('region',{name:'Linked lists',exact:true}).filter({has:page.getByRole('button',{name:'Attach',exact:true})});
 }
-const commandResponse=(page:Page,id:string,method:string)=>page.waitForResponse(r=>new URL(r.url()).pathname===`${base}/collections/${id}/location` && r.request().method()===method);
+function linkedSection(page:Page) {
+  return page.getByRole('region',{name:'Linked lists',exact:true}).filter({hasNot:page.getByRole('button',{name:'Attach',exact:true})});
+}
+async function openPicker(page:Page) {
+  await managePanel(page).getByRole('button',{name:'Attach',exact:true}).click();
+  const picker=page.getByRole('dialog',{name:'Attach a list',exact:true});await expect(picker).toBeVisible();return picker;
+}
+// LNK-06. "Create a new list" in the picker opens the shared New list dialog, which creates
+// the list and attaches it to the open list in one command.
+async function newListDialog(page:Page,category:string) {
+  const picker=await openPicker(page);
+  await picker.getByRole('combobox',{name:'Category for the new list',exact:true}).selectOption(category);
+  await picker.getByRole('button',{name:'Create a new list',exact:true}).click();
+  const form=page.getByRole('dialog',{name:'New list',exact:true});await expect(form).toBeVisible();return form;
+}
+const linkResponse=(page:Page,id:string,method:string)=>page.waitForResponse(r=>new URL(r.url()).pathname.startsWith(`${base}/collections/${id}/links`) && r.request().method()===method);
 async function assertRelation(parentId:string,childId:string,linked:boolean) {
   const parent=await editable('collections',parentId),value=await editable('collections',childId);
-  expect(parent.linkedChildren.some((link:Dto)=>link.childCollectionId===childId && link.locationCollectionId===parentId)).toBe(linked);
-  expect(linked?value.locationLink?.locationCollectionId===parentId:value.locationLink===null).toBe(true);
+  expect(parent.linkedLists.filter((card:Dto)=>card.direction==='outgoing' && card.collection.id===childId).length).toBe(linked?1:0);
+  expect(value.linkedLists.filter((card:Dto)=>card.direction==='incoming' && card.collection.id===parentId).length).toBe(linked?1:0);
 }
 async function patchAccount(patch:Dto) {
   const persona=manifest.personas.ownerA,current=await json('/me',persona);
@@ -278,30 +295,55 @@ const independentPath=(category:string,slug:string)=>`/profiles/${manifest.perso
 const membershipValues=(rows:Dto[])=>rows.map(row=>[row.collectionId,row.recommendationId,row.displayOrder]);
 const immutableParent=(row:Dto)=>Object.fromEntries(Object.entries(row).filter(([key])=>!['revision','categoryRevision','description'].includes(key)));
 
-test('Place links: existing Products and People lists attach detach and survive reload',async ({page})=>{
+test('Place links: existing Products and People lists attach detach and survive reload',async ({page},info)=>{
   const transport=await appPage(page,manifest.personas.ownerA);const [parent,second]=aLists();
+  const own=(title:string)=>manifest.collections.find(c=>c.accountId===manifest.personas.ownerA.accountId && c.title===title)!;
+  // WP10 (LNK-02). Any of the owner's lists attaches, not only Products and People.
+  const reads=own('Owned Reads'),apps=own('Owned Apps');
+  await page.goto(placeListPath(parent.id));await expect(managePanel(page)).toBeVisible();
   for(const category of ['products','people'] as const) {
     const item=child(category),before=await editable('collections',item.id),content=await complete(category);
     const ownRecommendations=content.recommendations.filter(r=>manifest.recommendations.some(seed=>seed.collectionId===item.id && seed.id===r.id));
-    await page.goto(`/recommendations/places/${parent.id}/add-${category}`);
-    await expect(page.getByRole('heading',{name:category==='products'?'Add Products':'Add People',exact:true})).toBeVisible();
-    const linked=commandResponse(page,item.id,'POST');
-    await linkButton(page,item.title,'Link to this location').click();const response=await linked;expect(response.status()).toBe(200);
-    const body=response.request().postDataJSON();expect(body.childCollectionId).toBe(item.id);expect(body.locationCollectionId).toBe(parent.id);
-    expect(body.expectedChildRevision).toBe(before.revision);expect(Number.isSafeInteger(body.expectedLocationRevision)).toBe(true);
+    const picker=await openPicker(page);await picker.getByRole('searchbox',{name:'Find a list',exact:true}).fill(item.title);
+    const linked=linkResponse(page,parent.id,'POST');
+    await picker.getByRole('option',{name:item.title,exact:true}).click();const response=await linked;expect(response.status()).toBe(201);
+    const body=response.request().postDataJSON();expect(body.linkedCollectionId).toBe(item.id);expect(body.role).toBe(null);
+    expect(Number.isSafeInteger(body.expectedHostRevision) && Number.isSafeInteger(body.expectedLinkedRevision)).toBe(true);
+    await expect(managePanel(page).getByRole('button',{name:`Detach ${item.title}`,exact:true})).toBeVisible();
     await assertRelation(parent.id,item.id,true);await page.reload();
-    await expect(linkButton(page,item.title,'Unlink from this location')).toBeVisible();
-    const detached=commandResponse(page,item.id,'DELETE');await linkButton(page,item.title,'Unlink from this location').click();
-    const removed=await detached;expect(removed.status()).toBe(200);expect(removed.request().postDataJSON().childCollectionId).toBe(item.id);
-    await assertRelation(parent.id,item.id,false);await page.reload();await expect(linkButton(page,item.title,'Link to this location')).toBeVisible();
+    await expect(linkedSection(page).getByRole('link',{name:new RegExp(item.title)})).toBeVisible();
+    // LNK-04 / OWN-13. Detach offers Undo; Undo restores the same link.
+    const detached=linkResponse(page,parent.id,'DELETE');await managePanel(page).getByRole('button',{name:`Detach ${item.title}`,exact:true}).click();
+    const removed=await detached;expect(removed.status()).toBe(200);await assertRelation(parent.id,item.id,false);
+    const undone=linkResponse(page,parent.id,'POST');await page.getByRole('button',{name:'Undo',exact:true}).click();
+    expect((await undone).status()).toBe(201);await assertRelation(parent.id,item.id,true);
+    await page.reload();await expect(managePanel(page).getByRole('button',{name:`Detach ${item.title}`,exact:true})).toBeVisible();
+    const final=linkResponse(page,parent.id,'DELETE');await managePanel(page).getByRole('button',{name:`Detach ${item.title}`,exact:true}).click();
+    expect((await final).status()).toBe(200);
+    await assertRelation(parent.id,item.id,false);await page.reload();
+    await expect(managePanel(page).getByRole('button',{name:`Detach ${item.title}`,exact:true})).toHaveCount(0);
     const after=await editable('collections',item.id);same([after.title,after.slug,after.description],[before.title,before.slug,before.description]);
     const afterContent=await complete(category);
     same(afterContent.memberships.filter(m=>m.collectionId===item.id).map(m=>[m.recommendationId,m.displayOrder]),
       content.memberships.filter(m=>m.collectionId===item.id).map(m=>[m.recommendationId,m.displayOrder]));
     same(afterContent.recommendations.filter(r=>ownRecommendations.some(original=>original.id===r.id)),ownRecommendations);
     for(const seed of manifest.recommendations.filter(r=>r.collectionId===item.id))expect((await editable('recommendations',seed.id)).entityId).toBe(seed.entityId);
-    expect((await editable('collections',second.id)).linkedChildren.some((link:Dto)=>link.childCollectionId===item.id)).toBe(false);
+    expect((await editable('collections',second.id)).linkedLists.some((card:Dto)=>card.collection.id===item.id)).toBe(false);
   }
+  for(const item of [reads,apps]) {
+    const picker=await openPicker(page);await picker.getByRole('searchbox',{name:'Find a list',exact:true}).fill(item.title);
+    const linked=linkResponse(page,parent.id,'POST');await picker.getByRole('option',{name:item.title,exact:true}).click();
+    expect((await linked).status()).toBe(201);await expect(managePanel(page).getByRole('button',{name:`Detach ${item.title}`,exact:true})).toBeVisible();
+  }
+  await page.reload();
+  for(const item of [reads,apps])await expect(linkedSection(page).getByRole('link',{name:new RegExp(item.title)})).toBeVisible();
+  // LNK-05. A linked list opens as itself and shows the link back (incoming); Back returns.
+  await linkedSection(page).getByRole('link',{name:new RegExp(reads.title)}).click();
+  await expect(page).toHaveURL(url=>url.pathname===`/recommendations/books/${reads.id}`);
+  await expect(linkedSection(page).getByRole('link',{name:new RegExp(parent.title)})).toBeVisible();
+  await page.goBack();await expect(page).toHaveURL(onPlaceList(parent.id));
+  const observed=await control('observe',info);
+  same(observed.relations.filter((r:Dto)=>r.location_collection_id===parent.id).map((r:Dto)=>r.child_collection_id).sort(),[reads.id,apps.id].sort());
   transport.assertExpected();expect(transport.observations.length).toBe(0);
 });
 
@@ -321,19 +363,19 @@ const transport=await appPage(page,manifest.personas.ownerA);const parent=aLists
     const product=category==='products';
     for(const phase of ['fresh','stale','lost-ack'] as const) {
       setPlaceLinksAtomicBoundary(info,category,phase,'iteration-entry');
-const title=`Created Linked ${product?'Products':'People'} ${phase}`,slug=`created-linked-${category}-${phase}`,description='Created through retained form';
+const title=`Created Linked ${product?'Products':'People'} ${phase}`,slug=`created-linked-${category}-${phase}`,description='Created through the attach picker';
       setPlaceLinksAtomicBoundary(info,category,phase,'navigation');
-await page.goto(`/recommendations/places/${parent.id}/add-${category}`);
+await page.goto(placeListPath(parent.id));
       setPlaceLinksAtomicBoundary(info,category,phase,'open-form');
-await page.getByRole('button',{name:product?/^Create a New Product List/:/^Create a New People List/}).click();
-      const form=page.getByRole('heading',{name:product?'Create New Product List':'Create New People List',exact:true}).locator('../..').locator('form');
-      const nameField=form.getByPlaceholder(product?'e.g. Paris Essentials, Travel Gear':'e.g. Local Creators, Inspiring Founders');
-      const descriptionField=form.getByPlaceholder(product?"Describe what's in this product collection":'Describe the people in this collection');
+const form=await newListDialog(page,category);
+      const nameField=form.getByLabel('Name',{exact:true});
+      const descriptionField=form.getByLabel('Short description (optional)',{exact:true});
+      const slugField=form.getByLabel('Web address',{exact:true});
       setPlaceLinksAtomicBoundary(info,category,phase,'fill-name');
 await nameField.fill(title);setPlaceLinksAtomicBoundary(info,category,phase,'fill-description');
 await descriptionField.fill(description);setPlaceLinksAtomicBoundary(info,category,phase,'fill-slug');
-await form.getByPlaceholder('my-list-url').fill(slug);
-      const submit=form.getByRole('button',{name:product?'Create & Add Products':'Create & Add People',exact:true});
+await slugField.fill(slug);
+      const submit=form.getByRole('button',{name:'Create list',exact:true});
       setPlaceLinksAtomicBoundary(info,category,phase,'baseline-reads');
 const before=await editable('collections',parent.id),content=await complete(category),observation=await control('observe',info);
       let release!:()=>void,held!:()=>void,originalBody='',originalKey='',receipt:Dto|undefined,committedParent:Dto|undefined;
@@ -346,7 +388,7 @@ const before=await editable('collections',parent.id),content=await complete(cate
       // BEGIN PLACE LINKS REPLAY DECLARATION PROBE
 let placeLinksReplayClickProbe=false;
 // END PLACE LINKS REPLAY DECLARATION PROBE
-      const handler=async (route:import('@playwright/test').Route)=>{
+const handler=async (route:import('@playwright/test').Route)=>{
 // BEGIN PLACE LINKS REPLAY REQUEST PROBE
 if(placeLinksReplayClickProbe && route.request().method()==='POST' && new URL(route.request().url()).pathname===`${base}/collections`)setPlaceLinksAtomicBoundary(info,category,phase,'replay-click-post');
 // END PLACE LINKS REPLAY REQUEST PROBE
@@ -373,50 +415,55 @@ const refused=phase==='stale'?createResponse():undefined;
           setPlaceLinksAtomicBoundary(info,category,phase,'held-click');
 await submit.click();setPlaceLinksAtomicBoundary(info,category,phase,'delivered');
 await delivered;
+          // The host's CATEGORY revision is read fresh right before the create (LNK-06).
           setPlaceLinksAtomicBoundary(info,category,phase,'held-checks');
-const initial=JSON.parse(originalBody);expect(initial.parentExpectedRevision).toBe(before.revision);
-          same([initial.category,initial.title,initial.slug,initial.description,initial.parentLocationCollectionId],[category,title,slug,description,parent.id]);
-          const readsBefore=parentReads;expect(readsBefore).toBe(1);
+const initial=JSON.parse(originalBody);expect(initial.attachTo.expectedHostRevision).toBe(before.categoryRevision);
+          same([initial.category,initial.title,initial.slug,initial.description,initial.attachTo.hostCollectionId,initial.attachTo.role],[category,title,slug,description,parent.id,null]);
+          const readsBefore=parentReads;expect(readsBefore>0).toBe(true);
           if(phase==='stale') {
             setPlaceLinksAtomicBoundary(info,category,phase,'stale-advance');
-const advanced=await patchCollection(parent.id,{description:`Concurrent ${category} stale revision`});expect(advanced.revision).toBe(before.revision+1);
+const advanced=await patchCollection(parent.id,{description:`Concurrent ${category} stale revision`});expect(advanced.categoryRevision>before.categoryRevision).toBe(true);
             setPlaceLinksAtomicBoundary(info,category,phase,'stale-release');
 release();setPlaceLinksAtomicBoundary(info,category,phase,'stale-response');
 const conflict=await refused!;expect(conflict.status()).toBe(409);errorBody(await conflict.json(),'CONFLICT');
             expect(conflict.request().postData()).toBe(originalBody);expect(conflict.request().headers()['idempotency-key']).toBe(originalKey);
+            // The New list dialog reports every 409 on its web address field and stays open.
             setPlaceLinksAtomicBoundary(info,category,phase,'conflict-visible');
-await expect(form.getByRole('button',{name:'Refresh location and retry',exact:true})).toBeVisible();
+await expect(form.getByRole('alert')).toBeVisible();
             setPlaceLinksAtomicBoundary(info,category,phase,'stale-preservation');
 same(await complete(category),content);same((await control('observe',info)).relations,observation.relations);
             same((await control('observe',info)).collections.filter((row:Dto)=>row.id!==parent.id),observation.collections.filter((row:Dto)=>row.id!==parent.id));
             same(await editable('collections',parent.id),advanced);
             setPlaceLinksAtomicBoundary(info,category,phase,'retained-fields');
-await expect(nameField).toHaveValue(title);await expect(descriptionField).toHaveValue(description);await expect(form.getByPlaceholder('my-list-url')).toHaveValue(slug);
-            expect(new URL(page.url()).pathname).toBe(`/recommendations/places/${parent.id}/add-${category}`);expect(parentReads).toBe(readsBefore);
+await expect(nameField).toHaveValue(title);await expect(descriptionField).toHaveValue(description);await expect(slugField).toHaveValue(slug);
+            await expect(page).toHaveURL(onPlaceList(parent.id));
             setPlaceLinksAtomicBoundary(info,category,phase,'stale-retry-register');
-const created=createResponse();setPlaceLinksAtomicBoundary(info,category,phase,'stale-retry-click');
-await form.getByRole('button',{name:'Refresh location and retry',exact:true}).click();setPlaceLinksAtomicBoundary(info,category,phase,'stale-retry-response');
+const created=createResponse();
+            setPlaceLinksAtomicBoundary(info,category,phase,'stale-retry-click');
+await submit.click();
+            setPlaceLinksAtomicBoundary(info,category,phase,'stale-retry-response');
 accepted=await created;
             setPlaceLinksAtomicBoundary(info,category,phase,'accepted-checks');
-expect(accepted.request().headers()['idempotency-key']).not.toBe(originalKey);expect(accepted.request().postDataJSON().parentExpectedRevision).toBe(advanced.revision);expect(parentReads).toBe(readsBefore+1);
+expect(accepted.request().headers()['idempotency-key']).not.toBe(originalKey);expect(accepted.request().postDataJSON().attachTo.expectedHostRevision).toBe(advanced.categoryRevision);expect(parentReads>readsBefore).toBe(true);
           } else {
             setPlaceLinksAtomicBoundary(info,category,phase,'replay-prerequisites');
-expect(receipt!.collection.parentLocation).toEqual({id:parent.id,revision:before.revision+1});expect(committedParent!.revision).toBe(before.revision+1);
+expect(receipt!.collection.attachedTo.hostCollectionId).toBe(parent.id);expect(receipt!.collection.attachedTo.hostCategoryRevision).toBe(committedParent!.categoryRevision);
             await assertRelation(parent.id,receipt!.collection.id,true);
             setPlaceLinksAtomicBoundary(info,category,phase,'lost-release');
 release();setPlaceLinksAtomicBoundary(info,category,phase,'uncertain-visible');
-await expect(form.getByRole('status')).toContainText('The create outcome is uncertain');
+await expect(page.getByText("Couldn't create the list. Try again.",{exact:true})).toBeVisible();
             setPlaceLinksAtomicBoundary(info,category,phase,'retained-fields');
-await expect(nameField).toHaveValue(title);await expect(descriptionField).toHaveValue(description);await expect(form.getByPlaceholder('my-list-url')).toHaveValue(slug);
-            await expect(form.getByRole('button',{name:'Refresh location and retry',exact:true})).toHaveCount(0);
-            expect(new URL(page.url()).pathname).toBe(`/recommendations/places/${parent.id}/add-${category}`);
+await expect(nameField).toHaveValue(title);await expect(descriptionField).toHaveValue(description);await expect(slugField).toHaveValue(slug);
+            await expect(page).toHaveURL(onPlaceList(parent.id));
             setPlaceLinksAtomicBoundary(info,category,phase,'replay-preservation');
 const committedContent=await complete(category),committedObserve=await control('observe',info);
             expect(committedContent.collections.length).toBe(content.collections.length+1);
             expect(committedContent.collections.filter(row=>row.id===receipt!.collection.id)).toHaveLength(1);
             same(committedContent.recommendations,content.recommendations);same(committedContent.memberships,content.memberships);
             setPlaceLinksAtomicBoundary(info,category,phase,'replay-advance');
-const later=await patchCollection(parent.id,{description:`Later ${category} receipt control`});expect(later.revision).toBe(before.revision+2);
+const later=await patchCollection(parent.id,{description:`Later ${category} receipt control`});expect(later.categoryRevision>committedParent!.categoryRevision).toBe(true);
+            // A second Create after an uncertain outcome is a NEW command (fresh key, fresh host
+            // read). The committed list owns the web address, so it is refused: never a duplicate.
             setPlaceLinksAtomicBoundary(info,category,phase,'replay-register');
 const replay=createResponse();setPlaceLinksAtomicBoundary(info,category,phase,'replay-click');
 // BEGIN PLACE LINKS REPLAY CLICK PROBE
@@ -449,39 +496,43 @@ if(category==='products' && info.project.name==='place-links-desktop') {
 await submit.click();setPlaceLinksAtomicBoundary(info,category,phase,'replay-response');
 accepted=await replay;
             setPlaceLinksAtomicBoundary(info,category,phase,'accepted-checks');
-expect(accepted.request().postData()).toBe(originalBody);expect(accepted.request().headers()['idempotency-key']).toBe(originalKey);
+expect(accepted.status()).toBe(409);errorBody(await accepted.json(),'CONFLICT');expect(accepted.request().headers()['idempotency-key']).not.toBe(originalKey);
             setPlaceLinksAtomicBoundary(info,category,phase,'replay-preservation');
-same(await accepted.json(),receipt);same(await complete(category),committedContent);same((await control('observe',info)).relations,committedObserve.relations);
+same(await complete(category),committedContent);same((await control('observe',info)).relations,committedObserve.relations);
             same((await control('observe',info)).collections.filter((row:Dto)=>row.id!==parent.id),committedObserve.collections.filter((row:Dto)=>row.id!==parent.id));
-            same(await editable('collections',parent.id),later);expect(parentReads).toBe(readsBefore);
+            same(await editable('collections',parent.id),later);await expect(form.getByRole('alert')).toBeVisible();await submit.press('Escape');
           }
         }
         setPlaceLinksAtomicBoundary(info,category,phase,'accepted-checks');
-expect(accepted.status()).toBe(201);const body=accepted.request().postDataJSON(),result=await accepted.json();
-        same([body.category,body.title,body.slug,body.description,body.parentLocationCollectionId],[category,title,slug,description,parent.id]);
-        expect(Number.isSafeInteger(body.parentExpectedRevision)).toBe(true);
-        expect(body.parentExpectedRevision).toBe(phase==='stale'?before.revision+1:before.revision);
-        same(result.collection.parentLocation,{id:parent.id,revision:body.parentExpectedRevision+1});
+if(phase!=='lost-ack')expect(accepted.status()).toBe(201);
+        const body=accepted.request().postDataJSON(),result=phase==='lost-ack'?receipt!:await accepted.json();
+        same([body.category,body.title,body.slug,body.description,body.attachTo.hostCollectionId,body.attachTo.role],[category,title,slug,description,parent.id,null]);
+        expect(Number.isSafeInteger(body.attachTo.expectedHostRevision)).toBe(true);
+        same([result.collection.title,result.collection.slug,result.collection.attachedTo.hostCollectionId],[title,slug,parent.id]);
         const id=result.collection.id;
+        // LNK-06. The owner stays on the origin list; the dialog is gone.
         setPlaceLinksAtomicBoundary(info,category,phase,'destination');
-await expect(page).toHaveURL(url=>url.origin===fixture.origin && url.pathname===`/recommendations/${category}/${id}/add` && JSON.stringify([...url.searchParams.keys()])===JSON.stringify(['redirectBack']) && JSON.stringify(url.searchParams.getAll('redirectBack'))===JSON.stringify(['/recommendations']) && url.hash==='');
+await expect(page).toHaveURL(onPlaceList(parent.id));await expect(form).toHaveCount(0);
         setPlaceLinksAtomicBoundary(info,category,phase,'parent-check');
-expect((await editable('collections',parent.id)).revision).toBe(body.parentExpectedRevision+(phase==='lost-ack'?2:1));
+expect((await editable('collections',parent.id)).linkedLists.filter((card:Dto)=>card.direction==='outgoing' && card.collection.id===id)).toHaveLength(1);
         setPlaceLinksAtomicBoundary(info,category,phase,'reload');
-await page.reload();setPlaceLinksAtomicBoundary(info,category,phase,'saved-checks');
-const saved=await editable('collections',id);same([saved.title,saved.slug,saved.description],[title,slug,description]);setPlaceLinksAtomicBoundary(info,category,phase,'relation-check');
+await page.reload();
+        setPlaceLinksAtomicBoundary(info,category,phase,'saved-checks');
+const saved=await editable('collections',id);same([saved.title,saved.slug,saved.description],[title,slug,description]);
+        setPlaceLinksAtomicBoundary(info,category,phase,'relation-check');
 await assertRelation(parent.id,id,true);
         setPlaceLinksAtomicBoundary(info,category,phase,'linked-count');
-expect((await editable('collections',parent.id)).linkedChildren.filter((link:Dto)=>link.childCollectionId===id && link.locationCollectionId===parent.id)).toHaveLength(1);
+await expect(managePanel(page).getByRole('button',{name:`Detach ${title}`,exact:true})).toBeVisible();
+        expect((await control('observe',info)).relations.filter((row:Dto)=>row.child_collection_id===id)).toHaveLength(1);
+        expect((await complete(category)).collections.filter(row=>row.slug===slug)).toHaveLength(1);
       recordPlaceLinksAtomicBody(info,'completed');
-} catch(nativeError){recordPlaceLinksAtomicBody(info,'caught');throw nativeError;} finally {setPlaceLinksAtomicCleanup(info,'release');release?.();setPlaceLinksAtomicCleanup(info,'listener-off');page.off('request',read);if(phase!=='fresh'){setPlaceLinksAtomicCleanup(info,'unroute');await page.unroute(routePath,handler);}setPlaceLinksAtomicCleanup(info,'completed');
-}
+} catch(nativeError){recordPlaceLinksAtomicBody(info,'caught');throw nativeError;} finally {setPlaceLinksAtomicCleanup(info,'release');release?.();setPlaceLinksAtomicCleanup(info,'listener-off');page.off('request',read);if(phase!=='fresh'){setPlaceLinksAtomicCleanup(info,'unroute');await page.unroute(routePath,handler);}setPlaceLinksAtomicCleanup(info,'completed');}
     }
     setPlaceLinksAtomicBoundary(info,category,'unavailable','negative-baseline');
 const b=manifest.personas.ownerB,before=(await complete(category,b)).collections.map(c=>c.id),currentParent=await editable('collections',parent.id),beforeNegative=await control('observe',info);
-    const invalid={category,title:'Foreign parent create',slug:`foreign-parent-${category}`,description:null,visibility:'private',publicationState:'draft',parentLocationCollectionId:parent.id,parentExpectedRevision:currentParent.revision};
+    const invalid={category,title:'Foreign parent create',slug:`foreign-parent-${category}`,description:null,visibility:'private',publicationState:'draft',attachTo:{hostCollectionId:parent.id,expectedHostRevision:currentParent.categoryRevision,role:null}};
     setPlaceLinksAtomicBoundary(info,category,'unavailable','negative-requests');
-const foreign=await api('/collections',b,'POST',invalid),missing=await api('/collections',b,'POST',{...invalid,parentLocationCollectionId:randomUUID()});
+const foreign=await api('/collections',b,'POST',invalid),missing=await api('/collections',b,'POST',{...invalid,attachTo:{...invalid.attachTo,hostCollectionId:randomUUID()}});
     setPlaceLinksAtomicBoundary(info,category,'unavailable','negative-checks');
 expect(foreign.status).toBe(404);expect(missing.status).toBe(404);same(errorBody(await foreign.json(),'NOT_FOUND'),errorBody(await missing.json(),'NOT_FOUND'));
     same((await complete(category,b)).collections.map(c=>c.id),before);
@@ -560,24 +611,26 @@ test('Place links: public children obey parent child category and account visibi
 test('Place links: stale and foreign link commands preserve both lists',async ({page},info)=>{
   const transport=await appPage(page,manifest.personas.ownerA);const parent=aLists()[0],item=child('products');
   const beforeParent=await editable('collections',parent.id),beforeChild=await editable('collections',item.id),content=await complete('products'),beforeObserve=await control('observe',info);
-  await page.goto(`/recommendations/places/${parent.id}/add-products`);
+  await page.goto(placeListPath(parent.id));await expect(managePanel(page)).toBeVisible();
   let release!:()=>void,held!:()=>void;const delivered=new Promise<void>(resolve=>held=resolve),gate=new Promise<void>(resolve=>release=resolve);
   let originalBody='',originalKey='',observedBody:Dto|undefined;
-  const routePath=`**${base}/collections/${item.id}/location`;
+  const routePath=`**${base}/collections/${parent.id}/links`;
   await page.route(routePath,async route=>{
     if(route.request().method()!=='POST')return route.continue();
     originalBody=route.request().postData()!;originalKey=route.request().headers()['idempotency-key'];observedBody=JSON.parse(originalBody);
     held();await gate;await route.continue();
   });
-  const conflict=commandResponse(page,item.id,'POST');
+  const conflict=linkResponse(page,parent.id,'POST');
   try {
-    await linkButton(page,item.title,'Link to this location').click();await delivered;
+    const picker=await openPicker(page);await picker.getByRole('searchbox',{name:'Find a list',exact:true}).fill(item.title);
+    await picker.getByRole('option',{name:item.title,exact:true}).click();await delivered;
     const actualParent=await editable('collections',parent.id);
-    expect(observedBody?.expectedLocationRevision).toBe(actualParent.revision);expect(observedBody?.expectedChildRevision).toBe(beforeChild.revision);
-    expect(observedBody?.childCollectionId).toBe(item.id);expect(observedBody?.locationCollectionId).toBe(parent.id);expect(Boolean(originalKey)).toBe(true);
-    const advanced=await patchCollection(parent.id,{description:'Actual concurrent owner revision'});expect(advanced.revision>actualParent.revision).toBe(true);
+    expect(observedBody?.expectedHostRevision).toBe(actualParent.categoryRevision);expect(observedBody?.expectedLinkedRevision).toBe(beforeChild.categoryRevision);
+    expect(observedBody?.linkedCollectionId).toBe(item.id);expect(Boolean(originalKey)).toBe(true);
+    const advanced=await patchCollection(parent.id,{description:'Actual concurrent owner revision'});expect(advanced.categoryRevision>actualParent.categoryRevision).toBe(true);
     release();const response=await conflict;expect(response.status()).toBe(409);
     expect(response.request().postData()===originalBody && response.request().headers()['idempotency-key']===originalKey).toBe(true);
+    await expect(managePanel(page).getByRole('button',{name:`Detach ${item.title}`,exact:true})).toHaveCount(0);
   } finally {release();await page.unroute(routePath);}
   await assertRelation(parent.id,item.id,false);same(await editable('collections',item.id),beforeChild);
   same(membershipValues((await complete('products')).memberships),membershipValues(content.memberships));same((await complete('products')).recommendations,content.recommendations);
@@ -585,26 +638,30 @@ test('Place links: stale and foreign link commands preserve both lists',async ({
   const parentAfter=await editable('collections',parent.id);expect(parentAfter.description).toBe('Actual concurrent owner revision');
   expect(parentAfter.revision>beforeParent.revision).toBe(true);same(immutableParent(parentAfter),immutableParent(beforeParent));
   same(afterObserve.collections.filter((row:Dto)=>row.id!==parent.id),beforeObserve.collections.filter((row:Dto)=>row.id!==parent.id));
-  await page.reload();const retry=commandResponse(page,item.id,'POST');await linkButton(page,item.title,'Link to this location').click();
-  const retried=await retry;expect(retried.status()).toBe(200);
-  expect(retried.request().postDataJSON().expectedLocationRevision).toBe(parentAfter.revision);
+  await page.reload();const picker=await openPicker(page);await picker.getByRole('searchbox',{name:'Find a list',exact:true}).fill(item.title);
+  const retry=linkResponse(page,parent.id,'POST');await picker.getByRole('option',{name:item.title,exact:true}).click();
+  const retried=await retry;expect(retried.status()).toBe(201);
+  expect(retried.request().postDataJSON().expectedHostRevision).toBe(parentAfter.categoryRevision);
   expect(retried.request().headers()['idempotency-key']!==originalKey).toBe(true);await assertRelation(parent.id,item.id,true);
-  // Canonical B setup supplies a valid Products child; a Places row is never used as a child.
+  const attach=(hostId:string,body:Dto,persona=manifest.personas.ownerA)=>api(`/collections/${hostId}/links`,persona,'POST',body);
+  // One link per unordered pair: the reverse of an existing link is refused.
+  const linkedNow=await editable('collections',item.id),hostNow=await editable('collections',parent.id),pairRelations=(await control('observe',info)).relations;
+  const reverse=await attach(item.id,{expectedHostRevision:linkedNow.categoryRevision,linkedCollectionId:parent.id,expectedLinkedRevision:hostNow.categoryRevision,role:null});
+  expect(reverse.status).toBe(409);same((await control('observe',info)).relations,pairRelations);
+  same(await editable('collections',item.id),linkedNow);same(await editable('collections',parent.id),hostNow);
+  // Owner B cannot link A's list from either side; a foreign list reads exactly like a missing one.
   const b=manifest.personas.ownerB,bParent=manifest.collections.find(c=>c.accountId===b.accountId && c.category==='places')!;
-  const created=await api('/collections',b,'POST',{category:'products',title:'Owner B foreign-link control',slug:'owner-b-foreign-link-control',description:null,visibility:'private',publicationState:'draft'});
-  expect(created.status).toBe(201);const bChildId=(await created.json() as Dto).collection.id;
-  const bChild=await editable('collections',bChildId,b),bLocation=await editable('collections',bParent.id,b);
+  const bLocation=await editable('collections',bParent.id,b);
   const aChild=await editable('collections',item.id),aParent=await editable('collections',parent.id);
-  const bIds=(await complete('products',b)).collections.map(c=>c.id),relations=(await control('observe',info)).relations;
-  const foreignParent={childCollectionId:bChildId,expectedChildRevision:bChild.revision,locationCollectionId:parent.id,expectedLocationRevision:aParent.revision};
-  const foreign=await api(`/collections/${bChildId}/location`,b,'POST',foreignParent);
-  const absent=await api(`/collections/${bChildId}/location`,b,'POST',{...foreignParent,locationCollectionId:randomUUID()});
+  const bIds=(await complete('places',b)).collections.map(c=>c.id),relations=(await control('observe',info)).relations;
+  const foreignLinked={expectedHostRevision:bLocation.categoryRevision,linkedCollectionId:item.id,expectedLinkedRevision:aChild.categoryRevision,role:null};
+  const foreign=await attach(bParent.id,foreignLinked,b),absent=await attach(bParent.id,{...foreignLinked,linkedCollectionId:randomUUID()},b);
   expect(foreign.status).toBe(404);expect(absent.status).toBe(404);same(normalized(await foreign.json()),normalized(await absent.json()));
-  const missing=randomUUID(),foreignChild={childCollectionId:item.id,expectedChildRevision:aChild.revision,locationCollectionId:bParent.id,expectedLocationRevision:bLocation.revision};
-  const denied=await api(`/collections/${item.id}/location`,b,'POST',foreignChild),missingChild=await api(`/collections/${missing}/location`,b,'POST',{...foreignChild,childCollectionId:missing});
-  expect(denied.status).toBe(404);expect(missingChild.status).toBe(404);same(normalized(await denied.json()),normalized(await missingChild.json()));
-  same((await complete('products',b)).collections.map(c=>c.id),bIds);same((await control('observe',info)).relations,relations);
-  same(await editable('collections',item.id),aChild);same(await editable('collections',parent.id),aParent);same(await editable('collections',bChildId,b),bChild);
+  const foreignHost={expectedHostRevision:aParent.categoryRevision,linkedCollectionId:bParent.id,expectedLinkedRevision:bLocation.categoryRevision,role:null};
+  const denied=await attach(parent.id,foreignHost,b),missingHost=await attach(randomUUID(),foreignHost,b);
+  expect(denied.status).toBe(404);expect(missingHost.status).toBe(404);same(normalized(await denied.json()),normalized(await missingHost.json()));
+  same((await complete('places',b)).collections.map(c=>c.id),bIds);same((await control('observe',info)).relations,relations);
+  same(await editable('collections',item.id),aChild);same(await editable('collections',parent.id),aParent);same(await editable('collections',bParent.id,b),bLocation);
   same(membershipValues((await complete('products')).memberships),membershipValues(content.memberships));same((await complete('products')).recommendations,content.recommendations);
   transport.assertExpected();expect(transport.observations.length).toBe(0);
 });
