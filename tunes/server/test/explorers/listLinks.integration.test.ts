@@ -7,6 +7,9 @@ import {readListLinksForCollection} from "../../repositories/listLinkRepository"
 import {RecommendationService} from "../../application/recommendations";
 import type {Actor} from "../../application/actor";
 import {OwnerContentService} from "../../application/ownerContent";
+import {publicLinkedLists} from "../../publicProfile/publicListLinkProjection";
+import {publicLinkedProductsLists} from "../../publicProfile/publicProductsProjection";
+import {publicLinkedPeopleLists} from "../../publicProfile/publicPeopleProjection";
 
 /**
  * WP10. Linking any of an owner's lists to any other of their lists, against a real
@@ -245,6 +248,47 @@ describePg("owner read (LNK-04, LNK-05)", () => {
     }
     await pool.query("UPDATE collections SET archived_at=now() WHERE id=$1", [t.id]);
     expect(((await reader.getCollection(actor, s.id, {}, true)) as any).linkedLists.map((c: any) => c.collection.archived)).toEqual([true]);
+  });
+});
+
+describePg("public link projection (LNK-07)", () => {
+  it("returns a link only when both lists are public, published, live and not samples", async () => {
+    const owner = await account();
+    for (const c of ["places", "products", "people", "books", "apps"]) await categoryPublic(owner, c);
+    const host = await list(owner, "places");
+    const shown = await list(owner, "products"), draft = await list(owner, "people"), sample = await list(owner, "books"), onward = await list(owner, "apps");
+    await publish(owner, host.id); await publish(owner, shown.id); await publish(owner, onward.id);
+    await pool.query("UPDATE collections SET is_sample=true WHERE id=$1", [sample.id]); // samples are always private drafts (0071 CHECK)
+    for (const t of [shown, draft, sample]) await attachVia(owner, host, t);
+    await attachVia(owner, shown, onward);
+    const db = await pool.connect();
+    try {
+      const cards = await publicLinkedLists(db, owner, host.id);
+      expect(cards.map(c => c.collectionId)).toEqual([shown.id]);
+      expect(cards[0]).not.toHaveProperty("linkedLists");
+      expect((await publicLinkedProductsLists(db, owner, host.id)).map((l: any) => l.documentId)).toEqual([shown.id]);
+      // The linked list sees the host as incoming, under the same rule.
+      expect((await publicLinkedLists(db, owner, shown.id)).map(c => c.collectionId).sort()).toEqual([host.id, onward.id].sort());
+      await pool.query("UPDATE collections SET visibility='private' WHERE id=$1", [host.id]);
+      expect(await publicLinkedLists(db, owner, shown.id).then(r => r.map(c => c.collectionId))).toEqual([onward.id]);
+      await categoryPublic(owner, "apps", false);
+      expect(await publicLinkedLists(db, owner, shown.id)).toEqual([]);
+    } finally { db.release(); }
+  });
+
+  it("serves rows backfilled from collection_location_links (LNK-09)", async () => {
+    const owner = await account();
+    for (const c of ["places", "people"]) await categoryPublic(owner, c);
+    const location = await list(owner, "places"), people = await list(owner, "people");
+    await publish(owner, location.id); await publish(owner, people.id);
+    // S3-8 owns the SQL backfill; here we assert the projection reads the backfilled shape.
+    await pool.query(`INSERT INTO collection_list_links(account_id,host_collection_id,host_category,linked_collection_id,linked_category,role,display_order)
+      VALUES($1,$2,'places',$3,'people',NULL,0)`, [owner, location.id, people.id]);
+    const db = await pool.connect();
+    try {
+      expect((await publicLinkedLists(db, owner, location.id, {category: "people"})).map(c => c.collectionId)).toEqual([people.id]);
+      expect((await publicLinkedPeopleLists(db, owner, location.id)).map((l: any) => l.documentId)).toEqual([people.id]);
+    } finally { db.release(); }
   });
 });
 
