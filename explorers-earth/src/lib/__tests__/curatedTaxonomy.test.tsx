@@ -14,6 +14,23 @@ it('an unconfigured catalog hides the picker instead of failing',async()=>{
  const {result}=renderHook(()=>useCuratedCatalog('apps'));
  await waitFor(()=>expect(result.current.unconfigured).toBe(true));
 });
+it('reuses a cached catalog for 5 minutes, then fetches it again',async()=>{
+ let now=1_000_000;const clock=vi.spyOn(Date,'now').mockImplementation(()=>now);
+ const fetch=vi.spyOn(explorersApiClient,'getCompleteTaxonomyCatalog');fetch.mockReset();fetch
+  .mockResolvedValueOnce({state:'CONFIGURED',items:[{id:'old',slug:'old',label:'Old',parentId:null,position:0}]} as never)
+  .mockResolvedValueOnce({state:'CONFIGURED',items:[{id:'new',slug:'new',label:'New',parentId:null,position:0}]} as never);
+ const first=renderHook(()=>useCuratedCatalog('products'));
+ await waitFor(()=>expect(first.result.current.terms.map(t=>t.id)).toEqual(['old']));first.unmount();
+ now+=5*60_000-1;
+ const second=renderHook(()=>useCuratedCatalog('products'));
+ await waitFor(()=>expect(second.result.current.terms.map(t=>t.id)).toEqual(['old']));second.unmount();
+ expect(fetch).toHaveBeenCalledTimes(1);
+ now+=2;
+ const third=renderHook(()=>useCuratedCatalog('products'));
+ await waitFor(()=>expect(third.result.current.terms.map(t=>t.id)).toEqual(['new']));
+ expect(fetch).toHaveBeenCalledTimes(2);
+ clock.mockRestore();fetch.mockRestore();
+});
 it('suggests a term from provider labels (subjects, IGDB genres)',()=>{
  const terms=[{id:'f',slug:'fantasy',label:'Fantasy',parentId:null},{id:'sf',slug:'science-fiction',label:'Science Fiction',parentId:null},{id:'pl',slug:'platformer',label:'Platformer',parentId:null}];
  expect(suggestTermFromLabels(terms,['Fiction / Fantasy / Epic'])).toBe('f');
