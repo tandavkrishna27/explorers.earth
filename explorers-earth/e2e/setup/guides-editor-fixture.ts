@@ -57,8 +57,11 @@ export function createGuidesEditorFixture() {
     const fail = (status: number, code: string) => json(status, { error: { code, message: 'Guides editor fixture refused the request', requestId: 'guides-editor' } });
     const params = Object.fromEntries(url.searchParams);
 
-    // Owner search for "From my lists": no saved items in this fixture, so every category is unavailable and the box skips it.
-    if (path === '/recommendations/search') return fail(503, 'PROVIDER_UNAVAILABLE');
+    // Owner search for "From my lists": no saved items in this fixture, so every category answers an empty page.
+    if (path === '/recommendations/search') return json(200, {
+      version: 'explorers-search/v1', expiresAt: Date.now() + 60_000, nextCursor: null,
+      scope: 'owner', snapshot: '1', snapshotToken: 'guides-editor', items: [],
+    });
 
     if (method === 'GET') {
       if (path === '/categories/guides/content-snapshot' || path === '/categories/guides/content-snapshot/validate') {
