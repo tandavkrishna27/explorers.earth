@@ -68,14 +68,14 @@ export class RecommendationService {
     return this.authorized(actor,'collections:write',async()=>{
       parseContent(contentIdSchema,collectionId);
       const command=parseContent(detachListLinkSchema,{...(input as object),linkId:linkId.toLowerCase()});
-      return listLinkCommandResultSchema.parse(await this.repository.removeListLink(actor.accountId,command,this.key(context)));
+      return listLinkCommandResultSchema.parse(await this.repository.removeListLink(actor.accountId,command,this.key(context),collectionId.toLowerCase()));
     });
   }
   async setListLinkRole(actor:Actor,collectionId:string,linkId:string,input:unknown,context:RequestContext){
     return this.authorized(actor,'collections:write',async()=>{
       parseContent(contentIdSchema,collectionId);
       const command=parseContent(setListLinkRoleSchema,{...(input as object),linkId:linkId.toLowerCase()});
-      return listLinkCommandResultSchema.parse(await this.repository.setListLinkRole(actor.accountId,command,this.key(context)));
+      return listLinkCommandResultSchema.parse(await this.repository.setListLinkRole(actor.accountId,command,this.key(context),collectionId.toLowerCase()));
     });
   }
   async setCategoryTopPicks(actor:Actor,category:string,input:unknown,context:RequestContext) {
@@ -90,7 +90,10 @@ export class RecommendationService {
   }
   async createCollection(actor:Actor,input:unknown,context:RequestContext) {
     return this.authorized(actor,'collections:write',async()=>{
-      const command=parseContent(createCollectionSchema,input);
+      const parsed=parseContent(createCollectionSchema,input);
+      // WP10. Lowercased before the receipt and storage, as attachListLink does, so a
+      // mixed-case replay of the same create is the same request.
+      const command=parsed.attachTo?{...parsed,attachTo:{...parsed.attachTo,hostCollectionId:parsed.attachTo.hostCollectionId.toLowerCase()}}:parsed;
       const result=createCollectionResultSchema.parse(await this.repository.createCollection(actor.accountId,command,this.key(context)));
       if(result.accountId!==actor.accountId||result.category!==command.category||result.revision!==1||
         (command.attachTo===undefined?result.attachedTo!==undefined:

@@ -492,17 +492,18 @@ export class ExplorersRecommendationRepository {
       return{link,attached:true,revisions:await this.linkRevisions(db,accountId,link)};
     });
   }
-  async removeListLink(accountId:string,input:DetachListLinkInput,key:string):Promise<ListLinkCommandResult> {
-    return this.command(accountId,'detachListLink',input,key,async db=>{
-      const current=await this.observeLink(db,accountId,input.linkId);
+  /** collectionId is the list in the URL; a link that touches neither end of it is a 404. */
+  async removeListLink(accountId:string,input:DetachListLinkInput,key:string,collectionId?:string):Promise<ListLinkCommandResult> {
+    return this.command(accountId,'detachListLink',collectionId===undefined?input:{...input,collectionId},key,async db=>{
+      const current=await this.observeLink(db,accountId,input.linkId,collectionId);
       await this.assertCategoryRevision(db,accountId,current.host_category,input.expectedHostRevision);
       const link=await deleteListLink(db,accountId,input.linkId);
       return{link,attached:false,revisions:await this.linkRevisions(db,accountId,link)};
     });
   }
-  async setListLinkRole(accountId:string,input:SetListLinkRoleInput,key:string):Promise<ListLinkCommandResult> {
-    return this.command(accountId,'setListLinkRole',input,key,async db=>{
-      const current=await this.observeLink(db,accountId,input.linkId);
+  async setListLinkRole(accountId:string,input:SetListLinkRoleInput,key:string,collectionId?:string):Promise<ListLinkCommandResult> {
+    return this.command(accountId,'setListLinkRole',collectionId===undefined?input:{...input,collectionId},key,async db=>{
+      const current=await this.observeLink(db,accountId,input.linkId,collectionId);
       await this.assertCategoryRevision(db,accountId,current.host_category,input.expectedHostRevision);
       const link=await updateListLinkRole(db,accountId,input.linkId,input.role??null);
       return{link,attached:true,revisions:await this.linkRevisions(db,accountId,link)};
@@ -517,8 +518,9 @@ export class ExplorersRecommendationRepository {
     return [host,linked] as const;
   }
   /** Locks the categories of an existing link of this account; 404 if it is not theirs. */
-  private async observeLink(db:PoolClient,accountId:string,linkId:string){
-    const row=(await db.query('SELECT host_category,linked_category FROM collection_list_links WHERE id=$1 AND account_id=$2',[linkId,accountId])).rows[0] as {host_category:string;linked_category:string}|undefined;
+  private async observeLink(db:PoolClient,accountId:string,linkId:string,collectionId?:string){
+    const row=(await db.query(`SELECT host_category,linked_category FROM collection_list_links WHERE id=$1 AND account_id=$2
+      AND ($3::uuid IS NULL OR host_collection_id=$3::uuid OR linked_collection_id=$3::uuid)`,[linkId,accountId,collectionId??null])).rows[0] as {host_category:string;linked_category:string}|undefined;
     if(!row)throw new RecommendationFailure(404,'Resource unavailable');
     await lockContentCategories(db,accountId,[row.host_category,row.linked_category]);
     return row;

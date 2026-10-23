@@ -454,3 +454,38 @@ describePg("place links on the list link model (LNK-09)", () => {
     expect(await linkCount(owner)).toBe(0);
   });
 });
+
+describePg("link commands are scoped to the list in the URL (review)", () => {
+  const ctx = () => ({requestId: key(), idempotencyKey: key()}) as never;
+
+  it("detach and role change 404 when the link does not touch the addressed list, and work from either end", async () => {
+    const owner = await account();
+    const a = await list(owner, "books"), b = await list(owner, "apps"), c = await list(owner, "movies");
+    const made = await attachVia(owner, b, c);
+    const service = new RecommendationService(pool);
+    const actor = await ownerOf(owner, ["collections:write"]);
+    await expect(service.setListLinkRole(actor, a.id, made.link.id, {expectedHostRevision: await categoryRevision(owner, "apps"), role: "Watch list"}, ctx()))
+      .rejects.toMatchObject({status: 404, message: "Resource unavailable"});
+    await expect(service.detachListLink(actor, a.id, made.link.id, {expectedHostRevision: await categoryRevision(owner, "apps")}, ctx()))
+      .rejects.toMatchObject({status: 404, message: "Resource unavailable"});
+    expect(await linkCount(owner)).toBe(1);
+    // The linked end (incoming) may change the role; the host end may detach. Upper case addresses the same list.
+    const role = await service.setListLinkRole(actor, c.id.toUpperCase(), made.link.id, {expectedHostRevision: await categoryRevision(owner, "apps"), role: "Watch list"}, ctx());
+    expect(role.link.role).toBe("Watch list");
+    const removed = await service.detachListLink(actor, b.id, made.link.id.toUpperCase(), {expectedHostRevision: await categoryRevision(owner, "apps")}, ctx());
+    expect(removed).toMatchObject({attached: false, link: {id: made.link.id}});
+  });
+
+  it("create-and-attach lowercases the host id, so a mixed-case replay is the same request", async () => {
+    const owner = await account(); const host = await list(owner, "guides");
+    const service = new RecommendationService(pool);
+    const actor = await ownerOf(owner, ["collections:write"]);
+    const slug = `replay-${key()}`, idempotencyKey = key(), expectedHostRevision = await categoryRevision(owner, "guides");
+    const input = (hostCollectionId: string) => ({category: "products", title: "Replay", slug, attachTo: {hostCollectionId, expectedHostRevision}});
+    const first = await service.createCollection(actor, input(host.id.toUpperCase()), {requestId: key(), idempotencyKey} as never);
+    const again = await service.createCollection(actor, input(host.id), {requestId: key(), idempotencyKey} as never);
+    expect(again).toEqual(first);
+    expect(first.attachedTo?.hostCollectionId).toBe(host.id);
+    expect(await readListLinksForCollection(pool, host.id, owner)).toHaveLength(1);
+  });
+});
