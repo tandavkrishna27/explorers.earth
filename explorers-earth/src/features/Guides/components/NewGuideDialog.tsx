@@ -4,7 +4,12 @@ import {useTranslation} from 'react-i18next';
 import {createTripGuide} from '../api/guideCreation';
 
 type Props = {open: boolean; onOpenChange: (open: boolean) => void; defaultTitle?: string};
-export default function NewGuideDialog({open, onOpenChange, defaultTitle = ''}: Props) {
+/** The form unmounts while closed, so every open starts from empty fields and the current defaultTitle. */
+export default function NewGuideDialog({open, ...rest}: Props) {
+ return open ? <NewGuideForm {...rest} /> : null;
+}
+
+function NewGuideForm({onOpenChange, defaultTitle = ''}: Omit<Props, 'open'>) {
  const {t} = useTranslation();
  const navigate = useNavigate();
  const location = useLocation();
@@ -18,7 +23,6 @@ export default function NewGuideDialog({open, onOpenChange, defaultTitle = ''}: 
  const [error, setError] = useState<string | null>(null);
  const dayCount = Number(days);
  const valid = title.trim().length > 0 && title.trim().length <= 200 && Number.isInteger(dayCount) && dayCount >= 1 && dayCount <= 60;
- if (!open) return null;
  const submit = async () => {
   setSaving(true); setError(null);
   try {

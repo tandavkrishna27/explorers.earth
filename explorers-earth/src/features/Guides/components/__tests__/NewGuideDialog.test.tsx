@@ -25,4 +25,13 @@ describe('NewGuideDialog (GD-03/04/05)', () => {
   render(<MemoryRouter><NewGuideDialog open onOpenChange={() => {}} /></MemoryRouter>);
   expect(screen.getByRole('button', {name: 'Create guide'})).toBeDisabled();
  });
+ it('starts fresh on every open and honours the new defaultTitle', async () => {
+  const view = (open: boolean, defaultTitle: string) => <MemoryRouter><NewGuideDialog open={open} onOpenChange={() => {}} defaultTitle={defaultTitle} /></MemoryRouter>;
+  const {rerender} = render(view(true, 'First'));
+  await userEvent.type(screen.getByLabelText('Destination (optional)'), 'Goa');
+  rerender(view(false, 'First'));
+  rerender(view(true, 'Second'));
+  expect(screen.getByLabelText('Title')).toHaveValue('Second');
+  expect(screen.getByLabelText('Destination (optional)')).toHaveValue('');
+ });
 });
