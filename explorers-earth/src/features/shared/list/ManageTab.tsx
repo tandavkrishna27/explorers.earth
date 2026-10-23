@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { slugProblem } from "./slugRules";
 import type { ListPageAdapter } from "./listPageAdapter";
+import { ManageLinkedLists } from "./OwnerListLinks";
 
 export default function ManageTab({ adapter }: { adapter: ListPageAdapter }) {
   const { t } = useTranslation();
@@ -46,6 +47,7 @@ export default function ManageTab({ adapter }: { adapter: ListPageAdapter }) {
         <button type="button" disabled={busy || slug === list.slug || !!slugError} onClick={() => run(() => adapter.rename({ slug }), t("dashboard.wp3b.urlSaved", "URL updated"))}
           className="justify-self-start min-h-11 rounded-xl border border-white/10 px-4 disabled:opacity-50">{t("dashboard.wp3b.saveUrl", "Save URL")}</button>
       </section>
+      <ManageLinkedLists collectionId={list.id} />
       <section className="grid gap-3 rounded-2xl border border-red-400/30 p-4">
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setConfirming("archive")} className="min-h-11 rounded-xl border border-white/10 px-4">{t("dashboard.wp3b.archiveList", "Archive list")}</button>

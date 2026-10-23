@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import ReorderableList from "../../../components/reorder/ReorderableList";
 import BottomAddButton from "../../../components/controls/BottomAddButton";
 import type { ListItemView, ListPageAdapter } from "./listPageAdapter";
+import { LinkedListsUnderItems } from "./OwnerListLinks";
 
 const messageOf = (error: unknown, fallback: string) => (error instanceof Error && error.message ? error.message : fallback);
 
@@ -23,11 +24,14 @@ export default function RecommendationsTab({ adapter, active }: { adapter: ListP
   }
   if (!adapter.items.length) {
     return (
-      <div className="mt-3 grid justify-items-center gap-3 rounded-2xl border border-dashed border-blue-400/45 px-4 py-9 text-center">
-        <b>{t("dashboard.wp3b.emptyTitle", "No {{noun}}s yet", { noun: adapter.itemNoun })}</b>
-        <span className="text-xs text-gray-400">{t("dashboard.wp3b.emptyHint", "Add your first {{noun}} to start this list.", { noun: adapter.itemNoun })}</span>
-        <button type="button" onClick={add} className="min-h-11 rounded-xl bg-blue-400 px-4 text-white">{addLabel}</button>
-      </div>
+      <>
+        <div className="mt-3 grid justify-items-center gap-3 rounded-2xl border border-dashed border-blue-400/45 px-4 py-9 text-center">
+          <b>{t("dashboard.wp3b.emptyTitle", "No {{noun}}s yet", { noun: adapter.itemNoun })}</b>
+          <span className="text-xs text-gray-400">{t("dashboard.wp3b.emptyHint", "Add your first {{noun}} to start this list.", { noun: adapter.itemNoun })}</span>
+          <button type="button" onClick={add} className="min-h-11 rounded-xl bg-blue-400 px-4 text-white">{addLabel}</button>
+        </div>
+        <LinkedListsUnderItems collectionId={adapter.list?.id} originLabel={adapter.list?.title} />
+      </>
     );
   }
   const save = async (next: ListItemView[]) => {
@@ -73,6 +77,7 @@ export default function RecommendationsTab({ adapter, active }: { adapter: ListP
           </div>
         )} />
       <button type="button" onClick={add} className="rounded-xl border border-dashed border-white/20 p-3 text-left text-sm text-gray-400 hover:border-blue-400 hover:text-blue-400">{addLabel}</button>
+      <LinkedListsUnderItems collectionId={adapter.list?.id} originLabel={adapter.list?.title} />
       <BottomAddButton label={addNoun} onClick={add} hidden={!active} />
     </div>
   );
