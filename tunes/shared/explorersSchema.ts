@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, bigint, boolean, timestamp, jsonb, integer, smallint, primaryKey, uniqueIndex, index, customType, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, bigint, boolean, timestamp, jsonb, integer, smallint, primaryKey, uniqueIndex, index, customType, numeric, date } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { auth_user } from "./authSchema";
 
@@ -266,6 +266,7 @@ export const guideCollectionDetails=pgTable('guide_collection_details',{
  collectionId:uuid('collection_id').primaryKey(),accountId:uuid('account_id').notNull(),category:text('category').notNull().default('guides'),
  guideType:text('guide_type'),multiCity:boolean('multi_city').notNull().default(false),numberOfDays:integer('number_of_days'),
  estimatedBudget:numeric('estimated_budget',{precision:14,scale:3}),budgetCurrency:text('budget_currency'),budgetType:text('budget_type'),budgetTier:text('budget_tier'),
+ startDate:date('start_date',{mode:'string'}),
  bestTimeToVisit:jsonb('best_time_to_visit').notNull().default(sql`'[]'::jsonb`),categories:jsonb('categories').notNull().default(sql`'[]'::jsonb`),
  tags:jsonb('tags').notNull().default(sql`'[]'::jsonb`),tipsNotes:jsonb('tips_notes'),
  placeSnapshot:jsonb('place_snapshot').notNull().default(sql`'{}'::jsonb`),
