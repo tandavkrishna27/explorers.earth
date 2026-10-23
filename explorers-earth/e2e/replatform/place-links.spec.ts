@@ -255,18 +255,31 @@ test.beforeEach(async ({},info)=>{manifest=await control('reset',info) as Places
 function child(category:'products'|'people') {
   return manifest.collections.find(c=>c.accountId===manifest.personas.ownerA.accountId && c.category===category && c.title===`Owned ${category==='products'?'Products':'People'}`)!;
 }
-// WP10. A Places list page has no tabs: the read-only "Linked lists" section and the Manage
-// panel (with Attach) both sit under the places, and both are regions named "Linked lists".
-const placeListPath=(id:string)=>`/recommendations/places?list=${encodeURIComponent(id)}`;
-const onPlaceList=(id:string)=>(url:URL)=>url.origin===fixture.origin && url.pathname==='/recommendations/places' && url.searchParams.get('list')===id && url.hash==='';
+// WP6 moved a Places list onto the shared list page (/recommendations/places/<id>) with
+// Recommendations / Share / Manage tabs. The read-only "Linked lists" section sits under the
+// items on Recommendations; the Manage panel (with Attach) is on Manage. Both are regions
+// named "Linked lists", and a hidden tab's region is not in the accessibility tree.
+const placeListPath=(id:string)=>`/recommendations/places/${encodeURIComponent(id)}`;
+const onPlaceList=(id:string)=>(url:URL)=>url.origin===fixture.origin && url.pathname===placeListPath(id) && url.search==='' && url.hash==='';
 function managePanel(page:Page) {
   return page.getByRole('region',{name:'Linked lists',exact:true}).filter({has:page.getByRole('button',{name:'Attach',exact:true})});
 }
 function linkedSection(page:Page) {
   return page.getByRole('region',{name:'Linked lists',exact:true}).filter({hasNot:page.getByRole('button',{name:'Attach',exact:true})});
 }
+async function showTab(page:Page,name:'Recommendations'|'Manage') {
+  const tab=page.getByRole('tab',{name,exact:true});
+  if(await tab.getAttribute('aria-selected')!=='true')await tab.click();
+  await expect(tab).toHaveAttribute('aria-selected','true');
+}
+async function manage(page:Page) {
+  await showTab(page,'Manage');return managePanel(page);
+}
+async function items(page:Page) {
+  await showTab(page,'Recommendations');return linkedSection(page);
+}
 async function openPicker(page:Page) {
-  await managePanel(page).getByRole('button',{name:'Attach',exact:true}).click();
+  await (await manage(page)).getByRole('button',{name:'Attach',exact:true}).click();
   const picker=page.getByRole('dialog',{name:'Attach a list',exact:true});await expect(picker).toBeVisible();return picker;
 }
 // LNK-06. "Create a new list" in the picker opens the shared New list dialog, which creates
@@ -302,7 +315,7 @@ test('Place links: existing Products and People lists attach detach and survive 
   const own=(title:string)=>manifest.collections.find(c=>c.accountId===manifest.personas.ownerA.accountId && c.title===title)!;
   // WP10 (LNK-02). Any of the owner's lists attaches, not only Products and People.
   const reads=own('Owned Reads'),apps=own('Owned Apps');
-  await page.goto(placeListPath(parent.id));await expect(managePanel(page)).toBeVisible();
+  await page.goto(placeListPath(parent.id));await expect(await manage(page)).toBeVisible();
   for(const category of ['products','people'] as const) {
     const item=child(category),before=await editable('collections',item.id),content=await complete(category);
     const ownRecommendations=content.recommendations.filter(r=>manifest.recommendations.some(seed=>seed.collectionId===item.id && seed.id===r.id));
@@ -313,17 +326,17 @@ test('Place links: existing Products and People lists attach detach and survive 
     expect(Number.isSafeInteger(body.expectedHostRevision) && Number.isSafeInteger(body.expectedLinkedRevision)).toBe(true);
     await expect(managePanel(page).getByRole('button',{name:`Detach ${item.title}`,exact:true})).toBeVisible();
     await assertRelation(parent.id,item.id,true);await page.reload();
-    await expect(linkedSection(page).getByRole('link',{name:new RegExp(item.title)})).toBeVisible();
+    await expect((await items(page)).getByRole('link',{name:new RegExp(item.title)})).toBeVisible();
     // LNK-04 / OWN-13. Detach offers Undo; Undo restores the same link.
-    const detached=linkResponse(page,parent.id,'DELETE');await managePanel(page).getByRole('button',{name:`Detach ${item.title}`,exact:true}).click();
+    const detached=linkResponse(page,parent.id,'DELETE');await (await manage(page)).getByRole('button',{name:`Detach ${item.title}`,exact:true}).click();
     const removed=await detached;expect(removed.status()).toBe(200);await assertRelation(parent.id,item.id,false);
     const undone=linkResponse(page,parent.id,'POST');await page.getByRole('button',{name:'Undo',exact:true}).click();
     expect((await undone).status()).toBe(201);await assertRelation(parent.id,item.id,true);
-    await page.reload();await expect(managePanel(page).getByRole('button',{name:`Detach ${item.title}`,exact:true})).toBeVisible();
+    await page.reload();await expect((await manage(page)).getByRole('button',{name:`Detach ${item.title}`,exact:true})).toBeVisible();
     const final=linkResponse(page,parent.id,'DELETE');await managePanel(page).getByRole('button',{name:`Detach ${item.title}`,exact:true}).click();
     expect((await final).status()).toBe(200);
     await assertRelation(parent.id,item.id,false);await page.reload();
-    await expect(managePanel(page).getByRole('button',{name:`Detach ${item.title}`,exact:true})).toHaveCount(0);
+    await expect((await manage(page)).getByRole('button',{name:`Detach ${item.title}`,exact:true})).toHaveCount(0);
     const after=await editable('collections',item.id);same([after.title,after.slug,after.description],[before.title,before.slug,before.description]);
     const afterContent=await complete(category);
     same(afterContent.memberships.filter(m=>m.collectionId===item.id).map(m=>[m.recommendationId,m.displayOrder]),
@@ -338,11 +351,11 @@ test('Place links: existing Products and People lists attach detach and survive 
     expect((await linked).status()).toBe(201);await expect(managePanel(page).getByRole('button',{name:`Detach ${item.title}`,exact:true})).toBeVisible();
   }
   await page.reload();
-  for(const item of [reads,apps])await expect(linkedSection(page).getByRole('link',{name:new RegExp(item.title)})).toBeVisible();
+  for(const item of [reads,apps])await expect((await items(page)).getByRole('link',{name:new RegExp(item.title)})).toBeVisible();
   // LNK-05. A linked list opens as itself and shows the link back (incoming); Back returns.
-  await linkedSection(page).getByRole('link',{name:new RegExp(reads.title)}).click();
+  await (await items(page)).getByRole('link',{name:new RegExp(reads.title)}).click();
   await expect(page).toHaveURL(url=>url.pathname===`/recommendations/books/${reads.id}`);
-  await expect(linkedSection(page).getByRole('link',{name:new RegExp(parent.title)})).toBeVisible();
+  await expect((await items(page)).getByRole('link',{name:new RegExp(parent.title)})).toBeVisible();
   await page.goBack();await expect(page).toHaveURL(onPlaceList(parent.id));
   const observed=await control('observe',info);
   same(observed.relations.filter((r:Dto)=>r.location_collection_id===parent.id).map((r:Dto)=>r.child_collection_id).sort(),[reads.id,apps.id].sort());
@@ -523,6 +536,7 @@ await page.reload();
 const saved=await editable('collections',id);same([saved.title,saved.slug,saved.description],[title,slug,description]);
         setPlaceLinksAtomicBoundary(info,category,phase,'relation-check');
 await assertRelation(parent.id,id,true);
+        await showTab(page,'Manage');
         setPlaceLinksAtomicBoundary(info,category,phase,'linked-count');
 await expect(managePanel(page).getByRole('button',{name:`Detach ${title}`,exact:true})).toBeVisible();
         expect((await control('observe',info)).relations.filter((row:Dto)=>row.child_collection_id===id)).toHaveLength(1);
@@ -613,7 +627,7 @@ test('Place links: public children obey parent child category and account visibi
 test('Place links: stale and foreign link commands preserve both lists',async ({page},info)=>{
   const transport=await appPage(page,manifest.personas.ownerA);const parent=aLists()[0],item=child('products');
   const beforeParent=await editable('collections',parent.id),beforeChild=await editable('collections',item.id),content=await complete('products'),beforeObserve=await control('observe',info);
-  await page.goto(placeListPath(parent.id));await expect(managePanel(page)).toBeVisible();
+  await page.goto(placeListPath(parent.id));await expect(await manage(page)).toBeVisible();
   let release!:()=>void,held!:()=>void;const delivered=new Promise<void>(resolve=>held=resolve),gate=new Promise<void>(resolve=>release=resolve);
   let originalBody='',originalKey='',observedBody:Dto|undefined;
   const routePath=`**${base}/collections/${parent.id}/links`;
