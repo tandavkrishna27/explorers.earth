@@ -162,7 +162,7 @@ describePostgres("C3 PostgreSQL 15 migration chain", () => {
     } finally {await db.query('ROLLBACK');db.release();}
     expect((await pool.query("SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category='books'",[account])).rows[0].revision).toBe('2');
     expect((await migrateMusicDatabase(pool)).appliedIds).toEqual([]);
-    const triggers=await pool.query("SELECT count(*)::int AS count FROM pg_trigger WHERE NOT tgisinternal AND tgname LIKE '%_content_revision_%'");expect(triggers.rows[0].count).toBe(66);
+    const triggers=await pool.query("SELECT count(*)::int AS count FROM pg_trigger WHERE NOT tgisinternal AND tgname LIKE '%_content_revision_%'");expect(triggers.rows[0].count).toBe(69); // 69 = 66 + collection_list_links insert/update/delete (0070)
     expect((await pool.query("SELECT tgname FROM pg_trigger WHERE NOT tgisinternal AND tgrelid='recommendation_movie_media'::regclass AND tgname LIKE '%_content_revision_%' ORDER BY tgname")).rows.map(row=>row.tgname)).toEqual(['recommendation_movie_media_content_revision_delete','recommendation_movie_media_content_revision_insert','recommendation_movie_media_content_revision_update']);
     await resources.closePool(pool);
   });
