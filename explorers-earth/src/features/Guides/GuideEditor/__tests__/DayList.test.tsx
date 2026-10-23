@@ -48,6 +48,15 @@ describe('DayList', () => {
   fireEvent.drop(target, {dataTransfer});
   expect(a.onMoveItem).toHaveBeenCalledWith('d1', 'c', 'd2', 0, {fromIndex: 2});
  });
+ it('drops a new item from My lists at the drop position', () => {
+  const a = actions(), onDropNew = vi.fn();
+  render(<DayList days={days} startDate={null} {...a} onDropNew={onDropNew} />);
+  const ref = {recommendationId: 'r1', collectionId: 'l1'};
+  const dataTransfer = {getData: (k: string) => (k === 'application/x-guide-new-item' ? JSON.stringify(ref) : ''), dropEffect: ''};
+  fireEvent.drop(screen.getByText('Note b').closest('li')!, {dataTransfer});
+  expect(onDropNew).toHaveBeenCalledWith('d1', 1, ref);
+  expect(a.onMoveItem).not.toHaveBeenCalled();
+ });
  it('cannot delete the only day', async () => {
   render(<DayList days={[days[0]]} startDate={null} {...actions()} />);
   await userEvent.click(screen.getByRole('button', {name: 'Day 1 options'}));

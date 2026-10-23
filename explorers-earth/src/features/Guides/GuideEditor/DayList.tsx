@@ -5,6 +5,7 @@ import type {GuideDayItem, GuideTimeLabel} from '../../../../../tunes/shared/exp
 import {categoryPath, listPath} from '../../../lib/navigation/categoryRoutes';
 import TimeLabelChip from './TimeLabelChip';
 import {DRAG_TYPE} from './DayStrip';
+import {NEW_ITEM_DRAG_TYPE} from './MyListsPanel';
 import {dayChipLabel, groupByTimeLabel, itemSourceText, itemTitle} from './dayItems';
 
 export type PlanDay = {id: string; title: string; items: GuideDayItem[]};
@@ -18,15 +19,18 @@ export type DayListActions = {
  onInsertDay: (at: number) => void; onDuplicateDay: (sectionId: string) => void; onClearDay: (sectionId: string) => void;
  onDeleteDay: (sectionId: string) => void; onMoveDay: (sectionId: string, toIndex: number, fromIndex: number) => void;
 };
-type Props = DayListActions & {days: PlanDay[]; startDate: string | null; addBox?: (sectionId: string) => React.ReactNode};
+export type NewItemRef = {recommendationId: string; collectionId: string | null};
+type Props = DayListActions & {days: PlanDay[]; startDate: string | null; addBox?: (sectionId: string) => React.ReactNode;
+ /** A saved item dragged in from My lists; the page maps it to addItem(sectionId, {kind:'listItem', timeLabel:null, ref}, toIndex). */
+ onDropNew?: (sectionId: string, toIndex: number, ref: NewItemRef) => void};
 
 const menuPanel = 'absolute right-0 z-30 rounded-lg border border-white/10 bg-slate-800 p-1 text-white shadow-lg';
 
-export default function DayList({days, startDate, addBox, ...a}: Props) {
- return <div className="space-y-6">{days.map((day, index) => <DayCard key={day.id} day={day} index={index} days={days} startDate={startDate} addBox={addBox} {...a} />)}</div>;
+export default function DayList({days, startDate, addBox, onDropNew, ...a}: Props) {
+ return <div className="space-y-6">{days.map((day, index) => <DayCard key={day.id} day={day} index={index} days={days} startDate={startDate} addBox={addBox} onDropNew={onDropNew} {...a} />)}</div>;
 }
 
-function DayCard({day, index, days, startDate, addBox, ...a}: DayListActions & {day: PlanDay; index: number; days: PlanDay[]; startDate: string | null; addBox?: Props['addBox']}) {
+function DayCard({day, index, days, startDate, addBox, onDropNew, ...a}: DayListActions & {day: PlanDay; index: number; days: PlanDay[]; startDate: string | null; addBox?: Props['addBox']; onDropNew?: Props['onDropNew']}) {
  const {t, i18n} = useTranslation();
  const [menu, setMenu] = useState(false);
  const name = dayChipLabel(index, startDate, i18n.language);
@@ -34,6 +38,11 @@ function DayCard({day, index, days, startDate, addBox, ...a}: DayListActions & {
  let position = -1;
  const dropAt = (toIndex: number) => (e: React.DragEvent) => {
   e.preventDefault(); e.stopPropagation();
+  const fresh = e.dataTransfer.getData(NEW_ITEM_DRAG_TYPE);
+  if (fresh) {
+   try {const ref = JSON.parse(fresh); if (typeof ref.recommendationId === 'string') onDropNew?.(day.id, toIndex, {recommendationId: ref.recommendationId, collectionId: typeof ref.collectionId === 'string' ? ref.collectionId : null});} catch {/* ignore */}
+   return;
+  }
   const raw = e.dataTransfer.getData(DRAG_TYPE) || e.dataTransfer.getData('text/plain');
   try {const src = JSON.parse(raw); if (src.localId) a.onMoveItem(src.sectionId, src.localId, day.id, toIndex, {fromIndex: src.index});} catch {/* ignore */}
  };
