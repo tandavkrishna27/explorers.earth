@@ -145,8 +145,9 @@ describe("owned image CI PostgreSQL wiring", () => {
       "server/test/explorers/guides.integration.test.ts",
       // R10. 0066 list delete keeps analytics; runtime DELETE on collections only.
       "server/test/explorers/list-delete-analytics.integration.test.ts",
+      // WP10. List links between any two own lists (replaces placeLinks).
+      "server/test/explorers/listLinks.integration.test.ts",
       "server/test/explorers/people.integration.test.ts",
-      "server/test/explorers/placeLinks.integration.test.ts",
       "server/test/explorers/places.integration.test.ts",
       "server/test/explorers/products.integration.test.ts",
       // WP5. replaceMedia writes a gallery in one INSERT.

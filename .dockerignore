@@ -1190,6 +1190,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !tunes/shared/explorersGameOwnerContract.ts
 !tunes/shared/explorersGuideContract.ts
 !tunes/shared/explorersLifecycleObservation.ts
+!tunes/shared/explorersListLinkContract.ts
 !tunes/shared/explorersMovieContract.ts
 !tunes/shared/explorersMovieMediaContract.ts
 !tunes/shared/explorersOwnerContentContract.ts

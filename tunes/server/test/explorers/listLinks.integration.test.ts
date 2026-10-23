@@ -331,3 +331,126 @@ describePg("create and attach (LNK-06)", () => {
     }
   });
 });
+
+/** A published person recommendation inside a list, so a linked list has content. */
+async function person(accountId: string, collectionId: string, name: string) {
+  const entity = await repository.resolvePersonEntity(accountId, {kind: "manual", category: "people", details: {title: name}} as never, key());
+  const current = Number((await pool.query("SELECT revision::text AS revision FROM collections WHERE id=$1", [collectionId])).rows[0].revision);
+  const created = await repository.createRecommendation(accountId, {
+    category: "people", entityId: entity.id, collectionId, expectedCollectionRevision: current, publicationState: "published",
+  } as never, key());
+  return created.id;
+}
+const linkCount = async (accountId: string) =>
+  (await pool.query("SELECT count(*)::int AS n FROM collection_list_links WHERE account_id=$1", [accountId])).rows[0].n as number;
+
+// Ported from the retired placeLinks.integration.test.ts: the rules that still hold when a
+// Places list links a People or Products list through collection_list_links.
+describePg("place links on the list link model (LNK-09)", () => {
+  it("refuses a cross-account link from either direction", async () => {
+    const owner = await account(), stranger = await account();
+    const location = await list(owner, "places"), theirPeople = await list(stranger, "people");
+    const myPeople = await list(owner, "people"), theirLocation = await list(stranger, "places");
+    // Neither foreign list is visible to me, so each is 404 rather than a category complaint.
+    await expect(attachVia(owner, location, theirPeople)).rejects.toMatchObject({status: 404});
+    await expect(attachVia(owner, theirLocation, myPeople)).rejects.toMatchObject({status: 404});
+    expect(await linkCount(owner)).toBe(0);
+    expect(await linkCount(stranger)).toBe(0);
+  });
+
+  it("detaches without deleting the linked list or anything in it", async () => {
+    const owner = await account();
+    const location = await list(owner, "places"), people = await list(owner, "people");
+    const recommendationId = await person(owner, people.id, "Ravi");
+    const made = await attachVia(owner, location, people);
+    await detachVia(owner, "places", made.link.id);
+    expect(await linkCount(owner)).toBe(0);
+    expect((await pool.query("SELECT count(*)::int AS n FROM collections WHERE id=$1", [people.id])).rows[0].n).toBe(1);
+    expect((await pool.query("SELECT count(*)::int AS n FROM recommendations WHERE id=$1", [recommendationId])).rows[0].n).toBe(1);
+    expect((await pool.query("SELECT count(*)::int AS n FROM collection_items WHERE collection_id=$1", [people.id])).rows[0].n).toBe(1);
+  });
+
+  it("refuses to detach a link that does not exist", async () => {
+    const owner = await account(); await list(owner, "places");
+    await expect(detachVia(owner, "places", randomUUID())).rejects.toMatchObject({status: 404});
+  });
+
+  it("removes the link with either list and keeps the other", async () => {
+    const owner = await account();
+    const location = await list(owner, "places"), people = await list(owner, "people");
+    await attachVia(owner, location, people);
+    await pool.query("DELETE FROM collections WHERE id=$1", [location.id]);
+    expect(await linkCount(owner)).toBe(0);
+    expect((await pool.query("SELECT count(*)::int AS n FROM collections WHERE id=$1", [people.id])).rows[0].n).toBe(1);
+  });
+
+  it("serves a public linked list under a public location, and hides a private one", async () => {
+    const owner = await account();
+    await categoryPublic(owner, "places"); await categoryPublic(owner, "people");
+    const location = await list(owner, "places"); await publish(owner, location.id);
+    const open = await list(owner, "people"), hidden = await list(owner, "people");
+    await person(owner, open.id, "Public person"); await person(owner, hidden.id, "Private person");
+    await publish(owner, open.id);
+    await attachVia(owner, location, open); await attachVia(owner, location, hidden);
+    const client = await pool.connect();
+    try {
+      const served = await publicLinkedPeopleLists(client, owner, location.id);
+      // The private list is absent, not redacted.
+      expect(served.map((entry: any) => entry.documentId)).toEqual([open.id]);
+      expect((served[0] as any).recommended_people).toHaveLength(1);
+    } finally { client.release(); }
+  });
+
+  it("removes every linked list when its category is unpublished, without touching a link", async () => {
+    const owner = await account();
+    await categoryPublic(owner, "places"); await categoryPublic(owner, "products");
+    const location = await list(owner, "places"); await publish(owner, location.id);
+    const products = await list(owner, "products"); await publish(owner, products.id);
+    await attachVia(owner, location, products);
+    const client = await pool.connect();
+    try {
+      expect((await publicLinkedProductsLists(client, owner, location.id)).map((entry: any) => entry.documentId)).toEqual([products.id]);
+      await categoryPublic(owner, "products", false);
+      expect(await publicLinkedProductsLists(client, owner, location.id)).toEqual([]);
+      // The relation is intact; only its public traversal stopped.
+      expect((await readListLinksForCollection(pool, location.id, owner)).map(c => c.collection.id)).toEqual([products.id]);
+    } finally { client.release(); }
+  });
+
+  it("hides every linked list when the account stops being publicly eligible", async () => {
+    const owner = await account();
+    await categoryPublic(owner, "places"); await categoryPublic(owner, "people");
+    const location = await list(owner, "places"); await publish(owner, location.id);
+    const people = await list(owner, "people"); await publish(owner, people.id);
+    await attachVia(owner, location, people);
+    const client = await pool.connect();
+    try {
+      expect(await publicLinkedPeopleLists(client, owner, location.id)).toHaveLength(1);
+      await pool.query("UPDATE creator_accounts SET public_profile=false WHERE id=$1", [owner]);
+      expect(await publicLinkedPeopleLists(client, owner, location.id)).toEqual([]);
+    } finally { client.release(); }
+  });
+
+  it("serves a linked list only under the lists it is linked with", async () => {
+    const owner = await account();
+    await categoryPublic(owner, "places"); await categoryPublic(owner, "people");
+    const mine = await list(owner, "places"), other = await list(owner, "places");
+    await publish(owner, mine.id); await publish(owner, other.id);
+    const people = await list(owner, "people"); await publish(owner, people.id);
+    await attachVia(owner, mine, people);
+    const client = await pool.connect();
+    try {
+      expect((await publicLinkedPeopleLists(client, owner, mine.id)).map((entry: any) => entry.documentId)).toEqual([people.id]);
+      expect(await publicLinkedPeopleLists(client, owner, other.id)).toEqual([]);
+    } finally { client.release(); }
+  });
+
+  it("is cleared by the statement a terminal purge runs for this account", async () => {
+    // purge_explorers_account_content deletes the account's collections, which cascades every link.
+    const owner = await account();
+    const location = await list(owner, "places"), people = await list(owner, "people");
+    await attachVia(owner, location, people);
+    await pool.query("DELETE FROM collections WHERE account_id=$1", [owner]);
+    expect(await linkCount(owner)).toBe(0);
+  });
+});
