@@ -7,7 +7,7 @@ describe('link preview SSRF guard',()=>{
   await expect(guardLinkPreviewTarget('https://shop.example/p',resolver({'shop.example':[ip]}))).rejects.toThrow('LINK_PREVIEW_BLOCKED');
  });
  it('refuses when ANY resolved address is private (rebinding)',async()=>{await expect(guardLinkPreviewTarget('https://a.example',resolver({'a.example':['93.184.216.34','10.0.0.1']}))).rejects.toThrow('LINK_PREVIEW_BLOCKED');});
- it.each(['https://127.0.0.1/','https://[::1]/','https://localhost/','https://x.internal/','https://printer.local/'])('refuses literal/internal host %s',async url=>{await expect(guardLinkPreviewTarget(url,resolver({}))).rejects.toThrow('LINK_PREVIEW_BLOCKED');});
+ it.each(['https://127.0.0.1/','https://[::1]/','https://localhost/','https://x.internal/','https://printer.local/','https://localhost./','https://x.internal./','https://printer.local./'])('refuses literal/internal host %s',async url=>{await expect(guardLinkPreviewTarget(url,resolver({}))).rejects.toThrow('LINK_PREVIEW_BLOCKED');});
  it('refuses unresolvable hosts and resolver failures',async()=>{
   await expect(guardLinkPreviewTarget('https://none.example/',resolver({}))).rejects.toThrow('LINK_PREVIEW_BLOCKED');
   await expect(guardLinkPreviewTarget('https://none.example/',async()=>{throw new Error('dns');})).rejects.toThrow('LINK_PREVIEW_BLOCKED');

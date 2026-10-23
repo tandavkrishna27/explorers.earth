@@ -6,6 +6,9 @@ const deps=(routes:Record<string,Route>,seen:any[]=[])=>({
  resolve:async(h:string)=>[{address:h==='inside.example'?'10.0.0.1':'93.184.216.34',family:4}],
  connect:async(target:any)=>{seen.push(target);const r=routes[target.url.href];if(!r)throw new Error('no route '+target.url.href);return {status:r.status,location:r.location,contentType:r.type??'text/html; charset=utf-8',body:Readable.from([Buffer.from(r.body??'')])};}});
 it('returns html under the cap',async()=>{expect((await fetchLinkPreviewDocument('https://a.example/',deps({'https://a.example/':{status:200,body:'<title>x</title>'}}))).html).toContain('<title>');});
+it('refuses an https to http redirect downgrade',async()=>{
+ await expect(fetchLinkPreviewDocument('https://a.example/',deps({'https://a.example/':{status:302,location:'http://a.example/plain'},'http://a.example/plain':{status:200,body:'<title>x</title>'}}))).rejects.toThrow('LINK_PREVIEW_BLOCKED');
+});
 it('re-guards every redirect hop (redirect into a private address is blocked)',async()=>{
  await expect(fetchLinkPreviewDocument('https://a.example/',deps({'https://a.example/':{status:302,location:'https://inside.example/'}}))).rejects.toThrow('LINK_PREVIEW_BLOCKED');
 });

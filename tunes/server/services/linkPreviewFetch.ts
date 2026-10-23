@@ -54,6 +54,7 @@ async function fetchBounded(raw:string,deps:LinkPreviewFetchDeps,policy:Policy):
    if([301,302,303,307,308].includes(response.status)){
     if(hop>=LINK_PREVIEW_MAX_REDIRECTS||!response.location)throw new LinkPreviewUnavailable();
     let next:URL;try{next=new URL(response.location,url);}catch{throw new LinkPreviewBlocked();}
+    if(url.protocol==='https:'&&next.protocol!=='https:')throw new LinkPreviewBlocked();
     current=next.href;continue;
    }
    const mimeType=response.contentType.split(';')[0].trim().toLowerCase();

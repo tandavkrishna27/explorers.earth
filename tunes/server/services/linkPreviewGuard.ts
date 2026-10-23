@@ -15,7 +15,7 @@ const testLoopback=new Set(['127.0.0.1','::1']);
 /** One owner-pasted URL -> a pinned public address. Literal IPs and internal names are refused outright. */
 export async function guardLinkPreviewTarget(raw:string,resolve:Resolver=defaultResolver,options:GuardOptions={}):Promise<{url:URL;address:Address}>{
  if(!linkPreviewUrlSchema.safeParse(raw).success)throw new LinkPreviewBlocked();
- const url=new URL(raw),host=url.hostname.replace(/^\[|\]$/g,'').toLowerCase();
+ const url=new URL(raw),host=url.hostname.replace(/^\[|\]$/g,'').replace(/\.$/,'').toLowerCase();
  if(isIP(host)||host==='localhost'||!host.includes('.')||/\.(local|localhost|internal|lan|home|corp|test|invalid)$/.test(host))throw new LinkPreviewBlocked();
  const addresses=await resolve(host).catch(()=>[] as Address[]);
  const allowed=(a:Address)=>publicAddress(a.address)||options.allowLoopbackForTest===true&&testLoopback.has(a.address);
