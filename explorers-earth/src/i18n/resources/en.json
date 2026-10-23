@@ -3321,5 +3321,16 @@
   "linkPreview": {
     "reading": "Reading the link",
     "failed": "Couldn't read that link, fill in manually"
+  },
+  "products": {
+    "form": {
+      "whereToBuy": "Where to buy",
+      "filledFromLink": "Filled from link",
+      "usePhoto": "Use this photo",
+      "keyFacts": "Key facts",
+      "addKeyFact": "+ Add key fact",
+      "keyFactsLimit": "Up to 8 key facts.",
+      "affiliate": "This is an affiliate link"
+    }
   }
 }

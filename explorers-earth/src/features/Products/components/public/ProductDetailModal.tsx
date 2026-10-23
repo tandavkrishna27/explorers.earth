@@ -10,6 +10,7 @@ import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaV
 import { useFormatMoney } from "../../../../lib/money";
 import DialogPanel from "../../../../components/ui/DialogPanel";
 import { keyboardActivation } from "../../../../utils/keyboardActivation";
+import { whereToBuy } from "../../../../../../tunes/shared/explorersProductContract";
 
 interface ProductDetailModalProps {
   product: RecommendedProduct | null;
@@ -70,9 +71,7 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
 
   const lightboxMediaItems = useMemo(() => {
     if (!product) return [];
-    const mainImg = buildImageUrl(product.logo_url);
-    const gallery = (product.images || []).map(buildImageUrl).filter(Boolean);
-    const allImages = mainImg ? [mainImg, ...gallery.filter((i) => i !== mainImg)] : gallery;
+    const allImages = (product.images || []).map(buildImageUrl).filter(Boolean);
 
     return convertToMediaItems(
       allImages.map((url, index) => ({
@@ -85,9 +84,8 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
 
   if (!product) return null;
 
-  const mainImg = buildImageUrl(product.logo_url);
-  const gallery = (product.images || []).map(buildImageUrl).filter(Boolean);
-  const allImages = mainImg ? [mainImg, ...gallery.filter((i) => i !== mainImg)] : gallery;
+  // No logo (DS-04): the owner's photos are the product's images.
+  const allImages = (product.images || []).map(buildImageUrl).filter(Boolean);
   const noteText = extractNoteText(product.user_recommendation_note);
   // The owner's order: the ordered list when the server sends one, else the legacy object.
   const specs: [string, string][] = product.specification_list
@@ -161,7 +159,7 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
                     className="flex-shrink-0 w-28 h-28 rounded-2xl overflow-hidden ring-2 ring-[color:var(--category-border,rgba(255,255,255,0.1))] shadow-2xl bg-[var(--category-card,#1a2332)] cursor-pointer hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
                   >
                     <img
-                      src={mainImg || FALLBACK_IMAGE}
+                      src={allImages[0] || FALLBACK_IMAGE}
                       alt={product.title}
                       className="w-full h-full object-cover"
                       onError={(e) => { (e.currentTarget as HTMLImageElement).src = FALLBACK_IMAGE; }}
@@ -223,7 +221,7 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
                   {/* Specs */}
                   {hasSpecs && (
                     <div>
-                      <p className="text-xs font-semibold text-[color:var(--category-muted,rgba(255,255,255,0.5))] uppercase tracking-wider mb-2">Specifications</p>
+                      <p className="text-xs font-semibold text-[color:var(--category-muted,rgba(255,255,255,0.5))] uppercase tracking-wider mb-2">Key facts</p>
                       <div className="rounded-xl border border-[color:var(--category-border,rgba(255,255,255,0.1))] overflow-hidden bg-[var(--category-card,rgba(22,30,46,0.3))]">
                         {specs.map(([key, val], i) => (
                           <div key={key} className={`flex items-center px-4 py-2.5 text-xs ${i % 2 === 0 ? "bg-[var(--category-card,rgba(255,255,255,0.02))]" : ""}`}>
@@ -294,16 +292,18 @@ const ProductDetailModal = ({ product, open, onClose }: ProductDetailModalProps)
                   <Share2 size={14} /> Share
                 </button>
                 <div className="flex gap-2">
-                  {(product.buy_url || product.product_url) && (
-                    <a
-                      href={product.buy_url || product.product_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--category-accent,#059669)] hover:bg-[var(--category-accent,#047857)] text-sm text-[color:var(--category-accent-ink,#fff)] font-medium transition-colors"
-                    >
-                      <ExternalLink size={14} /> {product.buy_url ? "Buy Now" : "View Product"}
-                    </a>
+                  {/* One link (DS-03): the buy link, or the product link on rows saved before it. */}
+                  {product.affiliate_disclosed && (
+                    <span className="self-center text-xs text-[color:var(--category-muted,rgba(255,255,255,0.5))]">Affiliate link</span>
                   )}
+                  <a
+                    href={whereToBuy({ buyUrl: product.buy_url }, { productUrl: product.product_url })}
+                    target="_blank"
+                    rel={product.affiliate_disclosed ? "sponsored noopener noreferrer" : "noopener noreferrer"}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--category-accent,#059669)] hover:bg-[var(--category-accent,#047857)] text-sm text-[color:var(--category-accent-ink,#fff)] font-medium transition-colors"
+                  >
+                    <ExternalLink size={14} /> Where to buy
+                  </a>
                 </div>
               </div>
             </DialogPanel>
