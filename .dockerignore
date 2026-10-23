@@ -94,6 +94,8 @@ explorers-earth/src/features/Profile/*
 explorers-earth/src/features/PublicHome/*
 !explorers-earth/src/features/Settings/
 explorers-earth/src/features/Settings/*
+!explorers-earth/src/features/shared/
+explorers-earth/src/features/shared/*
 !explorers-earth/src/i18n/resources/
 explorers-earth/src/i18n/resources/*
 !explorers-earth/src/pages/public/
@@ -222,6 +224,8 @@ explorers-earth/src/features/PublicHome/utils/*
 explorers-earth/src/features/Settings/api/*
 !explorers-earth/src/features/Settings/components/
 explorers-earth/src/features/Settings/components/*
+!explorers-earth/src/features/shared/addItem/
+explorers-earth/src/features/shared/addItem/*
 !explorers-earth/src/features/Analytics/components/charts/
 explorers-earth/src/features/Analytics/components/charts/*
 !explorers-earth/src/features/AppsAndTools/components/dashboard/
@@ -442,7 +446,9 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/ScrollToTop.tsx
 !explorers-earth/src/components/ShareModal.tsx
 !explorers-earth/src/components/Sidenav.tsx
+!explorers-earth/src/components/StarRating.tsx
 !explorers-earth/src/components/StaticPageLayout.tsx
+!explorers-earth/src/components/TaxonomyCombobox.tsx
 !explorers-earth/src/components/YoutubeEmbed.tsx
 !explorers-earth/src/components/auth/AuthLayout.tsx
 !explorers-earth/src/components/auth/AuthShell.tsx
@@ -459,6 +465,8 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/reorder/moveItem.ts
 !explorers-earth/src/components/reorder/useMoveAnnouncer.tsx
 !explorers-earth/src/components/reorder/useReorderPanelOpen.ts
+!explorers-earth/src/components/starRatingScale.ts
+!explorers-earth/src/components/taxonomyFilter.ts
 !explorers-earth/src/components/theme-provider.tsx
 !explorers-earth/src/components/ui/Accordian.tsx
 !explorers-earth/src/components/ui/AddLocationModal.tsx
@@ -931,6 +939,16 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/navigation/canonicalNavigationMapping.ts
 !explorers-earth/src/features/navigation/categoryNavigationApi.ts
 !explorers-earth/src/features/navigation/categoryNavigationPolicy.ts
+!explorers-earth/src/features/shared/addItem/AddItemPage.tsx
+!explorers-earth/src/features/shared/addItem/ItemSearch.tsx
+!explorers-earth/src/features/shared/addItem/LocationSearchField.tsx
+!explorers-earth/src/features/shared/addItem/PickOnMapSheet.tsx
+!explorers-earth/src/features/shared/addItem/PickedItemCard.tsx
+!explorers-earth/src/features/shared/addItem/StickyActionBar.tsx
+!explorers-earth/src/features/shared/addItem/index.ts
+!explorers-earth/src/features/shared/addItem/nearbyCache.ts
+!explorers-earth/src/features/shared/addItem/parseCoordinates.ts
+!explorers-earth/src/features/shared/addItem/useAddItemMode.ts
 !explorers-earth/src/hooks/useDeviceDetection.tsx
 !explorers-earth/src/hooks/useDialogA11y.ts
 !explorers-earth/src/hooks/useDistanceValidation.ts
