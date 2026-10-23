@@ -3,9 +3,13 @@ import {parseStrictJson} from '../deployment/platform-release-contract';
 export class GameContractFailure extends Error {readonly code='GAME_CONTRACT_INVALID';constructor(){super('Game contract invalid');this.name='GameContractFailure';}}
 const invalid=():never=>{throw new GameContractFailure();};
 const safe=<T>(work:()=>T):T=>{try{return work();}catch{return invalid();}};
-/** A search hit shows only these, which keeps 24 rows well inside the 64 KiB body limit. */
-const SEARCH_FIELDS='id,slug,name,cover.image_id,first_release_date,total_rating,genres.name,platforms.name,url';
-const FIELDS='id,slug,name,cover.image_id,summary,storyline,first_release_date,total_rating,total_rating_count,genres.id,genres.name,platforms.id,platforms.name,involved_companies.id,involved_companies.company.id,involved_companies.company.name,involved_companies.developer,involved_companies.publisher,game_modes.id,game_modes.name,screenshots.image_id,url,release_dates.id,release_dates.date,release_dates.y,release_dates.m,release_dates.d,release_dates.human,release_dates.platform,release_dates.date_format.id,release_dates.date_format.format,release_dates.release_region.id,release_dates.release_region.region,release_dates.category,release_dates.region';
+/**
+ * A search hit shows only these, which keeps 24 rows well inside the 64 KiB body limit.
+ * involved_companies carries the developer name; publisher is requested too because the
+ * strict company shape requires it (a boolean, a few bytes per company).
+ */
+const SEARCH_FIELDS='id,slug,name,cover.image_id,first_release_date,total_rating,genres.name,platforms.name,involved_companies.company.name,involved_companies.developer,involved_companies.publisher,url';
+const FIELDS='id,slug,name,cover.image_id,summary,first_release_date,total_rating,total_rating_count,genres.id,genres.name,platforms.id,platforms.name,involved_companies.id,involved_companies.company.id,involved_companies.company.name,involved_companies.developer,involved_companies.publisher,game_modes.id,game_modes.name,screenshots.image_id,url';
 export function buildGameSearchQuery(input:GameSearchInput,offset:number):string{return safe(()=>{const v=gameSearchInputSchema.parse(input);if(!Number.isSafeInteger(offset)||offset<0||offset>5976)invalid();return `fields ${SEARCH_FIELDS}; search ${JSON.stringify(v.query)}; limit 24; offset ${offset};`;});}
 export function buildGameResolveQuery(id:string):string{return safe(()=>`fields ${FIELDS}; where id = ${gameExternalIdSchema.parse(id)}; limit 1;`);}
 /** Allocation of native/concurrent representations is deliberately outside this pure64KiB profile. */
@@ -45,7 +49,7 @@ export function gameReleaseDisplay(facts:GameProviderFacts):{dateText:string|nul
 const COVER_ID=/^[A-Za-z0-9_-]{1,200}$/;
 /** IGDB cover art; production CSP img-src admits any https origin. */
 export function gameCoverUrl(imageId:string|null):string|null{return imageId&&COVER_ID.test(imageId)?`https://images.igdb.com/igdb/image/upload/t_cover_big/${imageId}.jpg`:null;}
-export function toGameCandidate(facts:Pick<GameProviderFacts,'externalId'|'title'|'firstReleaseDate'|'coverImageId'|'platforms'|'genres'>):GameCandidate{
+export function toGameCandidate(facts:Pick<GameProviderFacts,'externalId'|'title'|'firstReleaseDate'|'coverImageId'|'platforms'|'genres'>&Partial<Pick<GameProviderFacts,'developer'>>):GameCandidate{
  const year=facts.firstReleaseDate===null?null:new Date(facts.firstReleaseDate*1000).getUTCFullYear();
- return gameCandidateSchema.parse({externalId:facts.externalId,title:facts.title,year:year&&year>=1?year:null,coverUrl:gameCoverUrl(facts.coverImageId),platforms:facts.platforms.slice(0,12).map(p=>p.name),genres:facts.genres.slice(0,12).map(g=>g.name)});
+ return gameCandidateSchema.parse({externalId:facts.externalId,title:facts.title,year:year&&year>=1?year:null,coverUrl:gameCoverUrl(facts.coverImageId),platforms:facts.platforms.slice(0,12).map(p=>p.name),genres:facts.genres.slice(0,12).map(g=>g.name),developer:facts.developer??null});
 }

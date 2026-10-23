@@ -1,8 +1,9 @@
 import {describe,it,expect,vi} from 'vitest';
+import {readFileSync} from 'node:fs';
 import {createGameProviderCoordinator} from '../services/gameProviderBudget';
 import {createGameProviderTransport,type NativeTarget,type NativeResponse} from '../services/gameProviderTransport';
 import {GameCatalog} from '../services/gameCatalog';
-import {buildGameSearchQuery,parseGameProviderJson,gameCoverUrl,toGameCandidate} from '../services/gameCatalogContracts';
+import {buildGameSearchQuery,parseGameProviderJson,gameCoverUrl,toGameCandidate,mapGameProviderFacts} from '../services/gameCatalogContracts';
 import {createGameCatalogFromEnv} from '../services/gameCatalogFactory';
 import {CatalogService} from '../application/catalog';
 import {gameCandidatePageSchema} from '../../shared/explorersGameContract';
@@ -12,7 +13,7 @@ import type {Actor} from '../application/actor';
 // Recorded shape of an IGDB v4 /games answer to the search query below: expanded
 // objects always carry their own id next to the requested fields.
 const recorded=[
- {id:7346,cover:{id:172453,image_id:'co3p2d'},first_release_date:1488499200,genres:[{id:12,name:'Role-playing (RPG)'},{id:31,name:'Adventure'}],name:'The Legend of Zelda: Breath of the Wild',platforms:[{id:41,name:'Wii U'},{id:130,name:'Nintendo Switch'}],slug:'the-legend-of-zelda-breath-of-the-wild',total_rating:93.1,url:'https://www.igdb.com/games/the-legend-of-zelda-breath-of-the-wild'},
+ {id:7346,cover:{id:172453,image_id:'co3p2d'},first_release_date:1488499200,genres:[{id:12,name:'Role-playing (RPG)'},{id:31,name:'Adventure'}],name:'The Legend of Zelda: Breath of the Wild',platforms:[{id:41,name:'Wii U'},{id:130,name:'Nintendo Switch'}],involved_companies:[{id:42391,company:{id:70,name:'Nintendo'},developer:false,publisher:true},{id:42390,company:{id:12761,name:'Nintendo EPD'},developer:true,publisher:false}],slug:'the-legend-of-zelda-breath-of-the-wild',total_rating:93.1,url:'https://www.igdb.com/games/the-legend-of-zelda-breath-of-the-wild'},
  {id:1025,cover:{id:91212,image_id:'co1x7d'},first_release_date:567993600,genres:[{id:31,name:'Adventure'}],name:'Zelda II: The Adventure of Link',platforms:[{id:18,name:'Nintendo Entertainment System'}],slug:'zelda-ii-the-adventure-of-link',url:'https://www.igdb.com/games/zelda-ii-the-adventure-of-link'},
  {id:233,name:'Zelda fan game',slug:'zelda-fan-game'},
 ];
@@ -23,8 +24,21 @@ const bytes=(v:unknown)=>new TextEncoder().encode(JSON.stringify(v));
 describe('IGDB search contract',()=>{
  it('asks only for the fields a candidate shows, so 24 rows stay inside the body limit',()=>{
   const q=buildGameSearchQuery({query:'zelda',limit:24},0);
-  for(const f of ['name','cover.image_id','first_release_date','platforms.name','genres.name'])expect(q).toContain(f);
-  for(const heavy of ['screenshots','storyline','release_dates','involved_companies'])expect(q).not.toContain(heavy);
+  for(const f of ['name','cover.image_id','first_release_date','platforms.name','genres.name','involved_companies.company.name','involved_companies.developer','involved_companies.publisher'])expect(q).toContain(f);
+  for(const heavy of ['screenshots','storyline','release_dates','summary','involved_companies.company.id'])expect(q).not.toContain(heavy);
+ });
+ it('keeps a heavy 24-row page with involved companies inside the 64 KiB body limit',()=>{
+  // Upper-end real rows: long names, 10 platforms, 6 genres and 12 involved companies each.
+  const row=(i:number)=>({id:100000+i,cover:{id:200000+i,image_id:`co${(i*7919).toString(36)}xyz`},first_release_date:1488499200+i,genres:Array.from({length:6},(_,g)=>({id:g+1,name:`Role-playing (RPG) genre ${g}`})),name:`The Legend of a Very Long Game Title Number ${i}: Definitive Edition`,platforms:Array.from({length:10},(_,p)=>({id:p+1,name:`PlayStation Platform ${p} Pro`})),involved_companies:Array.from({length:12},(_,c)=>({id:300000+i*12+c,company:{id:400000+c,name:`Long Studio Company Name Interactive ${c} Ltd.`},developer:c<2,publisher:c>=10})),slug:`the-legend-of-a-very-long-game-title-number-${i}-definitive-edition`,total_rating:88.123456789,url:`https://www.igdb.com/games/the-legend-of-a-very-long-game-title-number-${i}-definitive-edition`});
+  const body=bytes(Array.from({length:24},(_,i)=>row(i)));
+  expect(body.byteLength).toBeLessThan(65536);
+  const rows=parseGameProviderJson(body);expect(rows).toHaveLength(24);
+  expect(toGameCandidate(mapGameProviderFacts(rows[0],String(rows[0].id),0)).developer).toBe('Long Studio Company Name Interactive 0 Ltd.');
+ });
+ it('a 24-row page of the contract fixture stays under 64 KiB and projects its first developer',()=>{
+  const [first]=JSON.parse(readFileSync(new URL('./contracts/fixtures/igdb-contract/positive.json',import.meta.url),'utf8'));
+  const page=Array.from({length:24},(_,i)=>({...first,id:first.id+i}));expect(JSON.stringify(page).length).toBeLessThan(65536);
+  const rows=parseGameProviderJson(bytes(page));expect(toGameCandidate(mapGameProviderFacts(rows[0],'42',0)).developer).toBe('First fixture developer');
  });
  it('accepts the recorded provider shape, including ids on expanded cover objects',()=>{
   const rows=parseGameProviderJson(bytes(recorded));
@@ -74,7 +88,8 @@ describe('Games search in the catalog service',()=>{
   const {catalog}=liveLike();
   const service=new CatalogService(db as any,{} as any,{} as any,catalog);
   const page=gameCandidatePageSchema.parse(await service.searchGames(owner,{query:'zelda',limit:'24'}));
-  expect(page.items[0]).toEqual({externalId:'7346',title:'The Legend of Zelda: Breath of the Wild',year:2017,coverUrl:'https://images.igdb.com/igdb/image/upload/t_cover_big/co3p2d.jpg',platforms:['Wii U','Nintendo Switch'],genres:['Role-playing (RPG)','Adventure'],developer:null});
+  expect(page.items[0]).toEqual({externalId:'7346',title:'The Legend of Zelda: Breath of the Wild',year:2017,coverUrl:'https://images.igdb.com/igdb/image/upload/t_cover_big/co3p2d.jpg',platforms:['Wii U','Nintendo Switch'],genres:['Role-playing (RPG)','Adventure'],developer:'Nintendo EPD'});
+  expect(page.items[1].developer).toBeNull();
   expect(page.items[2]).toEqual({externalId:'233',title:'Zelda fan game',year:null,coverUrl:null,platforms:[],genres:[],developer:null});
  });
  it('candidate projection keeps short lists only',()=>{
