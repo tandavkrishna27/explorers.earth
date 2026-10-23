@@ -21,4 +21,16 @@ describe('MyListsPanel (GD-19)', () => {
   fireEvent.dragStart(screen.getByText('Thalassa').closest('li')!, {dataTransfer: {setData: (k: string, v: string) => data.set(k, v), effectAllowed: ''}});
   expect(JSON.parse(data.get(NEW_ITEM_DRAG_TYPE)!)).toEqual({recommendationId: 'r1', collectionId: 'l1'});
  });
+ it('loads list names when opened and a list\'s items only when it is selected', async () => {
+  const loadLists = vi.fn().mockResolvedValue([{id: 'l1', title: 'Goa', category: 'places'}, {id: 'l2', title: 'Films', category: 'movies'}]);
+  const loadItems = vi.fn(async (list: {id: string}) => [{recommendationId: `${list.id}-r`, title: `Item of ${list.id}`}]);
+  const onAdd = vi.fn();
+  render(<MyListsPanel loadLists={loadLists} loadItems={loadItems} selectedDayName="Day 1" onAdd={onAdd} map={null} />);
+  expect(await screen.findByText('Item of l1')).toBeTruthy();
+  expect(loadLists).toHaveBeenCalledTimes(1);
+  expect(loadItems.mock.calls.map((c) => c[0].id)).toEqual(['l1']);
+  await userEvent.selectOptions(screen.getByLabelText('List'), 'l2');
+  await userEvent.click(await screen.findByRole('button', {name: 'Add Item of l2 to Day 1'}));
+  expect(onAdd).toHaveBeenCalledWith({kind: 'listItem', timeLabel: null, ref: {recommendationId: 'l2-r', collectionId: 'l2'}});
+ });
 });

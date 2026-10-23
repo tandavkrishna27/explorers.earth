@@ -40,4 +40,13 @@ describe('GuideEditorPage', () => {
   await userEvent.click(screen.getAllByRole('button', {name: '+ Add to Day 2'}).at(-1)!);
   expect(screen.getByRole('combobox', {name: 'Add to Day 2'})).toBeTruthy();
  });
+ it('phone opens My lists in a bottom sheet from the header', async () => {
+  // The shared setup's matchMedia matches nothing, i.e. a phone.
+  at('/recommendations/guides/g1');
+  expect(screen.queryByText('panel')).toBeNull();
+  await userEvent.click(screen.getByRole('button', {name: 'My lists'}));
+  expect(screen.getByRole('dialog', {name: 'My lists'})).toHaveTextContent('panel');
+  await userEvent.click(screen.getByRole('button', {name: 'Done'}));
+  expect(screen.queryByRole('dialog', {name: 'My lists'})).toBeNull();
+ });
 });

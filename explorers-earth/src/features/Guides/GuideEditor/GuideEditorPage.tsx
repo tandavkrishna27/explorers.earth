@@ -16,13 +16,28 @@ import {useGuidePlan} from './useGuidePlan';
 import DayStrip from './DayStrip';
 import DayList from './DayList';
 import SmartAddBox from './SmartAddBox';
-import MyListsPanel, {type PanelList} from './MyListsPanel';
+import MyListsPanel from './MyListsPanel';
+import {loadMyListItems, loadMyListNames} from './myListsLoad';
 import PlanChips, {type PlanSection} from './PlanChips';
 import LinkedListsBlock from './LinkedListsBlock';
 import {dayChipLabel} from './dayItems';
 import {guideListAdapter} from './guideListAdapter';
 
 type Tab = 'plan' | 'share' | 'manage';
+const WIDE = '(min-width: 768px)';
+/** md and up: the My lists column. Below md the panel lives in a bottom sheet instead. */
+function useWide() {
+ const query = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(WIDE).matches;
+ const [wide, setWide] = useState(query);
+ useEffect(() => {
+  if (typeof window.matchMedia !== 'function') return;
+  const media = window.matchMedia(WIDE);
+  const changed = () => setWide(media.matches);
+  media.addEventListener?.('change', changed);
+  return () => media.removeEventListener?.('change', changed);
+ }, []);
+ return wide;
+}
 type GuideRow = {documentId: string; Title: string; Description?: string; slug?: string; Visibility?: boolean; isSample?: boolean};
 
 export default function GuideEditorPage() {
@@ -48,7 +63,8 @@ function Editor({initial, guide, list, refresh}: {initial: GuideObservation; gui
  const [section, setSection] = useState<PlanSection>('itinerary');
  const [selected, setSelected] = useState(g.sections[0]?.id ?? '');
  const [adding, setAdding] = useState<string | null>(null);
- const [lists] = useState<PanelList[]>([]);           // filled from the owner's lists (getAllMyCollections per category) on first panel open
+ const wide = useWide();
+ const [sheet, setSheet] = useState(false);
  const [links] = useState<LinkedListCard[]>([]);      // [DEPENDS: WP10 — readListLinksForCollection via an owner route]
  useEffect(() => {if (!g.sections.some((s) => s.id === selected)) setSelected(g.sections[0]?.id ?? '');}, [g.sections, selected]);
  const days = useMemo(() => g.sections.map((s) => ({id: s.id, title: s.title, items: s.blocks.items})), [g.sections]);
@@ -65,6 +81,9 @@ function Editor({initial, guide, list, refresh}: {initial: GuideObservation; gui
  const collectionId = initial.collectionId;
  const reread = useCallback(() => void GuidesClient.observeWholeGuide(collectionId).then(replace).catch(() => {/* the next plan command re-reads on 409 */}), [collectionId, replace]);
  const adapter = useMemo(() => guideListAdapter({guide, list, dayCount: days.length, username, refresh, onWritten: reread}), [guide, list, days.length, username, refresh, reread]);
+ // Mounted only when visible (desktop column or open phone sheet), so the lists load on open.
+ const panel = <MyListsPanel loadLists={loadMyListNames} loadItems={loadMyListItems} selectedDayName={dayName(index)} onAdd={add(selected)}
+  map={<p className="p-3 text-sm text-gray-500">{t('dashboard.wp9.mapSoon', {defaultValue: 'Map view is coming soon.'})}</p>} />;
  const setStatus = async (next: 'draft' | 'public') => {
   try {
    await adapter.setStatus(next);
@@ -82,6 +101,8 @@ function Editor({initial, guide, list, refresh}: {initial: GuideObservation; gui
      <h1 className="line-clamp-2 text-2xl font-semibold" title={guide.Title}>{guide.Title}</h1>
      <p className="text-sm text-gray-600">{meta}</p>
     </div>
+    {!wide && tab === 'plan' && <button type="button" onClick={() => setSheet(true)} className="min-h-[44px] rounded-full border px-3 text-sm md:hidden">
+     {t('dashboard.wp9.myLists', {defaultValue: 'My lists'})}</button>}
     <PublishPill kind="guide" value={guide.Visibility ? 'public' : 'draft'} privateComingSoon disabled={guide.isSample === true} onChange={setStatus} />
    </header>
    <div role="tablist" className="mt-4 flex gap-4 border-b">
@@ -113,9 +134,17 @@ function Editor({initial, guide, list, refresh}: {initial: GuideObservation; gui
        {t('dashboard.wp9.addDay', {defaultValue: '+ Add day'})}</button>
       <LinkedListsBlock links={links} onOpen={(card) => navigate(`/recommendations/${card.collection.category}?list=${card.collection.id}`, {state: {from: location}})} />
      </div>
-     <div className="hidden md:block"><MyListsPanel lists={lists} selectedDayName={dayName(index)} onAdd={add(selected)}
-      map={<p className="p-3 text-sm text-gray-500">{t('dashboard.wp9.mapSoon', {defaultValue: 'Map view is coming soon.'})}</p>} /></div>
+     {wide && <div className="hidden md:block">{panel}</div>}
     </div>
+    {sheet && !wide && (
+     <div role="dialog" aria-modal="true" aria-label={t('dashboard.wp9.myLists', {defaultValue: 'My lists'})} className="fixed inset-0 z-50 flex items-end bg-black/40 md:hidden"
+      onClick={(e) => {if (e.target === e.currentTarget) setSheet(false);}} onKeyDown={(e) => {if (e.key === 'Escape') setSheet(false);}}>
+      <div className="max-h-[80vh] w-full overflow-y-auto rounded-t-2xl bg-slate-900 p-4">
+       <div className="mb-2 text-right"><button type="button" onClick={() => setSheet(false)} className="min-h-[44px] px-3 text-sm text-gray-300">{t('dashboard.wp9.done', {defaultValue: 'Done'})}</button></div>
+       {panel}
+      </div>
+     </div>
+    )}
     <BottomAddButton label={t('dashboard.wp9.addToDayButton', {defaultValue: '+ Add to {{day}}', day: dayName(index)})} onClick={() => setAdding(selected)} hidden={tab !== 'plan'} />
    </div>
    <div hidden={tab !== 'share'}><ShareTab adapter={adapter} /></div>
