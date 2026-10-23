@@ -11,9 +11,10 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { inspectMusicDatabase, migrateMusicDatabase } from "../../db/migrate";
+import { inspectMusicDatabase, loadMusicMigrations, migrateMusicDatabase } from "../../db/migrate";
+import { provisionMusicRuntimeLogin, verifyMusicRuntimeDatabaseConnection } from "../../db/music-runtime-role";
 import {
-  assertDisposableRestoreTarget, assertRestoredSchema, assertRowCounts, planRoleBootstrap,
+  assertDisposableRestoreTarget, assertRestoredSchema, assertRowCounts, migrateRestoredForward, planRoleBootstrap,
   PERMITTED_RESTORE_ROLES, RESTORE_DEPARSE_REPAIRS, repairRestoreDeparseDrift,
 } from "../../../../scripts/platform-restore-drill";
 
@@ -156,5 +157,35 @@ describePostgres("platform recovery round trip", () => {
        WHERE n.nspname='public' AND p.proname LIKE 'app_enrichment_worker_%' AND r.rolname<>'app_enrichment_worker_owner'`);
     expect(owners.rows[0].count).toBeGreaterThan(0);
     await target.end();
+  }, 600_000);
+
+  it("migrates a restore forward as the production migrator, so the runtime attestation still passes", async () => {
+    // A backup taken at an older head (the nightly 0064 dump drilled from 0066 code) is
+    // owned by the production migrator, not by the drill container's login. Migrating it
+    // forward as the login made 0066's new table the login's, and the runtime attestation
+    // (every public table owned by the migrator) refused the drill.
+    const owner = `drill_prod_migrator_${process.pid}`, login = `drill_runtime_${process.pid}`;
+    await admin.query(`DROP ROLE IF EXISTS ${owner}`);
+    await admin.query(`CREATE ROLE ${owner} NOLOGIN SUPERUSER`);
+    const name = `platform_recovery_forward_${process.pid}`;
+    (await freshDatabase(name)).end();
+    await admin.query(`ALTER DATABASE ${name} OWNER TO ${owner}`);
+    const restored = new pg.Pool({ connectionString: url(name), max: 2 });
+    restored.on("connect", connection => { connection.query(`SET ROLE ${owner}`).catch(() => undefined); });
+    const prior = loadMusicMigrations().filter(migration => migration.id < "0065");
+    await migrateMusicDatabase(restored, { migrations: prior, testOnlyExpectedIds: prior.map(migration => migration.id) });
+    await restored.end();
+
+    await migrateRestoredForward(url(name), owner);
+
+    const ownerPool = new pg.Pool({ connectionString: url(name), max: 2 });
+    try {
+      expect((await ownerPool.query("SELECT DISTINCT r.rolname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_roles r ON r.oid=c.relowner WHERE n.nspname='public' AND c.relkind IN ('r','p','v','m','f')")).rows)
+        .toEqual([{ rolname: owner }]);
+      const password = createHash("sha256").update(name).digest("base64url");
+      await provisionMusicRuntimeLogin(ownerPool, { loginRole: login, password });
+      const runtime = new URL(url(name)); runtime.username = login; runtime.password = password;
+      await expect(verifyMusicRuntimeDatabaseConnection({ connectionString: runtime.toString(), user: login } as never, owner)).resolves.toBeUndefined();
+    } finally { await ownerPool.end(); }
   }, 600_000);
 });
