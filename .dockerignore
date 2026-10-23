@@ -1193,6 +1193,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !tunes/shared/explorersPersonContract.ts
 !tunes/shared/explorersPlaceContract.ts
 !tunes/shared/explorersPlaceLinkContract.ts
+!tunes/shared/explorersPlacesNearbyContract.ts
 !tunes/shared/explorersProductContract.ts
 !tunes/shared/explorersPublicContentContract.ts
 !tunes/shared/explorersPublicPeopleSectorContract.ts
