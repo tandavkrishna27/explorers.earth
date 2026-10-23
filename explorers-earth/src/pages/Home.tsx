@@ -55,7 +55,7 @@ import { CreateGameListModal } from "../features/Games/components/dashboard/Game
 import { CreateAppListModal } from "../features/AppsAndTools/components/dashboard/AppsHome";
 import { CreateProductListModal } from "../features/Products/components/dashboard/ProductsHome";
 import { CreatePersonListModal } from "../features/People/components/dashboard/PeopleHome";
-import { CreateGuideModal } from "../features/Guides";
+import { NewGuideDialog } from "../features/Guides";
 import { CategoryEmptyState } from "../components/CategoryEmptyState";
 
 // Mutations & queries
@@ -1629,20 +1629,14 @@ const Home = memo(() => {
       )}
 
       {showCreateGuidesModal && (
-        <CreateGuideModal
+        <NewGuideDialog
           open={showCreateGuidesModal}
-          onClose={() => {
-            setShowCreateGuidesModal(false);
-            setPrefillTitle("");
-          }}
           defaultTitle={prefillTitle}
-          onCreated={(newId) => {
-            refetchGuides();
-            setPrefillTitle("");
-            if (newId) {
-              navigate(`/guides/${newId}`, { state: { justCreatedGuide: true } });
-            } else {
-              navigate(`/guides`, { state: { justCreatedGuide: true } });
+          onOpenChange={(next) => {
+            if (!next) {
+              setShowCreateGuidesModal(false);
+              setPrefillTitle("");
+              refetchGuides();
             }
           }}
         />
