@@ -29,7 +29,7 @@ describe("LinkedListsSection", () => {
     expect(screen.getByText("Packing list")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Reads/ })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Old apps/ })).toBeNull();
-    expect(screen.getByRole("link", { name: /Paris/ })).toHaveAttribute("href", "/recommendations/places?list=55555555-5555-4555-8555-555555555555");
+    expect(screen.getByRole("link", { name: /Paris/ })).toHaveAttribute("href", "/recommendations/places/55555555-5555-4555-8555-555555555555");
     fireEvent.click(screen.getByRole("link", { name: /Packing/ }));
     const where = screen.getByTestId("where").textContent ?? "";
     expect(where).toContain("/recommendations/products/22222222-2222-4222-8222-222222222222|");
