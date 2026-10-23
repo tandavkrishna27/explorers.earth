@@ -34,7 +34,7 @@ describe("canonical account query", () => {
     getMyProfile.mockReset().mockResolvedValue({ id: "a", handle: "a-handle", onboardingStatus: "complete", revision: 3 } as any);
     useAuthStore.setState({ user: { id: "a", documentId: "a", username: "a", email: "", blocked: false } });
     const client = new QueryClient();
-    const Five = () => { for (let i = 0; i < 5; i++) useCanonicalAccount(); return null; };
+    const Five = () => { useCanonicalAccount(); useCanonicalAccount(); useCanonicalAccount(); useCanonicalAccount(); useCanonicalAccount(); return null; };
     render(<QueryClientProvider client={client}><Five /><Probe /></QueryClientProvider>);
     await waitFor(() => expect(screen.getByText("a-handle")).toBeInTheDocument());
     expect(getMyProfile).toHaveBeenCalledTimes(1);
