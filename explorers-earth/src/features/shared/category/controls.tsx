@@ -71,7 +71,7 @@ export function BottomAddButton({ label, onClick, hidden }: { label: string; onC
   }, []);
   if (hidden) return null;
   return (
-    <div className="md:hidden fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(10px+env(safe-area-inset-bottom,0px))] pt-2 bg-gradient-to-b from-transparent to-[#07090c]">
+    <div className="md:hidden fixed inset-x-0 bottom-[60px] z-40 px-3 pb-[calc(10px+env(safe-area-inset-bottom,0px))] pt-2 bg-gradient-to-b from-transparent to-[#07090c]">
       <button type="button" onClick={onClick}
         className={`w-full rounded-2xl bg-[#60a5fa] font-semibold text-white shadow-[0_10px_30px_rgba(96,165,250,.35)] transition-all ${small ? "h-11 text-[13.5px]" : "h-14 text-[15px]"}`}>
         ＋ {label}
