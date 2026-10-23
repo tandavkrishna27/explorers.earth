@@ -89,7 +89,8 @@ const RETIRED = [
   {
     feature: "Books",
     modules: ["api/mutation.ts", "api/query.ts"],
-    canonicalWrites: ["createMyRecommendation", "updateMyRecommendation", "createMyCollection", "updateMyCollection"],
+    // List create moved to the shared New list popup (features/shared/category/listWrites.ts, WP3A).
+    canonicalWrites: ["createMyRecommendation", "updateMyRecommendation", "updateMyCollection"],
   },
   {
     feature: "Favorites",

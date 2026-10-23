@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { canonicalCategoryAccount, categories, closeFixture, fixtureState, fixtureUser, openFixture, settings, toggle } from './setup/category-navigation';
+import { canonicalCategoryAccount, categories, closeFixture, fixtureState, fixtureUser, openFixture, settings, setHeaderVisibility, toggle } from './setup/category-navigation';
 import { submitPinnedCategoryUnpublish } from './setup/category-navigation-helpers';
 import { bookFixtureId } from './setup/books-owner-content';
 
@@ -34,7 +34,7 @@ for (const category of categories) {
       await expect(guest.page).toHaveURL(`${baseURL}/${fixtureUser.username}?utm_source=browser`);
       await owner.page.goto(`/recommendations/${category.route}`);
       const beforeOn = canonicalCategoryAccount(state);
-      await toggle(owner.page.getByRole('checkbox').first(), true);
+      await setHeaderVisibility(owner.page, true);
       expect(state.writes.at(-1)?.variables).toEqual(preferenceWrite(beforeOn, { category: category.route, isPublic: true }));
       expect(state.account.pinned_nav_tabs).toEqual(['public_profile', other]);
       await settings(owner.page, true);
@@ -169,22 +169,22 @@ test('last list Draft and Delete preserve category settings/pins, private items 
     await expect(guest.page.getByText('Public books', { exact: true }).first()).toBeVisible();
     await expect(guest.page.getByText('Private fixture list', { exact: true })).toHaveCount(0);
     await owner.page.goto('/recommendations/books');
-    const card = owner.page.locator('div.group').filter({ has: owner.page.getByRole('heading', { name: 'Public books', exact: true }) });
-    await card.getByRole('switch', { name: 'Toggle', exact: true }).click();
+    const card = owner.page.getByTestId('list-card').filter({ has: owner.page.getByRole('link', { name: 'Public books', exact: true }) });
+    await card.getByRole('switch', { name: 'Public: Public books', exact: true }).click();
     await expect(card.getByText('Draft', { exact: true })).toBeVisible();
     expect(state.writes.map(r => r.name)).toEqual([`PATCH ${publicCollectionPath}`]);
     await owner.page.reload(); await expect(card.getByText('Draft', { exact: true })).toBeVisible();
     await guest.page.reload(); await expect(guest.page.getByText('Public books', { exact: true })).toHaveCount(0);
-    await owner.page.getByRole('heading', { name: 'Public books', exact: true }).click();
+    await owner.page.getByRole('link', { name: 'Public books', exact: true }).click();
     await owner.page.getByRole('tab', { name: 'Manage', exact: true }).click();
     await owner.page.getByRole('button', { name: 'Archive list', exact: true }).click();
     await owner.page.getByRole('button', { name: 'Archive', exact: true }).click();
     await expect(owner.page).toHaveURL(`${baseURL}/recommendations/books`);
     expect(state.writes.map(r => r.name)).toEqual([`PATCH ${publicCollectionPath}`, `DELETE ${publicCollectionPath}`]);
-    await owner.page.getByRole('heading', { name: 'Private fixture list', exact: true }).click();
+    await owner.page.getByRole('link', { name: 'Private fixture list', exact: true }).click();
     await owner.page.getByRole('tab', { name: 'Manage', exact: true }).click();
     await owner.page.getByRole('button', { name: 'Archive list', exact: true }).click(); await owner.page.getByRole('button', { name: 'Archive', exact: true }).click();
-    await expect(owner.page.getByText('Build your library', { exact: true })).toBeVisible();
+    await expect(owner.page.getByRole('button', { name: /Create your first list$/ }).first()).toBeVisible();
     expect(state.lists.bookLists).toEqual([]); expect(state.writes.map(r => r.name)).toEqual([`PATCH ${publicCollectionPath}`, `DELETE ${publicCollectionPath}`, `DELETE ${privateCollectionPath}`]);
     expect({ public_books: state.account.public_books, pins: state.account.pinned_nav_tabs }).toEqual(before);
     await settings(owner.page, true); await expect(owner.page.getByRole('checkbox', { name: 'Books Tab', exact: true })).toBeChecked();
@@ -206,7 +206,8 @@ test('all eight empty list responses never mutate category publication or saved 
     };
   });
   try {
-    const taglines = ['Map your world', 'Your personal cinema', 'Build your library', 'Level up your lists', 'Your stack, curated', 'Showcase your picks', 'Celebrate great minds', 'Write the itinerary'];
+    // Every category now renders the shared template's first-visit state for an empty list response.
+    const taglines = categories.map(() => 'Your best picks go here');
     const diagnostics: Record<string, string[]> = {};
     const invalid: Record<string, unknown> = {};
     for (const [index, category] of categories.entries()) {
@@ -302,8 +303,10 @@ test('ordinary stale loaded account rereads latest pins and route/account change
     state.faults.set('/api/explorers/v1/me', [{ gate: new Promise<void>(resolve => { release = resolve; }) }]);
     const books = owner.page.getByRole('checkbox', { name: 'Books Tab', exact: true }); await submitPinnedCategoryUnpublish(owner.page, books, 'Books Tab'); await expect(books).toBeDisabled();
     state.account.documentId = 'fixture-account-b'; await owner.page.goto('/recommendations/books'); release();
-    await expect(owner.page.getByRole('checkbox').first()).toBeEnabled(); expect(state.writes).toHaveLength(writes); expect(state.account.public_books).toBe('Yes');
-    state.account.documentId = 'browser-account'; await owner.page.reload(); await expect(owner.page.getByRole('checkbox').first()).toBeChecked(); expect(state.writes).toHaveLength(writes);
+    // The page header publish control is WP2's PublishPill (a menu button), not a checkbox.
+    const pill = owner.page.getByRole('button', { name: /^Visibility: (Public|Hidden)$/ });
+    await expect(pill).toBeEnabled(); expect(state.writes).toHaveLength(writes); expect(state.account.public_books).toBe('Yes');
+    state.account.documentId = 'browser-account'; await owner.page.reload(); await expect(pill).toHaveAccessibleName('Visibility: Public'); expect(state.writes).toHaveLength(writes);
   } finally { release?.(); await closeFixture(owner); }
 });
 

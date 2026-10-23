@@ -2,7 +2,6 @@
 export { default as MoviesHome } from "./components/dashboard/MoviesHome";
 export { default as MovieListView } from "./components/dashboard/MovieListView";
 export { default as AddMoviePage } from "./components/dashboard/AddMoviePage";
-export { default as TopPicksManager } from "./components/dashboard/TopPicksManager";
 
 // Public components
 export { default as PublicMovies } from "./components/public/PublicMovies";
