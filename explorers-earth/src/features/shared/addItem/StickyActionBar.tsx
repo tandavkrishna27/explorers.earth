@@ -10,14 +10,15 @@ type Props = {
 };
 
 // Sticky bar so Save is always on screen (scope ADD-02, ADD-13, OWN-04). No overlay.
+// Phone: it sticks above the fixed bottom nav (--bottom-nav-height already includes the safe area).
 export default function StickyActionBar({ onCancel, onSave, onSaveAndAddAnother, saving, canSave }: Props) {
   const { t } = useTranslation();
   const busy = saving !== null;
   const spinner = <Loader2 aria-hidden className="mr-1 inline h-4 w-4 animate-spin" />;
   return (
     <div role="toolbar" aria-label={t("dashboard.wp4.actions", "Item actions")}
-      className="sticky bottom-[var(--bottom-nav-height)] md:bottom-0 z-10 -mx-4 flex items-center gap-2 border-t border-dashboard-border bg-dashboard-sidebar px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 text-dashboard backdrop-blur">
-      <button type="button" onClick={onCancel} disabled={busy} className="min-h-11 rounded-xl border border-dashboard-border px-4 text-dashboard">{t("dashboard.wp4.cancel", "Cancel")}</button>
+      className="sticky bottom-[var(--bottom-nav-height,0px)] z-10 -mx-4 flex items-center gap-2 border-t border-white/10 bg-[#14171f]/95 px-4 pb-3 pt-3 backdrop-blur md:bottom-0 md:pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+      <button type="button" onClick={onCancel} disabled={busy} className="min-h-11 rounded-xl border border-white/10 px-4">{t("dashboard.wp4.cancel", "Cancel")}</button>
       <span className="flex-1" />
       {onSaveAndAddAnother && (
         <button type="button" onClick={onSaveAndAddAnother} disabled={busy || !canSave} aria-busy={saving === "another"}

@@ -11,6 +11,7 @@ import TopPicksHero from "../topPicks/TopPicksHero";
 import TopPicksManager from "../topPicks/TopPicksManager";
 import NewListDialog, { type NewListCreate } from "../lists/NewListDialog";
 import { RestoreListButton } from "./restoreButton";
+import DashboardPageContainer from "../../../components/layout/DashboardPageContainer";
 
 export interface CategoryPageProps {
   category: CategoryKey;
@@ -76,9 +77,10 @@ export default function CategoryPage(props: CategoryPageProps) {
   const heroState = lists.length === 0 ? "firstVisit" : props.topPicks.length === 0 ? "empty" : "picks";
 
   return (
-    <div className="mx-auto grid max-w-[720px] gap-3.5 px-4 pb-28 pt-2 md:px-1 md:pb-6">
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="m-0 min-w-0 flex-1 text-xl font-bold text-gray-50">{title}</h2>
+    <DashboardPageContainer className="grid gap-3.5 pb-28 pt-2 md:pb-6">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {/* The header already shows the category name; this heading stays for assistive tech only. */}
+        <h2 className="sr-only">{title}</h2>
         <PublishPill kind="category" value={props.categoryVisibility} categoryName={title} disabled={props.visibilityBusy} onChange={props.onCategoryVisibility} />
         <button type="button" onClick={startNew}
           className="hidden md:inline-flex rounded-xl bg-[#60a5fa] px-3.5 py-[7px] text-[13px] font-medium text-white whitespace-nowrap">＋ {newLabel}</button>
@@ -153,6 +155,6 @@ export default function CategoryPage(props: CategoryPageProps) {
         <TopPicksManager category={category} mode={config.topPicks} limit={config.pinLimit} pinned={props.topPicks} candidates={props.pinCandidates}
           onClose={closeManager} onSaved={() => { closeManager(); onChanged(); }} />
       )}
-    </div>
+    </DashboardPageContainer>
   );
 }

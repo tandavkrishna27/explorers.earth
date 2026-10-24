@@ -153,7 +153,7 @@ const GuidesChart: React.FC<GuidesChartProps> = ({ events }) => {
                         <span className="text-xs dt-label truncate max-w-[180px]">{guide.title}</span>
                         {guide.guideType && (
                           <span className="text-[10px] text-orange-400/70 bg-orange-500/10 px-1.5 py-0.5 rounded flex-shrink-0">
-                            {guide.guideType}
+                            {t(`dashboard.wp7.guideType.${guide.guideType}`, guide.guideType)}
                           </span>
                         )}
                       </div>

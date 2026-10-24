@@ -394,7 +394,7 @@
       "policy": "fail-closed-tombstone",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 75
+      "line": 77
     },
     {
       "method": "USE",
@@ -404,7 +404,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 77
+      "line": 79
     },
     {
       "method": "ALL",
@@ -414,7 +414,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 84
+      "line": 86
     },
     {
       "method": "ALL",
@@ -424,7 +424,7 @@
       "policy": "better-auth-handler+trusted-origin-for-mutations",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 85
+      "line": 87
     },
     {
       "method": "GET",
@@ -434,7 +434,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 89
+      "line": 91
     },
     {
       "method": "GET",
@@ -444,7 +444,7 @@
       "policy": "explicit-public-contract",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 92
+      "line": 94
     },
     {
       "method": "POST",
@@ -454,7 +454,7 @@
       "policy": "trusted-origin+signed-short-lived-recovery-intent",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 123
+      "line": 126
     },
     {
       "method": "GET",
@@ -464,7 +464,7 @@
       "policy": "better-auth-session+google-provider+active-initial-account-binding",
       "lifecycle": "request",
       "source": "tunes/server/auth/canonicalApp.ts",
-      "line": 141
+      "line": 144
     },
     {
       "method": "GET",
@@ -985,6 +985,26 @@
       "lifecycle": "request",
       "source": "tunes/server/routes/explorersMusicIdentityRoutes.ts",
       "line": 31
+    },
+    {
+      "method": "GET",
+      "path": "/api/explorers/v1/places/nearby",
+      "classification": "canonical-explorers-owner",
+      "ownerSource": "verified-google-session+active-initial-account-binding",
+      "policy": "better-auth-session+google-provider+active-initial-account-binding",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPlacesRoutes.ts",
+      "line": 12
+    },
+    {
+      "method": "ALL",
+      "path": "/api/explorers/v1/places/nearby",
+      "classification": "tombstone",
+      "ownerSource": "none-fail-closed",
+      "policy": "fail-closed-tombstone",
+      "lifecycle": "request",
+      "source": "tunes/server/routes/explorersPlacesRoutes.ts",
+      "line": 24
     },
     {
       "method": "USE",
@@ -2706,7 +2726,7 @@
       "kind": "setTimeout",
       "lifecycle": "scheduled-callback",
       "source": "tunes/server/services/bookCoverFetch.ts",
-      "line": 37
+      "line": 45
     },
     {
       "kind": "setTimeout",

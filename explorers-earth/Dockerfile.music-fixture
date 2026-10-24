@@ -40,6 +40,7 @@ COPY tunes/shared/currency.ts /workspace/tunes/shared/currency.ts
 COPY tunes/shared/explorersPersonContract.ts /workspace/tunes/shared/explorersPersonContract.ts
 COPY tunes/shared/explorersPublicPeopleSectorContract.ts /workspace/tunes/shared/explorersPublicPeopleSectorContract.ts
 COPY tunes/shared/explorersPlaceContract.ts /workspace/tunes/shared/explorersPlaceContract.ts
+COPY tunes/shared/explorersPlacesNearbyContract.ts /workspace/tunes/shared/explorersPlacesNearbyContract.ts
 COPY tunes/shared/explorersPlaceLinkContract.ts /workspace/tunes/shared/explorersPlaceLinkContract.ts
 COPY tunes/shared/explorersGuideContract.ts /workspace/tunes/shared/explorersGuideContract.ts
 COPY tunes/shared/explorersLifecycleObservation.ts /workspace/tunes/shared/explorersLifecycleObservation.ts

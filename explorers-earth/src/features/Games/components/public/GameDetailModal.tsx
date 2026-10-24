@@ -10,6 +10,7 @@ import { useMediaViewer, convertToMediaItems } from "../../../../hooks/useMediaV
 import SafePublicRichText from "../../../PublicHome/components/SafePublicRichText";
 import DialogPanel from "../../../../components/ui/DialogPanel";
 import { keyboardActivation } from "../../../../utils/keyboardActivation";
+import ProviderRatingChip from "../../../../components/ProviderRatingChip";
 
 interface GameDetailModalProps {
   game: RecommendedGame | null;
@@ -203,16 +204,14 @@ const GameDetailModal = ({ game, open, onClose }: GameDetailModalProps) => {
                         <Calendar size={13} /> {game.release_year}
                       </span>
                     )}
-                    {game.igdb_rating && (
-                      <span className="flex items-center gap-1.5 text-[color:var(--category-text,#60a5fa)] font-semibold bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-500/10">
-                        <Star size={13} fill="currentColor" /> {game.igdb_rating.toFixed(1)} IGDB
+                    {/* Provider rating is a labelled source fact, never the owner's stars (DS-15). */}
+                    <ProviderRatingChip source="IGDB" value={game.igdb_rating} />
+                    {/* Every platform, not just the first (UAT-01). */}
+                    {(game.platforms ?? []).map(platform => (
+                      <span key={platform} className="flex items-center gap-1.5 text-[color:var(--category-muted,rgba(255,255,255,0.5))] bg-[var(--category-card,rgba(255,255,255,0.05))] px-2.5 py-1 rounded-lg border border-[color:var(--category-border,rgba(255,255,255,0.05))]">
+                        <Gamepad2 size={13} aria-hidden /> {platform}
                       </span>
-                    )}
-                    {game.platforms && game.platforms.length > 0 && (
-                      <span className="flex items-center gap-1.5 text-[color:var(--category-muted,rgba(255,255,255,0.5))] bg-[var(--category-card,rgba(255,255,255,0.05))] px-2.5 py-1 rounded-lg border border-[color:var(--category-border,rgba(255,255,255,0.05))]">
-                        <Gamepad2 size={13} /> {game.platforms[0]}
-                      </span>
-                    )}
+                    ))}
                   </div>
 
                   {/* Genres */}

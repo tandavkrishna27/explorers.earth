@@ -572,7 +572,7 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
       denied.push(`${request.method()} external ${url.hostname}${url.pathname}`);
       return route.abort('blockedbyclient');
     }
-    if (request.method() === 'GET' && (request.resourceType() === 'document' || url.pathname === '/e2e/setup/maps-fixture.tsx' || /^\/(?:src|node_modules|images|assets|landing|@vite|@id|@fs)\//.test(url.pathname) || /^\/(?:@react-refresh|explorers\.svg|eoe-icon\.svg|eoe-full\.svg|favicon\.ico)$/.test(url.pathname))) return route.continue();
+    if (request.method() === 'GET' && (request.resourceType() === 'document' || url.pathname === '/e2e/setup/maps-fixture.tsx' || url.pathname === '/e2e/setup/add-item-layout-harness.tsx' || /^\/(?:src|node_modules|images|assets|landing|@vite|@id|@fs)\//.test(url.pathname) || /^\/(?:@react-refresh|explorers\.svg|eoe-icon\.svg|eoe-full\.svg|favicon\.ico)$/.test(url.pathname))) return route.continue();
     denied.push(`${request.method()} ${url.pathname}`); return route.abort('blockedbyclient');
   });
   return { errors, denied, vendors, observedHttpErrors, assertClean() { expect(denied).toEqual([]); expect(errors).toEqual([]); } };

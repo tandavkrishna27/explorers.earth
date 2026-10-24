@@ -14,82 +14,85 @@ const fixture = vi.hoisted(() => ({ content: { view: { lists: [] }, details: new
 vi.mock('../../../hooks/useGamesOwner', () => ({ useGamesOwner: () => ({ content: fixture.content, data: { gameLists: fixture.content.view.lists }, loading: fixture.loading, error: fixture.error, refetch: fixture.refetch }), invalidateGames: vi.fn() }));
 vi.mock('../../../api/gamesClient', () => ({ GamesClient: { observeCollection: vi.fn(), prepareManualIntent: vi.fn(), createManual: vi.fn(), upload: vi.fn(), importCover: vi.fn(), search: vi.fn(), updateRecommendation: vi.fn(), observeRecommendation: vi.fn(), updateCollection: vi.fn(), createCollection: vi.fn(), readCompleteOwner: vi.fn(), setTopPicks: vi.fn() } }));
 vi.mock('../../../../Favorites/components/TiptapEditor', () => ({ default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => <textarea aria-label="Note" value={value} onChange={event => onChange(event.target.value)} /> }));
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock('../../../../../lib/curatedTaxonomy', async importOriginal => ({ ...(await importOriginal<object>()), useCuratedCatalog: () => ({ terms: [], unconfigured: true, loading: false, error: null }) }));
+vi.mock('sonner',() => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 function mount() { return render(<MockedProvider><MemoryRouter initialEntries={['/games/list-1/add']}><Routes><Route path="/games/:listId/add" element={<AddGamePage />} /><Route path="/recommendations/games/:listId" element={<p>Saved list</p>} /></Routes></MemoryRouter></MockedProvider>); }
+function openManual() { fireEvent.click(screen.getByRole('button', { name: "Can't find it? Add manually" })); }
+function searchFor(text: string) { const box = screen.getByPlaceholderText('Search for a game...'); fireEvent.change(box, { target: { value: text } }); fireEvent.keyDown(box, { key: 'Enter' }); }
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(r => { resolve = r; }); return { promise, resolve }; }
 describe('native manual Games', () => {
  beforeEach(() => { vi.clearAllMocks(); fixture.loading = false; fixture.error = undefined; fixture.content.view.lists = []; fixture.content.details.clear(); useAuthStore.getState().login({ id: 'u1', documentId: 'u1', username: 'owner', token: 'fixture' }); useAuthStore.setState({ accountId: 'a1' }); vi.mocked(GamesClient.observeCollection).mockResolvedValue({ detail: { id: 'list-1' } } as never); vi.mocked(GamesClient.prepareManualIntent).mockImplementation((parent, draft) => ({ parent, draft, entityKey: 'entity-key', recommendationKey: 'recommendation-key' })); vi.mocked(GamesClient.createManual).mockResolvedValue({ id: 'game-1' } as never); });
  afterEach(() => { cleanup(); useAuthStore.getState().logout(); });
  it('creates a native manual title/rating/note without fabricating a provider ID', async () => {
-  mount(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Manual adventure' } }); fireEvent.change(screen.getByLabelText('Your rating'), { target: { value: '8' } }); fireEvent.change(screen.getByLabelText('Note'), { target: { value: '<p>A personal note</p>' } }); fireEvent.click(screen.getByRole('button', { name: 'Save game' }));
-  await screen.findByText('Saved list'); expect(GamesClient.prepareManualIntent).toHaveBeenCalledWith(expect.anything(), { title: 'Manual adventure', note: { version: 1, format: 'quill-html', html: '<p>A personal note</p>' }, userRating: 8, mediaIds: [], releaseYear: null, platforms: [], genres: [] }); expect(GamesClient.createManual).toHaveBeenCalledTimes(1); expect(GamesClient.search).not.toHaveBeenCalled();
+  mount(); openManual(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Manual adventure' } }); fireEvent.keyDown(screen.getByRole('slider', { name: 'Your rating' }), { key: 'End' }); fireEvent.change(screen.getByLabelText('Note'), { target: { value: '<p>A personal note</p>' } }); fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  await screen.findByText('Saved list'); expect(GamesClient.prepareManualIntent).toHaveBeenCalledWith(expect.anything(), { title: 'Manual adventure', note: { version: 1, format: 'quill-html', html: '<p>A personal note</p>' }, userRating: 10, mediaIds: [], releaseYear: null, platforms: [], genres: [], developer: null }); expect(GamesClient.createManual).toHaveBeenCalledTimes(1); expect(GamesClient.search).not.toHaveBeenCalled();
  });
  it('waits for actual uploaded media readiness before saving', async () => {
-  const upload = deferred<{ id: string }>(); vi.mocked(GamesClient.upload).mockReturnValue(upload.promise as never); mount(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Uploaded game' } }); fireEvent.change(screen.getByLabelText('Snapshots'), { target: { files: [new File(['bytes'], 'snapshot.png', { type: 'image/png' })] } }); expect(screen.getByRole('button', { name: 'Save game' })).toBeDisabled(); expect(GamesClient.createManual).not.toHaveBeenCalled(); await act(async () => upload.resolve({ id: 'media-1' })); await waitFor(() => expect(screen.getByRole('button', { name: 'Save game' })).toBeEnabled()); fireEvent.click(screen.getByRole('button', { name: 'Save game' })); await screen.findByText('Saved list'); expect(GamesClient.prepareManualIntent).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ mediaIds: ['media-1'] }));
+  const upload = deferred<{ id: string }>(); vi.mocked(GamesClient.upload).mockReturnValue(upload.promise as never); mount(); openManual(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Uploaded game' } }); fireEvent.change(screen.getByLabelText('Snapshots'), { target: { files: [new File(['bytes'], 'snapshot.png', { type: 'image/png' })] } }); expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled(); expect(GamesClient.createManual).not.toHaveBeenCalled(); await act(async () => upload.resolve({ id: 'media-1' })); await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()); fireEvent.click(screen.getByRole('button', { name: 'Save' })); await screen.findByText('Saved list'); expect(GamesClient.prepareManualIntent).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ mediaIds: ['media-1'] }));
  });
  it('saves uploaded snapshots in the order the owner arranged them', async () => {
   let next = 0; vi.mocked(GamesClient.upload).mockImplementation(async () => ({ id: `shot-${++next}` }) as never);
-  const { container } = mount(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Ordered game' } });
+  const { container } = mount(); openManual(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Ordered game' } });
   fireEvent.change(container.querySelector('input[type=file]')!, { target: { files: [new File(['a'], 'a.png', { type: 'image/png' }), new File(['b'], 'b.png', { type: 'image/png' }), new File(['c'], 'c.png', { type: 'image/png' })] } });
   await waitFor(() => expect(screen.getAllByAltText('Game snapshot')).toHaveLength(3));
   fireEvent.click(screen.getByRole('button', { name: 'Move Snapshot 3 up' })); fireEvent.click(screen.getByRole('button', { name: 'Move Snapshot 2 up' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Save game' })); await screen.findByText('Saved list');
+  fireEvent.click(screen.getByRole('button', { name: 'Save' })); await screen.findByText('Saved list');
   expect(vi.mocked(GamesClient.prepareManualIntent).mock.calls[0][1]).toMatchObject({ mediaIds: ['shot-3', 'shot-1', 'shot-2'] });
  });
  it('retains the same manual command intent on an explicit network retry', async () => {
-  vi.mocked(GamesClient.createManual).mockRejectedValueOnce(new Error('Temporarily unavailable')).mockResolvedValueOnce({ id: 'game-1' } as never); mount(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Retained draft' } }); fireEvent.click(screen.getByRole('button', { name: 'Save game' })); await screen.findByRole('alert'); expect(screen.getByLabelText('Game title')).toHaveValue('Retained draft'); fireEvent.click(screen.getByRole('button', { name: 'Save game' })); await screen.findByText('Saved list'); expect(GamesClient.prepareManualIntent).toHaveBeenCalledTimes(1); expect(vi.mocked(GamesClient.createManual).mock.calls[0][0]).toBe(vi.mocked(GamesClient.createManual).mock.calls[1][0]);
+  vi.mocked(GamesClient.createManual).mockRejectedValueOnce(new Error('Temporarily unavailable')).mockResolvedValueOnce({ id: 'game-1' } as never); mount(); openManual(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Retained draft' } }); fireEvent.click(screen.getByRole('button', { name: 'Save' })); await screen.findByRole('alert'); expect(screen.getByLabelText('Game title')).toHaveValue('Retained draft'); fireEvent.click(screen.getByRole('button', { name: 'Save' })); await screen.findByText('Saved list'); expect(GamesClient.prepareManualIntent).toHaveBeenCalledTimes(1); expect(vi.mocked(GamesClient.createManual).mock.calls[0][0]).toBe(vi.mocked(GamesClient.createManual).mock.calls[1][0]);
  });
  it('provider unavailable response preserves the manual draft without provider identity', async () => {
   vi.mocked(GamesClient.search).mockRejectedValue(new Error('Provider unavailable'));
-  mount(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'My manual draft' } }); fireEvent.change(screen.getByLabelText('Search for a game'), { target: { value: 'Provider query' } }); fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-  expect(await screen.findByRole('status')).toHaveTextContent('Provider unavailable'); expect(screen.getByLabelText('Game title')).toHaveValue('My manual draft'); expect(GamesClient.prepareManualIntent).not.toHaveBeenCalled();
+  mount(); openManual(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'My manual draft' } }); fireEvent.click(screen.getByRole('button', { name: '‹ Back to search' })); searchFor('Provider query');
+  expect(await screen.findByRole('alert')).toHaveTextContent("Search isn't working right now"); openManual(); expect(screen.getByLabelText('Game title')).toHaveValue('My manual draft'); expect(GamesClient.prepareManualIntent).not.toHaveBeenCalled();
  });
  it('search lists IGDB candidates and picking one fills the title, keeping the rest of the draft', async () => {
   vi.mocked(GamesClient.search).mockResolvedValue({ version: 'explorers-game-candidates/v1', nextCursor: null, items: [
    { externalId: '7346', title: 'The Legend of Zelda: Breath of the Wild', year: 2017, coverUrl: 'https://images.igdb.com/igdb/image/upload/t_cover_big/co3p2d.jpg', platforms: ['Wii U', 'Nintendo Switch'], genres: ['Adventure'] },
    { externalId: '233', title: 'Zelda fan game', year: null, coverUrl: null, platforms: [], genres: [] }] } as never);
-  mount(); fireEvent.change(await screen.findByLabelText('Your rating'), { target: { value: '9' } }); fireEvent.change(screen.getByLabelText('Search for a game'), { target: { value: 'zelda' } }); fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-  expect(GamesClient.search).toHaveBeenCalledWith({ query: 'zelda', limit: 24 });
-  expect(await screen.findByText('Wii U · Nintendo Switch')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Use Zelda fan game' })).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Use The Legend of Zelda: Breath of the Wild (2017)' }));
-  expect(screen.getByLabelText('Game title')).toHaveValue('The Legend of Zelda: Breath of the Wild'); expect(screen.getByLabelText('Your rating')).toHaveValue('9');
+  mount(); openManual(); fireEvent.keyDown(screen.getByRole('slider', { name: 'Your rating' }), { key: 'End' }); fireEvent.click(screen.getByRole('button', { name: '‹ Back to search' })); searchFor('zelda');
+  expect(GamesClient.search).toHaveBeenCalledWith({ query: 'zelda', limit: 24 }, expect.any(AbortSignal));
+  expect(await screen.findByText('2017 · Wii U · Nintendo Switch')).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: /Zelda fan game/ })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('option', { name: /Breath of the Wild/ }));
+  expect(screen.getByLabelText('Game title')).toHaveValue('The Legend of Zelda: Breath of the Wild'); expect(screen.getByRole('slider', { name: 'Your rating' })).toHaveAttribute('aria-valuenow', '10');
  });
  it('picking a hit imports its IGDB cover as the first snapshot and saves it with the game (GMS-X01)', async () => {
   vi.mocked(GamesClient.search).mockResolvedValue({ version: 'explorers-game-candidates/v1', nextCursor: null, items: [
    { externalId: '26226', title: 'Celeste', year: 2018, coverUrl: 'https://images.igdb.com/igdb/image/upload/t_cover_big/co3byy.jpg', platforms: ['PC (Microsoft Windows)'], genres: ['Platform'] }] } as never);
   vi.mocked(GamesClient.importCover).mockResolvedValue({ id: 'cover-1', url: '/api/explorers/v1/media/cover-1/content' } as never);
   vi.mocked(GamesClient.prepareManualIntent).mockReturnValue({} as never); vi.mocked(GamesClient.createManual).mockResolvedValue({ id: 'game-1' } as never);
-  mount(); fireEvent.change(await screen.findByLabelText('Search for a game'), { target: { value: 'celeste' } }); fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Use Celeste (2018)' }));
+  mount(); searchFor('celeste');
+  fireEvent.click(await screen.findByRole('option', { name: /Celeste/ }));
   await waitFor(() => expect(GamesClient.importCover).toHaveBeenCalledWith('co3byy'));
   expect(screen.getByLabelText('Release year')).toHaveValue(2018); expect(screen.getByLabelText('Platforms')).toHaveValue('PC (Microsoft Windows)'); expect(screen.getByLabelText('Genres')).toHaveValue('Platform');
   expect(await screen.findByAltText('Game snapshot')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Save game' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   await screen.findByText('Saved list');
   expect(GamesClient.prepareManualIntent).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ title: 'Celeste', mediaIds: ['cover-1'], releaseYear: 2018, platforms: ['PC (Microsoft Windows)'], genres: ['Platform'] }));
  });
  it('saves typed year, platforms and genres for a manual game, trimming blanks', async () => {
   vi.mocked(GamesClient.prepareManualIntent).mockReturnValue({} as never); vi.mocked(GamesClient.createManual).mockResolvedValue({ id: 'game-1' } as never);
-  mount(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Home-made' } });
+  mount(); openManual(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Home-made' } });
   fireEvent.change(screen.getByLabelText('Release year'), { target: { value: '1999' } }); fireEvent.change(screen.getByLabelText('Platforms'), { target: { value: ' PC ,, Amiga ' } }); fireEvent.change(screen.getByLabelText('Genres'), { target: { value: '' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Save game' })); await screen.findByText('Saved list');
+  fireEvent.click(screen.getByRole('button', { name: 'Save' })); await screen.findByText('Saved list');
   expect(GamesClient.prepareManualIntent).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ title: 'Home-made', releaseYear: 1999, platforms: ['PC', 'Amiga'], genres: [] }));
  });
  it('says search is not available when the deployment has no IGDB credentials', async () => {
   vi.mocked(GamesClient.search).mockRejectedValue(new ExplorersApiError(503, 'PROVIDER_NOT_CONFIGURED', 'Game search is not available. Add the game manually.'));
-  mount(); fireEvent.change(await screen.findByLabelText('Search for a game'), { target: { value: 'zelda' } }); fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-  expect(await screen.findByRole('status')).toHaveTextContent('Game search is not available yet. Add the game manually below.');
+  mount(); searchFor('zelda');
+  expect(await screen.findByRole('status')).toHaveTextContent('Game search is not available yet. Add the game manually.');
  });
  it('account replacement while parent observation is pending cannot create a game', async () => {
-  const parent = deferred<never>(); vi.mocked(GamesClient.observeCollection).mockReturnValue(parent.promise); mount(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Old owner draft' } }); fireEvent.click(screen.getByRole('button', { name: 'Save game' }));
+  const parent = deferred<never>(); vi.mocked(GamesClient.observeCollection).mockReturnValue(parent.promise); mount(); openManual(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Old owner draft' } }); fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   act(() => useAuthStore.getState().logout()); await act(async () => parent.resolve({ detail: { id: 'list-1' } } as never));
-  expect(GamesClient.prepareManualIntent).not.toHaveBeenCalled(); expect(GamesClient.createManual).not.toHaveBeenCalled(); expect(screen.getByLabelText('Game title')).toHaveValue('');
+  expect(GamesClient.prepareManualIntent).not.toHaveBeenCalled(); expect(GamesClient.createManual).not.toHaveBeenCalled(); expect(screen.queryByDisplayValue('Old owner draft')).toBeNull();
  });
 
  it('retains an oversized note and presents validation failure without dispatching a save', async () => {
-  mount(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'My invalid draft' } }); const note = '<p>' + 'a'.repeat(256 * 1024) + '</p>'; fireEvent.change(screen.getByLabelText('Note'), { target: { value: note } }); fireEvent.click(screen.getByRole('button', { name: 'Save game' }));
-  expect(await screen.findByRole('alert')).toHaveTextContent('Rich note exceeds byte limit'); expect(screen.getByLabelText('Note')).toHaveValue(note); expect(GamesClient.observeCollection).not.toHaveBeenCalled(); expect(GamesClient.createManual).not.toHaveBeenCalled(); expect(screen.getByRole('button', { name: 'Save game' })).toBeEnabled();
+  mount(); openManual(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'My invalid draft' } }); const note = '<p>' + 'a'.repeat(256 * 1024) + '</p>'; fireEvent.change(screen.getByLabelText('Note'), { target: { value: note } }); fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Rich note exceeds byte limit'); expect(screen.getByLabelText('Note')).toHaveValue(note); expect(GamesClient.observeCollection).not.toHaveBeenCalled(); expect(GamesClient.createManual).not.toHaveBeenCalled(); expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
  });
  // LP-04: per-item publication is gone from the list page. The list's own publish pill changes
  // only the collection; it never writes a recommendation's publication state.
@@ -130,10 +133,9 @@ describe('native manual Games', () => {
   });
  });
 
- it('reserves scrollable footer and safe-area clearance below the actual manual Save control', async () => {
-  mount(); const save = await screen.findByRole('button', { name: 'Save game' });
-  const content = save.parentElement?.parentElement;
-  expect(content).toHaveStyle({ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' });
+ it('keeps the manual Save control in the sticky action bar (ADD-02)', async () => {
+  mount(); openManual(); const save = await screen.findByRole('button', { name: 'Save' });
+  expect(screen.getByRole('toolbar')).toContainElement(save); expect(save).toBeDisabled();
   fireEvent.change(screen.getByLabelText('Game title'), { target: { value: 'Reachable mobile game' } }); expect(save).toBeEnabled();
  });
 
@@ -150,7 +152,7 @@ describe('native manual Games', () => {
   it('waits for actual full owner hydration instead of exposing blank editable controls', async () => {
    fixture.loading = true; const view = render(editElement());
    expect(screen.getByRole('status')).toHaveTextContent('Loading game'); expect(screen.queryByLabelText('Game title')).not.toBeInTheDocument(); expect(GamesClient.updateRecommendation).not.toHaveBeenCalled();
-   loaded(); view.rerender(editElement()); expect(await screen.findByLabelText('Game title')).toHaveValue('Original title'); expect(screen.getByRole('button', { name: 'Save game' })).toBeEnabled();
+   loaded(); view.rerender(editElement()); expect(await screen.findByLabelText('Game title')).toHaveValue('Original title'); expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
   });
   it('presents a current owner read failure and invokes explicit manual retry only', async () => {
    fixture.error = new Error('Owner temporarily unavailable'); const view = render(editElement());
@@ -168,6 +170,6 @@ describe('native manual Games', () => {
    fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'My unsaved edit' } });
    fixture.error = new Error('Refresh unavailable'); fixture.content = { view: { lists: [] }, details: new Map(), observation: {} }; view.rerender(editElement()); expect(screen.getByLabelText('Game title')).toHaveValue('My unsaved edit');
    loaded('Server newer title'); fixture.content.details.set('game-a', { detail: { id: 'game-a', revision: 2 } }); view.rerender(editElement()); expect(screen.getByLabelText('Game title')).toHaveValue('My unsaved edit');
-   fireEvent.click(screen.getByRole('button', { name: 'Save game' })); expect(await screen.findByRole('alert')).toHaveTextContent('Reload the game before saving'); expect(GamesClient.updateRecommendation).not.toHaveBeenCalled(); expect(fixture.content.details.get('game-a')).not.toBe(original);
+   fireEvent.click(screen.getByRole('button', { name: 'Save' })); expect(await screen.findByRole('alert')).toHaveTextContent('Reload the game before saving'); expect(GamesClient.updateRecommendation).not.toHaveBeenCalled(); expect(fixture.content.details.get('game-a')).not.toBe(original);
   });
  });
