@@ -64,10 +64,14 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
   routes.post('/api/explorers/v1/collections/:id/memberships/:recommendationId',async(req,res)=>mutation((a,id,b,c)=>service.gameMembership(a,id,String(req.params.recommendationId),b,c,true),'membership')(req,res));
   routes.delete('/api/explorers/v1/collections/:id/memberships/:recommendationId',async(req,res)=>mutation((a,id,b,c)=>service.gameMembership(a,id,String(req.params.recommendationId),b,c,false),'membership')(req,res));
   routes.all('/api/explorers/v1/collections/:id/memberships/:recommendationId',unsupported);
-  // Ticket 5.2. The one location a Products or People list may belong to.
-  routes.post('/api/explorers/v1/collections/:id/location',mutation((a,id,b,c)=>service.locationLink(a,id,b,c,true),'collection'));
-  routes.delete('/api/explorers/v1/collections/:id/location',mutation((a,id,b,c)=>service.locationLink(a,id,b,c,false),'collection'));
-  routes.all('/api/explorers/v1/collections/:id/location',unsupported);
+  // WP10 (LNK-01..08). Links between two of the owner's lists. Attach is addressed by the
+  // host list; role and detach by the link id. Detach returns the removed link so the client
+  // can Undo at its position.
+  routes.post('/api/explorers/v1/collections/:id/links',mutation((a,id,b,c)=>service.attachListLink(a,id,b,c),'link',201));
+  routes.all('/api/explorers/v1/collections/:id/links',unsupported);
+  routes.patch('/api/explorers/v1/collections/:id/links/:linkId',async(req,res)=>mutation((a,id,b,c)=>service.setListLinkRole(a,id,String(req.params.linkId??''),b,c),'link')(req,res));
+  routes.delete('/api/explorers/v1/collections/:id/links/:linkId',async(req,res)=>mutation((a,id,b,c)=>service.detachListLink(a,id,String(req.params.linkId??''),b,c),'link')(req,res));
+  routes.all('/api/explorers/v1/collections/:id/links/:linkId',unsupported);
   // Ticket 5.3. The guide aggregate: the parent's guide fields, its cover and a page of
   // ordered sections. Registration order matters here - 'sections/order' comes before
   // 'sections/:sectionId', or Express matches the literal 'order' as a section id and a

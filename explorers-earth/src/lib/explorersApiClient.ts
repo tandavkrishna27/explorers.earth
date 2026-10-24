@@ -23,7 +23,7 @@ import { createCollectionSchema,createCollectionResultSchema,type CreateCollecti
 import { editableOwnerCollectionSchema,editableOwnerRecommendationSchema,type EditableOwnerCollection,type EditableOwnerRecommendation } from '../../../tunes/shared/explorersOwnerContentContract';
 import { resolveManualEntitySchema,resolveManualGameSchema,entityCoreDtoSchema,type ResolveManualEntityInput } from '../../../tunes/shared/explorersContract';
 import {bookCandidateRequestSchema,bookCandidatesSchema,bookEntityDtoSchema,resolveProviderBookSchema,resolveManualBookSchema,replaceRecommendationEntitySchema} from '../../../tunes/shared/explorersBookContract';
-import {attachLocationLinkSchema,detachLocationLinkSchema} from '../../../tunes/shared/explorersPlaceLinkContract';
+import {attachListLinkSchema,detachListLinkSchema,setListLinkRoleSchema,listLinkCommandResultSchema,type ListLinkCommandResult} from '../../../tunes/shared/explorersListLinkContract';
 import {appEntityDtoSchema,resolveManualAppSchema} from '../../../tunes/shared/explorersAppContract';
 import {productEntityDtoSchema,resolveManualProductSchema} from '../../../tunes/shared/explorersProductContract';
 import {personEntityDtoSchema,resolveManualPersonSchema} from '../../../tunes/shared/explorersPersonContract';
@@ -442,6 +442,13 @@ async function guideCommand(collectionId:string,suffix:string,method:string,body
   guideCommandResult,signal,undefined,id);
  return result;
 }
+// WP10. The link command result is not a collection DTO; it is re-presented with `id` (the
+// link id) so contentCommand's auth, idempotency and error mapping apply unchanged.
+const listLinkCommandEnvelope=listLinkCommandResultSchema.transform(result=>({...result,id:result.link.id}));
+async function listLinkCommand(path:string,method:string,body:unknown,key:string,signal?:AbortSignal):Promise<ListLinkCommandResult>{
+ const {id:_id,...result}=await contentCommand(path,method,body,key,'link',listLinkCommandEnvelope,signal);
+ return result as ListLinkCommandResult;
+}
 const guideItemPath=(day:string,localId:string,suffix:string)=>
  `/days/${encodeURIComponent(commandInput(contentIdSchema,day))}/items/${encodeURIComponent(commandInput(guideItemLocalIdSchema,localId))}${suffix}`;
 export const explorersApiClient = {
@@ -624,17 +631,19 @@ export const explorersApiClient = {
     let enriched=input;
     if(parent!==undefined){
      assertOwnerDetailObservation(parent,'collection');
-     if(parent.detail.category!=='places'||!['products','people'].includes(input?.category)||input?.parentExpectedRevision!==undefined||input?.parentLocationCollectionId!==undefined&&input.parentLocationCollectionId!==parent.resourceId)
+     // WP10 (LNK-06). Create-and-attach: the issued host observation names the host; the
+     // host's CATEGORY content revision is the attach precondition.
+     if(input?.attachTo!==undefined&&input.attachTo.hostCollectionId!==parent.resourceId)
       throw new ExplorersApiError(422,'INVALID_INPUT','Invalid guarded parent create');
-     enriched={...input,parentLocationCollectionId:parent.resourceId,parentExpectedRevision:parent.resourceRevision};
-    } else if(input?.parentLocationCollectionId!==undefined||input?.parentExpectedRevision!==undefined){
+     enriched={...input,attachTo:{hostCollectionId:parent.resourceId,expectedHostRevision:Number(parent.categoryRevision),role:input?.attachTo?.role??null}};
+    } else if(input?.attachTo!==undefined){
      throw new ExplorersApiError(422,'INVALID_INPUT','Issued parent authority is required');
     }
     const body=commandInput(createCollectionSchema,enriched);commandInput(commandKeySchema,key);
     dispatched=true;
     const result=await contentCommand('/collections','POST',body,key,'collection',createCollectionResultSchema,signal,undefined,undefined,1);
     if(parent!==undefined&&lost())throw new ExplorersApiError(409,'CONFLICT','Content command cancelled or owner changed');
-    if(parent!==undefined?(!result.parentLocation||result.parentLocation.id!==parent.resourceId||result.parentLocation.revision!==parent.resourceRevision+1||result.id===parent.resourceId):result.parentLocation!==undefined)
+    if(parent!==undefined?(!result.attachedTo||result.attachedTo.hostCollectionId!==parent.resourceId||result.id===parent.resourceId):result.attachedTo!==undefined)
      throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid created collection parent receipt');
     if(parent!==undefined)issuedDetails.delete(parent);
     return result;
@@ -661,26 +670,19 @@ export const explorersApiClient = {
    assertOwnerDetailObservation(observed,'collection');assertUnchangedSinceViewed(key,observed);const editable=commandInput(updateCollectionSchema.innerType().omit({expectedRevision:true}).strict(),patch);
    const body=commandInput(updateCollectionSchema,{...editable,expectedRevision:observed.resourceRevision});return contentCommand(`/collections/${observed.resourceId}`,'PATCH',body,key,'collection',collectionCoreDtoSchema,signal,observed,observed.resourceId,observed.resourceRevision+1);
   },
-  /**
-   * Ticket 5.2. Links this list to one of the owner's location lists, or unlinks it.
-   *
-   * Both observations travel, because the command links a pair and a stale view of either
-   * side would link the wrong one. The child's revision advances either way, so the
-   * caller receives the list it just changed.
-   */
-  async setMyCollectionLocation(child:CollectionObservation,location:CollectionObservation|null,key:string,signal?:AbortSignal) {
-   assertOwnerDetailObservation(child,'collection');assertUnchangedSinceViewed(key,child);
-   if(location!==null){
-    assertOwnerDetailObservation(location,'collection');assertUnchangedSinceViewed(key,location);
-    if(location.detail.category!=='places')throw new ExplorersApiError(422,'INVALID_INPUT','A location list is required');
-    if(location.accountId!==child.accountId||location.generation!==child.generation)throw new ExplorersApiError(409,'CONFLICT','Owner changed between the two lists');
-   }
-   const body=location===null
-    ?commandInput(detachLocationLinkSchema,{childCollectionId:child.resourceId,expectedChildRevision:child.resourceRevision})
-    :commandInput(attachLocationLinkSchema,{childCollectionId:child.resourceId,expectedChildRevision:child.resourceRevision,
-      locationCollectionId:location.resourceId,expectedLocationRevision:location.resourceRevision});
-   const saved=await contentCommand(`/collections/${child.resourceId}/location`,location===null?'DELETE':'POST',body,key,'collection',collectionCoreDtoSchema,signal,child,child.resourceId,child.resourceRevision+1);
-   if(location!==null)settleObserved(location,undefined);return saved;
+  /** WP10. Links one of the owner's lists to another; addressed by the host list. Revisions are CATEGORY content revisions. */
+  async attachMyListLink(hostId:string,input:{expectedHostRevision:number;linkedCollectionId:string;expectedLinkedRevision:number;role?:string|null;position?:number},key:string,signal?:AbortSignal):Promise<ListLinkCommandResult>{
+   const {hostCollectionId,...body}=commandInput(attachListLinkSchema,{...input,hostCollectionId:hostId});
+   return listLinkCommand(`/collections/${encodeURIComponent(hostCollectionId)}/links`,'POST',body,key,signal);
+  },
+  /** `pageCollectionId` is the list whose page sent the command (either side); the link id selects the row. */
+  async detachMyListLink(pageCollectionId:string,linkId:string,expectedHostRevision:number,key:string,signal?:AbortSignal):Promise<ListLinkCommandResult>{
+   const page=commandInput(contentIdSchema,pageCollectionId),body=commandInput(detachListLinkSchema,{linkId,expectedHostRevision});
+   return listLinkCommand(`/collections/${encodeURIComponent(page)}/links/${encodeURIComponent(body.linkId)}`,'DELETE',{expectedHostRevision:body.expectedHostRevision},key,signal);
+  },
+  async setMyListLinkRole(pageCollectionId:string,linkId:string,expectedHostRevision:number,role:string|null,key:string,signal?:AbortSignal):Promise<ListLinkCommandResult>{
+   const page=commandInput(contentIdSchema,pageCollectionId),body=commandInput(setListLinkRoleSchema,{linkId,expectedHostRevision,role});
+   return listLinkCommand(`/collections/${encodeURIComponent(page)}/links/${encodeURIComponent(body.linkId)}`,'PATCH',{expectedHostRevision:body.expectedHostRevision,role:body.role},key,signal);
   },
   async archiveMyCollection(observed:CollectionObservation,key:string,signal?:AbortSignal) {
    assertOwnerDetailObservation(observed,'collection');assertUnchangedSinceViewed(key,observed);return contentCommand(`/collections/${observed.resourceId}`,'DELETE',{expectedRevision:observed.resourceRevision},key,'collection',archivedResult,signal,observed,observed.resourceId);

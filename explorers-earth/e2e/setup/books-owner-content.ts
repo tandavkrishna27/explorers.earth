@@ -69,7 +69,7 @@ export function createBooksOwnerFixture(lists: () => Record<string, any>[], lega
       // pinOrder is the list's own pin among its category's lists. It travels on the
       // editable read only, so the page DTO these items come from does not carry it;
       // Books lists are never pinned in this fixture, which is an explicit null.
-      return {status:200,body: detail[1] === 'collections' ? {collection: contract.editableOwnerCollectionSchema.parse({...item,pinOrder:null,categoryRevision:String(revision)})} : {recommendation:item}};
+      return {status:200,body: detail[1] === 'collections' ? {collection: contract.editableOwnerCollectionSchema.parse({...item,pinOrder:null,categoryRevision:String(revision),linkedLists:[]})} : {recommendation:item}};
     }
     let snapshotToken = params.snapshotToken;
     // Canonical collection reads may start without a separately issued snapshot.

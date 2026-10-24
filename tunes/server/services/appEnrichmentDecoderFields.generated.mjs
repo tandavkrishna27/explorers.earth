@@ -4,7 +4,7 @@ var __export = (target, all) => {
     __defProp(target, name2, { get: all[name2], enumerable: true });
 };
 
-// tunes/node_modules/zod/v3/external.js
+// node_modules/zod/v3/external.js
 var external_exports = {};
 __export(external_exports, {
   BRAND: () => BRAND,
@@ -116,7 +116,7 @@ __export(external_exports, {
   void: () => voidType
 });
 
-// tunes/node_modules/zod/v3/helpers/util.js
+// node_modules/zod/v3/helpers/util.js
 var util;
 (function(util2) {
   util2.assertEqual = (_) => {
@@ -250,7 +250,7 @@ var getParsedType = (data) => {
   }
 };
 
-// tunes/node_modules/zod/v3/ZodError.js
+// node_modules/zod/v3/ZodError.js
 var ZodIssueCode = util.arrayToEnum([
   "invalid_type",
   "invalid_literal",
@@ -368,7 +368,7 @@ ZodError.create = (issues) => {
   return error;
 };
 
-// tunes/node_modules/zod/v3/locales/en.js
+// node_modules/zod/v3/locales/en.js
 var errorMap = (issue, _ctx) => {
   let message;
   switch (issue.code) {
@@ -471,7 +471,7 @@ var errorMap = (issue, _ctx) => {
 };
 var en_default = errorMap;
 
-// tunes/node_modules/zod/v3/errors.js
+// node_modules/zod/v3/errors.js
 var overrideErrorMap = en_default;
 function setErrorMap(map) {
   overrideErrorMap = map;
@@ -480,7 +480,7 @@ function getErrorMap() {
   return overrideErrorMap;
 }
 
-// tunes/node_modules/zod/v3/helpers/parseUtil.js
+// node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
   const { data, path, errorMaps, issueData } = params;
   const fullPath = [...path, ...issueData.path || []];
@@ -590,14 +590,14 @@ var isDirty = (x) => x.status === "dirty";
 var isValid = (x) => x.status === "valid";
 var isAsync = (x) => typeof Promise !== "undefined" && x instanceof Promise;
 
-// tunes/node_modules/zod/v3/helpers/errorUtil.js
+// node_modules/zod/v3/helpers/errorUtil.js
 var errorUtil;
 (function(errorUtil2) {
   errorUtil2.errToObj = (message) => typeof message === "string" ? { message } : message || {};
   errorUtil2.toString = (message) => typeof message === "string" ? message : message?.message;
 })(errorUtil || (errorUtil = {}));
 
-// tunes/node_modules/zod/v3/types.js
+// node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
   constructor(parent, value, path, key) {
     this._cachedPath = [];
@@ -4045,7 +4045,7 @@ var coerce = {
 };
 var NEVER = INVALID;
 
-// tunes/shared/explorersAppContract.ts
+// shared/explorersAppContract.ts
 var text = (max) => external_exports.string().trim().max(max).refine((v) => !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v) && !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(v), "Invalid text");
 var appTitleSchema = text(1e3).refine((v) => v.length > 0 && Array.from(v).length <= 500 && !/[\u0000-\u001f\u007f]/.test(v), "Invalid title");
 var safeAppUrlSchema = external_exports.string().max(2048).url().refine((v) => {
@@ -4075,7 +4075,7 @@ var appEntityDtoSchema = external_exports.object({ id: external_exports.string()
 var resolveManualAppSchema = external_exports.object({ kind: external_exports.literal("manual"), category: external_exports.literal("apps"), details: external_exports.object(fields).partial().extend({ title: appTitleSchema, appUrl: safeAppUrlSchema }).strict() }).strict();
 var appScreenshotsSchema = external_exports.object({ screenshotMediaIds: external_exports.array(external_exports.string().uuid()).max(10) }).strict();
 
-// tunes/shared/explorersTaxonomyContract.ts
+// shared/explorersTaxonomyContract.ts
 var taxonomyCategorySchema = external_exports.enum(["places", "people", "books", "games", "apps", "products"]);
 var taxonomyCatalogCategorySchema = external_exports.enum(["places", "people", "movies", "books", "games", "apps", "products"]);
 var FLAT_CURATED_CATEGORIES = ["books", "games", "apps", "products"];
@@ -4154,7 +4154,7 @@ var peopleSectorReadSchema = external_exports.object({ ...catalogRead, sector: t
 var curatedTermAssignmentSchema = identity.nullable();
 var curatedTermReadSchema = external_exports.object({ ...catalogRead, term: taxonomySelectionReadSchema.nullable(), selectionUnavailable: external_exports.boolean() }).strict();
 
-// tunes/shared/explorersGameContract.ts
+// shared/explorersGameContract.ts
 var text3 = (max) => external_exports.string().max(max).refine((v) => !/[\u0000-\u001f\u007f]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(v));
 var name = text3(200).refine((v) => v.trim().length > 0);
 var positive = external_exports.number().int().positive().safe();
@@ -4180,7 +4180,7 @@ var detailLabel = text3(100).transform((v) => v.trim()).refine((v) => v.length >
 var gameDetailsSchema = external_exports.object({ releaseYear: external_exports.number().int().min(1900).max(2100).nullable(), platforms: external_exports.array(detailLabel).max(12), genres: external_exports.array(detailLabel).max(12), developer: text3(200).transform((v) => v.trim()).refine((v) => v.length > 0).nullable().default(null) }).strict();
 var emptyGameDetails = Object.freeze({ releaseYear: null, platforms: [], genres: [], developer: null });
 
-// tunes/shared/explorersMovieContract.ts
+// shared/explorersMovieContract.ts
 var text4 = (n) => external_exports.string().trim().max(n).refine((v) => !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(v) && !/[\u0000-\u001f\u007f]/.test(v));
 var id = external_exports.number().int().positive().safe();
 var url = external_exports.string().max(2048).url().refine((v) => {
@@ -4204,11 +4204,11 @@ var movieTermSchema = external_exports.object({ id: external_exports.string().uu
 var movieTermsSchema = external_exports.array(movieTermSchema).max(32).refine((v) => new Set(v.map((x) => x.id)).size === v.length && v.every((x, i) => x.position === i));
 var resolveManualMovieSchema = external_exports.object({ kind: external_exports.literal("manual"), category: external_exports.literal("movies"), details: movieDisplayFieldsSchema.extend({ title: text4(500).refine((v) => v.length > 0), mediaType: external_exports.enum(["movie", "tv"]).default("movie"), providerRating: external_exports.number().min(0).max(10).nullable().optional() }).strict() }).strict().refine((v) => v.details.mediaType === "tv" || v.details.seasonCount == null);
 
-// tunes/shared/explorersRichNoteContract.ts
+// shared/explorersRichNoteContract.ts
 var RICH_NOTE_BYTES = 256 * 1024;
 var richNoteSchema = external_exports.object({ version: external_exports.literal(1), format: external_exports.literal("quill-html"), html: external_exports.string().refine((html) => new TextEncoder().encode(html).byteLength <= RICH_NOTE_BYTES, "Rich note exceeds byte limit") }).strict();
 
-// tunes/shared/explorersBookContract.ts
+// shared/explorersBookContract.ts
 var text5 = (max) => external_exports.string().trim().max(max).refine((v) => !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v) && !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(v), "Invalid text");
 var bookTitleSchema = text5(1e3).refine((v) => v.length > 0 && Array.from(v).length <= 500 && !/[\u0000-\u001f\u007f]/.test(v), "Invalid title");
 var safeBookUrlSchema = external_exports.string().max(2048).url().refine((v) => {
@@ -4240,7 +4240,7 @@ var resolveProviderBookSchema = external_exports.object({ kind: external_exports
 var resolveManualBookSchema = external_exports.object({ kind: external_exports.literal("manual"), category: external_exports.literal("books"), details: external_exports.object(editable).partial().extend({ title: bookTitleSchema }).strict() }).strict();
 var replaceRecommendationEntitySchema = external_exports.object({ expectedRevision: external_exports.number().int().positive().safe(), entityId: external_exports.string().uuid() }).strict();
 
-// tunes/shared/currency.ts
+// shared/currency.ts
 var ZERO = ["BIF", "CLP", "DJF", "GNF", "ISK", "JPY", "KMF", "KRW", "PYG", "RWF", "UGX", "VND", "VUV", "XAF", "XOF", "XPF"];
 var THREE = ["BHD", "IQD", "JOD", "KWD", "LYD", "OMR", "TND"];
 var TWO = [
@@ -4399,7 +4399,7 @@ function amountPrecisionProblem(amount, code) {
   return units === 0 ? `${code} has no decimal places; enter a whole amount.` : `${code} allows at most ${units} decimal place${units === 1 ? "" : "s"}.`;
 }
 
-// tunes/shared/explorersProductContract.ts
+// shared/explorersProductContract.ts
 var text6 = (max) => external_exports.string().trim().max(max).refine((v) => !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v) && !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(v), "Invalid text");
 var productTitleSchema = text6(1e3).refine((v) => v.length > 0 && Array.from(v).length <= 500 && !/[\u0000-\u001f\u007f]/.test(v), "Invalid title");
 var safeProductUrlSchema = external_exports.string().max(2048).url().refine((v) => {
@@ -4454,7 +4454,7 @@ var productDisplayFieldsWriteSchema = productDisplayFieldsSchema.extend({ specif
 var productEntityDtoSchema = external_exports.object({ id: external_exports.string().uuid(), kind: external_exports.literal("product"), title: external_exports.string().trim().refine((v) => v.length > 0 && Array.from(v).length <= 500), details: productEntityDetailsSchema, origin: external_exports.literal("manual") }).strict();
 var resolveManualProductSchema = external_exports.object({ kind: external_exports.literal("manual"), category: external_exports.literal("products"), details: external_exports.object(fields3).partial().extend({ title: productTitleSchema, productUrl: safeProductUrlSchema, specifications: productSpecificationsWriteSchema.optional() }).strict() }).strict();
 
-// tunes/shared/explorersPersonContract.ts
+// shared/explorersPersonContract.ts
 var text7 = (max) => external_exports.string().trim().max(max).refine((v) => !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v) && !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(v), "Invalid text");
 var personNameSchema = text7(1e3).refine((v) => v.length > 0 && Array.from(v).length <= 500 && !/[\u0000-\u001f\u007f]/.test(v), "Invalid name");
 var safePersonUrlSchema = external_exports.string().max(2048).url().refine((v) => {
@@ -4488,7 +4488,7 @@ var personDisplayFieldsSchema = external_exports.object(overridable3).partial().
 var personEntityDtoSchema = external_exports.object({ id: external_exports.string().uuid(), kind: external_exports.literal("person"), title: external_exports.string().trim().refine((v) => v.length > 0 && Array.from(v).length <= 500), details: personEntityDetailsSchema, origin: external_exports.literal("manual"), suppressed: external_exports.boolean() }).strict();
 var resolveManualPersonSchema = external_exports.object({ kind: external_exports.literal("manual"), category: external_exports.literal("people"), details: external_exports.object(fields4).partial().extend({ title: personNameSchema }).strict().refine((v) => v.externalFollowerCountText == null, "Follower count is no longer recorded") }).strict();
 
-// tunes/shared/explorersPlaceContract.ts
+// shared/explorersPlaceContract.ts
 var text8 = (max) => external_exports.string().trim().max(max).refine((v) => !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v) && !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(v), "Invalid text");
 var placeTitleSchema = text8(1e3).refine((v) => v.length > 0 && Array.from(v).length <= 500 && !/[\u0000-\u001f\u007f]/.test(v), "Invalid title");
 var safePlaceUrlSchema = external_exports.string().max(2048).url().refine((v) => {
@@ -4576,7 +4576,7 @@ var placeCollectionDetailsSchema = external_exports.object({
 var placeEntityDtoSchema = external_exports.object({ id: external_exports.string().uuid(), kind: external_exports.literal("place"), title: external_exports.string().trim().refine((v) => v.length > 0 && Array.from(v).length <= 500), details: placeEntityDetailsSchema, origin: external_exports.enum(["manual", "provider"]), providerPlaceId: external_exports.string().min(1).max(200).nullable() }).strict();
 var resolveManualPlaceSchema = external_exports.object({ kind: external_exports.literal("manual"), category: external_exports.literal("places"), details: external_exports.object(entityFields).partial().extend({ title: placeTitleSchema }).strict() }).strict();
 
-// tunes/shared/explorersContract.ts
+// shared/explorersContract.ts
 var categoryKeys = [
   "places",
   "guides",
@@ -4637,11 +4637,16 @@ var createCollectionSchema = external_exports.object({
   // The list's own location selection, for Places only: a location list is distinct
   // from the place recommendations inside it.
   placeLocation: placeCollectionDetailsSchema.optional(),
-  // Ticket 5.2. Creating a Products or People list from a location links it atomically,
-  // so a failed parent leaves no orphan child.
-  parentLocationCollectionId: contentIdSchema.optional(),
-  parentExpectedRevision: contentRevision.optional()
-}).strict().refine((v) => v.parentLocationCollectionId === void 0 === (v.parentExpectedRevision === void 0), "Parent identity and revision are required together").refine((v) => v.placeLocation === void 0 || v.category === "places", "A location aggregate requires the places category").refine((v) => v.parentLocationCollectionId === void 0 || v.category === "products" || v.category === "people", "Only Products and People lists link to a location");
+  // WP10 (LNK-06). "Create a new list" in the attach picker creates the list and links it
+  // from the host in one transaction, so a stale host leaves no orphan list. The role bound
+  // mirrors LIST_LINK_ROLE_MAX (80) in explorersListLinkContract.ts, which imports this file.
+  // expectedHostRevision is the host's CATEGORY content revision, as on every link command.
+  attachTo: external_exports.object({
+    hostCollectionId: contentIdSchema,
+    expectedHostRevision: contentRevision,
+    role: external_exports.string().trim().max(80).transform((v) => v === "" ? null : v).nullable().default(null)
+  }).strict().optional()
+}).strict().refine((v) => v.placeLocation === void 0 || v.category === "places", "A location aggregate requires the places category");
 var updateCollectionSchema = external_exports.object({
   expectedRevision: contentRevision,
   title: contentTitle.optional(),
@@ -4728,7 +4733,7 @@ var collectionCoreDtoSchema = external_exports.object({
   isSample: external_exports.boolean()
 }).strict();
 var createCollectionResultSchema = collectionCoreDtoSchema.extend({
-  parentLocation: external_exports.object({ id: contentIdSchema, revision: contentRevision }).strict().optional()
+  attachedTo: external_exports.object({ hostCollectionId: contentIdSchema, linkId: contentIdSchema, hostCategoryRevision: contentRevision }).strict().optional()
 }).strict();
 var recommendationCoreDtoSchema = external_exports.object({
   id: contentIdSchema,
@@ -4910,7 +4915,7 @@ var updateAccountInputSchema = external_exports.object({
 }).strict();
 var updateAccountRequestSchema = updateAccountInputSchema.extend({ expectedRevision: external_exports.number().int().positive().safe() }).strict();
 
-// tunes/shared/explorersAppEnrichmentContract.ts
+// shared/explorersAppEnrichmentContract.ts
 var appEnrichmentRevisionSchema = external_exports.number().int().positive().safe();
 var label = external_exports.string().min(1).max(2048);
 var hash = external_exports.string().regex(/^[a-f0-9]{64}$/);
@@ -4955,7 +4960,7 @@ var appAcceptanceRecordSchema = external_exports.object({ acceptanceId: contentI
   if (appSelectableFields.some((k) => v.selectedFields.includes(k) !== own(v.acceptedValues, k) || own(v.acceptedValues, k) && v.acceptedValues[k] === void 0)) ctx.addIssue({ code: external_exports.ZodIssueCode.custom, message: "Accepted values must exactly match selected fields" });
 });
 
-// tunes/server/services/appEnrichmentDecoderFields.ts
+// server/services/appEnrichmentDecoderFields.ts
 var validateAppDecoderFields = (fields5) => appSnapshotFieldsSchema.parse(fields5);
 var validateAppDecoderIdentity = (identity2) => appSourceIdentitySchema.parse(identity2);
 var validateAppDecoderObservedAt = (observedAt) => external_exports.string().datetime({ offset: true }).parse(observedAt);

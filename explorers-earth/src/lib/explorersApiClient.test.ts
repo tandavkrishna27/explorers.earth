@@ -21,7 +21,7 @@ describe('native recommendation category create validation',()=>{
   const extra=category==='places'?{placesTaxonomy:{categoryTermId:entityId,subcategoryTermId:null}}:category==='people'?{peopleSectorTermId:entityId}:{};
   vi.stubGlobal('fetch',vi.fn(async(_url:string,options:RequestInit)=>{
    if(options.method){writes.push(options);return new Response(JSON.stringify({recommendation:{id,accountId:account,category,entityId,userRating:null,publicationState:'draft',revision:1,mediaIds:[]}}),{status:200});}
-   return new Response(JSON.stringify({collection:{id:listId,accountId:account,category,title:'List',slug:'list',visibility:'private',publicationState:'draft',revision:7,description:null,heading:null,coverMediaId:null,isSample:false,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',...(category==='places'?{placeLocation:{locationEntityId:null,locationSnapshot:null,instagramMediaUrl:null},linkedChildren:[]}:category==='people'||category==='products'?{locationLink:null}:{})}}),{status:200});
+   return new Response(JSON.stringify({collection:{id:listId,accountId:account,category,title:'List',slug:'list',visibility:'private',publicationState:'draft',revision:7,description:null,heading:null,coverMediaId:null,isSample:false,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',...(category==='places'?{placeLocation:{locationEntityId:null,locationSnapshot:null,instagramMediaUrl:null}}:{}),linkedLists:[]}}),{status:200});
   }));
   const parent=await explorersApiClient.getMyEditableCollection(listId);
   const saved=await explorersApiClient.createMyRecommendation(parent,{entityId,...extra},`category-${category}`);
@@ -33,7 +33,7 @@ describe('authentic Games membership wire',()=>{
  const account='00000000-0000-4000-8000-000000000001',listId='00000000-0000-4000-8000-000000000002',recId='00000000-0000-4000-8000-000000000003',entityId='00000000-0000-4000-8000-000000000004';
  const collection={id:listId,accountId:account,category:'games',title:'List',slug:'list',visibility:'private',publicationState:'draft',revision:4,description:null,heading:null,coverMediaId:null,isSample:false};
  const recommendation={id:recId,accountId:account,category:'games',entityId,userRating:null,publicationState:'draft',revision:2,mediaIds:[]};
- const collectionDetail={...collection,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9'};
+ const collectionDetail={...collection,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',linkedLists:[]};
  const recommendationDetail={...recommendation,archived:false,pin:null,note:null,categoryRevision:'9',entity:{id:entityId,kind:'game',title:'Manual'},displayOverrides:{},displayTitle:'Manual',gamePresentation:{version:'explorers-manual-game/v1',origin:'manual',providerExternalId:null,providerFacts:null,images:[],coverMediaId:null}};
  const reply=(value:unknown)=>new Response(JSON.stringify(value),{status:200});
  beforeEach(()=>{vi.unstubAllGlobals();useAuthStore.getState().logout();signIn(account);history.replaceState({},'','/games');});
@@ -134,7 +134,7 @@ describe('Places collection share slug wire', () => {
   const patches:RequestInit[]=[];
   vi.stubGlobal('fetch',vi.fn(async(_url:string,options:RequestInit)=>{
    if(options.method==='PATCH'){patches.push(options);const {expectedRevision,...patch}=JSON.parse(options.body as string);return new Response(JSON.stringify({collection:{...base,category,...patch,revision:expectedRevision+1}}),{status:200});}
-   return new Response(JSON.stringify({collection:{...base,category,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',...(category==='places'?{linkedChildren:[],placeLocation:{locationEntityId:null,locationSnapshot:null,instagramMediaUrl:null}}:category==='products'||category==='people'?{locationLink:null}:{})}}),{status:200});
+   return new Response(JSON.stringify({collection:{...base,category,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',...(category==='places'?{placeLocation:{locationEntityId:null,locationSnapshot:null,instagramMediaUrl:null}}:{}),linkedLists:[]}}),{status:200});
   }));
   const {PlacesClient}=await import('../features/Favorites/api/placesClient');
   return {PlacesClient,patches,observed:category==='places'?await PlacesClient.observeCollection(id):await explorersApiClient.getMyEditableCollection(id)};
@@ -167,7 +167,7 @@ describe('list restore and permanent delete wire',()=>{
   const writes:{url:string;options:RequestInit}[]=[],reads:string[]=[];
   vi.stubGlobal('fetch',vi.fn(async(url:string,options:RequestInit)=>{
    if(options.method){writes.push({url,options});return reply(url,options);}
-   reads.push(url);return new Response(JSON.stringify({collection:{...core,archived,displayOrder:0,pinOrder:null,categoryRevision:'9'}}),{status:200});
+   reads.push(url);return new Response(JSON.stringify({collection:{...core,archived,displayOrder:0,pinOrder:null,categoryRevision:'9',linkedLists:[]}}),{status:200});
   }));
   return {writes,reads};
  }

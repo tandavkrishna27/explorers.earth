@@ -34,7 +34,9 @@ import {createReaderPoolAdapter} from '../helpers/placesReaderAcceptanceFixture'
 it('actual controller and actual linked readers preserve lawful pg query admission',async()=>{
  let release!:()=>void,releases=0;const calls:string[]=[],events:unknown[]=[];
  const controller=createWriterSuiteController({identity:{database:'inert',runtimeLogin:'inert_login'},admission:()=>{},guardFailure:e=>events.push(e),clock:{now:()=>0,setTimeout:()=>0,clearTimeout(){}}});controller.admit('inert-reader');
- const raw={processID:1,release:()=>releases++,query:async(sql:string)=>{if(sql.includes('pg_backend_pid()'))return {rows:[{pid:1,database:'inert',effective:'music_runtime',login:'inert_login'}]};calls.push(sql.includes("child_category='people'")?'people':'products');if(calls.length===1)await new Promise<void>(r=>release=r);return {rows:[]};}};
+ const raw={processID:1,release:()=>releases++,query:async(sql:string,values?:unknown[])=>{if(sql.includes('pg_backend_pid()'))return {rows:[{pid:1,database:'inert',effective:'music_runtime',login:'inert_login'}]};
+  // WP10: both readers share publicLinkedLists' SQL text; the category is bound as $3.
+  if(!sql.includes('FROM collection_list_links')||!['people','products'].includes(String(values?.[2])))throw Error('unexpected linked reader query');calls.push(String(values![2]));if(calls.length===1)await new Promise<void>(r=>release=r);return {rows:[]};}};
  const owned=controller.wrapPool({totalCount:0,idleCount:0,waitingCount:0,connect:async()=>raw,end:async()=>{}},'runtime');
  const pool=createReaderPoolAdapter(owned,()=>!controller.status().admissionClosed);
  const operation=controller.runOwned(async()=>{const db=await pool.connect();try{return await Promise.all([publicLinkedPeopleLists(db as unknown as PoolClient,'inert','inert'),publicLinkedProductsLists(db as unknown as PoolClient,'inert','inert')]);}finally{db.release();}});

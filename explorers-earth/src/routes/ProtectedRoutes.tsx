@@ -35,8 +35,6 @@ const AddProductPage = lazyNamed(() => import("../features/Products"), "AddProdu
 const PeopleHome = lazyNamed(() => import("../features/People"), "PeopleHome");
 const PersonListView = lazyNamed(() => import("../features/People"), "PersonListView");
 const AddPersonPage = lazyNamed(() => import("../features/People"), "AddPersonPage");
-const AddLinkedPeoplePage = lazy(() => import("../features/Favorites/components/AddLinkedPeoplePage"));
-const AddLinkedProductsPage = lazy(() => import("../features/Favorites/components/AddLinkedProductsPage"));
 
 /** Old guide addresses land in the in-page editor; /edit opens its Manage tab. */
 function GuideEditorPageRedirect({ tab }: { tab?: "manage" }) {
@@ -98,8 +96,6 @@ const ProtectedRoutes = (): ReactElement[] => {
       <Route path="recommendations/people/:listId" element={<PersonListView />} />
       <Route path="recommendations/people/:listId/add" element={<AddPersonPage />} />
       <Route path="recommendations/people/:listId/edit/:personId" element={<AddPersonPage />} />
-      <Route path="recommendations/places/:locationId/add-people" element={<AddLinkedPeoplePage />} />
-      <Route path="recommendations/places/:locationId/add-products" element={<AddLinkedProductsPage />} />
       <Route path=":listId/new" element={<AddRecommendation />} />
       <Route path=":placeId/edit" element={<AddRecommendation type="edit" />} />
     </Route>

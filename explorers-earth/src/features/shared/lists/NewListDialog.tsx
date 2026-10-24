@@ -116,12 +116,12 @@ export default function NewListDialog({ open, category, username, initialName = 
           <label htmlFor="wp3a-description" className="text-sm font-semibold text-dashboard">{t("dashboard.wp3a.dialog.description")}</label>
           <textarea id="wp3a-description" rows={2} value={description} onChange={(event) => setDescription(event.target.value)} className={`${field} resize-none`} />
         </div>
-        <div className="grid gap-1">
+        <div className="grid grid-cols-1 gap-1">
           <label htmlFor="wp3a-slug" className="text-[11px] font-medium text-dashboard-muted">{t("dashboard.wp3a.dialog.address")}</label>
-          <div className="flex items-center gap-1 text-[11px] text-dashboard-muted">
-            <span className="shrink-0">{getCurrentDomain()}/{username}/</span>
+          <div className="flex min-w-0 items-center gap-1 text-[11px] text-dashboard-muted">
+            <span className="min-w-0 truncate">{getCurrentDomain()}/{username}/</span>
             <input id="wp3a-slug" value={slug} onChange={(event) => { setSlugEdited(true); setSlug(slugDraft(event.target.value)); }}
-              className="min-w-0 flex-1 rounded-md border border-dashboard-border bg-dashboard-muted px-2 py-1 text-[12px] text-dashboard" />
+              className="w-24 min-w-0 flex-1rounded-md border border-dashboard-border bg-dashboard-muted px-2 py-1 text-[12px] text-dashboard" />
           </div>
           {errors.slug && <p role="alert" className="text-xs text-red-400">{errors.slug}</p>}
         </div>

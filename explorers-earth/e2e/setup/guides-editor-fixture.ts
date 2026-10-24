@@ -80,7 +80,7 @@ export function createGuidesEditorFixture() {
       const read = /^\/collections\/([0-9a-f-]{36})\/guide$/.exec(path);
       const target = (editable ?? read) && guides.find(g => g.id === (editable ?? read)![1]);
       if (editable && target) return json(200, { collection: owner.editableOwnerCollectionSchema.parse({ ...row(target, guides.indexOf(target)),
-        categoryRevision: String(revision), pinOrder: null }) });
+        categoryRevision: String(revision), pinOrder: null, linkedLists: [] }) });
       if (read && target) return json(200, { guide: aggregate(target) });
       return route.fallback();
     }

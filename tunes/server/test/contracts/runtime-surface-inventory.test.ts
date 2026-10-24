@@ -42,8 +42,10 @@ describe("runtime route/event/job inventory", () => {
     // 204 = 202 + WP6 places nearby (GET /api/explorers/v1/places/nearby and its ALL guard)
     // 210 = 204 + WP8 link preview POST, its image import POST and the app search GET, each with its fail-closed method boundary.
     // 230 = 210 + the ten guide day and day-item commands, each with its fail-closed method boundary (WP9, GD-24..30).
-    expect(inventory.routes).toHaveLength(232);
     // 232 = 230 + WP11 Make it mine (POST /api/explorers/v1/collections/:id/make-it-mine and its ALL guard)
+    // 234 = 232 + WP10 list links (POST/PATCH/DELETE links and their 2 ALL guards replace
+    // the 2 Places location commands and their ALL guard).
+    expect(inventory.routes).toHaveLength(234);
     expect(inventory.events).toHaveLength(15);
     // 38 = 37 + the Google profile photo fetch deadline (googleAvatarFetch.ts).
     // 39 = 38 + the place photo fetch deadline (tunes/server/services/placePhotoFetch.ts).
@@ -140,8 +142,10 @@ describe("runtime route/event/job inventory", () => {
     const ownerCommands=[
       ['POST','/api/explorers/v1/collections/:id/memberships/:recommendationId'],
       ['DELETE','/api/explorers/v1/collections/:id/memberships/:recommendationId'],
-      ['POST','/api/explorers/v1/collections/:id/location'],
-      ['DELETE','/api/explorers/v1/collections/:id/location'],
+      // WP10. Links between two of the owner's lists.
+      ['POST','/api/explorers/v1/collections/:id/links'],
+      ['PATCH','/api/explorers/v1/collections/:id/links/:linkId'],
+      ['DELETE','/api/explorers/v1/collections/:id/links/:linkId'],
       ['POST','/api/explorers/v1/entities/resolve'], ['POST','/api/explorers/v1/collections'],
       ['PATCH','/api/explorers/v1/collections/:id'], ['PATCH','/api/explorers/v1/collections/:id/order'],
       ['DELETE','/api/explorers/v1/collections/:id'], ['POST','/api/explorers/v1/recommendations'],
@@ -186,7 +190,7 @@ describe("runtime route/event/job inventory", () => {
     ];
     const methodBoundaries=['/api/explorers/v1/entities/resolve','/api/explorers/v1/collections','/api/explorers/v1/content-summary',
       '/api/explorers/v1/collections/:id/memberships/:recommendationId',
-      '/api/explorers/v1/collections/:id/location',
+      '/api/explorers/v1/collections/:id/links','/api/explorers/v1/collections/:id/links/:linkId',
       '/api/explorers/v1/collections/:id','/api/explorers/v1/collections/:id/order',
       '/api/explorers/v1/collections/:id/restore','/api/explorers/v1/collections/:id/purge','/api/explorers/v1/collections/:id/make-it-mine',
       '/api/explorers/v1/collections/:id/editable','/api/explorers/v1/recommendations/:id/editable',

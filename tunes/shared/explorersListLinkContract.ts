@@ -42,3 +42,16 @@ export type SetListLinkRoleInput=z.input<typeof setListLinkRoleSchema>;
 export type ReorderListLinksInput=z.input<typeof reorderListLinksSchema>;
 export type ListLinkDto=z.infer<typeof listLinkDtoSchema>;
 export type LinkedListCard=z.infer<typeof linkedListCardSchema>;
+
+// WP10. Result of attach/detach/role commands. 0070's triggers bump the content revision of
+// BOTH categories a link touches, so the client needs both to send the next command. Detach
+// returns the removed link so Undo can re-attach it with the same role and position.
+export const listLinkCommandResultSchema=z.object({
+ link:listLinkDtoSchema,
+ attached:z.boolean(),
+ revisions:z.record(listLinkCategorySchema,z.number().int().positive().safe()),
+}).strict().superRefine((v,ctx)=>{
+ for(const category of [v.link.hostCategory,v.link.linkedCategory])
+  if(v.revisions[category]===undefined)ctx.addIssue({code:'custom',message:`Missing ${category} revision`,path:['revisions',category]});
+});
+export type ListLinkCommandResult=z.infer<typeof listLinkCommandResultSchema>;

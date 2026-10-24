@@ -110,9 +110,10 @@ export async function startPlacesControl(options:{pool:Pool;composed:ReturnType<
         await db.query('DELETE FROM analytics_events WHERE id=ANY($1::uuid[]) AND account_id=ANY($2::uuid[])',[eventIds,accountIds]);
       }
       // These three personas were created solely for this owned run. Scope every
-      // deletion to them and the three allocated categories, including UI-created rows.
-      await db.query("DELETE FROM collections WHERE account_id=ANY($1::uuid[]) AND category IN ('places','products','people')",[accountIds]);
-      await db.query("DELETE FROM recommendations WHERE account_id=ANY($1::uuid[]) AND category IN ('places','products','people')",[accountIds]);
+      // deletion to them and the allocated categories, including UI-created rows. WP10 adds
+      // the private Guide, Books and Apps lists the linking lane links across categories.
+      await db.query("DELETE FROM collections WHERE account_id=ANY($1::uuid[]) AND category IN ('places','products','people','guides','books','apps')",[accountIds]);
+      await db.query("DELETE FROM recommendations WHERE account_id=ANY($1::uuid[]) AND category IN ('places','products','people','guides','books','apps')",[accountIds]);
       if(entityIds.size)await db.query('DELETE FROM entities WHERE id=ANY($1::uuid[]) AND NOT EXISTS(SELECT 1 FROM recommendations WHERE entity_id=entities.id)',[[...entityIds]]);
       const ownedMediaIds=oldKeys.map(key=>key.split('/')[2]);
       if(ownedMediaIds.length){
@@ -155,10 +156,17 @@ export async function startPlacesControl(options:{pool:Pool;composed:ReturnType<
       const privateProduct=await collection(a.accountId,'products','Private Products','private-products',2,null,'private');
       const privatePeople=await collection(a.accountId,'people','Private People','private-people',1,null,'private');
       for(const child of [products,people,accountChild,privateProduct,privatePeople])await recommendation(child,`${child.title} recommendation`,0);
+      // WP10. Lists of other categories for cross-category linking. Private, so they never
+      // produce public analytics; empty, because recommendation() seeds only Places,
+      // Products and People entities, and an empty list can still be linked.
+      await collection(a.accountId,'guides','Owned Trip','owned-trip',0,null,'private');
+      await collection(a.accountId,'books','Owned Reads','owned-reads',0,null,'private');
+      await collection(a.accountId,'apps','Owned Apps','owned-apps',0,null,'private');
       // Existing attach/detach and stale cases begin unlinked. Visibility begins
       // linked; this setup never substitutes for a canonical transition under test.
       if(identity.caseId===PLACE_LINK_CASES[2])for(const child of [products,people,privateProduct,privatePeople]) {
-        await db.query('INSERT INTO collection_location_links(child_collection_id,account_id,child_category,location_collection_id) VALUES($1,$2,$3,$4)',[child.id,a.accountId,child.category,parents[0].id]);
+        await db.query(`INSERT INTO collection_list_links(account_id,host_collection_id,host_category,linked_collection_id,linked_category,role,display_order)
+          VALUES($1,$2,'places',$3,$4,NULL,(SELECT count(*) FROM collection_list_links WHERE host_collection_id=$2))`,[a.accountId,parents[0].id,child.id,child.category]);
         result.relations.push({childCollectionId:child.id,locationCollectionId:parents[0].id,accountId:a.accountId});
       }
       const hash=createHash('sha256').update(PLACES_PNG).digest();
@@ -212,7 +220,8 @@ export async function startPlacesControl(options:{pool:Pool;composed:ReturnType<
         const result=body.action==='reset'?await reset({caseId:body.caseId,project:body.project}):{
           version:1,runId,commit,caseId:manifest!.caseId,project:manifest!.project,
           collections:(await pool.query("SELECT id,account_id,category,title,slug,revision::text,visibility,publication_state FROM collections WHERE account_id=ANY($1::uuid[]) AND category IN ('places','products','people') ORDER BY account_id,category,display_order,id LIMIT 256",[accountIds])).rows,
-          relations:(await pool.query('SELECT child_collection_id,location_collection_id,account_id FROM collection_location_links WHERE account_id=ANY($1::uuid[]) ORDER BY child_collection_id LIMIT 64',[accountIds])).rows,
+          // WP10. A link is a collection_list_links row; the host is the old "location" end.
+          relations:(await pool.query('SELECT linked_collection_id AS child_collection_id,host_collection_id AS location_collection_id,account_id FROM collection_list_links WHERE account_id=ANY($1::uuid[]) ORDER BY linked_collection_id LIMIT 64',[accountIds])).rows,
         };
         res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');res.end(JSON.stringify(result));
       } finally {busy=false;}

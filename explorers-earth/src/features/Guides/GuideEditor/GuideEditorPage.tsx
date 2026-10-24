@@ -11,7 +11,6 @@ import type {CollectionObservation} from '../../../lib/explorersApiClient';
 import {useGuidesOwner} from '../hooks/useGuidesOwner';
 import {GuidesClient, type GuideObservation} from '../api/guidesClient';
 import type {GuideDayItemInput} from '../../../../../tunes/shared/explorersGuideContract';
-import type {LinkedListCard} from '../../../../../tunes/shared/explorersListLinkContract';
 import {useGuidePlan} from './useGuidePlan';
 import DayStrip from './DayStrip';
 import DayList from './DayList';
@@ -19,7 +18,7 @@ import SmartAddBox from './SmartAddBox';
 import MyListsPanel from './MyListsPanel';
 import {loadMyListItems, loadMyListNames} from './myListsLoad';
 import PlanChips, {type PlanSection} from './PlanChips';
-import LinkedListsBlock from './LinkedListsBlock';
+import {LinkedListsUnderItems} from '../../shared/list/OwnerListLinks';
 import {dayChipLabel} from './dayItems';
 import {guideListAdapter} from './guideListAdapter';
 import {useOriginBack} from '../../../lib/navigation/useOriginBack';
@@ -87,7 +86,6 @@ function Editor({initial, guide, list, refresh}: {initial: GuideObservation; gui
  const [adding, setAdding] = useState<string | null>(null);
  const wide = useWide();
  const [sheet, setSheet] = useState(false);
- const [links] = useState<LinkedListCard[]>([]);      // [DEPENDS: WP10 — readListLinksForCollection via an owner route]
  useEffect(() => {if (!g.sections.some((s) => s.id === selected)) setSelected(g.sections[0]?.id ?? '');}, [g.sections, selected]);
  const days = useMemo(() => g.sections.map((s) => ({id: s.id, title: s.title, items: s.blocks.items})), [g.sections]);
  const index = Math.max(0, days.findIndex((d) => d.id === selected));
@@ -160,7 +158,8 @@ function Editor({initial, guide, list, refresh}: {initial: GuideObservation; gui
       )}
       {!readOnly && <button type="button" onClick={() => void plan.addDay()} className="mt-4 hidden min-h-[44px] rounded-lg border border-dashed px-4 text-sm md:inline-block">
        {t('dashboard.wp9.addDay', {defaultValue: '+ Add day'})}</button>}
-      <LinkedListsBlock links={links} onOpen={(card) => navigate(`/recommendations/${card.collection.category}?list=${card.collection.id}`, {state: {from: location}})} />
+      {/* LNK-08: read-only on Plan; Attach, Detach and roles live in Manage. */}
+      <LinkedListsUnderItems collectionId={collectionId} originLabel={guide.Title} readOnly />
      </div>
      {wide && !readOnly && <div className="hidden md:block">{panel}</div>}
     </div>

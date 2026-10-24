@@ -22,7 +22,7 @@ import {readAppEntity,readAppScreenshotMediaIds,effectiveAppDetails} from '../re
 import {readProductEntity,readProductOffer,effectiveProductDetails} from '../repositories/productCatalogRepository';
 import {readPersonEntity,effectivePersonDetails} from '../repositories/personCatalogRepository';
 import {readPlaceEntity,readPlaceContext,readPlacePhotoMediaIds,readPlaceCollectionDetails,effectivePlaceDetails} from '../repositories/placeCatalogRepository';
-import {readLocationLink,readLinkedChildren} from '../repositories/placeLinkRepository';
+import {readListLinksForCollection} from '../repositories/listLinkRepository';
 
 export const OWNER_PAGE_BYTES=4*1024*1024;
 const VERSION='explorers-owner-content/v2' as const;
@@ -237,12 +237,9 @@ export class OwnerContentService {
    if(Buffer.byteLength(JSON.stringify({collection}),'utf8')>OWNER_PAGE_BYTES) throw new RecommendationFailure(413,'Owner resource exceeds the response byte budget');
    if(!editable)return collection;
    const categoryRevision=(await db.query("SELECT coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category=$2),'0') AS revision",[actor.accountId,row.category])).rows[0].revision;
-   // A location list reports what is linked to it; a Products or People list reports
-   // the one location it belongs to, or null.
-   const links=row.category==='places'
-    ?{linkedChildren:(await readLinkedChildren(db,id,actor.accountId)).map(child=>({...child,locationCollectionId:id}))}
-    :row.category==='products'||row.category==='people'?{locationLink:await readLocationLink(db,id,actor.accountId)}:{};
-   return wire.editableOwnerCollectionSchema.parse({...collection,categoryRevision,pinOrder:row.pin_order===null||row.pin_order===undefined?null:Number(row.pin_order),...links,...(row.category==='places'?{placeLocation:await readPlaceCollectionDetails(db,id,actor.accountId)}:{})});
+   // WP10. Every list linked to or from this one, whatever its category, one level deep.
+   const linkedLists=await readListLinksForCollection(db,id,actor.accountId);
+   return wire.editableOwnerCollectionSchema.parse({...collection,categoryRevision,pinOrder:row.pin_order===null||row.pin_order===undefined?null:Number(row.pin_order),linkedLists,...(row.category==='places'?{placeLocation:await readPlaceCollectionDetails(db,id,actor.accountId)}:{})});
   });
  }
  async getRecommendation(actor:Actor,id:string,raw:unknown={},editable=false) {

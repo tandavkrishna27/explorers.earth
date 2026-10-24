@@ -633,8 +633,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Favorites/api/placesCommands.ts
 !explorers-earth/src/features/Favorites/api/placesNearbyClient.ts
 !explorers-earth/src/features/Favorites/api/placesViewModel.ts
-!explorers-earth/src/features/Favorites/components/AddLinkedPeoplePage.tsx
-!explorers-earth/src/features/Favorites/components/AddLinkedProductsPage.tsx
 !explorers-earth/src/features/Favorites/components/AddPlacePage.tsx
 !explorers-earth/src/features/Favorites/components/AddRecommendation.tsx
 !explorers-earth/src/features/Favorites/components/LinksAndQR.tsx
@@ -677,7 +675,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Guides/GuideEditor/DayStrip.tsx
 !explorers-earth/src/features/Guides/GuideEditor/GooglePlaceResults.tsx
 !explorers-earth/src/features/Guides/GuideEditor/GuideEditorPage.tsx
-!explorers-earth/src/features/Guides/GuideEditor/LinkedListsBlock.tsx
 !explorers-earth/src/features/Guides/GuideEditor/MyListsPanel.tsx
 !explorers-earth/src/features/Guides/GuideEditor/PlanChips.tsx
 !explorers-earth/src/features/Guides/GuideEditor/SmartAddBox.tsx
@@ -994,9 +991,13 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/shared/category/restoreButton.tsx
 !explorers-earth/src/features/shared/category/useArchivedLists.ts
 !explorers-earth/src/features/shared/category/useCardReorder.ts
+!explorers-earth/src/features/shared/list/AttachListPicker.tsx
+!explorers-earth/src/features/shared/list/LinkedListsPanel.tsx
+!explorers-earth/src/features/shared/list/LinkedListsSection.tsx
 !explorers-earth/src/features/shared/list/ListPage.tsx
 !explorers-earth/src/features/shared/list/ListTabs.tsx
 !explorers-earth/src/features/shared/list/ManageTab.tsx
+!explorers-earth/src/features/shared/list/OwnerListLinks.tsx
 !explorers-earth/src/features/shared/list/RecommendationsTab.tsx
 !explorers-earth/src/features/shared/list/RestoreListButton.tsx
 !explorers-earth/src/features/shared/list/ShareTab.tsx
@@ -1007,8 +1008,10 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/shared/list/adapters/people.ts
 !explorers-earth/src/features/shared/list/adapters/places.ts
 !explorers-earth/src/features/shared/list/adapters/products.ts
+!explorers-earth/src/features/shared/list/linkRoles.ts
 !explorers-earth/src/features/shared/list/listPageAdapter.ts
 !explorers-earth/src/features/shared/list/slugRules.ts
+!explorers-earth/src/features/shared/list/useListLinks.ts
 !explorers-earth/src/features/shared/lists/NewListDialog.tsx
 !explorers-earth/src/features/shared/samples/SampleActions.tsx
 !explorers-earth/src/features/shared/samples/SampleBadge.tsx
@@ -1229,7 +1232,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !tunes/shared/explorersOwnerContentContract.ts
 !tunes/shared/explorersPersonContract.ts
 !tunes/shared/explorersPlaceContract.ts
-!tunes/shared/explorersPlaceLinkContract.ts
 !tunes/shared/explorersPlacesNearbyContract.ts
 !tunes/shared/explorersProductContract.ts
 !tunes/shared/explorersPublicContentContract.ts

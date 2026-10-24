@@ -21,8 +21,8 @@ import {productDisplayFieldsSchema,productDisplayFieldsWriteSchema,productEntity
 import {personDisplayFieldsSchema,personEntityDetailsSchema,emptyPersonDetails} from '../../shared/explorersPersonContract';
 import {insertPersonDetails,readPersonEntity} from './personCatalogRepository';
 import {insertPlaceDetails,readPlaceEntity,writePlaceContext,writePlacePhotos,writePlaceCollectionDetails} from './placeCatalogRepository';
-import {writeLocationLink,deleteLocationLink} from './placeLinkRepository';
-import {linkableChildCategorySchema,type LinkableChildCategory} from '../../shared/explorersPlaceLinkContract';
+import {insertListLink,deleteListLink,updateListLinkRole} from './listLinkRepository';
+import type {AttachListLinkInput,DetachListLinkInput,SetListLinkRoleInput,ListLinkDto,ListLinkCommandResult} from '../../shared/explorersListLinkContract';
 import {placeDisplayFieldsSchema,placeEntityDetailsSchema,emptyPlaceDetails,emptyPlaceContext,emptyPlaceCollectionDetails,type PlaceRecommendationContext,type PlacePhotos,type PlaceCollectionDetails} from '../../shared/explorersPlaceContract';
 
 export type CatalogKind = 'place'|'movie'|'book'|'game'|'app'|'product'|'person';
@@ -39,6 +39,10 @@ export class RecommendationFailure extends Error {
 const SAMPLE_CONSTRAINTS:ReadonlySet<string>=new Set(['collections_sample_never_public','recommendations_sample_never_published']);
 export const SAMPLE_PUBLISH_REFUSED_CODE='SAMPLE_PUBLISH_REFUSED';
 const sampleRefusal=()=>new RecommendationFailure(422,SAMPLE_PUBLISH_REFUSAL,SAMPLE_PUBLISH_REFUSED_CODE);
+// WP10 x WP11. A sample is a read-only example until it is made yours, so it never takes part
+// in a link from either end. Storage (S3's insertListLink) does not know about samples.
+export const SAMPLE_LINK_REFUSED_CODE='SAMPLE_LINK_REFUSED';
+const sampleLinkRefusal=()=>new RecommendationFailure(422,"Samples can't be linked",SAMPLE_LINK_REFUSED_CODE);
 const hash=(value:string)=>createHash('sha256').update(value).digest();
 // Hash normalized domain inputs, independent of transport JSON object insertion order.
 function canonical(value:unknown):string {
@@ -107,7 +111,7 @@ export class ExplorersRecommendationRepository {
       // Account -> category -> aggregate. Replay returns above without mutation.
       // Existing resource scope is derived under the account lock, never supplied
       // by the caller; the callback still checks ownership/archive/revision.
-      const commandInput=input as {category?:ContentCategory;id?:string;parentLocationCollectionId?:string};
+      const commandInput=input as {category?:ContentCategory;id?:string;attachTo?:{hostCollectionId:string}};
       let category=commandInput.category;
       if(operation==='attachGameMembership'||operation==='detachGameMembership'){
         // Preserve the historical Games receipt fingerprint while deriving the
@@ -124,7 +128,11 @@ export class ExplorersRecommendationRepository {
           : 'SELECT category FROM collections WHERE id=$1 AND account_id=$2',[commandInput.id,accountId]);
         category=scope.rows[0]?.category;
       }
-      if(category) await lockContentCategories(db,accountId,operation==='createCollection'&&commandInput.parentLocationCollectionId!==undefined?[category,'places']:[category]);
+      // WP10. Create-and-attach also changes the host's category, so both categories are
+      // locked here, in sorted order, before any row.
+      const attachHost=operation==='createCollection'?commandInput.attachTo?.hostCollectionId:undefined;
+      const hostCategory=attachHost===undefined?undefined:(await db.query('SELECT category FROM collections WHERE id=$1 AND account_id=$2',[attachHost,accountId])).rows[0]?.category as string|undefined;
+      if(category) await lockContentCategories(db,accountId,hostCategory?[category,hostCategory]:[category]);
       const result=await work(db);
       await db.query(`INSERT INTO application_command_receipts(account_id,operation,idempotency_key_hash,request_hash,response)
         VALUES($1,$2,$3,$4,$5)`,[accountId,operation,keyHash,requestHash,JSON.stringify(result)]);
@@ -274,17 +282,24 @@ export class ExplorersRecommendationRepository {
       return inserted.rows[0] as {id:string;kind:CatalogKind;title:string};
     });
   }
-  async createCollection(accountId:string,input:{category:ContentCategory;title:string;slug:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails;parentLocationCollectionId?:string;parentExpectedRevision?:number;isSample?:true},key:string):Promise<CreateCollectionResult> {
-    const linked=input.parentLocationCollectionId!==undefined;
-    if(linked!==(input.parentExpectedRevision!==undefined))throw new RecommendationFailure(422,'Parent identity and revision are required together');
-    if(linked&&(!Number.isSafeInteger(input.parentExpectedRevision)||(input.parentExpectedRevision??0)<1))throw new RecommendationFailure(422,'Invalid revision');
-    if(linked&&!linkableChildCategorySchema.safeParse(input.category).success)throw new RecommendationFailure(422,'Only Products and People lists link to a location');
-    const normalized={...input,visibility:input.visibility??'private',publicationState:input.publicationState??'draft'};
+  async createCollection(accountId:string,input:{category:ContentCategory;title:string;slug:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails;attachTo?:{hostCollectionId:string;expectedHostRevision:number;role?:string|null};isSample?:true},key:string):Promise<CreateCollectionResult> {
+    if(input.attachTo!==undefined&&(!Number.isSafeInteger(input.attachTo.expectedHostRevision)||input.attachTo.expectedHostRevision<1))throw new RecommendationFailure(422,'Invalid revision');
+    const normalized={...input,visibility:input.visibility??'private',publicationState:input.publicationState??'draft',...(input.attachTo?{attachTo:{...input.attachTo,role:input.attachTo.role??null}}:{})};
     // Internal seeder flag only; the HTTP create schema is strict and has no isSample.
     if(input.isSample&&(normalized.visibility!=='private'||normalized.publicationState!=='draft'))throw sampleRefusal();
     return this.command(accountId,'createCollection',normalized,key,async db=>{
-      const parent=linked?await this.lockCollection(db,accountId,input.parentLocationCollectionId!,input.parentExpectedRevision!):undefined;
-      if(parent&&parent.category!=='places')throw new RecommendationFailure(422,'A location list is required');
+      // WP10 (LNK-06). The host is checked before the new list exists: a foreign, missing or
+      // archived host is a 404 and a stale host category revision a 409, and either rolls the
+      // whole create back. The command wrapper already holds both category locks.
+      let host:{id:string;category:string}|undefined;
+      if(input.attachTo){
+        const found=(await db.query('SELECT id,category,is_sample FROM collections WHERE account_id=$1 AND id=$2 AND archived_at IS NULL',[accountId,input.attachTo.hostCollectionId])).rows[0];
+        if(!found)throw new RecommendationFailure(404,'Resource unavailable');
+        if(found.is_sample||input.isSample)throw sampleLinkRefusal();
+        host={id:found.id,category:found.category};
+        await lockContentCategories(db,accountId,[input.category,host.category]);
+        await this.assertCategoryRevision(db,accountId,host.category,input.attachTo.expectedHostRevision);
+      }
       // LP-09. A slug a LIVE list was renamed from still resolves to that list, so a new
       // list may not take it. A redirect left by an archived list is stale and released.
       const redirected=await db.query(`SELECT 1 FROM collection_slug_redirects r JOIN collections c ON c.id=r.collection_id
@@ -300,19 +315,17 @@ export class ExplorersRecommendationRepository {
       // A Places list always owns a location row from the start, so the location is this
       // list's own from creation; an unset location is explicitly empty, not missing.
       if(input.category==='places')await writePlaceCollectionDetails(db,result.rows[0].id,accountId,input.placeLocation??emptyPlaceCollectionDetails());
-      // Ticket 5.2. Creating a list from a location links it in the same transaction, so a
-      // failed parent leaves no orphan child - the whole create rolls back.
-      let parentLocation:CreateCollectionResult['parentLocation'];
-      if(input.parentLocationCollectionId!==undefined){
-        const child=linkableChildCategorySchema.safeParse(input.category);
-        if(!child.success)throw new RecommendationFailure(422,'Only Products and People lists link to a location');
-        await writeLocationLink(db,{childCollectionId:result.rows[0].id,accountId,childCategory:child.data,locationCollectionId:input.parentLocationCollectionId});
-        const changed=await db.query('UPDATE collections SET revision=revision+1,updated_at=now() WHERE id=$1 AND account_id=$2 RETURNING id,revision',[parent!.id,accountId]);
-        parentLocation={id:changed.rows[0].id,revision:Number(changed.rows[0].revision)};
+      // WP10 (LNK-06). Linked from the host in the same transaction. When the host shares the
+      // new list's category the create itself also moves that revision, so the reported
+      // revision is read back rather than derived from the expected one.
+      let attachedTo:CreateCollectionResult['attachedTo'];
+      if(host){
+        const link=await insertListLink(db,{accountId,hostCollectionId:host.id,linkedCollectionId:result.rows[0].id,role:normalized.attachTo!.role??null});
+        attachedTo={hostCollectionId:host.id,linkId:link.id,hostCategoryRevision:await this.readCategoryRevision(db,accountId,host.category)};
       }
-      const created=createCollectionResultSchema.parse({...await this.collectionRecord(db,{...result.rows[0],description:input.description??null,heading:input.heading??null}),...(parentLocation?{parentLocation}:{})});
-      if(created.accountId!==accountId||created.category!==input.category||created.revision!==1||created.id.toLowerCase()===input.parentLocationCollectionId?.toLowerCase()||
-        (linked?(created.parentLocation?.id.toLowerCase()!==input.parentLocationCollectionId!.toLowerCase()||created.parentLocation?.revision!==input.parentExpectedRevision!+1):created.parentLocation!==undefined))throw new RecommendationFailure(422,'Invalid create result');
+      const created=createCollectionResultSchema.parse({...await this.collectionRecord(db,{...result.rows[0],description:input.description??null,heading:input.heading??null}),...(attachedTo?{attachedTo}:{})});
+      if(created.accountId!==accountId||created.category!==input.category||created.revision!==1||
+        (host?created.attachedTo?.hostCollectionId!==host.id:created.attachedTo!==undefined))throw new RecommendationFailure(422,'Invalid create result');
       return created;
     });
   }
@@ -501,36 +514,67 @@ export class ExplorersRecommendationRepository {
     });
   }
   /**
-   * Links an existing child list to a location, or unlinks it.
-   *
-   * Both revisions are checked under their locks, so a stale view cannot link a pair the
-   * creator was not looking at. The child's revision moves either way, because what the
-   * list belongs to is part of the list.
+   * WP10. Links one of the owner's lists to another through S3's repository. Both categories
+   * are locked before any row (account -> category -> row), because 0070's triggers bump both
+   * categories' content revisions. insertListLink refuses a foreign, missing or archived list
+   * as 404, a self link as 422 and an existing pair or a full host as 409.
    */
-  async writeLocationMembership(accountId:string,input:{childCollectionId:string;expectedChildRevision:number;locationCollectionId?:string;expectedLocationRevision?:number},key:string,attached:boolean) {
-    return this.command(accountId,attached?'attachLocationLink':'detachLocationLink',{childCollectionId:input.childCollectionId,expectedChildRevision:input.expectedChildRevision,locationCollectionId:input.locationCollectionId??null,expectedLocationRevision:input.expectedLocationRevision??null},key,async db=>{
-      // A link spans two categories, so both are locked before any row is - the
-      // wrapper derives one category from `id` and this command is addressed by the
-      // child, so it takes its own locks in the same account -> category -> row order.
-      const observed=(await db.query('SELECT category FROM collections WHERE id=$1 AND account_id=$2',[input.childCollectionId,accountId])).rows[0];
-      if(!observed)throw new RecommendationFailure(404,'Collection unavailable');
-      const childCategory=linkableChildCategorySchema.safeParse(observed.category);
-      if(!childCategory.success)throw new RecommendationFailure(422,'Only Products and People lists link to a location');
-      await lockContentCategories(db,accountId,[childCategory.data,'places']);
-      await this.lockCollection(db,accountId,input.childCollectionId,input.expectedChildRevision);
-      if(attached){
-        if(input.locationCollectionId===undefined||input.expectedLocationRevision===undefined)throw new RecommendationFailure(422,'A location list is required');
-        // Locked for its revision, and its category checked here so the refusal says which
-        // rule was broken rather than surfacing a foreign key.
-        const parent=await this.lockCollection(db,accountId,input.locationCollectionId,input.expectedLocationRevision);
-        if(parent.category!=='places')throw new RecommendationFailure(422,'A location list is required');
-        await writeLocationLink(db,{childCollectionId:input.childCollectionId,accountId,childCategory:childCategory.data,locationCollectionId:input.locationCollectionId});
-      }else{
-        await deleteLocationLink(db,input.childCollectionId,accountId);
-      }
-      const row=await db.query('UPDATE collections SET revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *',[input.childCollectionId]);
-      return{collection:await this.collectionRecord(db,row.rows[0]),attached};
+  async writeListLink(accountId:string,input:AttachListLinkInput,key:string):Promise<ListLinkCommandResult> {
+    return this.command(accountId,'attachListLink',input,key,async db=>{
+      const [host,linked]=await this.observeLinkPair(db,accountId,input.hostCollectionId,input.linkedCollectionId);
+      await this.assertCategoryRevision(db,accountId,host.category,input.expectedHostRevision);
+      if(linked.category!==host.category)await this.assertCategoryRevision(db,accountId,linked.category,input.expectedLinkedRevision);
+      const link=await insertListLink(db,{accountId,hostCollectionId:host.id,linkedCollectionId:linked.id,role:input.role??null,position:input.position});
+      return{link,attached:true,revisions:await this.linkRevisions(db,accountId,link)};
     });
+  }
+  /** collectionId is the list in the URL; a link that touches neither end of it is a 404. */
+  async removeListLink(accountId:string,input:DetachListLinkInput,key:string,collectionId?:string):Promise<ListLinkCommandResult> {
+    return this.command(accountId,'detachListLink',collectionId===undefined?input:{...input,collectionId},key,async db=>{
+      const current=await this.observeLink(db,accountId,input.linkId,collectionId);
+      await this.assertCategoryRevision(db,accountId,current.host_category,input.expectedHostRevision);
+      const link=await deleteListLink(db,accountId,input.linkId);
+      return{link,attached:false,revisions:await this.linkRevisions(db,accountId,link)};
+    });
+  }
+  async setListLinkRole(accountId:string,input:SetListLinkRoleInput,key:string,collectionId?:string):Promise<ListLinkCommandResult> {
+    return this.command(accountId,'setListLinkRole',collectionId===undefined?input:{...input,collectionId},key,async db=>{
+      const current=await this.observeLink(db,accountId,input.linkId,collectionId);
+      await this.assertCategoryRevision(db,accountId,current.host_category,input.expectedHostRevision);
+      const link=await updateListLinkRole(db,accountId,input.linkId,input.role??null);
+      return{link,attached:true,revisions:await this.linkRevisions(db,accountId,link)};
+    });
+  }
+  /** Reads both lists' categories, then takes the category locks in sorted order. A missing or foreign list is a 404, never a hint that it exists. */
+  private async observeLinkPair(db:PoolClient,accountId:string,hostId:string,linkedId:string){
+    const rows=(await db.query('SELECT id,category,is_sample FROM collections WHERE account_id=$1 AND id=ANY($2::uuid[])',[accountId,[hostId,linkedId]])).rows as {id:string;category:string;is_sample:boolean}[];
+    const host=rows.find(r=>r.id===hostId),linked=rows.find(r=>r.id===linkedId);
+    if(!host||!linked)throw new RecommendationFailure(404,'Resource unavailable');
+    if(host.is_sample||linked.is_sample)throw sampleLinkRefusal();
+    await lockContentCategories(db,accountId,[host.category,linked.category]);
+    return [host,linked] as const;
+  }
+  /** Locks the categories of an existing link of this account; 404 if it is not theirs. */
+  private async observeLink(db:PoolClient,accountId:string,linkId:string,collectionId?:string){
+    const row=(await db.query(`SELECT host_category,linked_category FROM collection_list_links WHERE id=$1 AND account_id=$2
+      AND ($3::uuid IS NULL OR host_collection_id=$3::uuid OR linked_collection_id=$3::uuid)`,[linkId,accountId,collectionId??null])).rows[0] as {host_category:string;linked_category:string}|undefined;
+    if(!row)throw new RecommendationFailure(404,'Resource unavailable');
+    await lockContentCategories(db,accountId,[row.host_category,row.linked_category]);
+    return row;
+  }
+  /** Category content revision (account_category_content_state); 0 when the category has never changed. */
+  private async readCategoryRevision(db:PoolClient,accountId:string,category:string){
+    return Number((await db.query("SELECT coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category=$2),'0') revision",[accountId,category])).rows[0].revision);
+  }
+  /** Checked under the category lock, so a stale view cannot change a link it was not looking at. */
+  private async assertCategoryRevision(db:PoolClient,accountId:string,category:string,expected:number){
+    if(await this.readCategoryRevision(db,accountId,category)!==expected)throw new RecommendationFailure(409,'Stale category revision');
+  }
+  /** Revisions after the statement triggers ran, for both categories of the link. */
+  private async linkRevisions(db:PoolClient,accountId:string,link:ListLinkDto){
+    const revisions:Partial<Record<ListLinkDto['hostCategory'],number>>={};
+    for(const category of new Set([link.hostCategory,link.linkedCategory]))revisions[category]=await this.readCategoryRevision(db,accountId,category);
+    return revisions;
   }
   async updateCollection(accountId:string,id:string,expectedRevision:number,input:{title?:string;slug?:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails;displayOrder?:number;pinOrder?:number|null},key:string):Promise<CollectionRecord> {
     return this.command(accountId,'updateCollection',{id,expectedRevision,input},key,async db=>{

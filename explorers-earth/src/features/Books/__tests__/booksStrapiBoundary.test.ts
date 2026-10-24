@@ -90,7 +90,15 @@ describe("Books has no Strapi in its import closure", () => {
     // Execution, not import: a `gql` document with no executor cannot reach a server, and
     // the retired documents elsewhere in the tree are exactly that. Both are asserted here
     // because Books should have neither.
-    expect(matching(/useQuery\s*\(|useMutation\s*\(|useLazyQuery\s*\(|useApolloClient\s*\(/)).toEqual([]);
+    // TanStack Query's useQuery (REST reads of the native API, e.g. WP10's list links) is
+    // not a GraphQL executor: a file whose only useQuery comes from @tanstack/react-query
+    // and that imports nothing from Apollo is exempt from the hook pattern.
+    const tanstackOnly = (path: string) => {
+      const code = sources.find((source) => source.path === path)!.code;
+      return /import\s*\{[^}]*\buseQuery\b[^}]*\}\s*from\s*["']@tanstack\/react-query["']/.test(code) && !/@apollo\/client/.test(code)
+        && !/useMutation\s*\(|useLazyQuery\s*\(|useApolloClient\s*\(/.test(code);
+    };
+    expect(matching(/useQuery\s*\(|useMutation\s*\(|useLazyQuery\s*\(|useApolloClient\s*\(/).filter((path) => !tanstackOnly(path))).toEqual([]);
     expect(matching(/\.(?:query|mutate)\s*\(/)).toEqual([]);
     expect(matching(/gql`/)).toEqual([]);
     expect(matching(/@apollo\/client/)).toEqual([]);

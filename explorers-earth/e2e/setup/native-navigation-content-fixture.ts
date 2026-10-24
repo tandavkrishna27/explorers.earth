@@ -28,11 +28,10 @@ export function createNativeNavigationContentFixture(category: 'movies' | 'games
         publicationState: owned.list.canonicalPublicationState ?? (owned.list.Visibility ? 'published' : 'draft'),
         revision: owned.list.canonicalRevision ?? 1, description: null, heading: null, coverMediaId: null, isSample: false,
         archived: owned.list.archived === true, displayOrder: owned.displayOrder,
-        categoryRevision: String(revision), pinOrder: null,
+        categoryRevision: String(revision), pinOrder: null, linkedLists: [],
         ...(category === 'places'
-          ? { placeLocation: { locationEntityId: null, locationSnapshot: null, instagramMediaUrl: null }, linkedChildren: [] }
+          ? { placeLocation: { locationEntityId: null, locationSnapshot: null, instagramMediaUrl: null } }
           : {}),
-        ...(category === 'products' || category === 'people' ? { locationLink: null } : {}),
       }) } };
     }
     // Ticket 5.3. The guide aggregate read, which only Guides has: the Guides surfaces fetch

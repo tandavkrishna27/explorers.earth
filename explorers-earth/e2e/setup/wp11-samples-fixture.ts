@@ -124,8 +124,8 @@ export async function installSampleRoutes(context: BrowserContext, origin: strin
     const editableCollection = /^\/collections\/([0-9a-f-]{36})\/editable$/.exec(path);
     if (editableCollection) {
       const list = findList(editableCollection[1]); if (!list) return route.fallback();
-      return route.fulfill(json({ collection: contract.editableOwnerCollectionSchema.parse({ ...collectionDto(list), categoryRevision: String(revision), pinOrder: null,
-        ...(list.category === 'places' ? { placeLocation: { locationEntityId: null, locationSnapshot: null, instagramMediaUrl: null }, linkedChildren: [] } : {}) }) }));
+      return route.fulfill(json({ collection: contract.editableOwnerCollectionSchema.parse({ ...collectionDto(list), categoryRevision: String(revision), pinOrder: null, linkedLists: [],
+        ...(list.category === 'places' ? { placeLocation: { locationEntityId: null, locationSnapshot: null, instagramMediaUrl: null } } : {}) }) }));
     }
     const editableItem = /^\/recommendations\/([0-9a-f-]{36})\/editable$/.exec(path);
     if (editableItem) {

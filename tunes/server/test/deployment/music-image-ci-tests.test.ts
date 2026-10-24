@@ -147,8 +147,9 @@ describe("owned image CI PostgreSQL wiring", () => {
       "server/test/explorers/link-preview.integration.test.ts",
       // R10. 0066 list delete keeps analytics; runtime DELETE on collections only.
       "server/test/explorers/list-delete-analytics.integration.test.ts",
+      // WP10. List links between any two own lists (replaces placeLinks).
+      "server/test/explorers/listLinks.integration.test.ts",
       "server/test/explorers/people.integration.test.ts",
-      "server/test/explorers/placeLinks.integration.test.ts",
       // WP6. Places nearby route and the person-type write refusal.
       "server/test/explorers/places-nearby.integration.test.ts",
       "server/test/explorers/places.integration.test.ts",

@@ -35,7 +35,8 @@ const sharedContractEntryPoints = [
   "tunes/shared/explorersPersonContract.ts",
   "tunes/shared/explorersPublicPeopleSectorContract.ts",
   "tunes/shared/explorersPlaceContract.ts",
-  "tunes/shared/explorersPlaceLinkContract.ts",
+  // WP10. explorersApiClient imports the list link contract (it replaced the Places-only one).
+  "tunes/shared/explorersListLinkContract.ts",
   // WP6. The Places add flow reads the nearby response contract.
   "tunes/shared/explorersPlacesNearbyContract.ts",
   // Ticket 5.3. explorersApiClient is in this context and imports the guide contract, so
