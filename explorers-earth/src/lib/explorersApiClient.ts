@@ -687,6 +687,12 @@ export const explorersApiClient = {
   async archiveMyCollection(observed:CollectionObservation,key:string,signal?:AbortSignal) {
    assertOwnerDetailObservation(observed,'collection');assertUnchangedSinceViewed(key,observed);return contentCommand(`/collections/${observed.resourceId}`,'DELETE',{expectedRevision:observed.resourceRevision},key,'collection',archivedResult,signal,observed,observed.resourceId);
   },
+  // WP11 (SMP-05). Turns a sample list into a normal draft in place; the revision advances by one.
+  async makeMyCollectionMine(observed:CollectionObservation,key:string,signal?:AbortSignal) {
+   assertOwnerDetailObservation(observed,'collection');assertUnchangedSinceViewed(key,observed);
+   const body=commandInput(contentRevisionSchema,{expectedRevision:observed.resourceRevision});
+   return contentCommand(`/collections/${observed.resourceId}/make-it-mine`,'POST',body,key,'collection',collectionCoreDtoSchema,signal,observed,observed.resourceId,observed.resourceRevision+1);
+  },
   // WP3B (LP-08). Restore needs an archived observation (getMyEditableCollection(id,signal,{archived:true}));
   // a reused slug comes back as 409 CONFLICT 'List URL is taken; choose a new URL to restore'.
   async restoreMyCollection(observed:CollectionObservation,key:string,options:{slug?:string}={},signal?:AbortSignal) {

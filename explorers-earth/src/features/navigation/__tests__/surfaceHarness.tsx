@@ -67,7 +67,7 @@ export function surfaceHarness(child: React.ReactNode, options: { initial?: Reco
     const editable = /^\/api\/explorers\/v1\/collections\/([0-9a-f-]+)\/editable$/.exec(request.pathname);
     if (editable) {
       return json({ collection: { id: editable[1], accountId: useAuthStore.getState().accountId, category: 'places',
-        title: 'My places', slug: 'places', description: null, heading: null, coverMediaId: null, visibility: 'public',
+        title: 'My places', slug: 'places', description: null, heading: null, coverMediaId: null, isSample: false, visibility: 'public',
         publicationState: 'published', revision: 1, archived: false, displayOrder: 0, pinOrder: null, categoryRevision: '1',
         placeLocation: { locationEntityId: null, locationSnapshot: null, instagramMediaUrl: null },
         // WP10. Every list reports its linked lists, so the editable read must carry the
@@ -84,7 +84,7 @@ export function surfaceHarness(child: React.ReactNode, options: { initial?: Reco
       id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
       accountId: useAuthStore.getState().accountId, category, title: 'Published list', slug: `list-${index}`,
       visibility: 'public', publicationState: 'published', revision: 1, description: null,
-      heading: null, coverMediaId: null, archived: false, displayOrder: index,
+      heading: null, coverMediaId: null, isSample: false, archived: false, displayOrder: index,
     }));
     return new Response(JSON.stringify({ version: 'explorers-owner-content/v2', snapshot: '1', snapshotToken: 'native-surface', expiresAt: Date.now() + 60_000, items, nextCursor: null }), { headers: { 'Content-Type': 'application/json' } });
   }));

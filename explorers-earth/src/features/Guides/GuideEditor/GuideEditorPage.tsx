@@ -1,5 +1,5 @@
 import {useCallback, useMemo, useState, useEffect} from 'react';
-import {useParams, useLocation} from 'react-router-dom';
+import {useNavigate, useParams, useLocation} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
 import {toast} from 'sonner';
 import PublishPill from '../../../components/controls/PublishPill';
@@ -22,6 +22,7 @@ import {LinkedListsUnderItems} from '../../shared/list/OwnerListLinks';
 import {dayChipLabel} from './dayItems';
 import {guideListAdapter} from './guideListAdapter';
 import {useOriginBack} from '../../../lib/navigation/useOriginBack';
+import {SampleListBanner, useSampleState} from '../../shared/samples/SampleListBanner';
 
 type Tab = 'plan' | 'share' | 'manage';
 const WIDE = '(min-width: 768px)';
@@ -74,6 +75,7 @@ export default function GuideEditorPage() {
 
 function Editor({initial, guide, list, refresh}: {initial: GuideObservation; guide: GuideRow; list: CollectionObservation | undefined; refresh: () => void}) {
  const {t, i18n} = useTranslation();
+ const navigate = useNavigate();
  const location = useLocation();
  const username = useAuthStore((state) => (state.user as {username?: string} | null)?.username);
  const plan = useGuidePlan(initial);
@@ -95,6 +97,9 @@ function Editor({initial, guide, list, refresh}: {initial: GuideObservation; gui
   stay: g.sections.some((s) => s.blocks.stay.accommodations.length > 0), transport: g.sections.some((s) => s.blocks.transport.segments.length > 0),
   budget: g.sections.some((s) => s.blocks.budget.entries.length > 0), tips: g.details.tipsNotes != null,
  };
+ // WP11 (mocks v3): a sample guide keeps reorder but shows no Add, day/item menus, My lists or sharing.
+ const sample = useSampleState(guide);
+ const readOnly = sample.isSample;
  const {replace} = plan;
  const collectionId = initial.collectionId;
  const reread = useCallback(() => void GuidesClient.observeWholeGuide(collectionId).then(replace).catch(() => {/* the next plan command re-reads on 409 */}), [collectionId, replace]);
@@ -113,15 +118,19 @@ function Editor({initial, guide, list, refresh}: {initial: GuideObservation; gui
  return (
   <div className="mx-auto max-w-6xl px-4 pb-28">
    <BackToOrigin />
+   {sample.isSample && <div className="mt-2"><SampleListBanner part="badge" collection={guide} listId={collectionId} /></div>}
    <header className="mt-2 flex items-start gap-3">
     <div className="min-w-0 flex-1">
      <h1 className="line-clamp-2 text-2xl font-semibold text-dashboard" title={guide.Title}>{guide.Title}</h1>
      <p className="text-sm text-dashboard-muted">{meta}</p>
     </div>
-    {!wide && tab === 'plan' && <button type="button" onClick={() => setSheet(true)} className="min-h-[44px] rounded-full border border-dashboard px-3 text-sm text-dashboard md:hidden">
+    {!wide && tab === 'plan' && !sample.isSample && <button type="button" onClick={() => setSheet(true)} className="min-h-[44px] rounded-full border border-dashboard px-3 text-sm text-dashboard md:hidden">
      {t('dashboard.wp9.myLists', {defaultValue: 'My lists'})}</button>}
-    <PublishPill kind="guide" value={guide.Visibility ? 'public' : 'draft'} privateComingSoon disabled={guide.isSample === true} onChange={setStatus} />
+    <PublishPill kind="guide" value={guide.Visibility ? 'public' : 'draft'} privateComingSoon disabled={sample.publishDisabled} disabledReason={sample.publishReason} onChange={setStatus} />
    </header>
+   {sample.isSample && <div className="mt-3"><SampleListBanner part="bar" collection={guide} listId={collectionId} listTitle={guide.Title}
+    itemsLabel={t('dashboard.wp9.dayCount', {defaultValue: '{{count}} days', count: days.length})}
+    onChanged={() => {refresh(); reread();}} onDeleted={() => navigate('/recommendations/guides')} /></div>}
    <div role="tablist" className="mt-4 flex justify-center gap-6 border-b border-dashboard">
     {(['plan', 'share', 'manage'] as const).map((k) => (
      <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
@@ -131,12 +140,12 @@ function Editor({initial, guide, list, refresh}: {initial: GuideObservation; gui
    </div>
    <div hidden={tab !== 'plan'}>
     <div className="mt-4"><PlanChips filled={filled} active={section} onSelect={setSection} /></div>
-    <DayStrip days={days} startDate={g.details.startDate} selectedId={selected} onSelect={setSelected} onAddDay={() => void plan.addDay()}
+    <DayStrip days={days} startDate={g.details.startDate} selectedId={selected} onSelect={setSelected} onAddDay={readOnly ? undefined : () => void plan.addDay()}
      onDropItem={(from, localId, to, fromIndex) => void plan.moveItem(from, localId, to, days.find((d) => d.id === to)?.items.length ?? 0, {fromIndex})} />
     <div className="mt-4 flex flex-col gap-6 md:flex-row">
      <div className="min-w-0 flex-1">
       {section === 'itinerary' ? (
-       <DayList days={days} startDate={g.details.startDate}
+       <DayList days={days} startDate={g.details.startDate} readOnly={readOnly}
         addBox={(id) => adding === id ? <SmartAddBox dayName={dayName(days.findIndex((d) => d.id === id))} onAdd={add(id)} onClose={() => setAdding(null)} /> : null}
         onOpenAdd={setAdding} onMoveItem={(...a) => void plan.moveItem(...a)} onSetTimeLabel={(...a) => void plan.setTimeLabel(...a)}
         onRemoveItem={(...a) => void plan.removeItem(...a)} onEditNote={(...a) => void plan.setNoteText(...a)}
@@ -147,12 +156,12 @@ function Editor({initial, guide, list, refresh}: {initial: GuideObservation; gui
        <p className="rounded-lg border border-dashed p-4 text-sm text-gray-600">
         {t('dashboard.wp9.sectionSoon', {defaultValue: 'This section opens in the guide details editor for now.'})}</p>
       )}
-      <button type="button" onClick={() => void plan.addDay()} className="mt-4 hidden min-h-[44px] rounded-lg border border-dashed px-4 text-sm md:inline-block">
-       {t('dashboard.wp9.addDay', {defaultValue: '+ Add day'})}</button>
+      {!readOnly && <button type="button" onClick={() => void plan.addDay()} className="mt-4 hidden min-h-[44px] rounded-lg border border-dashed px-4 text-sm md:inline-block">
+       {t('dashboard.wp9.addDay', {defaultValue: '+ Add day'})}</button>}
       {/* LNK-08: read-only on Plan; Attach, Detach and roles live in Manage. */}
       <LinkedListsUnderItems collectionId={collectionId} originLabel={guide.Title} readOnly />
      </div>
-     {wide && <div className="hidden md:block">{panel}</div>}
+     {wide && !readOnly && <div className="hidden md:block">{panel}</div>}
     </div>
     {sheet && !wide && (
      <div role="dialog" aria-modal="true" aria-label={t('dashboard.wp9.myLists', {defaultValue: 'My lists'})} className="fixed inset-0 z-[60] flex items-end bg-black/40 md:hidden"
@@ -163,9 +172,11 @@ function Editor({initial, guide, list, refresh}: {initial: GuideObservation; gui
       </div>
      </div>
     )}
-    <BottomAddButton label={t('dashboard.wp9.addToDayLabel', {defaultValue: 'Add to {{day}}', day: dayName(index)})} onClick={() => setAdding(selected)} hidden={tab !== 'plan' || adding !== null} />
+    <BottomAddButton label={t('dashboard.wp9.addToDayLabel', {defaultValue: 'Add to {{day}}', day: dayName(index)})} onClick={() => setAdding(selected)} hidden={tab !== 'plan' || adding !== null || readOnly} />
    </div>
-   <div hidden={tab !== 'share'}><ShareTab adapter={adapter} /></div>
+   <div hidden={tab !== 'share'}>{sample.hideSharing
+    ? <p className="pt-3 text-sm text-gray-400">{t('samples.cannotShare', {defaultValue: "Samples can't be shared. Make it yours to publish and share it."})}</p>
+    : <ShareTab adapter={adapter} />}</div>
    <div hidden={tab !== 'manage'}><ManageTab adapter={adapter} /></div>
   </div>
  );

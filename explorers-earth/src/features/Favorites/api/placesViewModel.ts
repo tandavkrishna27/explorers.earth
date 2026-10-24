@@ -1,3 +1,4 @@
+import {withSampleFlag} from '../../shared/samples/readIsSample';
 import type {EditableOwnerRecommendation,EditableOwnerCollection,OwnerMembershipDto} from '../../../../../tunes/shared/explorersOwnerContentContract';
 import {placeEntityDetailsSchema,placeRecommendationContextSchema,emptyPlaceDetails,legacyListNameDetails} from '../../../../../tunes/shared/explorersPlaceContract';
 import type {CompletePlacesOwnerContent} from './placesClient';
@@ -126,7 +127,7 @@ export function placeViewModel(detail:Readonly<EditableOwnerRecommendation>,memb
  };
 }
 
-export function collectionViewModel(collection:Readonly<EditableOwnerCollection>,places:RecommendedPlaceView[],username=''):RecommendationListView{
+function collectionViewModelBase(collection:Readonly<EditableOwnerCollection>,places:RecommendedPlaceView[],username=''):RecommendationListView{
  if(collection.category!=='places'||collection.placeLocation===undefined)throw new ExplorersApiError(409,'CONFLICT','Places list identity changed');
  const cover=collection.coverMediaId===null?null:{url:MEDIA(collection.coverMediaId),alternativeText:null};
  return {
@@ -196,3 +197,6 @@ export const placesViewModel={
   })};
  },
 };
+
+/** WP11: the legacy list carries isSample (only when true) so cards, picks and the list page can badge it. */
+export const collectionViewModel:typeof collectionViewModelBase=(...args)=>withSampleFlag(args[0],collectionViewModelBase(...args));

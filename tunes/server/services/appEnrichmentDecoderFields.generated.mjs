@@ -4729,7 +4729,8 @@ var collectionCoreDtoSchema = external_exports.object({
   revision: contentRevision,
   description: collectionPlainText,
   heading: collectionHeading,
-  coverMediaId: contentIdSchema.nullable()
+  coverMediaId: contentIdSchema.nullable(),
+  isSample: external_exports.boolean()
 }).strict();
 var createCollectionResultSchema = collectionCoreDtoSchema.extend({
   attachedTo: external_exports.object({ hostCollectionId: contentIdSchema, linkId: contentIdSchema, hostCategoryRevision: contentRevision }).strict().optional()

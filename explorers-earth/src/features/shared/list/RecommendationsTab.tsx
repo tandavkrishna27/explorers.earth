@@ -18,6 +18,8 @@ export default function RecommendationsTab({ adapter, active }: { adapter: ListP
   const add = () => navigate(adapter.addPath);
   const addNoun = t("dashboard.wp3b.addNoun", "Add {{noun}}", { noun: adapter.itemNoun });
   const addLabel = `＋ ${addNoun}`;
+  // WP11 (mocks v3): a sample keeps reorder but has no pins, item menus or Add until it is made yours.
+  const sample = adapter.list?.isSample === true;
 
   if (adapter.loading && !adapter.items.length) {
     return <div className="grid gap-2 pt-3">{[0, 1, 2].map((i) => <div key={i} className="h-14 animate-pulse rounded-xl bg-white/5" />)}</div>;
@@ -28,7 +30,7 @@ export default function RecommendationsTab({ adapter, active }: { adapter: ListP
         <div className="mt-3 grid justify-items-center gap-3 rounded-2xl border border-dashed border-blue-400/45 px-4 py-9 text-center">
           <b>{t("dashboard.wp3b.emptyTitle", "No {{noun}}s yet", { noun: adapter.itemNoun })}</b>
           <span className="text-xs text-gray-400">{t("dashboard.wp3b.emptyHint", "Add your first {{noun}} to start this list.", { noun: adapter.itemNoun })}</span>
-          <button type="button" onClick={add} className="min-h-11 rounded-xl bg-blue-400 px-4 text-white">{addLabel}</button>
+          {!sample && <button type="button" onClick={add} className="min-h-11 rounded-xl bg-blue-400 px-4 text-white">{addLabel}</button>}
         </div>
         <LinkedListsUnderItems collectionId={adapter.list?.id} originLabel={adapter.list?.title} />
       </>
@@ -64,6 +66,7 @@ export default function RecommendationsTab({ adapter, active }: { adapter: ListP
               <span className="text-xs text-gray-400">{item.subtitle}{item.rating ? ` · ★ ${item.rating / 2}` : ""}</span>
               {item.note ? <span className="mt-0.5 block line-clamp-1 text-xs text-gray-500">{item.note}</span> : null}
             </button>
+            {!sample && <>
             <button type="button" aria-pressed={item.pinned} aria-label={t("dashboard.wp3b.pin", "Pin {{item}} to Top Picks", { item: item.title })}
               onClick={() => void togglePin(item)} className={`h-11 w-11 rounded-lg ${item.pinned ? "text-amber-400" : "text-gray-400"}`}>{item.pinned ? "★" : "☆"}</button>
             <button type="button" aria-haspopup="menu" aria-expanded={menu === item.id} aria-label={t("dashboard.wp3b.more", "More actions for {{item}}", { item: item.title })}
@@ -74,11 +77,12 @@ export default function RecommendationsTab({ adapter, active }: { adapter: ListP
                 <button role="menuitem" type="button" onClick={() => void remove(item.id)} className="rounded px-3 py-2 text-left text-red-300 hover:bg-white/5">{t("dashboard.wp3b.remove", "Remove from list")}</button>
               </div>
             )}
+            </>}
           </div>
         )} />
-      <button type="button" onClick={add} className="rounded-xl border border-dashed border-white/20 p-3 text-left text-sm text-gray-400 hover:border-blue-400 hover:text-blue-400">{addLabel}</button>
+      {!sample && <button type="button" onClick={add} className="rounded-xl border border-dashed border-white/20 p-3 text-left text-sm text-gray-400 hover:border-blue-400 hover:text-blue-400">{addLabel}</button>}
       <LinkedListsUnderItems collectionId={adapter.list?.id} originLabel={adapter.list?.title} />
-      <BottomAddButton label={addNoun} onClick={add} hidden={!active} />
+      <BottomAddButton label={addNoun} onClick={add} hidden={!active || sample} />
     </div>
   );
 }

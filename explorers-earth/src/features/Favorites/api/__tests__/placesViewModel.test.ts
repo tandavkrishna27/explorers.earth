@@ -18,7 +18,7 @@ const detail=(over:Record<string,unknown>={})=>({id:id(1),entityId:id(1),categor
 const membership=(over:Record<string,unknown>={})=>({recommendationId:id(1),collectionId:id(2),displayOrder:0,...over} as never);
 const snapshot={version:1,name:'Bengaluru',address:'Bengaluru, Karnataka, India',providerPlaceId:'ChIJ_city',latitude:12.9715987,longitude:77.5945627};
 const collection=(over:Record<string,unknown>={})=>({id:id(2),accountId:id(3),category:'places',title:'Bengaluru',description:'My personal guide',
- slug:'bengaluru',visibility:'public',publicationState:'published',displayOrder:0,heading:'Top picks',coverMediaId:id(9),revision:1,archived:false,
+ slug:'bengaluru',visibility:'public',publicationState:'published',displayOrder:0,heading:'Top picks',coverMediaId:id(9),isSample:false,revision:1,archived:false,
  categoryRevision:'1',placeLocation:{locationEntityId:id(4),locationSnapshot:snapshot,instagramMediaUrl:'https://example.com/reel'},...over} as never);
 
 it('preserves canonical taxonomy metadata and unavailable selection without invented labels',()=>{

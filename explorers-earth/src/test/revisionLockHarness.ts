@@ -17,7 +17,7 @@ export function signIn(){
  const generation=useAuthStore.getState().beginVerification();
  useAuthStore.getState().acceptVerified(generation,{id:account,userId:'lock-user',username:'locks',email:'locks@example.invalid',onboardingStatus:'complete',revision:1});
 }
-const collectionCore=(category:Category,revision:number)=>({id:listId,accountId:account,category,title:'List',slug:'list',visibility:'private',publicationState:'draft',revision,description:null,heading:null,coverMediaId:null});
+const collectionCore=(category:Category,revision:number)=>({id:listId,accountId:account,category,title:'List',slug:'list',visibility:'private',publicationState:'draft',revision,description:null,heading:null,coverMediaId:null,isSample:false});
 const collectionDetail=(category:Category,revision:number)=>({...collectionCore(category,revision),archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',
  ...(category==='places'?{placeLocation:{locationEntityId:null,locationSnapshot:null,instagramMediaUrl:null}}:{}),linkedLists:[]});
 const kind:Record<Category,string>={places:'place',products:'product',people:'person',apps:'app',games:'game',movies:'movie',books:'book'};

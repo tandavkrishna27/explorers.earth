@@ -22,7 +22,7 @@ export function createBooksOwnerFixture(lists: () => Record<string, any>[], lega
       title: list.List_Name, slug: list.slug, visibility: list.visibility ? 'public' : 'private',
       publicationState: list.canonicalPublicationState ?? (list.Visibility ? 'published' : 'draft'), revision: list.canonicalRevision ?? 1,
       description: list.list_description ?? null, heading: list.top_reads_heading ?? null,
-      coverMediaId: null, archived: false, displayOrder,
+      coverMediaId: null, isSample: false, archived: false, displayOrder,
     }));
     const details = new Map<string, ReturnType<typeof contract.editableOwnerRecommendationSchema.parse>>();
     const memberships: ReturnType<typeof contract.ownerMembershipDtoSchema.parse>[] = [];

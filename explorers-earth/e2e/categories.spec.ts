@@ -201,7 +201,7 @@ async function openCategory(browser: Browser, baseURL: string, category: Templat
       lists.push(created);
       return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ collection: collectionCoreDtoSchema.parse({
         id: bookFixtureId("collection", created.documentId), accountId: canonicalAccountFixture().id, category, title: body.title, slug: body.slug,
-        visibility: "private", publicationState: "draft", revision: 1, description: body.description ?? null, heading: null, coverMediaId: null }) }) });
+        visibility: "private", publicationState: "draft", revision: 1, description: body.description ?? null, heading: null, coverMediaId: null, isSample: false }) }) });
     }
     if (request.method() === "PATCH" && url.pathname === `/api/explorers/v1/categories/${category}/lists/order`) {
       const body = request.postDataJSON();

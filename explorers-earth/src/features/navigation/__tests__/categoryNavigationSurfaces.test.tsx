@@ -37,7 +37,7 @@ function movieObservation(title?: string): CompleteMyCategoryContent {
   return { complete: true, category: 'movies', status: 'active', accountId: current.accountId!, generation: current.generation,
     revision: '1', snapshotToken: 'native-navigation-fixture', expiresAt: Date.now() + 60_000, pinRevision: 0,
     collections: title ? [{ id: 'list-1', accountId: current.accountId!, category: 'movies', title, description: null,
-      heading: null, slug: 'list', visibility: 'public', publicationState: 'published', coverMediaId: null,
+      heading: null, slug: 'list', visibility: 'public', publicationState: 'published', coverMediaId: null,isSample:false,
       displayOrder: 0, revision: 1, archived: false }] : [], recommendations: [], memberships: [], topPicks: [] };
 }
 

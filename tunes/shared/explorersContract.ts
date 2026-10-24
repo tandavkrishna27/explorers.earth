@@ -132,7 +132,7 @@ export type ReorderCategoryListsInput = z.infer<typeof reorderCategoryListsSchem
 export type CategoryListsOrderResult = z.infer<typeof categoryListsOrderResultSchema>;
 export const collectionCoreDtoSchema = z.object({id:contentIdSchema,accountId:contentIdSchema,category:contentCategorySchema,
   title:contentTitle,slug:contentSlug,visibility:contentVisibility,publicationState,revision:contentRevision,
-  description:collectionPlainText,heading:collectionHeading,coverMediaId:contentIdSchema.nullable()}).strict();
+  description:collectionPlainText,heading:collectionHeading,coverMediaId:contentIdSchema.nullable(),isSample:z.boolean()}).strict();
 export const createCollectionResultSchema = collectionCoreDtoSchema.extend({
   attachedTo:z.object({hostCollectionId:contentIdSchema,linkId:contentIdSchema,hostCategoryRevision:contentRevision}).strict().optional()}).strict();
 export type CreateCollectionResult = z.infer<typeof createCollectionResultSchema>;

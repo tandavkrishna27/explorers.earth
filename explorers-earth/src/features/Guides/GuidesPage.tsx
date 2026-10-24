@@ -1,6 +1,6 @@
 import CategoryPage from "../shared/category/CategoryPage";
 import { useArchivedLists } from "../shared/category/useArchivedLists";
-import { toListTopPicks } from "../shared/category/models";
+import { toListTopPicks, withSampleFallbackListPick } from "../shared/category/models";
 import { NavigationStatus } from "../navigation/NavigationStatus";
 import { useCategoryNavigation } from "../navigation/CategoryNavigationProvider";
 import React, { useState, useMemo, useEffect } from "react";
@@ -540,6 +540,7 @@ const GuidesPage: React.FC = () => {
     id: guide.documentId, title: guide.Title ?? "", status: guide.Visibility ? ("public" as const) : ("draft" as const),
     itemCount: guide.sectionCount ?? guide.sections?.length ?? 0, pinnedCount: 0,
     covers: guide.Guide_Media?.[0]?.url ? [guide.Guide_Media[0].url] : [],
+    ...(guide.isSample === true ? { isSample: true } : {}),
   })), [guides]);
   // The state and handlers above stay for WP9 (ownership ruling C6), which rebuilds the Guides
   // filters, delete confirmation and pin flows on this page; the shared template does not use them yet.
@@ -563,7 +564,7 @@ const GuidesPage: React.FC = () => {
         status={{ loading: isLoading, error: error ? (error instanceof Error ? error : new Error(String(error))) : null, refreshing: isLoading && allGuides.length > 0 }}
         lists={guideCards}
         archivedLists={archived.lists}
-        topPicks={toListTopPicks(allGuides as any[], guidePick)}
+        topPicks={withSampleFallbackListPick(toListTopPicks(allGuides as any[], guidePick), allGuides as any[], guidePick)}
         pinCandidates={toListTopPicks(allGuides as any[], guidePick, false)}
         categoryVisibility={categoryVisible ? "public" : "hidden"}
         visibilityBusy={navigation.busy || !navigation.authority}

@@ -3,7 +3,7 @@ import useAuthStore from '../../store/store';
 import { explorersApiClient, assertCompleteMyCategoryContent, copyMyCategoryContentForStaging } from '../explorersApiClient';
 const accountId='00000000-0000-4000-8000-000000000001';
 const id=(n:number)=>`00000000-0000-4000-8000-${String(n+10).padStart(12,'0')}`;
-const collection=(n:number)=>({id:id(n),accountId,category:'books',title:`List ${n}`,slug:`list-${n}`,visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null,archived:false,displayOrder:n});
+const collection=(n:number)=>({id:id(n),accountId,category:'books',title:`List ${n}`,slug:`list-${n}`,visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null,isSample:false,archived:false,displayOrder:n});
 const child=(n:number)=>({id:id(n+2000),accountId,category:'books',entityId:id(9999),userRating:null,publicationState:'draft',revision:1,mediaIds:[],archived:false,pin:n===52?{collectionId:id(26),position:0,revision:1}:null});
 const membership=(n:number,c=26)=>({recommendationId:id(n+2000),collectionId:id(c),collectionRevision:1,displayOrder:n,collectionArchived:false,recommendationArchived:false});
 const expiry=()=>Date.now()+600000;

@@ -1,0 +1,12 @@
+{"set":"global","version":"v1","category":"people","lists":[
+ {"key":"gl-people-science","title":"Science communicators","description":"People who make science a pleasure.","topPicks":true,"items":[
+  {"note":"Decades of patient work with chimpanzees.","rating":10,"details":{"title":"Jane Goodall","headline":"Primatologist","primaryPlatform":"website","socialUrls":{"website":"https://en.wikipedia.org/wiki/Jane_Goodall"},"skillsTags":["Science","Conservation"]}},
+  {"note":"Makes the universe feel close.","rating":9,"details":{"title":"Neil deGrasse Tyson","headline":"Astrophysicist","primaryPlatform":"website","socialUrls":{"website":"https://en.wikipedia.org/wiki/Neil_deGrasse_Tyson"},"skillsTags":["Astronomy"]}},
+  {"note":"Maths explained with real-world stories.","rating":9,"details":{"title":"Hannah Fry","headline":"Mathematician","primaryPlatform":"website","socialUrls":{"website":"https://en.wikipedia.org/wiki/Hannah_Fry"},"skillsTags":["Mathematics"]}},
+  {"note":"Physics with wonder.","rating":9,"details":{"title":"Brian Cox","headline":"Physicist","primaryPlatform":"website","socialUrls":{"website":"https://en.wikipedia.org/wiki/Brian_Cox_(physicist)"},"skillsTags":["Physics"]}}]},
+ {"key":"gl-people-sport","title":"Sport icons","description":"Athletes worth reading about.","topPicks":false,"items":[
+  {"note":"Twenty-three Grand Slam singles titles.","rating":10,"details":{"title":"Serena Williams","headline":"Tennis player","primaryPlatform":"website","socialUrls":{"website":"https://en.wikipedia.org/wiki/Serena_Williams"},"skillsTags":["Tennis"]}},
+  {"note":"The fastest man in history.","rating":9,"details":{"title":"Usain Bolt","headline":"Sprinter","primaryPlatform":"website","socialUrls":{"website":"https://en.wikipedia.org/wiki/Usain_Bolt"},"skillsTags":["Athletics"]}},
+  {"note":"Gymnastics redefined.","rating":10,"details":{"title":"Simone Biles","headline":"Gymnast","primaryPlatform":"website","socialUrls":{"website":"https://en.wikipedia.org/wiki/Simone_Biles"},"skillsTags":["Gymnastics"]}},
+  {"note":"A World Cup to cap it all.","rating":10,"details":{"title":"Lionel Messi","headline":"Footballer","primaryPlatform":"website","socialUrls":{"website":"https://en.wikipedia.org/wiki/Lionel_Messi"},"skillsTags":["Football"]}}]}
+]}

@@ -42,9 +42,10 @@ describe("runtime route/event/job inventory", () => {
     // 204 = 202 + WP6 places nearby (GET /api/explorers/v1/places/nearby and its ALL guard)
     // 210 = 204 + WP8 link preview POST, its image import POST and the app search GET, each with its fail-closed method boundary.
     // 230 = 210 + the ten guide day and day-item commands, each with its fail-closed method boundary (WP9, GD-24..30).
-    // 232 = 230 + WP10 list links (POST/PATCH/DELETE links and their 2 ALL guards replace
+    // 232 = 230 + WP11 Make it mine (POST /api/explorers/v1/collections/:id/make-it-mine and its ALL guard)
+    // 234 = 232 + WP10 list links (POST/PATCH/DELETE links and their 2 ALL guards replace
     // the 2 Places location commands and their ALL guard).
-    expect(inventory.routes).toHaveLength(232);
+    expect(inventory.routes).toHaveLength(234);
     expect(inventory.events).toHaveLength(15);
     // 38 = 37 + the Google profile photo fetch deadline (googleAvatarFetch.ts).
     // 39 = 38 + the place photo fetch deadline (tunes/server/services/placePhotoFetch.ts).
@@ -150,6 +151,8 @@ describe("runtime route/event/job inventory", () => {
       ['DELETE','/api/explorers/v1/collections/:id'], ['POST','/api/explorers/v1/recommendations'],
       // WP3B (LP-08). Restore an archived list; delete a list permanently.
       ['POST','/api/explorers/v1/collections/:id/restore'], ['POST','/api/explorers/v1/collections/:id/purge'],
+      // WP11 (SMP-04). Make a sample list your own, in place.
+      ['POST','/api/explorers/v1/collections/:id/make-it-mine'],
       ['PATCH','/api/explorers/v1/recommendations/:id'], ['DELETE','/api/explorers/v1/recommendations/:id'],
       ['POST','/api/explorers/v1/recommendations/:id/entity'], ['POST','/api/explorers/v1/recommendations/:id/movie-media/import'], ['POST','/api/explorers/v1/recommendations/:id/book-covers'],
       ['GET','/api/explorers/v1/collections'], ['GET','/api/explorers/v1/collections/:id'],
@@ -189,7 +192,7 @@ describe("runtime route/event/job inventory", () => {
       '/api/explorers/v1/collections/:id/memberships/:recommendationId',
       '/api/explorers/v1/collections/:id/links','/api/explorers/v1/collections/:id/links/:linkId',
       '/api/explorers/v1/collections/:id','/api/explorers/v1/collections/:id/order',
-      '/api/explorers/v1/collections/:id/restore','/api/explorers/v1/collections/:id/purge',
+      '/api/explorers/v1/collections/:id/restore','/api/explorers/v1/collections/:id/purge','/api/explorers/v1/collections/:id/make-it-mine',
       '/api/explorers/v1/collections/:id/editable','/api/explorers/v1/recommendations/:id/editable',
       '/api/explorers/v1/recommendations','/api/explorers/v1/recommendations/:id','/api/explorers/v1/recommendations/search',
       '/api/explorers/v1/categories/:category/content-snapshot','/api/explorers/v1/categories/:category/content-snapshot/validate','/api/explorers/v1/categories/:category/memberships',

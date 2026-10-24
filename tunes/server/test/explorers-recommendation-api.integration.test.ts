@@ -43,7 +43,7 @@ it('WP10 create-and-attach HTTP strictly validates attachTo and preserves ordina
   const a=await persona(),host=await list(a,'places');
   const ordinaryInput={category:'products',title:'Ordinary',slug:`ordinary-${randomUUID()}`},key=randomUUID();
   const ordinary=await command(a,'post','/collections',ordinaryInput,key);expect(ordinary.status).toBe(201);
-  expect(ordinary.body).toEqual({collection:{id:expect.any(String),accountId:a.accountId,...ordinaryInput,visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null}});
+  expect(ordinary.body).toEqual({collection:{id:expect.any(String),accountId:a.accountId,...ordinaryInput,visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null,isSample:false}});
   const unchanged=await attachCreateHttpState([a.accountId]);
   expect((await command(a,'post','/collections',ordinaryInput,key)).body).toEqual(ordinary.body);
   expect(await attachCreateHttpState([a.accountId])).toEqual(unchanged);
@@ -62,7 +62,7 @@ it('WP10 create-and-attach HTTP links a new list of any category and gives equal
     const observed=await categoryContentRevision(a.accountId,'guides'),before=await attachCreateHttpState([a.accountId,b.accountId]);
     const input={category,title:'Attached HTTP list',slug:`attached-${randomUUID()}`,attachTo:{hostCollectionId:category==='products'?host.id.toUpperCase():host.id,expectedHostRevision:observed,role:'  Packing list  '}},key=randomUUID();
     const saved=await command(a,'post','/collections',input,key);expect(saved.status).toBe(201);
-    expect(saved.body.collection).toEqual({id:expect.any(String),accountId:a.accountId,category,title:input.title,slug:input.slug,visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null,
+    expect(saved.body.collection).toEqual({id:expect.any(String),accountId:a.accountId,category,title:input.title,slug:input.slug,visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null,isSample:false,
       attachedTo:{hostCollectionId:host.id,linkId:expect.any(String),hostCategoryRevision:await categoryContentRevision(a.accountId,'guides')}});
     const after=await attachCreateHttpState([a.accountId,b.accountId]);
     expect(after.collections).toHaveLength(before.collections.length+1);expect(after.links).toHaveLength(before.links.length+1);expect(after.receipts).toHaveLength(before.receipts.length+1);

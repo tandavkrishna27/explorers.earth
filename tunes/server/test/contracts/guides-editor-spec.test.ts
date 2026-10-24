@@ -74,7 +74,7 @@ it('native full section form retains existing transport by entry identity',()=>{
 
 it('actual owner guide mapper hands native detail and full edit surfaces the complete section DTO',()=>{
  const seed=buildGuidesSeedPlan(GUIDES_CASES[1]),id='aaaaaaaa-0000-4000-8000-000000000001',sectionId='aaaaaaaa-0000-4000-8000-000000000002',time='2026-10-11T00:00:00.000Z';
- const collection=ownerCollectionDtoSchema.parse({id,accountId:'aaaaaaaa-0000-4000-8000-000000000003',category:'guides',title:seed.guides[0].title,slug:seed.guides[0].slug,visibility:'public',publicationState:'published',revision:1,description:null,heading:null,coverMediaId:null,archived:false,displayOrder:0});
+ const collection=ownerCollectionDtoSchema.parse({id,accountId:'aaaaaaaa-0000-4000-8000-000000000003',category:'guides',title:seed.guides[0].title,slug:seed.guides[0].slug,visibility:'public',publicationState:'published',revision:1,description:null,heading:null,coverMediaId:null,isSample:false,archived:false,displayOrder:0});
  const input=seed.sections[0],aggregate=guideAggregateDtoSchema.parse({collectionId:id,revision:1,details:seed.guides[0].details,coverMediaId:null,sections:[{id:sectionId,collectionId:id,title:input.title,description:input.description,displayOrder:0,blocks:input.blocks,archived:false,createdAt:time,updatedAt:time}],sectionCount:1,nextCursor:null});
  expect(toGuide(collection,aggregate).guide_sections?.[0]).toEqual(toGuideSection(aggregate.sections[0]));
 });

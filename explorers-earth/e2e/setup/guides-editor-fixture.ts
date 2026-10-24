@@ -37,7 +37,7 @@ export function createGuidesEditorFixture() {
   };
   const row = (guide: Guide, displayOrder: number) => owner.ownerCollectionDtoSchema.parse({ id: guide.id, accountId: accountId(), category: 'guides',
     title: guide.title, slug: guide.slug, visibility: 'private', publicationState: guide.publicationState, revision: guide.revision,
-    description: null, heading: null, coverMediaId: null, archived: false, displayOrder });
+    description: null, heading: null, coverMediaId: null, isSample: false, archived: false, displayOrder });
   const aggregate = (guide: Guide) => guideAggregateDtoSchema.parse({ collectionId: guide.id, revision, details: guide.details, coverMediaId: null,
     sections: guide.sections.map((section, displayOrder) => ({ ...section, displayOrder })), sectionCount: guide.sections.length, nextCursor: null });
   const newSection = (guide: Guide, title = '', blocks = guideEmptySectionBlocks): GuideSectionDto => ({ id: randomUUID(), collectionId: guide.id,
