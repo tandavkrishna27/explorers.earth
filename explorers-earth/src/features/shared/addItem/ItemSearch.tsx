@@ -53,13 +53,13 @@ export default function ItemSearch({ query, onQueryChange, search, onPick, onAdd
           {t("dashboard.wp4.addManuallyLink", "Can't find it? Add manually")}
         </button>
       </div>
-      <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-[#0b0f15] py-1 pl-3 pr-1">
+      <div className="flex items-center gap-1 rounded-xl border border-dashboard-border bg-dashboard-muted py-1 pl-3 pr-1 text-dashboard">
         <Search aria-hidden className="h-4 w-4 text-gray-400" />
         <input
           role="combobox" aria-expanded={state.items.length > 0} aria-controls={listId} aria-autocomplete="list"
           value={query} placeholder={placeholder} onChange={(e) => onQueryChange(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void run(query); } }}
-          className="min-w-0 flex-1 bg-transparent py-2 text-sm outline-none"
+          className="min-w-0 flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-dashboard-muted"
         />
         {state.status === "loading" && <Loader2 aria-label={t("dashboard.wp4.searching", "Searching")} className="h-4 w-4 animate-spin" />}
         {trailing}
