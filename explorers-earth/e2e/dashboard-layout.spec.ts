@@ -112,3 +112,42 @@ test('phone add page: back link clears the header, Save clears the bottom nav an
     await save.click({ trial: true, timeout: 3000 });
   } finally { await closeFixture(owner); }
 });
+
+// Phone horizontal overflow: no dashboard page may be wider than a 375px screen. Lists in this
+// fixture are empty, so the People list route is the shared ListPage with long populated rows
+// (e2e/setup/list-layout-harness.tsx); the other routes are the real pages.
+async function expectNoOverflow(page: Page, name: string) {
+  await page.waitForLoadState('networkidle');
+  const { scrollWidth, innerWidth } = await page.evaluate(() => ({ scrollWidth: document.scrollingElement!.scrollWidth, innerWidth: window.innerWidth }));
+  if (shots) await page.screenshot({ path: `${shots}/overflow-${name}.png` });
+  expect(scrollWidth, `${name} scrolls horizontally`).toBeLessThanOrEqual(innerWidth);
+}
+
+test('no dashboard page overflows horizontally at 375px', async ({ browser, baseURL }) => {
+  test.setTimeout(300_000);
+  const owner = await openFixture(browser, baseURL!, fixtureState(), { owner: true, width: 375, height: 812, touch: true });
+  try {
+    await owner.page.goto('/recommendations'); await expectNoOverflow(owner.page, 'hub');
+    for (const category of categories) {
+      await owner.page.goto(`/recommendations/${category.route}`);
+      await expect(owner.page.getByTestId('dashboard-page-container')).toBeVisible();
+      await expectNoOverflow(owner.page, category.route);
+      // This fixture can't serve Guides lists; the guide pages are swept by route below.
+      if (category.route === 'guides') continue;
+      await owner.page.getByText(`Public ${category.route}`, { exact: true }).first().click();
+      await expect(owner.page.getByText(`Public ${category.route}`, { exact: true }).first()).toBeVisible();
+      await expectNoOverflow(owner.page, `${category.route}-list`);
+      if (category.route === 'places') continue;
+      await owner.page.goto(`/recommendations/${category.route}/fixture-list/add`);
+      await expectNoOverflow(owner.page, `${category.route}-add`);
+    }
+    await owner.page.goto('/recommendations/guides/new'); await expectNoOverflow(owner.page, 'guide-new');
+    await owner.page.goto('/recommendations/guides/guides-list'); await expectNoOverflow(owner.page, 'guide-page');
+    await owner.page.goto('/recommendations/people/layout-list');
+    await expect(owner.page.getByText('Short name')).toBeVisible();
+    await expectNoOverflow(owner.page, 'people-list-populated');
+    await owner.page.goto('/recommendations/people/layout-list?sample=1');
+    await expect(owner.page.getByText('Short name')).toBeVisible();
+    await expectNoOverflow(owner.page, 'people-list-sample');
+  } finally { await closeFixture(owner); }
+});

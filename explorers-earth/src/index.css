@@ -883,6 +883,13 @@ body.hide-dashboard-header .dashboard-content > div.overflow-auto {
   padding-top: var(--dashboard-header-clearance);
 }
 
+/* Dashboard page column (components/layout/DashboardPageContainer.tsx). Grid items default to
+   min-width: auto, so one nowrap or truncated line (a long item title) sized every implicit grid
+   column to its full text width and the page scrolled sideways on phones. */
+.dashboard-page .grid > * {
+  min-width: 0;
+}
+
 /* Responsive Sticky Top for page-level headers that need to offset the global header */
 .sticky-top-offset {
   top: 64px;
