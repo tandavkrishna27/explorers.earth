@@ -1,0 +1,11 @@
+{"set":"india","version":"v1","category":"apps","lists":[
+ {"key":"in-apps-everyday","title":"Everyday India apps","description":"The apps I open most days.","topPicks":true,"items":[
+  {"note":"UPI payments that just work.","rating":9,"details":{"title":"PhonePe","appUrl":"https://www.phonepe.com","developer":"PhonePe","description":"UPI payments, bills and recharges.","platforms":["Android","iOS"]}},
+  {"note":"Train tickets without the queue.","rating":7,"details":{"title":"IRCTC Rail Connect","appUrl":"https://www.irctc.co.in","developer":"IRCTC","description":"Book Indian Railways tickets.","platforms":["Android","iOS"]}},
+  {"note":"Keeps my licence and documents handy.","rating":8,"details":{"title":"DigiLocker","appUrl":"https://www.digilocker.gov.in","developer":"Government of India","description":"Official digital document wallet.","platforms":["Android","iOS","Web"]}},
+  {"note":"Dinner sorted in a few taps.","rating":8,"details":{"title":"Zomato","appUrl":"https://www.zomato.com","developer":"Zomato","description":"Food delivery and restaurant discovery.","platforms":["Android","iOS"]}}]},
+ {"key":"in-apps-focus","title":"Stay focused","description":"Tools that help me get things done.","topPicks":false,"items":[
+  {"note":"Notes, plans and docs in one place.","rating":9,"details":{"title":"Notion","appUrl":"https://www.notion.so","developer":"Notion Labs","description":"Notes, docs and project planning.","platforms":["Android","iOS","Web"]}},
+  {"note":"A simple to-do list I actually keep.","rating":8,"details":{"title":"Todoist","appUrl":"https://todoist.com","developer":"Doist","description":"To-do lists and reminders.","platforms":["Android","iOS","Web"]}},
+  {"note":"Grow a tree while you stay off the phone.","rating":8,"details":{"title":"Forest","appUrl":"https://www.forestapp.cc","developer":"Seekrtech","description":"Focus timer that plants trees.","platforms":["Android","iOS"]}}]}
+]}

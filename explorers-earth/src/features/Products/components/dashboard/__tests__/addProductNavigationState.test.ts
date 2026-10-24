@@ -13,7 +13,7 @@ describe("AddProductPage success navigation", () => {
     // page also passed refetch: true, which nothing in Products read - the native
     // command invalidates the owner read itself.
     expect(source()).toContain("justAddedRecommendation: true");
-    expect(source()).toContain("navigate(`/recommendations/products/${listId}`, { state: { justAddedRecommendation: true } })");
+    expect(source()).toContain("back.goBack({ state: { justAddedRecommendation: true } })");
   });
 
   it("does not call the retired product scraper or the Strapi upload", () => {
@@ -21,7 +21,8 @@ describe("AddProductPage success navigation", () => {
     expect(source()).not.toContain("VITE_REST_API_URL");
   });
 
-  it("declares the amount input as decimal text", () => {
-    expect(source()).toContain('inputMode="decimal"');
+  it("takes the amount through the decimal-text price field", () => {
+    // CurrencyPriceInput declares inputMode="decimal"; the page must not bypass it.
+    expect(source()).toContain("<CurrencyPriceInput");
   });
 });

@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   updatePlace: vi.fn(),
   correctFacts: vi.fn(),
   upload: vi.fn(),
+  refresh: vi.fn(),
   setSelectedCity: vi.fn(),
 }));
 
@@ -33,6 +34,7 @@ vi.mock("../../api/placesCommands", () => ({
     updatePlace: mocks.updatePlace,
     correctFacts: mocks.correctFacts,
     upload: mocks.upload,
+    refresh: mocks.refresh,
     retireDraftIntent: vi.fn(),
     loading: false,
   }),
@@ -114,7 +116,15 @@ describe("useAddRecommendation selected-media persistence", () => {
     mocks.upload.mockResolvedValue({ id: "media-1" });
   });
 
-  it("reports saved only after selected media uploads and is attached", async () => {
+  // OWN-17 (WP5). Photos upload before the create and travel on it as photoMediaIds, so a
+  // place with photos is one create and no attach PATCH. An upload failure therefore
+  // stops before anything is created, and a retry uploads only what is still missing.
+  const draftPhotos = (call = 0) => (mocks.createPlace.mock.calls[call][1] as { photoMediaIds: string[] }).photoMediaIds;
+
+  it("uploads the selected photos, then creates the place with their ids", async () => {
+    const order: string[] = [];
+    mocks.upload.mockImplementation(async () => { order.push("upload"); return { id: "media-1" }; });
+    mocks.createPlace.mockImplementation(async () => { order.push("create"); return created; });
     const { result } = renderMediaHook();
 
     await act(async () => {
@@ -122,23 +132,44 @@ describe("useAddRecommendation selected-media persistence", () => {
     });
 
     expect(result.current.mediaStatus).toBe("saved");
-    expect(mocks.createPlace).toHaveBeenCalledTimes(1);
-    expect(mocks.upload).toHaveBeenCalledTimes(1);
-    // One typed, publicly projected photo path. The generic mediaIds leg is gone, because
-    // no public Places read ever looked at it.
-    expect(mocks.updatePlace).toHaveBeenCalledWith(created.id, {
-      placePhotos: { photoMediaIds: ["media-1"] },
-    });
+    expect(order).toEqual(["upload", "create"]);
+    // One typed, publicly projected photo path, written by the create itself.
+    expect(draftPhotos()).toEqual(["media-1"]);
+    expect(mocks.updatePlace).not.toHaveBeenCalled();
+    // The create command refreshes the owner view itself; nothing else reloads it.
+    expect(mocks.refresh).not.toHaveBeenCalled();
     expect(mocks.navigate).toHaveBeenCalledTimes(1);
     // The publish prompt lives on the Places page, so that is where the flow must return.
-    expect(mocks.navigate).toHaveBeenCalledWith("/recommendations/places", {
+    expect(mocks.navigate).toHaveBeenCalledWith("/recommendations/places/list-1", {
       state: expect.objectContaining({ justAddedRecommendationToListId: expect.anything() }),
     });
   });
 
+  it("uploads up to 3 photos at once, before the create, and sends their ids on create", async () => {
+    let inFlight = 0, peak = 0, next = 0;
+    mocks.upload.mockImplementation(async () => {
+      const id = `media-${next++}`;
+      inFlight++; peak = Math.max(peak, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      inFlight--;
+      return { id };
+    });
+    const photos = Array.from({ length: 4 }, (_, index) => ({ photoBlob: new Blob([`p${index}`], { type: "image/jpeg" }), fileName: `p${index}.jpg`, isThumbnail: false }));
+    const { result } = renderMediaHook(photos);
+
+    await act(async () => {
+      await result.current.handleSubmit(values as never);
+    });
+
+    expect(peak).toBe(3);
+    expect(mocks.createPlace).toHaveBeenCalledTimes(1);
+    expect(draftPhotos()).toEqual(["media-0", "media-1", "media-2", "media-3"]);
+    expect(mocks.updatePlace).not.toHaveBeenCalled();
+  });
+
   // PLC-02. Google photos are imported by the API before the form is submitted, so they
-  // arrive as owned media ids: they attach as they are and are never uploaded again.
-  it("attaches already-imported Google photos by id without uploading them", async () => {
+  // arrive as owned media ids: they go on the create as they are and are never uploaded again.
+  it("sends already-imported Google photos by id without uploading them", async () => {
     const { result } = renderMediaHook([
       { mediaId: "imported-1", url: "/media/imported-1", isThumbnail: false },
       { mediaId: "imported-2", url: "/media/imported-2", isThumbnail: false },
@@ -150,9 +181,8 @@ describe("useAddRecommendation selected-media persistence", () => {
 
     expect(result.current.mediaStatus).toBe("saved");
     expect(mocks.upload).not.toHaveBeenCalled();
-    expect(mocks.updatePlace).toHaveBeenCalledWith(created.id, {
-      placePhotos: { photoMediaIds: ["imported-1", "imported-2"] },
-    });
+    expect(draftPhotos()).toEqual(["imported-1", "imported-2"]);
+    expect(mocks.updatePlace).not.toHaveBeenCalled();
   });
 
   // Creator uploads used to go to mediaIds, which no public Places projection reads, so
@@ -165,19 +195,15 @@ describe("useAddRecommendation selected-media persistence", () => {
     });
 
     expect(mocks.upload).toHaveBeenCalledTimes(1);
-    expect(mocks.updatePlace).toHaveBeenCalledWith(created.id, {
-      placePhotos: { photoMediaIds: ["media-1"] },
-    });
+    expect(draftPhotos()).toEqual(["media-1"]);
+    expect(mocks.createPlace.mock.calls[0][1]).not.toHaveProperty("mediaIds");
   });
 
-  it("attaches media only to the recommendation that was created", async () => {
-    // Strapi needed an id lookup here, and a lookup row for another record could attach
-    // media to the wrong recommendation. The command carries the created id instead.
+  it("records the id of the recommendation that was created", async () => {
     const { result } = renderMediaHook();
     await act(async () => {
       await result.current.handleSubmit(values as never);
     });
-    expect(mocks.updatePlace.mock.calls[0][0]).toBe(created.id);
     expect(result.current.createdRecommendationDocumentId).toBe(created.id);
   });
 
@@ -190,12 +216,13 @@ describe("useAddRecommendation selected-media persistence", () => {
 
     expect(result.current.mediaStatus).toBe("not-selected");
     expect(mocks.createPlace).toHaveBeenCalledTimes(1);
+    expect(draftPhotos()).toEqual([]);
     expect(mocks.upload).not.toHaveBeenCalled();
     expect(mocks.updatePlace).not.toHaveBeenCalled();
     expect(mocks.navigate).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps the created record and selected files after an upload failure, then retries without creating again", async () => {
+  it("stops before the create on an upload failure, then retries with the selected files kept", async () => {
     mocks.upload.mockRejectedValueOnce(new Error("upload failed"));
     const hook = renderMediaHook();
 
@@ -204,7 +231,8 @@ describe("useAddRecommendation selected-media persistence", () => {
     });
 
     expect(hook.result.current.mediaStatus).toBe("upload-failed");
-    expect(hook.result.current.createdRecommendationDocumentId).toBe(created.id);
+    expect(mocks.createPlace).not.toHaveBeenCalled();
+    expect(hook.result.current.createdRecommendationDocumentId).toBeNull();
     expect(mocks.navigate).not.toHaveBeenCalled();
 
     // Even if the staged media disappears from props, the attempt keeps its own copy.
@@ -215,16 +243,17 @@ describe("useAddRecommendation selected-media persistence", () => {
 
     expect(hook.result.current.mediaStatus).toBe("saved");
     expect(mocks.createPlace).toHaveBeenCalledTimes(1);
+    expect(draftPhotos()).toEqual(["media-1"]);
     expect(mocks.upload).toHaveBeenCalledTimes(2);
     expect(mocks.navigate).toHaveBeenCalledTimes(1);
   });
 
-  it("retries only the failed upload on the same record", async () => {
+  it("a failed upload stops before the create and keeps the uploaded ids for retry", async () => {
     const blobs = [
       { photoBlob: new Blob(["a"], { type: "image/jpeg" }), fileName: "a.jpg", isThumbnail: false },
       { photoBlob: new Blob(["b"], { type: "image/jpeg" }), fileName: "b.jpg", isThumbnail: false },
     ];
-    mocks.upload.mockResolvedValueOnce({ id: "media-a" }).mockRejectedValueOnce(new Error("upload failed"));
+    mocks.upload.mockResolvedValueOnce({ id: "media-a" }).mockRejectedValueOnce(new Error("413"));
     const { result } = renderMediaHook(blobs);
 
     await act(async () => {
@@ -232,6 +261,7 @@ describe("useAddRecommendation selected-media persistence", () => {
     });
     expect(result.current.mediaStatus).toBe("upload-failed");
     expect(mocks.upload).toHaveBeenCalledTimes(2);
+    expect(mocks.createPlace).not.toHaveBeenCalled();
 
     mocks.upload.mockResolvedValue({ id: "media-b" });
     await act(async () => {
@@ -241,33 +271,32 @@ describe("useAddRecommendation selected-media persistence", () => {
     expect(result.current.mediaStatus).toBe("saved");
     // The first blob is not uploaded a second time.
     expect(mocks.upload).toHaveBeenCalledTimes(3);
-    expect(mocks.updatePlace).toHaveBeenCalledWith(created.id, { placePhotos: { photoMediaIds: ["media-a", "media-b"] } });
     expect(mocks.createPlace).toHaveBeenCalledTimes(1);
+    expect(mocks.createPlace).toHaveBeenCalledWith("list-1", expect.objectContaining({ photoMediaIds: ["media-a", "media-b"] }));
   });
 
-  it("reports metadata-failed and retries the attachment without uploading the media twice", async () => {
-    mocks.updatePlace.mockRejectedValueOnce(new Error("attach failed"));
+  it("retries a failed create without uploading the photos again", async () => {
+    mocks.createPlace.mockRejectedValueOnce(new Error("offline"));
     const { result } = renderMediaHook();
 
     await act(async () => {
       await result.current.handleSubmit(values as never);
     });
-
-    expect(result.current.mediaStatus).toBe("metadata-failed");
     expect(mocks.navigate).not.toHaveBeenCalled();
 
     await act(async () => {
-      await result.current.retryMediaUpload();
+      await result.current.handleSubmit(values as never);
     });
 
     expect(result.current.mediaStatus).toBe("saved");
-    expect(mocks.createPlace).toHaveBeenCalledTimes(1);
     expect(mocks.upload).toHaveBeenCalledTimes(1);
-    expect(mocks.updatePlace).toHaveBeenCalledTimes(2);
+    expect(mocks.createPlace).toHaveBeenCalledTimes(2);
+    // The same draft both times, so the command's idempotency key is the same intent.
+    expect(mocks.createPlace.mock.calls[1][1]).toEqual(mocks.createPlace.mock.calls[0][1]);
     expect(mocks.navigate).toHaveBeenCalledTimes(1);
   });
 
-  it("continues after media failure without retrying or duplicating the recommendation", async () => {
+  it("continues after a media failure by creating the place without photos, once", async () => {
     mocks.upload.mockRejectedValueOnce(new Error("upload failed"));
     const { result } = renderMediaHook();
 
@@ -280,40 +309,29 @@ describe("useAddRecommendation selected-media persistence", () => {
 
     expect(result.current.mediaStatus).toBe("upload-failed");
     expect(mocks.createPlace).toHaveBeenCalledTimes(1);
+    expect(draftPhotos()).toEqual([]);
     expect(mocks.upload).toHaveBeenCalledTimes(1);
     expect(mocks.updatePlace).not.toHaveBeenCalled();
     expect(mocks.navigate).toHaveBeenCalledTimes(1);
   });
 
-  it("ignores repeated submit clicks once a recommendation has already been created", async () => {
-    mocks.upload.mockRejectedValue(new Error("upload failed"));
+  it("ignores repeated submit clicks while a save is in flight and after it", async () => {
     const { result } = renderMediaHook();
 
     await act(async () => {
-      await result.current.handleSubmit(values as never);
-      await result.current.handleSubmit(values as never);
+      await Promise.all([
+        result.current.handleSubmit(values as never),
+        result.current.handleSubmit(values as never),
+      ]);
     });
-
-    await waitFor(() => expect(result.current.mediaStatus).toBe("upload-failed"));
-    expect(mocks.createPlace).toHaveBeenCalledTimes(1);
-    expect(mocks.navigate).not.toHaveBeenCalled();
-  });
-
-  it("files a person recommendation through the person command, with no place facts", async () => {
-    mocks.createPerson.mockResolvedValue({ id: "created-person" });
-    const { result } = renderHook(() =>
-      useAddRecommendation({ ...defaultProps([]), recommendationType: "person" } as never)
-    );
     await act(async () => {
-      await result.current.handleSubmit({ title: "Ravi", recommendation: "https://example.com/ravi", address: "Indiranagar" } as never);
+      await result.current.handleSubmit(values as never);
     });
-    expect(mocks.createPerson).toHaveBeenCalledTimes(1);
-    expect(mocks.createPlace).not.toHaveBeenCalled();
-    expect(mocks.createPerson.mock.calls[0][1]).toMatchObject({
-      title: "Ravi",
-      details: {},
-      context: { recommendationType: "person", personProfileUrl: "https://example.com/ravi", personAddress: "Indiranagar" },
-    });
+
+    await waitFor(() => expect(result.current.mediaStatus).toBe("saved"));
+    expect(mocks.upload).toHaveBeenCalledTimes(1);
+    expect(mocks.createPlace).toHaveBeenCalledTimes(1);
+    expect(mocks.navigate).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -394,8 +412,8 @@ describe("useAddRecommendation ten-photo refusal", () => {
     const { result } = renderMediaHook(photos(10));
     await act(async () => { await result.current.handleSubmit(values as never); });
     expect(mocks.upload).toHaveBeenCalledTimes(10);
-    expect(mocks.updatePlace).toHaveBeenCalledWith(created.id, {
-      placePhotos: { photoMediaIds: Array.from({ length: 10 }, (_, index) => `media-${index}`) },
+    expect(mocks.createPlace.mock.calls[0][1]).toMatchObject({
+      photoMediaIds: Array.from({ length: 10 }, (_, index) => `media-${index}`),
     });
   });
 

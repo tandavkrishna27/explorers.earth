@@ -13,7 +13,7 @@ describe("AddAppPage success navigation", () => {
     // also passed refetch: true, which nothing in Apps ever read - the native command
     // invalidates the owner read itself.
     expect(source).toContain("justAddedRecommendation: true");
-    expect(source).toContain("navigate(`/recommendations/apps/${listId}`, { state: { justAddedRecommendation: true } })");
+    expect(source).toContain("back.goBack({ state: { justAddedRecommendation: true } })");
   });
 
   it("does not call the retired app scraper", () => {

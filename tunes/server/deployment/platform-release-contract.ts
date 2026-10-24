@@ -71,8 +71,8 @@ export function verifyRelease(manifest: unknown, readiness: unknown, _authority?
   return fail('TRUSTED_AUTHORITY_UNAVAILABLE');
 }
 // Recursive descent prevents duplicate escaped keys and bounded-depth parser abuse before JSON.parse.
-export function parseStrictJson(text: string): unknown {
-  if (Buffer.byteLength(text, 'utf8') > 65536) fail('JSON_SIZE_LIMIT');
+export function parseStrictJson(text: string, maxBytes = 65536): unknown {
+  if (Buffer.byteLength(text, 'utf8') > maxBytes) fail('JSON_SIZE_LIMIT');
   let i = 0;
   const ws = () => { while (/[\t\n\r ]/.test(text[i] ?? '!')) i++; };
   function string(): string { const start = i++; while (i < text.length) { const c = text[i++]; if (c === '"') { try { return JSON.parse(text.slice(start, i)); } catch { fail('JSON_INVALID'); } } if (c === '\\') i++; } return fail('JSON_INVALID'); }

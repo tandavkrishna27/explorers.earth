@@ -27,6 +27,7 @@ vi.mock("framer-motion", () => ({
   motion: new Proxy({}, { get: () => "div" }),
 }));
 vi.mock("../../features/PublicHome/api/PublicAccountIdentityProvider", () => ({ usePublicAccountIdentity }));
+vi.mock("../../components/ui/HeroSkeleton", () => ({ default: () => <div data-testid="guard-skeleton" /> }));
 
 const mockUseQuery = vi.mocked(useQuery);
 
@@ -219,4 +220,28 @@ describe("TabVisibilityGuard", () => {
       "/tk2727?utm_source=owner#books",
     );
   });
+
+  it("never paints its own skeleton while the cold-entry overlay is visible (one loader owner)", () => {
+    mockUseQuery.mockReturnValue({ data: undefined, loading: true } as ReturnType<typeof useQuery>);
+    // Freeze rAF so the boundary stays in its overlay frame after the shell is revealed.
+    const raf = vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1);
+    try {
+      renderBooksRoute();
+      expect(screen.getByTestId("public-cold-entry-overlay")).toBeInTheDocument();
+      expect(screen.queryByTestId("guard-skeleton")).toBeNull();
+    } finally {
+      raf.mockRestore();
+    }
+  });
+
+  it("paints no skeleton after the overlay leaves on cold entry while identity is still loading", async () => {
+    // CI repro (8x CPU): the shell revealed before the guard's identity settled and the
+    // guard painted HeroSkeleton right after the Earth - a second loader.
+    mockUseQuery.mockReturnValue({ data: undefined, loading: true } as ReturnType<typeof useQuery>);
+    renderBooksRoute();
+    await waitFor(() => expect(screen.queryByTestId("public-cold-entry-overlay")).toBeNull());
+    expect(screen.queryByTestId("guard-skeleton")).toBeNull();
+  });
+  // The warm in-shell navigation skeleton is pinned by PublicLayout.readiness.test.tsx
+  // ("shows a destination skeleton inside an already revealed shell while visibility revalidates").
 });

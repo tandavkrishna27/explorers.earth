@@ -24,7 +24,7 @@ function assertPlacesPathExercised(f:{seen:{unmatched:string[];placeListsServed:
  expect(f.seen.placeRowsServed).toBeGreaterThan(0);
 }
 function fixture(options:{unknown?:boolean;inactive?:boolean;alias?:boolean;hide?:boolean;catalogRace?:boolean;count?:number;revision?:string;suppressionRace?:boolean;deep?:boolean;peopleHide?:boolean;account?:string;term?:string;catalogVersion?:string;locale?:string;accountRevision?:string;labelRace?:boolean;assigned?:boolean;placeContent?:boolean;personContact?:boolean;placeRowRace?:boolean}={}){
- let committed=false;const seen={unmatched:[] as string[],placeListsServed:0,placeRowsServed:0};
+ let committed=false;const seen={unmatched:[] as string[],placeListsServed:0,placeRowsServed:0,linkedPeopleServed:0};
  const placeRows=options.placeContent?[{id:placeRecommendation,account_id:id,entity_id:term,entity_kind:'place',user_rating:null,note:null,note_bytes:0,display_values:{},override_bytes:0,display_order:0,collection_id:id,collection_title:'Fixture location list',collection_slug:'fixture-location-list',provider_place_id:null,pin_order:null,pin_bucket:1,sort_position:0}]:[];
  const query=vi.fn(async(sql:string,params?:any[])=>{
  if(sql==='COMMIT'){committed=true;return {rows:[]};}
@@ -36,12 +36,13 @@ function fixture(options:{unknown?:boolean;inactive?:boolean;alias?:boolean;hide
  if(sql.includes('public_places_current_eligibility'))return {rows:options.suppressionRace||options.placeRowRace?[]:placeRows.map(row=>({id:row.id,entity_id:row.entity_id,collection_id:row.collection_id}))};
  if(sql.includes('public_people_current_eligibility'))return {rows:options.suppressionRace?[]:(params?.[1]??[]).map((id:string)=>({id,entity_id:term}))};
  if(sql.includes('WITH eligible')){const all=Array.from({length:options.count??0},(_,n)=>({id:`cccccccc-cccc-4ccc-8ccc-${String(n+1).padStart(12,'0')}`,account_id:id,entity_id:term,user_rating:null,note:null,note_bytes:0,override_bytes:0,display_values:{},display_order:options.deep?100000+n:n,collection_order:options.deep?100000:0,collection_id:id,collection_title:'Fixture list',collection_slug:'fixture-list',pin_order:null}));const start=sql.includes('OFFSET')?(params?.[3]??0):params?.[3]===null||params?.[3]===undefined?0:Math.max(0,Number(params?.[5])-(options.deep?100000:0)+1);return {rows:all.slice(start,start+(params?.[2]??25))};}
- if(sql.includes("l.child_category='products'"))return {rows:[]};
+ // WP10. Linked lists under a location come from collection_list_links; $3 is the category.
+ if(sql.includes('FROM collection_list_links l')&&params?.[2]==='products')return {rows:[]};
  // The public Places collection list: keyed on FROM/WHERE structure, not the SELECT list.
  if(sql.includes('FROM collections c')&&sql.includes("c.category='places'")){seen.placeListsServed++;return {rows:[{id,collection_revision:placeCollectionRevision,title:'Fixture location list',description:null,slug:'fixture-location-list',heading:null,display_order:0,cover_media_id:null}]};}
  if(sql.includes('FROM collections c')&&sql.includes("c.category='people'"))return {rows:[{id,title:'Fixture list',slug:'fixture-list',display_order:0,cover_media_id:null}]};
  // The linked People lists under a location.
- if(sql.includes('FROM collection_location_links l'))return {rows:[{id,title:'Fixture list',slug:'fixture-list',display_order:0,cover_media_id:null}]};
+ if(sql.includes('FROM collection_list_links l')&&params?.[2]==='people'){seen.linkedPeopleServed++;return {rows:[{id,category:'people',title:'Fixture list',description:null,slug:'fixture-list',heading:null,display_order:0,role:null,link_order:0,direction:'outgoing',cover_media_id:null}]};}
  // The public Places child page.
  if(sql.includes('FROM collection_items ci')&&sql.includes("c.category='places'")){seen.placeRowsServed+=placeRows.length;return {rows:placeRows};}
  if(sql.includes('SELECT r.id,r.account_id,r.entity_id'))return {rows:[{id:term,account_id:id,entity_id:term,user_rating:null,note:null,note_bytes:0,override_bytes:0,display_values:{},display_order:0,collection_id:id,collection_title:'Fixture list',collection_slug:'fixture-list',pin_order:null}]};
@@ -61,7 +62,7 @@ function fixture(options:{unknown?:boolean;inactive?:boolean;alias?:boolean;hide
 }
 describe('public People sector resource-free contract',()=>{
  it('A named person recommendation keeps its name public while its private contact number stays withheld',async()=>{const f=fixture({placeContent:true,personContact:true});const result=await publicPlacesProjection(f.pool,'alice',12);assertPlacesPathExercised(f);const place=result!.recommendationLists[0].recommended_places[0];expect(place.Recommendation_Type).toBe('person');expect(place.contact_name).toBe('Pierre Dubois');expect(place.contact_number).toBeNull();expect(JSON.stringify(result)).not.toContain('+1234567890');});
- it('Places linked composition preserves contact denial and owned photo media URLs',async()=>{const f=fixture({placeContent:true});const result=await publicPlacesProjection(f.pool,'alice',12);assertPlacesPathExercised(f);const place=result!.recommendationLists[0].recommended_places[0];expect(place.contact_name).toBeNull();expect(place.contact_number).toBeNull();expect(place.Place_Details.Photos).toEqual([{url:`/api/explorers/v1/media/${id}/content`}]);expect(JSON.stringify(result)).not.toContain('Private fixture');expect(JSON.stringify(result)).not.toContain('+1234567890');});
+ it('Places linked composition preserves contact denial and owned photo media URLs',async()=>{const f=fixture({placeContent:true});const result=await publicPlacesProjection(f.pool,'alice',12);assertPlacesPathExercised(f);expect(f.seen.linkedPeopleServed).toBeGreaterThan(0);const place=result!.recommendationLists[0].recommended_places[0];expect(place.contact_name).toBeNull();expect(place.contact_number).toBeNull();expect(place.Place_Details.Photos).toEqual([{url:`/api/explorers/v1/media/${id}/content`}]);expect(JSON.stringify(result)).not.toContain('Private fixture');expect(JSON.stringify(result)).not.toContain('+1234567890');});
  it('suppression after linked projection denies Places without revision changes',async()=>{const f=fixture({placeContent:true,suppressionRace:true});expect(await publicPlacesProjection(f.pool,'alice',12)).toBeUndefined();assertPlacesPathExercised(f);});
  // The Places leg on its own: only the projected Place row stops being eligible, so the
  // linked People eligibility cannot be what denies the page.

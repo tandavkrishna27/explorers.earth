@@ -26,11 +26,11 @@ it('actual manual game keeps year, platforms and genres through create, owner ed
  const resolved=await command(a,'post','/entities/resolve',{kind:'manual',category:'games',details});expect(resolved.status,JSON.stringify(resolved.body)).toBe(200);
  const e=resolved.body.entity;expect((await admin.query('SELECT release_year,platforms,genres FROM game_entity_details WHERE entity_id=$1',[e.id])).rows).toEqual([{release_year:2018,platforms:details.platforms,genres:details.genres}]);
  const {row}=await recommendation(a,c,e);
- expect((await editable(a,row.id)).gamePresentation.details).toEqual({releaseYear:2018,platforms:details.platforms,genres:details.genres});
+ expect((await editable(a,row.id)).gamePresentation.details).toEqual({releaseYear:2018,platforms:details.platforms,genres:details.genres,developer:null});
  const handle=await publish(a,c,row),page=await request(app.app).get(`/api/explorers/v1/profiles/${handle}/recommendations/games`);expect(page.status).toBe(200);
- expect(page.body.gameLists[0].recommendations[0].gamePresentation.details).toEqual({releaseYear:2018,platforms:details.platforms,genres:details.genres});
+ expect(page.body.gameLists[0].recommendations[0].gamePresentation.details).toEqual({releaseYear:2018,platforms:details.platforms,genres:details.genres,developer:null});
  const plain=await manual(a,'No details');expect((await admin.query('SELECT 1 FROM game_entity_details WHERE entity_id=$1',[plain.id])).rowCount).toBe(0);
- const {row:plainRow}=await recommendation(a,await list(a),plain);expect((await editable(a,plainRow.id)).gamePresentation.details).toEqual({releaseYear:null,platforms:[],genres:[]});
+ const {row:plainRow}=await recommendation(a,await list(a),plain);expect((await editable(a,plainRow.id)).gamePresentation.details).toEqual({releaseYear:null,platforms:[],genres:[],developer:null});
  for(const bad of [{releaseYear:1850},{platforms:Array.from({length:13},(_,i)=>`p${i}`)},{genres:['']},{platforms:'PC'}]){const reply=await command(a,'post','/entities/resolve',{kind:'manual',category:'games',details:{title:'Bad',...bad}});expect(reply.status,JSON.stringify(bad)).toBe(422);}
  await expect(admin.query("INSERT INTO game_entity_details(entity_id,genres) VALUES($1,ARRAY[''])",[plain.id])).rejects.toThrow();
 });

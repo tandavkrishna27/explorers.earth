@@ -1,5 +1,5 @@
 import {replaceTaxonomyAssignment} from './taxonomyAssignmentRepository';
-import type {TaxonomyAssignmentInput} from '../../shared/explorersTaxonomyContract';
+import {isFlatCuratedCategory,type TaxonomyAssignmentInput} from '../../shared/explorersTaxonomyContract';
 import {insertMovieDetails,readMovieEntity,writeMovieContext,readMovieContext,checkMovieContext,writeMovieTerms} from './movieCatalogRepository';
 import {movieDisplayFieldsSchema,movieDetailsSchema,emptyMovieDetails,resolveManualMovieSchema,type MovieContext} from '../../shared/explorersMovieContract';
 import { createHash } from 'node:crypto';
@@ -7,18 +7,22 @@ import type { Pool, PoolClient } from 'pg';
 import type { CollectionCoreDto, RecommendationCoreDto, TopPickCategory, CategoryTopPicksInput, CategoryTopPicksResult,DisplayOverrides,ReorderCategoryListsInput,CategoryListsOrderResult } from '../../shared/explorersContract';
 import {createCollectionResultSchema,type CreateCollectionResult} from '../../shared/explorersContract';
 import { lockContentCategories } from '../db/explorers-content-lock';
+import { SAMPLE_PUBLISH_REFUSAL } from '../../shared/explorersSampleContract';
+// Cycle with sampleRepository (it imports RecommendationFailure); both sides use the other only at call time.
+import { claimSample } from './sampleRepository';
 import type { RichNote } from '../../shared/explorersRichNoteContract';
 import {emptyBookDetails,bookDisplayFieldsSchema,bookEntityDetailsSchema,type BookCandidate,type BookEntityDetails,type BookRecommendationContext} from '../../shared/explorersBookContract';
 import {insertBookDetails,readBookEntity,writeBookContext} from './bookCatalogRepository';
+import { replaceRecommendationMedia } from './recommendationMediaWrite';
 import {insertAppDetails,readAppEntity,writeAppScreenshots} from './appCatalogRepository';
 import {insertProductDetails,readProductEntity,writeProductOffer} from './productCatalogRepository';
 import {appDisplayFieldsSchema,appEntityDetailsSchema,type AppScreenshots} from '../../shared/explorersAppContract';
-import {productDisplayFieldsSchema,productEntityDetailsSchema,emptyProductOffer,type ProductOffer} from '../../shared/explorersProductContract';
+import {productDisplayFieldsSchema,productDisplayFieldsWriteSchema,productEntityDetailsSchema,emptyProductOffer,type ProductOffer} from '../../shared/explorersProductContract';
 import {personDisplayFieldsSchema,personEntityDetailsSchema,emptyPersonDetails} from '../../shared/explorersPersonContract';
 import {insertPersonDetails,readPersonEntity} from './personCatalogRepository';
 import {insertPlaceDetails,readPlaceEntity,writePlaceContext,writePlacePhotos,writePlaceCollectionDetails} from './placeCatalogRepository';
-import {writeLocationLink,deleteLocationLink} from './placeLinkRepository';
-import {linkableChildCategorySchema,type LinkableChildCategory} from '../../shared/explorersPlaceLinkContract';
+import {insertListLink,deleteListLink,updateListLinkRole} from './listLinkRepository';
+import type {AttachListLinkInput,DetachListLinkInput,SetListLinkRoleInput,ListLinkDto,ListLinkCommandResult} from '../../shared/explorersListLinkContract';
 import {placeDisplayFieldsSchema,placeEntityDetailsSchema,emptyPlaceDetails,emptyPlaceContext,emptyPlaceCollectionDetails,type PlaceRecommendationContext,type PlacePhotos,type PlaceCollectionDetails} from '../../shared/explorersPlaceContract';
 
 export type CatalogKind = 'place'|'movie'|'book'|'game'|'app'|'product'|'person';
@@ -29,8 +33,16 @@ const MEMBERSHIP_CATEGORIES:ReadonlySet<string>=new Set(['games','apps','product
 export type CollectionRecord = CollectionCoreDto;
 export type RecommendationRecord = RecommendationCoreDto;
 export class RecommendationFailure extends Error {
-  constructor(readonly status:404|409|413|422, message:string) {super(message);}
+  // code: optional machine-readable error code for the transport (e.g. SAMPLE_PUBLISH_REFUSED).
+  constructor(readonly status:404|409|413|422, message:string, readonly code?:string) {super(message);}
 }
+const SAMPLE_CONSTRAINTS:ReadonlySet<string>=new Set(['collections_sample_never_public','recommendations_sample_never_published']);
+export const SAMPLE_PUBLISH_REFUSED_CODE='SAMPLE_PUBLISH_REFUSED';
+const sampleRefusal=()=>new RecommendationFailure(422,SAMPLE_PUBLISH_REFUSAL,SAMPLE_PUBLISH_REFUSED_CODE);
+// WP10 x WP11. A sample is a read-only example until it is made yours, so it never takes part
+// in a link from either end. Storage (S3's insertListLink) does not know about samples.
+export const SAMPLE_LINK_REFUSED_CODE='SAMPLE_LINK_REFUSED';
+const sampleLinkRefusal=()=>new RecommendationFailure(422,"Samples can't be linked",SAMPLE_LINK_REFUSED_CODE);
 const hash=(value:string)=>createHash('sha256').update(value).digest();
 // Hash normalized domain inputs, independent of transport JSON object insertion order.
 function canonical(value:unknown):string {
@@ -39,7 +51,7 @@ function canonical(value:unknown):string {
   return `{${Object.entries(value).filter(([,v])=>v!==undefined).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>`${JSON.stringify(k)}:${canonical(v)}`).join(',')}}`;
 }
 const collectionDto=(r:any):CollectionRecord=>({id:r.id,accountId:r.account_id,category:r.category,title:r.title,slug:r.slug,
-  visibility:r.visibility,publicationState:r.publication_state,revision:Number(r.revision),description:r.description,heading:r.heading,coverMediaId:r.cover_media_id??null});
+  visibility:r.visibility,publicationState:r.publication_state,revision:Number(r.revision),description:r.description,heading:r.heading,coverMediaId:r.cover_media_id??null,isSample:r.is_sample===true});
 const recommendationDto=(r:any):RecommendationRecord=>({id:r.id,accountId:r.account_id,entityId:r.entity_id,category:r.category,userRating:r.user_rating,publicationState:r.publication_state,revision:Number(r.revision),mediaIds:r.media_ids??[]});
 
 /** Internal persistence seam: application authorization and typed transport validation precede calls. */
@@ -58,13 +70,18 @@ export class ExplorersRecommendationRepository {
     if(mediaId!==null) await db.query("INSERT INTO collection_media(collection_id,account_id,slot,media_id) VALUES($1,$2,'cover',$3)",[id,accountId,mediaId]);
   }
   private async replaceMedia(db:PoolClient,accountId:string,id:string,mediaIds:string[]) {
-    await db.query('DELETE FROM recommendation_media WHERE recommendation_id=$1',[id]);
-    for(let position=0;position<mediaIds.length;position++) await db.query('INSERT INTO recommendation_media(recommendation_id,account_id,media_id,display_order) VALUES($1,$2,$3,$4)',[id,accountId,mediaIds[position],position]);
+    await replaceRecommendationMedia(db,accountId,id,mediaIds);
   }
   private async transaction<T>(work:(db:PoolClient)=>Promise<T>):Promise<T> {
     const db=await this.pool.connect();
     try {await db.query('BEGIN');const result=await work(db);await db.query('COMMIT');return result;}
-    catch(e) {await db.query('ROLLBACK');throw e;} finally {db.release();}
+    catch(e) {
+      await db.query('ROLLBACK');
+      // S3/0071 CHECKs are the storage backstop for sample publish refusal (SMP-03).
+      const failure=e as {code?:string;constraint?:string};
+      if(failure.code==='23514'&&SAMPLE_CONSTRAINTS.has(failure.constraint??''))throw sampleRefusal();
+      throw e;
+    } finally {db.release();}
   }
   private async command<T>(accountId:string,operation:string,input:unknown,key:string,work:(db:PoolClient)=>Promise<T>):Promise<T> {
     if(!/^[A-Za-z0-9._~-]{8,200}$/.test(key)) throw new RecommendationFailure(422,'Idempotency key required');
@@ -75,7 +92,7 @@ export class ExplorersRecommendationRepository {
       const observed=recommendationOperation?(await db.query('SELECT category FROM recommendations WHERE id=$1 AND account_id=$2',[addressed.id,accountId])).rows[0]:undefined;
       if(recommendationOperation&&!observed)throw new RecommendationFailure(404,'Recommendation unavailable');
       const taxonomyCategory=observed?.category??(operation==='createRecommendation'?addressed.category:undefined);
-      if(taxonomyCategory==='places'||taxonomyCategory==='people')await db.query('SELECT lock_explorers_taxonomy_catalog($1)',[taxonomyCategory]);
+      if(taxonomyCategory==='places'||taxonomyCategory==='people'||(taxonomyCategory&&isFlatCuratedCategory(taxonomyCategory)))await db.query('SELECT lock_explorers_taxonomy_catalog($1)',[taxonomyCategory]);
       // Matches lifecycle lock order; a suspended/deleted account cannot start content writes.
       const account=await db.query('SELECT status FROM creator_accounts WHERE id=$1 FOR UPDATE',[accountId]);
       if(account.rows[0]?.status!=='active') throw new RecommendationFailure(404,'Account unavailable');
@@ -94,7 +111,7 @@ export class ExplorersRecommendationRepository {
       // Account -> category -> aggregate. Replay returns above without mutation.
       // Existing resource scope is derived under the account lock, never supplied
       // by the caller; the callback still checks ownership/archive/revision.
-      const commandInput=input as {category?:ContentCategory;id?:string;parentLocationCollectionId?:string};
+      const commandInput=input as {category?:ContentCategory;id?:string;attachTo?:{hostCollectionId:string}};
       let category=commandInput.category;
       if(operation==='attachGameMembership'||operation==='detachGameMembership'){
         // Preserve the historical Games receipt fingerprint while deriving the
@@ -111,7 +128,11 @@ export class ExplorersRecommendationRepository {
           : 'SELECT category FROM collections WHERE id=$1 AND account_id=$2',[commandInput.id,accountId]);
         category=scope.rows[0]?.category;
       }
-      if(category) await lockContentCategories(db,accountId,operation==='createCollection'&&commandInput.parentLocationCollectionId!==undefined?[category,'places']:[category]);
+      // WP10. Create-and-attach also changes the host's category, so both categories are
+      // locked here, in sorted order, before any row.
+      const attachHost=operation==='createCollection'?commandInput.attachTo?.hostCollectionId:undefined;
+      const hostCategory=attachHost===undefined?undefined:(await db.query('SELECT category FROM collections WHERE id=$1 AND account_id=$2',[attachHost,accountId])).rows[0]?.category as string|undefined;
+      if(category) await lockContentCategories(db,accountId,hostCategory?[category,hostCategory]:[category]);
       const result=await work(db);
       await db.query(`INSERT INTO application_command_receipts(account_id,operation,idempotency_key_hash,request_hash,response)
         VALUES($1,$2,$3,$4,$5)`,[accountId,operation,keyHash,requestHash,JSON.stringify(result)]);
@@ -161,12 +182,12 @@ export class ExplorersRecommendationRepository {
   }
   /** A manual game with its year, platforms and genres (GMS-X01). The details row is written
    * only for the game entity just created, and only when something was given. */
-  async resolveGameEntity(accountId:string,input:{details:{title:string;releaseYear?:number|null;platforms?:string[];genres?:string[]}},key:string) {
+  async resolveGameEntity(accountId:string,input:{details:{title:string;releaseYear?:number|null;platforms?:string[];genres?:string[];developer?:string|null}},key:string) {
     return this.command(accountId,'resolveGameEntity',input,key,async db=>{
-      const {title,releaseYear=null,platforms=[],genres=[]}=input.details;
+      const {title,releaseYear=null,platforms=[],genres=[],developer=null}=input.details;
       const entity=(await db.query("INSERT INTO entities(kind,title,origin,search_document) VALUES('game',$1,'manual',to_tsvector('simple',$1)) RETURNING id,kind,title",[title])).rows[0] as {id:string;kind:CatalogKind;title:string};
-      if(releaseYear!==null||platforms.length||genres.length)
-        await db.query("INSERT INTO game_entity_details(entity_id,release_year,platforms,genres) SELECT id,$2,$3,$4 FROM entities WHERE id=$1 AND kind='game'",[entity.id,releaseYear,platforms,genres]);
+      if(releaseYear!==null||platforms.length||genres.length||developer!==null)
+        await db.query("INSERT INTO game_entity_details(entity_id,release_year,platforms,genres,developer) SELECT id,$2,$3,$4,$5 FROM entities WHERE id=$1 AND kind='game'",[entity.id,releaseYear,platforms,genres,developer]);
       return entity;
     });
   }
@@ -261,54 +282,68 @@ export class ExplorersRecommendationRepository {
       return inserted.rows[0] as {id:string;kind:CatalogKind;title:string};
     });
   }
-  async createCollection(accountId:string,input:{category:ContentCategory;title:string;slug:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails;parentLocationCollectionId?:string;parentExpectedRevision?:number},key:string):Promise<CreateCollectionResult> {
-    const linked=input.parentLocationCollectionId!==undefined;
-    if(linked!==(input.parentExpectedRevision!==undefined))throw new RecommendationFailure(422,'Parent identity and revision are required together');
-    if(linked&&(!Number.isSafeInteger(input.parentExpectedRevision)||(input.parentExpectedRevision??0)<1))throw new RecommendationFailure(422,'Invalid revision');
-    if(linked&&!linkableChildCategorySchema.safeParse(input.category).success)throw new RecommendationFailure(422,'Only Products and People lists link to a location');
-    const normalized={...input,visibility:input.visibility??'private',publicationState:input.publicationState??'draft'};
+  async createCollection(accountId:string,input:{category:ContentCategory;title:string;slug:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails;attachTo?:{hostCollectionId:string;expectedHostRevision:number;role?:string|null};isSample?:true},key:string):Promise<CreateCollectionResult> {
+    if(input.attachTo!==undefined&&(!Number.isSafeInteger(input.attachTo.expectedHostRevision)||input.attachTo.expectedHostRevision<1))throw new RecommendationFailure(422,'Invalid revision');
+    const normalized={...input,visibility:input.visibility??'private',publicationState:input.publicationState??'draft',...(input.attachTo?{attachTo:{...input.attachTo,role:input.attachTo.role??null}}:{})};
+    // Internal seeder flag only; the HTTP create schema is strict and has no isSample.
+    if(input.isSample&&(normalized.visibility!=='private'||normalized.publicationState!=='draft'))throw sampleRefusal();
     return this.command(accountId,'createCollection',normalized,key,async db=>{
-      const parent=linked?await this.lockCollection(db,accountId,input.parentLocationCollectionId!,input.parentExpectedRevision!):undefined;
-      if(parent&&parent.category!=='places')throw new RecommendationFailure(422,'A location list is required');
-      const result=await db.query(`INSERT INTO collections(account_id,category,title,slug,visibility,publication_state,display_order)
-        SELECT $1,$2,$3,$4,$5,$6,coalesce(max(display_order)+1,0) FROM collections WHERE account_id=$1 AND category=$2 RETURNING *`,
-        [accountId,input.category,input.title,input.slug,normalized.visibility,normalized.publicationState]);
+      // WP10 (LNK-06). The host is checked before the new list exists: a foreign, missing or
+      // archived host is a 404 and a stale host category revision a 409, and either rolls the
+      // whole create back. The command wrapper already holds both category locks.
+      let host:{id:string;category:string}|undefined;
+      if(input.attachTo){
+        const found=(await db.query('SELECT id,category,is_sample FROM collections WHERE account_id=$1 AND id=$2 AND archived_at IS NULL',[accountId,input.attachTo.hostCollectionId])).rows[0];
+        if(!found)throw new RecommendationFailure(404,'Resource unavailable');
+        if(found.is_sample||input.isSample)throw sampleLinkRefusal();
+        host={id:found.id,category:found.category};
+        await lockContentCategories(db,accountId,[input.category,host.category]);
+        await this.assertCategoryRevision(db,accountId,host.category,input.attachTo.expectedHostRevision);
+      }
+      // LP-09. A slug a LIVE list was renamed from still resolves to that list, so a new
+      // list may not take it. A redirect left by an archived list is stale and released.
+      const redirected=await db.query(`SELECT 1 FROM collection_slug_redirects r JOIN collections c ON c.id=r.collection_id
+        WHERE r.account_id=$1 AND r.category=$2 AND r.old_slug=$3 AND c.archived_at IS NULL`,[accountId,input.category,input.slug]);
+      if(redirected.rowCount)throw new RecommendationFailure(409,'Content conflicts with an existing resource');
+      await db.query('DELETE FROM collection_slug_redirects WHERE account_id=$1 AND category=$2 AND old_slug=$3',[accountId,input.category,input.slug]);
+      const result=await db.query(`INSERT INTO collections(account_id,category,title,slug,visibility,publication_state,display_order,is_sample)
+        SELECT $1,$2,$3,$4,$5,$6,coalesce(max(display_order)+1,0),$7 FROM collections WHERE account_id=$1 AND category=$2 RETURNING *`,
+        [accountId,input.category,input.title,input.slug,normalized.visibility,normalized.publicationState,input.isSample===true]);
       await db.query('UPDATE collections SET description=$2,heading=$3 WHERE id=$1',[result.rows[0].id,input.description??null,input.heading??null]);
       await this.replaceCover(db,accountId,result.rows[0].id,input.coverMediaId??null);
       if(input.category!=='places'&&input.placeLocation!==undefined)throw new RecommendationFailure(422,'Category context mismatch');
       // A Places list always owns a location row from the start, so the location is this
       // list's own from creation; an unset location is explicitly empty, not missing.
       if(input.category==='places')await writePlaceCollectionDetails(db,result.rows[0].id,accountId,input.placeLocation??emptyPlaceCollectionDetails());
-      // Ticket 5.2. Creating a list from a location links it in the same transaction, so a
-      // failed parent leaves no orphan child - the whole create rolls back.
-      let parentLocation:CreateCollectionResult['parentLocation'];
-      if(input.parentLocationCollectionId!==undefined){
-        const child=linkableChildCategorySchema.safeParse(input.category);
-        if(!child.success)throw new RecommendationFailure(422,'Only Products and People lists link to a location');
-        await writeLocationLink(db,{childCollectionId:result.rows[0].id,accountId,childCategory:child.data,locationCollectionId:input.parentLocationCollectionId});
-        const changed=await db.query('UPDATE collections SET revision=revision+1,updated_at=now() WHERE id=$1 AND account_id=$2 RETURNING id,revision',[parent!.id,accountId]);
-        parentLocation={id:changed.rows[0].id,revision:Number(changed.rows[0].revision)};
+      // WP10 (LNK-06). Linked from the host in the same transaction. When the host shares the
+      // new list's category the create itself also moves that revision, so the reported
+      // revision is read back rather than derived from the expected one.
+      let attachedTo:CreateCollectionResult['attachedTo'];
+      if(host){
+        const link=await insertListLink(db,{accountId,hostCollectionId:host.id,linkedCollectionId:result.rows[0].id,role:normalized.attachTo!.role??null});
+        attachedTo={hostCollectionId:host.id,linkId:link.id,hostCategoryRevision:await this.readCategoryRevision(db,accountId,host.category)};
       }
-      const created=createCollectionResultSchema.parse({...await this.collectionRecord(db,{...result.rows[0],description:input.description??null,heading:input.heading??null}),...(parentLocation?{parentLocation}:{})});
-      if(created.accountId!==accountId||created.category!==input.category||created.revision!==1||created.id.toLowerCase()===input.parentLocationCollectionId?.toLowerCase()||
-        (linked?(created.parentLocation?.id.toLowerCase()!==input.parentLocationCollectionId!.toLowerCase()||created.parentLocation?.revision!==input.parentExpectedRevision!+1):created.parentLocation!==undefined))throw new RecommendationFailure(422,'Invalid create result');
+      const created=createCollectionResultSchema.parse({...await this.collectionRecord(db,{...result.rows[0],description:input.description??null,heading:input.heading??null}),...(attachedTo?{attachedTo}:{})});
+      if(created.accountId!==accountId||created.category!==input.category||created.revision!==1||
+        (host?created.attachedTo?.hostCollectionId!==host.id:created.attachedTo!==undefined))throw new RecommendationFailure(422,'Invalid create result');
       return created;
     });
   }
-  private async lockCollection(db:PoolClient,accountId:string,id:string,revision:number) {
+  private async lockCollection(db:PoolClient,accountId:string,id:string,revision:number,options:{allowArchived?:boolean}={}) {
     if(!Number.isSafeInteger(revision)||revision<1) throw new RecommendationFailure(422,'Invalid revision');
-    const result=await db.query('SELECT * FROM collections WHERE id=$1 AND account_id=$2 AND archived_at IS NULL FOR UPDATE',[id,accountId]);
+    const result=await db.query(`SELECT * FROM collections WHERE id=$1 AND account_id=$2${options.allowArchived?'':' AND archived_at IS NULL'} FOR UPDATE`,[id,accountId]);
     if(!result.rows[0]) throw new RecommendationFailure(404,'Collection unavailable');
     if(Number(result.rows[0].revision)!==revision) throw new RecommendationFailure(409,'Stale collection revision');
     return result.rows[0];
   }
-  async createRecommendation(accountId:string,input:{category:Exclude<ContentCategory,'guides'>;entityId:string;collectionId:string;expectedCollectionRevision:number;userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null;displayOverrides?:DisplayOverrides;bookContext?:BookRecommendationContext;movieContext?:MovieContext;movieTermIds?:string[];appScreenshots?:AppScreenshots;productOffer?:ProductOffer;placeContext?:PlaceRecommendationContext;placePhotos?:PlacePhotos}&TaxonomyAssignmentInput,key:string):Promise<RecommendationRecord> {
+  async createRecommendation(accountId:string,input:{category:Exclude<ContentCategory,'guides'>;entityId:string;collectionId:string;expectedCollectionRevision:number;userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null;displayOverrides?:DisplayOverrides;bookContext?:BookRecommendationContext;movieContext?:MovieContext;movieTermIds?:string[];appScreenshots?:AppScreenshots;productOffer?:ProductOffer;placeContext?:PlaceRecommendationContext;placePhotos?:PlacePhotos;isSample?:true}&TaxonomyAssignmentInput,key:string):Promise<RecommendationRecord> {
     return this.command(accountId,'createRecommendation',input,key,async db=>{
-      if(input.category!=='places'&&input.placesTaxonomy!==undefined||input.category!=='people'&&input.peopleSectorTermId!==undefined)throw new RecommendationFailure(422,'Category taxonomy mismatch');
+      if(input.category!=='places'&&input.placesTaxonomy!==undefined||input.category!=='people'&&input.peopleSectorTermId!==undefined||!isFlatCuratedCategory(input.category)&&input.curatedTermId!==undefined)throw new RecommendationFailure(422,'Category taxonomy mismatch');
       const list=await this.lockCollection(db,accountId,input.collectionId,input.expectedCollectionRevision);
       if(list.category!==input.category) throw new RecommendationFailure(422,'Collection category mismatch');
-      const result=await db.query(`INSERT INTO recommendations(account_id,entity_id,category,user_rating,publication_state,note)
-        VALUES($1,$2,$3,$4,$5,$6::jsonb) RETURNING *`,[accountId,input.entityId,input.category,input.userRating??null,input.publicationState??'draft',input.note==null?null:JSON.stringify(input.note)]);
+      if(list.is_sample&&(input.publicationState??'draft')!=='draft')throw sampleRefusal();
+      const result=await db.query(`INSERT INTO recommendations(account_id,entity_id,category,user_rating,publication_state,note,is_sample)
+        VALUES($1,$2,$3,$4,$5,$6::jsonb,$7) RETURNING *`,[accountId,input.entityId,input.category,input.userRating??null,input.publicationState??'draft',input.note==null?null:JSON.stringify(input.note),input.isSample===true]);
       await db.query(`INSERT INTO collection_items(collection_id,recommendation_id,account_id,category,display_order)
         SELECT $1,$2,$3,$4,coalesce(max(display_order)+1,0) FROM collection_items WHERE collection_id=$1`,
         [input.collectionId,result.rows[0].id,accountId,input.category]);
@@ -389,6 +424,52 @@ export class ExplorersRecommendationRepository {
       return {id,archived:true};
     });
   }
+  /**
+   * SMP-04. Converts a sample in place via S3's claimSample (clears is_sample on the list and its
+   * items, sets the receipt's claimed_at; 404 when not a sample of this account), then bumps the
+   * revision. Nothing is copied; it stays a private draft. A repeat with the same key replays;
+   * a fresh key on a claimed list is 409 (stale revision) or 404 (no longer a sample).
+   */
+  async makeCollectionMine(accountId:string,id:string,expectedRevision:number,key:string):Promise<CollectionRecord> {
+    return this.command(accountId,'makeCollectionMine',{id,expectedRevision},key,async db=>{
+      await this.lockCollection(db,accountId,id,expectedRevision);
+      await claimSample(db,accountId,id);
+      const result=await db.query('UPDATE collections SET revision=revision+1,updated_at=now() WHERE id=$1 AND account_id=$2 RETURNING *',[id,accountId]);
+      return this.collectionRecord(db,result.rows[0]);
+    });
+  }
+  // LP-08. Restore brings an archived list back under its slug, or a new one when the old
+  // slug now belongs to a live list or is a live list's redirect. The new slug leaves no
+  // redirect: the archived URL resolved to nothing, so there is no old link to keep.
+  async restoreCollection(accountId:string,id:string,expectedRevision:number,slug:string|undefined,key:string):Promise<CollectionRecord> {
+    return this.command(accountId,'restoreCollection',{id,expectedRevision,slug},key,async db=>{
+      const locked=await this.lockCollection(db,accountId,id,expectedRevision,{allowArchived:true});
+      if(!locked.archived_at)throw new RecommendationFailure(409,'List is not archived');
+      const next=slug??locked.slug;
+      const taken=await db.query(`SELECT 1 FROM collections WHERE account_id=$1 AND category=$2 AND slug=$3 AND archived_at IS NULL AND id<>$4
+        UNION ALL SELECT 1 FROM collection_slug_redirects r JOIN collections c ON c.id=r.collection_id
+        WHERE r.account_id=$1 AND r.category=$2 AND r.old_slug=$3 AND r.collection_id<>$4 AND c.archived_at IS NULL LIMIT 1`,[accountId,locked.category,next,id]);
+      if(taken.rowCount)throw new RecommendationFailure(409,'List URL is taken; choose a new URL to restore');
+      await db.query('DELETE FROM collection_slug_redirects WHERE account_id=$1 AND category=$2 AND old_slug=$3',[accountId,locked.category,next]);
+      const result=await db.query('UPDATE collections SET archived_at=NULL,slug=$2,revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *',[id,next]);
+      return this.collectionRecord(db,result.rows[0]);
+    });
+  }
+  // LP-08. Permanent delete. Children CASCADE (analytics events only lose their link, 0066);
+  // recommendations left in no other list are archived so media cleanup follows the
+  // existing archive path. Recommendations and entities are never hard-deleted.
+  async purgeCollection(accountId:string,id:string,expectedRevision:number,key:string):Promise<{id:string;deleted:true}> {
+    return this.command(accountId,'purgeCollection',{id,expectedRevision},key,async db=>{
+      const locked=await this.lockCollection(db,accountId,id,expectedRevision,{allowArchived:true});
+      const orphans=await db.query(`SELECT ci.recommendation_id id FROM collection_items ci WHERE ci.collection_id=$1
+        AND NOT EXISTS (SELECT 1 FROM collection_items o WHERE o.recommendation_id=ci.recommendation_id AND o.collection_id<>$1)`,[id]);
+      const removed=await db.query('DELETE FROM category_recommendation_pins WHERE collection_id=$1 RETURNING 1',[id]);
+      if(removed.rowCount) await db.query('UPDATE account_category_pin_state SET revision=revision+1 WHERE account_id=$1 AND category=$2',[accountId,locked.category]);
+      await db.query('DELETE FROM collections WHERE id=$1 AND account_id=$2',[id,accountId]);
+      if(orphans.rowCount) await db.query('UPDATE recommendations SET archived_at=now(),revision=revision+1,updated_at=now() WHERE id=ANY($1::uuid[]) AND account_id=$2 AND archived_at IS NULL',[orphans.rows.map(r=>r.id),accountId]);
+      return {id,deleted:true};
+    });
+  }
   async getPublicCollection(id:string):Promise<CollectionRecord|null> {
     const result=await this.pool.query(`SELECT c.* FROM collections c JOIN creator_accounts a ON a.id=c.account_id
       JOIN account_category_settings s ON s.account_id=c.account_id AND s.category=c.category
@@ -433,42 +514,85 @@ export class ExplorersRecommendationRepository {
     });
   }
   /**
-   * Links an existing child list to a location, or unlinks it.
-   *
-   * Both revisions are checked under their locks, so a stale view cannot link a pair the
-   * creator was not looking at. The child's revision moves either way, because what the
-   * list belongs to is part of the list.
+   * WP10. Links one of the owner's lists to another through S3's repository. Both categories
+   * are locked before any row (account -> category -> row), because 0070's triggers bump both
+   * categories' content revisions. insertListLink refuses a foreign, missing or archived list
+   * as 404, a self link as 422 and an existing pair or a full host as 409.
    */
-  async writeLocationMembership(accountId:string,input:{childCollectionId:string;expectedChildRevision:number;locationCollectionId?:string;expectedLocationRevision?:number},key:string,attached:boolean) {
-    return this.command(accountId,attached?'attachLocationLink':'detachLocationLink',{childCollectionId:input.childCollectionId,expectedChildRevision:input.expectedChildRevision,locationCollectionId:input.locationCollectionId??null,expectedLocationRevision:input.expectedLocationRevision??null},key,async db=>{
-      // A link spans two categories, so both are locked before any row is - the
-      // wrapper derives one category from `id` and this command is addressed by the
-      // child, so it takes its own locks in the same account -> category -> row order.
-      const observed=(await db.query('SELECT category FROM collections WHERE id=$1 AND account_id=$2',[input.childCollectionId,accountId])).rows[0];
-      if(!observed)throw new RecommendationFailure(404,'Collection unavailable');
-      const childCategory=linkableChildCategorySchema.safeParse(observed.category);
-      if(!childCategory.success)throw new RecommendationFailure(422,'Only Products and People lists link to a location');
-      await lockContentCategories(db,accountId,[childCategory.data,'places']);
-      await this.lockCollection(db,accountId,input.childCollectionId,input.expectedChildRevision);
-      if(attached){
-        if(input.locationCollectionId===undefined||input.expectedLocationRevision===undefined)throw new RecommendationFailure(422,'A location list is required');
-        // Locked for its revision, and its category checked here so the refusal says which
-        // rule was broken rather than surfacing a foreign key.
-        const parent=await this.lockCollection(db,accountId,input.locationCollectionId,input.expectedLocationRevision);
-        if(parent.category!=='places')throw new RecommendationFailure(422,'A location list is required');
-        await writeLocationLink(db,{childCollectionId:input.childCollectionId,accountId,childCategory:childCategory.data,locationCollectionId:input.locationCollectionId});
-      }else{
-        await deleteLocationLink(db,input.childCollectionId,accountId);
-      }
-      const row=await db.query('UPDATE collections SET revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *',[input.childCollectionId]);
-      return{collection:await this.collectionRecord(db,row.rows[0]),attached};
+  async writeListLink(accountId:string,input:AttachListLinkInput,key:string):Promise<ListLinkCommandResult> {
+    return this.command(accountId,'attachListLink',input,key,async db=>{
+      const [host,linked]=await this.observeLinkPair(db,accountId,input.hostCollectionId,input.linkedCollectionId);
+      await this.assertCategoryRevision(db,accountId,host.category,input.expectedHostRevision);
+      if(linked.category!==host.category)await this.assertCategoryRevision(db,accountId,linked.category,input.expectedLinkedRevision);
+      const link=await insertListLink(db,{accountId,hostCollectionId:host.id,linkedCollectionId:linked.id,role:input.role??null,position:input.position});
+      return{link,attached:true,revisions:await this.linkRevisions(db,accountId,link)};
     });
+  }
+  /** collectionId is the list in the URL; a link that touches neither end of it is a 404. */
+  async removeListLink(accountId:string,input:DetachListLinkInput,key:string,collectionId?:string):Promise<ListLinkCommandResult> {
+    return this.command(accountId,'detachListLink',collectionId===undefined?input:{...input,collectionId},key,async db=>{
+      const current=await this.observeLink(db,accountId,input.linkId,collectionId);
+      await this.assertCategoryRevision(db,accountId,current.host_category,input.expectedHostRevision);
+      const link=await deleteListLink(db,accountId,input.linkId);
+      return{link,attached:false,revisions:await this.linkRevisions(db,accountId,link)};
+    });
+  }
+  async setListLinkRole(accountId:string,input:SetListLinkRoleInput,key:string,collectionId?:string):Promise<ListLinkCommandResult> {
+    return this.command(accountId,'setListLinkRole',collectionId===undefined?input:{...input,collectionId},key,async db=>{
+      const current=await this.observeLink(db,accountId,input.linkId,collectionId);
+      await this.assertCategoryRevision(db,accountId,current.host_category,input.expectedHostRevision);
+      const link=await updateListLinkRole(db,accountId,input.linkId,input.role??null);
+      return{link,attached:true,revisions:await this.linkRevisions(db,accountId,link)};
+    });
+  }
+  /** Reads both lists' categories, then takes the category locks in sorted order. A missing or foreign list is a 404, never a hint that it exists. */
+  private async observeLinkPair(db:PoolClient,accountId:string,hostId:string,linkedId:string){
+    const rows=(await db.query('SELECT id,category,is_sample FROM collections WHERE account_id=$1 AND id=ANY($2::uuid[])',[accountId,[hostId,linkedId]])).rows as {id:string;category:string;is_sample:boolean}[];
+    const host=rows.find(r=>r.id===hostId),linked=rows.find(r=>r.id===linkedId);
+    if(!host||!linked)throw new RecommendationFailure(404,'Resource unavailable');
+    if(host.is_sample||linked.is_sample)throw sampleLinkRefusal();
+    await lockContentCategories(db,accountId,[host.category,linked.category]);
+    return [host,linked] as const;
+  }
+  /** Locks the categories of an existing link of this account; 404 if it is not theirs. */
+  private async observeLink(db:PoolClient,accountId:string,linkId:string,collectionId?:string){
+    const row=(await db.query(`SELECT host_category,linked_category FROM collection_list_links WHERE id=$1 AND account_id=$2
+      AND ($3::uuid IS NULL OR host_collection_id=$3::uuid OR linked_collection_id=$3::uuid)`,[linkId,accountId,collectionId??null])).rows[0] as {host_category:string;linked_category:string}|undefined;
+    if(!row)throw new RecommendationFailure(404,'Resource unavailable');
+    await lockContentCategories(db,accountId,[row.host_category,row.linked_category]);
+    return row;
+  }
+  /** Category content revision (account_category_content_state); 0 when the category has never changed. */
+  private async readCategoryRevision(db:PoolClient,accountId:string,category:string){
+    return Number((await db.query("SELECT coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category=$2),'0') revision",[accountId,category])).rows[0].revision);
+  }
+  /** Checked under the category lock, so a stale view cannot change a link it was not looking at. */
+  private async assertCategoryRevision(db:PoolClient,accountId:string,category:string,expected:number){
+    if(await this.readCategoryRevision(db,accountId,category)!==expected)throw new RecommendationFailure(409,'Stale category revision');
+  }
+  /** Revisions after the statement triggers ran, for both categories of the link. */
+  private async linkRevisions(db:PoolClient,accountId:string,link:ListLinkDto){
+    const revisions:Partial<Record<ListLinkDto['hostCategory'],number>>={};
+    for(const category of new Set([link.hostCategory,link.linkedCategory]))revisions[category]=await this.readCategoryRevision(db,accountId,category);
+    return revisions;
   }
   async updateCollection(accountId:string,id:string,expectedRevision:number,input:{title?:string;slug?:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails;displayOrder?:number;pinOrder?:number|null},key:string):Promise<CollectionRecord> {
     return this.command(accountId,'updateCollection',{id,expectedRevision,input},key,async db=>{
       const locked=await this.lockCollection(db,accountId,id,expectedRevision);
-      if(locked.category!=='places'&&input.slug!==undefined)throw new RecommendationFailure(422,'Category context mismatch');
+      if(locked.is_sample&&((input.visibility??locked.visibility)!=='private'||(input.publicationState??locked.publication_state)!=='draft'||(input.pinOrder!==undefined&&input.pinOrder!==null)))
+        throw sampleRefusal();
       if(locked.category!=='places'&&input.placeLocation!==undefined)throw new RecommendationFailure(422,'Category context mismatch');
+      // LP-09. Renaming keeps the old URL working: the old slug becomes a redirect to this
+      // list. Taking a slug that is another live list's redirect is a conflict; taking a
+      // slug this list (or an archived list) left behind releases that redirect.
+      if(input.slug!==undefined&&input.slug!==locked.slug){
+        const taken=await db.query(`SELECT 1 FROM collection_slug_redirects r JOIN collections c ON c.id=r.collection_id
+          WHERE r.account_id=$1 AND r.category=$2 AND r.old_slug=$3 AND r.collection_id<>$4 AND c.archived_at IS NULL`,[accountId,locked.category,input.slug,id]);
+        if(taken.rowCount)throw new RecommendationFailure(409,'Content conflicts with an existing resource');
+        await db.query('DELETE FROM collection_slug_redirects WHERE account_id=$1 AND category=$2 AND old_slug=$3',[accountId,locked.category,input.slug]);
+        await db.query(`INSERT INTO collection_slug_redirects(account_id,category,old_slug,collection_id) VALUES($1,$2,$3,$4)
+          ON CONFLICT (account_id,category,old_slug) DO UPDATE SET collection_id=EXCLUDED.collection_id,created_at=now()`,[accountId,locked.category,locked.slug,id]);
+      }
       const result=await db.query(`UPDATE collections SET title=coalesce($2,title),visibility=coalesce($3,visibility),
         publication_state=coalesce($4,publication_state),slug=coalesce($5,slug),revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *`,[id,input.title??null,input.visibility??null,input.publicationState??null,input.slug??null]);
       if(input.description!==undefined) await db.query('UPDATE collections SET description=$2 WHERE id=$1',[id,input.description]);
@@ -507,8 +631,11 @@ export class ExplorersRecommendationRepository {
       throw new RecommendationFailure(422,'Invalid rating');
     return this.command(accountId,'updateRecommendation',{id,expectedRevision,input},key,async db=>{
       const locked=await this.lockRecommendation(db,accountId,id,expectedRevision);
+      if(locked.is_sample&&input.publicationState!==undefined&&input.publicationState!=='draft')throw sampleRefusal();
+      // DS-02: People are not rated. A stored rating stays readable; a new one is refused.
+      if(locked.category==='people'&&input.userRating!==undefined&&input.userRating!==null)throw new RecommendationFailure(422,'People are not rated');
       if(locked.category!=='books'&&input.bookContext!==undefined||locked.category!=='movies'&&(input.movieContext!==undefined||input.movieTermIds!==undefined)||locked.category!=='apps'&&input.appScreenshots!==undefined||locked.category!=='products'&&input.productOffer!==undefined||locked.category!=='places'&&(input.placeContext!==undefined||input.placePhotos!==undefined))throw new RecommendationFailure(422,'Category context mismatch');
-      if(locked.category==='movies'){const {title,...fields}=input.displayOverrides??{};if(!movieDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Movie overrides');}else if(locked.category==='books'){const {title,...fields}=input.displayOverrides??{};if(!bookDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Book overrides');}else if(locked.category==='apps'){const {title,...fields}=input.displayOverrides??{};if(!appDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid App overrides');}else if(locked.category==='products'){const {title,...fields}=input.displayOverrides??{};if(!productDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Product overrides');}else if(locked.category==='people'){const {title,...fields}=input.displayOverrides??{};if(!personDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Person overrides');}else if(locked.category==='places'){const {title,...fields}=input.displayOverrides??{};if(!placeDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Place overrides');}else if(Object.keys(input.displayOverrides??{}).some(k=>k!=='title'))throw new RecommendationFailure(422,'Category overrides mismatch');
+      if(locked.category==='movies'){const {title,...fields}=input.displayOverrides??{};if(!movieDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Movie overrides');}else if(locked.category==='books'){const {title,...fields}=input.displayOverrides??{};if(!bookDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Book overrides');}else if(locked.category==='apps'){const {title,...fields}=input.displayOverrides??{};if(!appDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid App overrides');}else if(locked.category==='products'){const {title,...fields}=input.displayOverrides??{};if(!productDisplayFieldsWriteSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Product overrides');}else if(locked.category==='people'){const {title,...fields}=input.displayOverrides??{};if(!personDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Person overrides');}else if(locked.category==='places'){const {title,...fields}=input.displayOverrides??{};if(!placeDisplayFieldsSchema.safeParse(fields).success)throw new RecommendationFailure(422,'Invalid Place overrides');}else if(Object.keys(input.displayOverrides??{}).some(k=>k!=='title'))throw new RecommendationFailure(422,'Category overrides mismatch');
       const result=await db.query(`UPDATE recommendations SET user_rating=CASE WHEN $2 THEN $3 ELSE user_rating END,
         publication_state=coalesce($4,publication_state),note=CASE WHEN $5 THEN $6::jsonb ELSE note END,revision=revision+1,updated_at=now() WHERE id=$1 RETURNING *`,[id,input.userRating!==undefined,input.userRating??null,input.publicationState??null,input.note!==undefined,input.note==null?null:JSON.stringify(input.note)]);
       if(input.displayOverrides!==undefined) await this.replaceOverrides(db,accountId,id,input.displayOverrides);

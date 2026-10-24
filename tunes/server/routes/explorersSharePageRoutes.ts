@@ -1,4 +1,5 @@
 import type { Express, Request, Response } from "express";
+import {listSlugPredicate} from '../application/collectionSlug';
 import type { Pool } from "pg";
 import { PUBLIC_RECOMMENDATION_CATEGORIES, type PublicCategory } from "../publicProfile/publicProfilePolicy";
 
@@ -168,7 +169,7 @@ export const SHARE_LIST_SQL = `SELECT c.title,c.description,
       WHERE cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover' AND m.purpose='collection'
         AND m.status='ready') AS cover_media_id
   FROM collections c JOIN account_category_settings s ON s.account_id=c.account_id AND s.category=c.category
-  WHERE c.account_id=$1 AND c.category=$2 AND c.slug=$3 AND s.is_public
+  WHERE c.account_id=$1 AND c.category=$2 AND ${listSlugPredicate('c','$3')} AND s.is_public
     AND c.archived_at IS NULL AND c.visibility='public' AND c.publication_state='published'`;
 
 type ProfileRow = { id: string; handle: string; display_name: string | null; bio_plain: string | null; profile_media_id: string | null };

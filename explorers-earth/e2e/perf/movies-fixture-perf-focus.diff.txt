@@ -1,0 +1,26 @@
+diff --git a/tunes/scripts/movies-browser-fixture.ts b/tunes/scripts/movies-browser-fixture.ts
+index 9b6de07c..a3e843d1 100644
+--- a/tunes/scripts/movies-browser-fixture.ts
++++ b/tunes/scripts/movies-browser-fixture.ts
+@@ -27,7 +27,7 @@ const diagnostic=rawArguments.length===3&&rawArguments[2]==='--diagnose-owner';
+ if(diagnostic)rawArguments.pop();
+ const focusIndex=rawArguments.indexOf('--focus');
+ const focus=focusIndex<0?undefined:rawArguments[focusIndex+1];
+-if(focusIndex>=0&&(focusIndex!==2||rawArguments.length!==4||!['pagination','search','manual','copies','owner-order'].includes(focus??'')))throw Error('Invalid local Movies focus selector');
++if(focusIndex>=0&&(focusIndex!==2||rawArguments.length!==4||!['pagination','search','manual','copies','owner-order','perf'].includes(focus??'')))throw Error('Invalid local Movies focus selector');
+ const receiptArguments = extractProtectedReceiptArguments(focusIndex<0?rawArguments:rawArguments.slice(0,2));
+ if (JSON.stringify(receiptArguments.args) !== JSON.stringify(['--ack', MUSIC_UAT_DATABASE_ACK]))
+   throw new Error('Browser E2E requires exact disposable PostgreSQL acknowledgement');
+@@ -176,9 +176,10 @@ async function main(): Promise<number> {
+   const assetRoot=join(disposable,'frontend-build','assets');let inspectedBytes=0,diagnosticTransformPresent=false;for(const name of readdirSync(assetRoot)){if(!name.endsWith('.js'))continue;const path=join(assetRoot,name),size=statSync(path).size;inspectedBytes+=size;if(size>16*1024*1024||inspectedBytes>64*1024*1024)throw Error('Movie build diagnostic scan limit');if(readFileSync(path).includes(Buffer.from('__moviesOwnerDiagnosis')))diagnosticTransformPresent=true;}if(diagnosticTransformPresent!==diagnostic)throw Error('Movie diagnostic transform state mismatch');process.stdout.write(`Owned Movies diagnostic mode=${diagnostic} transform=${diagnosticTransformPresent} canonicalUninstrumented=${!diagnostic}\n`);
+   vite = spawn(process.execPath,[resolve(frontend,'node_modules/vite/bin/vite.js'),'preview','--logLevel','error','--config','e2e/replatform/movies.vite.config.ts','--outDir',join(disposable,'frontend-build')],{cwd:frontend,windowsHide:true,stdio:'inherit',env:frontendEnv});
+   await waitFor(origin);
+-  let browserArgs = ['--config=e2e/replatform/movies.playwright.config.ts', '--retries=0'];
++  // `--focus perf` runs the local WP5 latency measurement (e2e/perf) against this stack instead.
++  let browserArgs = [focus==='perf'?'--config=e2e/perf/perf.playwright.config.ts':'--config=e2e/replatform/movies.playwright.config.ts', '--retries=0'];
+   const browserEnv = { ...process.env,MOVIES_E2E_OWNER_DIAGNOSTIC:diagnostic?'1':'', MOVIES_E2E_FIXTURE_PATH: fixturePath, MOVIES_E2E_ARTIFACT_DIR: join(disposable,'browser-output'), PLAYWRIGHT_EXTERNAL_BASE_URL: origin };
+-  if(focus)browserArgs.push('--grep',focus==='pagination'?'anonymous category later|global TMDB taxonomy':focus==='search'?'delayed real canonical search':focus==='copies'?'optional provider image failures':focus==='owner-order'?'owner manual form|canonical both-kind provider|optional provider image failures':'owner manual form');
++  if(focus&&focus!=='perf')browserArgs.push('--grep',focus==='pagination'?'anonymous category later|global TMDB taxonomy':focus==='search'?'delayed real canonical search':focus==='copies'?'optional provider image failures':focus==='owner-order'?'owner manual form|canonical both-kind provider|optional provider image failures':'owner manual form');
+   if (protectedReceipt) browserArgs = protectedReceipt.arguments(browserArgs, disposable);
+   if (protectedReceipt) protectedReceipt.discovery(frontend, [...browserArgs, '--workers=1', '--forbid-only'], browserEnv, disposable);
+   browser = spawn(process.execPath, [resolve(frontend, 'node_modules/@playwright/test/cli.js'),

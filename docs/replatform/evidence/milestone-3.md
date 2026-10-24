@@ -65,3 +65,28 @@ The first drill of a real production backup, which closes the "production backup
 - Result: **passed**, `recoveryMilliseconds` 9902. Journal 63 rows, head 0063; every row count matched; restricted-role attestation passed; the app booted on the restored database. This time the proofs carry real data: 1 account with an authenticated restored session, and 23 media objects whose hashes all matched, with the gated route resolving.
 - Receipt: `recovery-receipt.json`, SHA-256 `7faae0189d16f4f3653bacae0d383cc18bf7f71bdc28a10a3550dd17ede2a9bc`.
 - Why it was needed: the deploy of `e14ac5fc` was refused with `DRILL_MARKER_MISMATCH` because the database had moved to 0063 (from #176) while the committed receipt was at 0062. Any deploy that follows a migration needs a fresh drill at the new head.
+
+## Production drill at 0064 (2026-10-23)
+
+- Backup: the nightly scheduled backup (run `ee261650`, reason `scheduled`, completed 2026-10-23T02:22Z), migration head `0064_explorers_game_details`, source commit `8063651c`.
+- Drill: `npm run platform:restore-drill` on the owner's machine from a clean checkout of `8063651c`, the commit that produced the backup.
+- Result: **passed**, `recoveryMilliseconds` 12830. Journal 64 rows, head 0064; every row count matched; restricted-role attestation passed; the app booted on the restored database. 1 account with an authenticated restored session; 107 media objects whose hashes all matched, 33 through the gated route.
+- Receipt: `recovery-receipt.json`, SHA-256 `e412ae2f257f12dbb40526a84da4f4b99055b157119db902a6418ee22861f62f`.
+- Why it was needed: dashboard-phase deploy checkpoint A (Wave 0, migrations 0065-0066). The gate compares the receipt's marker with the pre-deploy backup's marker, so the drill must be at the live head (0064), not the new one.
+- Known issue: the same drill run from `main` at `0eebdd4c` fails four times at runtime-role attestation, because Wave 0 (PR #198) changed the expected runtime privileges and the drill attests a 0064 restore against the 0066 expectations. Drilling from the backup's own commit avoids it; the drill tool needs a fix to attest against the restored marker's expectations. Fixed by PR #201.
+
+## Production drill at 0066 (2026-10-23)
+
+- Backup: a manual backup taken for this drill (run `eb15b160`, reason `manual`, 2026-10-23T12:09Z), migration head `0066_explorers_list_redirects_and_delete`.
+- Drill: `npm run platform:restore-drill` on the owner's machine from a clean checkout of `main` at `86a72fc2`. It passed on the first attempt, which also confirms the PR #201 fix: drilling from current `main` works again.
+- Result: **passed**, `recoveryMilliseconds` 17338. Journal 66 rows, head 0066; every row count matched; restricted-role attestation passed; the app booted on the restored database. 1 account with an authenticated restored session; 100 media objects whose hashes all matched, 33 through the gated route.
+- Receipt: `recovery-receipt.json`, SHA-256 `9d2843f5cd6641c5ee49a6491e7f3de371926266741fb4c55bd77e5fd9c248cb`.
+- Why it was needed: dashboard-phase deploy checkpoint B (Wave 1). Wave 1 adds no migrations, so the live head stays 0066.
+
+## Production drill at 0068 (2026-10-23)
+
+- Backup: the refused hotfix deploy's own pre-deploy backup (run `c412d8a6`, reason `pre-deploy`, 2026-10-23T19:59Z), migration head `0068_explorers_category_data_shape`.
+- Why the head was 0068: the Wave 1 deploy was approved after S2 (PR #210, migrations 0067-0068) had merged, and the live database reached 0068 then. The layout-hotfix deploy that followed was refused with `DRILL_MARKER_MISMATCH` because the committed receipt was still at 0066.
+- Drill: `npm run platform:restore-drill` on the owner's machine from a clean checkout of `main` at `ed71ecaa`. Passed on the first attempt.
+- Result: **passed**, `recoveryMilliseconds` 12446; 86 media objects whose hashes all matched, 33 through the gated route; restricted-role attestation passed; the app booted on the restored database.
+- Receipt: `recovery-receipt.json`, SHA-256 `17f3ebecb480ae1dfea70d4f62e7a88910643263bb8d4b1c8f15fcf4d5aa8681`.

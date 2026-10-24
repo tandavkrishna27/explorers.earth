@@ -131,18 +131,39 @@ describe("owned image CI PostgreSQL wiring", () => {
       "server/test/explorers-recovery.integration.test.ts",
       "server/test/explorers-reorder.integration.test.ts",
       "server/test/explorers-search.integration.test.ts",
+      // S2. 0068 category data shape: backfills and new fields round-trip.
+      "server/test/explorers/category-data-shape.integration.test.ts",
       "server/test/explorers/category-write-path.integration.test.ts",
+      // WP3B (LP-08/LP-09). Slug rename for every category, restore, permanent delete.
+      "server/test/explorers/collection-manage.integration.test.ts",
+      // OWN-01/LP-09. 0065 live-slug index and 0066 slug redirects through HTTP.
+      "server/test/explorers/collection-slug.integration.test.ts",
+      // S2. 0067 curated catalogs, reviewed apply and assignment through HTTP.
+      "server/test/explorers/curated-taxonomy.integration.test.ts",
       // GMS-X01. 0064's game year/platforms/genres through resolve, owner and public read.
       "server/test/explorers/game-details.integration.test.ts",
       "server/test/explorers/guides.integration.test.ts",
+      // WP8. Owner-initiated link preview, image import and SSRF refusal through HTTP.
+      "server/test/explorers/link-preview.integration.test.ts",
+      // R10. 0066 list delete keeps analytics; runtime DELETE on collections only.
+      "server/test/explorers/list-delete-analytics.integration.test.ts",
+      // WP10. List links between any two own lists (replaces placeLinks).
+      "server/test/explorers/listLinks.integration.test.ts",
       "server/test/explorers/people.integration.test.ts",
-      "server/test/explorers/placeLinks.integration.test.ts",
+      // WP6. Places nearby route and the person-type write refusal.
+      "server/test/explorers/places-nearby.integration.test.ts",
       "server/test/explorers/places.integration.test.ts",
       "server/test/explorers/products.integration.test.ts",
+      // WP5. replaceMedia writes a gallery in one INSERT.
+      "server/test/explorers/recommendation-media-batch.integration.test.ts",
+      // WP11. First-visit samples: seeding, publish refusal, public exclusion, Make it mine.
+      "server/test/explorers/samples.integration.test.ts",
       "server/test/google-sync.integration.test.ts",
       "server/test/load/music-load-http-postgres.integration.test.ts",
       "server/test/load/music-load-postgres.integration.test.ts",
       "server/test/migrations/music-runtime.integration.test.ts",
+      // + S3 migrations (0069-0071)
+      "server/test/migrations/s3-guides-links-samples.integration.test.ts",
       "server/test/movie-media-import.integration.test.ts",
       "server/test/movies-public-gateway.integration.test.ts",
       "server/test/music-e2e-identity-count-adapter.integration.test.ts",
@@ -156,8 +177,8 @@ describe("owned image CI PostgreSQL wiring", () => {
        */
       "server/test/user-leak.integration.test.ts",
     ]);
-    expect(selectors).toHaveLength(51); // 51 = 50 + game-details (0064, GMS-X01)
-    expect(new Set(selectors).size).toBe(51);
+    expect(selectors).toHaveLength(61); // 61 = 60 + samples (WP11); 60 = 59 + link-preview (WP8); 59 = 58 + S3 migrations (0069-0071); 58 = 57 + places-nearby (WP6); 57 = 55 + curated-taxonomy + category-data-shape (S2); 55 = 54 + recommendation-media-batch (WP5); 54 = 51 + collection-slug + list-delete-analytics (0065/0066) + collection-manage (WP3B)
+    expect(new Set(selectors).size).toBe(61);
   });
 
   /*

@@ -49,16 +49,16 @@ it('provider changes preserve stay metadata and synchronize each matching timeli
  f.stay.tips='Keep this note';f.stay.source='google';f.stay.isVerified=true;
  const row={localId:f.stay.id,place_id:f.stay.place_id,name:f.stay.name,budgetAmount:100.25,budgetCurrency:'INR',customBudget:'Hotel budget',priceRange:'Range',priceLevel:2};
  // Retain the seed's other entries: its untouched transport segments refer to them.
- for(const period of ['morning','afternoon','evening'] as const){f.section.Timeline[period]=[f.stay,...f.section.Timeline[period].filter(p=>p.id!==f.stay.id)];f.section.Budget[period]=[{...row}];}
+ // v2 days hold each entry once (GD-23), so the stay appears in one part of the day.
+ f.section.Timeline.morning=[f.stay,...f.section.Timeline.morning.filter(p=>p.id!==f.stay.id)];f.section.Budget.morning=[{...row}];
  const {patch,canonical}=await submit(f,true);
  expect(guideSectionBlocksSchema.parse(canonical)).toEqual(canonical);
  expect(patch.Stay.accommodations[0]).toEqual({...f.stay,name:'New hotel',formatted_address:'New address',place_id:'new-provider',geometry:{location:{lat:12,lng:34}},types:['lodging']});
- for(const period of ['morning','afternoon','evening'] as const){
-  expect(patch.Timeline[period][0]).toEqual(patch.Stay.accommodations[0]);
-  expect(patch.Timeline[period].slice(1)).toEqual(f.section.Timeline[period].slice(1));
-  expect(patch.Budget[period]).toEqual([{...row,place_id:'new-provider',name:'New hotel'}]);
-  expect(canonical.budget[period][0].budgetAmount).toBe('100.25');
- }
+ expect(patch.Timeline.morning[0]).toEqual(patch.Stay.accommodations[0]);
+ expect(patch.Timeline.morning.slice(1)).toEqual(f.section.Timeline.morning.slice(1));
+ expect(patch.Budget.morning).toEqual([{...row,place_id:'new-provider',name:'New hotel'}]);
+ expect(canonical.budget.entries.find(e=>e.localId===f.stay.id)?.budgetAmount).toBe('100.25');
+ for(const period of ['afternoon','evening'] as const)expect(patch.Timeline[period]).toEqual(f.section.Timeline[period]);
  expect(Object.keys(patch).sort()).toEqual(['Budget','Stay','Timeline','description','title']);
  for(const key of ['transport','activities','mapDetails','packingList','preTasks','tags'] as const)expect(canonical[key]).toEqual(toCanonicalSectionBlocks(f.section)[key]);
 });

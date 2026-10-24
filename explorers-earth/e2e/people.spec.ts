@@ -1,235 +1,90 @@
-import { test, expect } from '@playwright/test';
-import { setupMockAuthentication } from './setup/auth';
-import { denyHostedEgress } from './setup/deny-hosted-egress';
+import { expect, test } from '@playwright/test';
+import { bookFixtureId } from './setup/books-owner-content';
+import { closeFixture, fixtureState, openFixture } from './setup/category-navigation';
+import { canonicalAccountFixture } from '../src/test/canonicalAccountFixture';
+import { personEntityDtoSchema } from '../../tunes/shared/explorersPersonContract';
+import { recommendationCoreDtoSchema } from '../../tunes/shared/explorersContract';
+import { taxonomyCatalogPageSchema } from '../../tunes/shared/explorersTaxonomyContract';
 
-test.beforeEach(async ({ context, page }) => {
-  await denyHostedEgress(page);
-  await setupMockAuthentication(context);
-  let recommendationCreated = false;
+// WP8 Task 8-14 (DS-02, DS-08, DS-09, ADD-12). Replaces the Strapi-era People flow, which drove
+// GraphQL list mutations and the retired /api/people/scrape-profile step. Runs on the contained
+// owner fixture (native owner reads) and stubs only the sector catalog, the link preview, the
+// photo import and the two save commands. The contained fixture serves empty lists only, so the
+// detail view's "no rating" is asserted by its unit test (PersonDetailModal.noRating.test.tsx);
+// here the write itself carries no rating and no follower count.
 
-  await page.route('**/graphql', async route => {
-    const payload = route.request().postDataJSON();
+const PROFILE = 'https://www.instagram.com/ada.example/';
+const SECTOR = '7b0e8a52-4c1d-4f7e-9a51-0d6c2f1e3a30';
+const PHOTO_ID = '7b0e8a52-4c1d-4f7e-9a51-0d6c2f1e3a31';
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+const preview = { url: PROFILE, title: 'Ada (@ada.example)', description: null, imageUrl: 'https://cdn.example/ada.jpg', siteName: 'Instagram', product: null,
+  person: { name: 'Ada Example', headline: 'Type designer', sameAs: [] } };
 
-    if (payload?.query?.includes('CheckOnboardingStatus') || payload?.query?.includes('MyAccount') || payload?.query?.includes('UsersPermissionsUser') || payload?.query?.includes('usersPermissionsUser')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            usersPermissionsUser: {
-              id: 'fixture-user',
-              documentId: 'fixture-user',
-              username: 'testuser',
-              email: 'test@example.test',
-              provider: 'local',
-              confirmed: true,
-              blocked: false,
-              createdAt: '2026-01-01T00:00:00.000Z',
-              updatedAt: '2026-01-01T00:00:00.000Z',
-              accounts: [
-                {
-                  documentId: 'acc-123',
-                  username: 'testuser',
-                  Account_Name: 'Test Account',
-                  Account_Type: 'business',
-                  mobile_number: '1234567890',
-                  profile_picture: null,
-                  public_movie: 'No',
-                  public_books: 'No',
-                  public_games: 'No',
-                  public_music: 'No',
-                  public_apps: 'No',
-                  public_products: 'No',
-                  public_people: 'No',
-                  public_guides: 'No',
-                  public_recommendations: 'No',
-                  public_profile: 'Yes',
-                  pinned_nav_tabs: [],
-                  auto_pinning: false,
-                  localtunes_integrated: false
-                }
-              ]
-            }
-          }
-        })
-      });
-    } else if (payload?.query?.includes('createPersonList')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            createPersonList: {
-              documentId: 'people-list-123',
-              List_Name: 'Inspiring Founders',
-              list_description: null,
-              slug: 'inspiring-founders',
-              Visibility: false,
-              visibility: false,
-              cover_image: null,
-              top_people_heading: null,
-              display_order: 0,
-              account: { documentId: 'acc-123', username: 'testuser' },
-            }
-          }
-        })
-      });
-    } else if (payload?.query?.includes('createRecommendedPerson')) {
-      recommendationCreated = true;
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            createRecommendedPerson: {
-              documentId: 'person-rec-456',
-              name: 'Mock Person Name',
-              display_order: 0,
-              is_pinned: false,
-              people_category: null,
-            }
-          }
-        })
-      });
-    } else if ((payload?.query?.includes('PEOPLE_LISTS_BY_ACCOUNT') || payload?.query?.includes('PeopleLists') || payload?.query?.includes('PersonLists') || payload?.query?.includes('personLists')) && !payload?.query?.includes('PeopleByList')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            personLists: [
-              {
-                documentId: 'people-list-123',
-                List_Name: 'Inspiring Founders',
-                list_description: null,
-                slug: 'inspiring-founders',
-                Visibility: false,
-                visibility: false,
-                cover_image: null,
-                top_people_heading: null,
-                display_order: 0,
-                account: { documentId: 'acc-123', username: 'testuser' },
-                recommended_people: []
-              }
-            ]
-          }
-        })
-      });
-    } else if (payload?.query?.includes('PEOPLE_BY_LIST') || payload?.query?.includes('PeopleByList')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            personLists: [
-              {
-                documentId: 'people-list-123',
-                List_Name: 'Inspiring Founders',
-                list_description: null,
-                slug: 'inspiring-founders',
-                Visibility: false,
-                visibility: false,
-                cover_image: null,
-                top_people_heading: null,
-                display_order: 0,
-                account: { documentId: 'acc-123', username: 'testuser' },
-                recommended_people: recommendationCreated ? [
-                  {
-                    documentId: 'person-rec-456',
-                    name: 'Mock Person Name',
-                    username_handle: 'mockperson',
-                    headline: 'Founder & Builder',
-                    location: 'San Francisco, CA',
-                    avatar_path: 'https://example.com/avatar.png',
-                    media_details: '{}',
-                    primary_platform: 'linkedin',
-                    social_urls: '{}',
-                    skills_tags: '["React", "Node"]',
-                    user_recommendation_note: 'A great leader and engineer.',
-                    user_rating: 9,
-                    is_pinned: false,
-                    pin_order: null,
-                    display_order: 0,
-                    people_category: null
-                  }
-                ] : []
-              }
-            ]
-          }
-        })
-      });
-    } else if (payload?.query?.includes('peopleCategories')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: { peopleCategories: [] } }),
-      });
-    } else {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: {} })
-      });
+test('People: paste a profile link, prefill, sector required, save without rating or follower count', async ({ browser, baseURL }) => {
+  const state = fixtureState();
+  const template = state.lists.personLists[0];
+  state.lists.personLists = [{ ...template, documentId: 'people-0', List_Name: 'Makers', Title: 'Makers', slug: 'makers', Visibility: false, visibility: false }];
+  const handle = await openFixture(browser, baseURL!, state, { owner: true });
+  const writes: { path: string; body: any }[] = [];
+  const collectionId = bookFixtureId('collection', 'people-0');
+  const entityId = '7b0e8a52-4c1d-4f7e-9a51-0d6c2f1e3a32';
+  await handle.page.route('**/catalog/link-preview', async (route) => {
+    writes.push({ path: 'link-preview', body: route.request().postDataJSON() });
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ preview }) });
+  });
+  await handle.page.route('**/catalog/link-preview/image', async (route) => {
+    writes.push({ path: 'link-preview/image', body: route.request().postDataJSON() });
+    await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ media: { id: PHOTO_ID } }) });
+  });
+  await handle.page.route(`**/api/explorers/v1/media/${PHOTO_ID}/content`, (route) => route.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+  await handle.page.route('**/api/explorers/v1/**', async (route) => {
+    const request = route.request(), url = new URL(request.url()), path = url.pathname;
+    if (request.method() === 'GET' && path === '/api/explorers/v1/catalog/taxonomy' && url.searchParams.get('category') === 'people') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(taxonomyCatalogPageSchema.parse({
+        version: 'explorers-taxonomy-catalog/v1', category: 'people', state: 'CONFIGURED', catalogVersion: 1, requestedLocale: null, defaultLocale: 'en',
+        items: [{ id: SECTOR, category: 'people', slug: 'design', parentId: null, position: 0, label: 'Design', resolvedLocale: 'en' }], nextCursor: null })) });
     }
+    if (request.method() === 'POST' && path === '/api/explorers/v1/entities/resolve') {
+      const body = request.postDataJSON(); writes.push({ path, body });
+      const { title, ...details } = body.details;
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ entity: personEntityDtoSchema.parse({
+        id: entityId, kind: 'person', title, origin: 'manual', suppressed: false, details }) }) });
+    }
+    if (request.method() === 'POST' && path === '/api/explorers/v1/recommendations') {
+      const body = request.postDataJSON(); writes.push({ path, body });
+      return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ recommendation: recommendationCoreDtoSchema.parse({
+        id: '7b0e8a52-4c1d-4f7e-9a51-0d6c2f1e3a33', accountId: canonicalAccountFixture().id, entityId, category: 'people',
+        userRating: null, publicationState: 'draft', revision: 1, mediaIds: [PHOTO_ID] }) }) });
+    }
+    return route.fallback();
   });
+  try {
+    const { page } = handle;
+    await page.goto(`/recommendations/people/${collectionId}/add`, { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { name: 'Add Person' })).toBeVisible();
+    await expect(page.getByLabel('Followers')).toHaveCount(0);
+    await expect(page.getByRole('slider', { name: 'Your rating' })).toHaveCount(0);
 
-  // Mock Scraper Endpoint
-  await page.route('**/api/people/scrape-profile', async route => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        full_name: 'Mock Person Name',
-        name: 'Mock Person Name',
-        bio: 'Founder & Builder',
-        platform: 'linkedin',
-        profile_url: 'https://linkedin.com/in/test'
-      })
-    });
-  });
-});
+    const link = page.getByLabel('Profile link');
+    await link.fill(PROFILE);
+    await link.blur();
+    await expect(page.getByLabel('Full Name')).toHaveValue('Ada Example');
+    await expect(page.getByLabel('Headline / Role')).toHaveValue('Type designer');
+    await expect(page.locator('[data-detected-platform]')).toHaveText('Instagram');
+    await expect(page.locator(`img[src="/api/explorers/v1/media/${PHOTO_ID}/content"]`)).toBeVisible();
 
-test('Flow 7: People List and Scraper E2E', async ({ page }) => {
-  const consoleErrors: string[] = [];
-  page.on('console', message => {
-    if (message.type() === 'error') consoleErrors.push(message.text());
-  });
-  await page.goto('/recommendations/people');
+    const save = page.getByRole('button', { name: 'Save', exact: true });
+    await expect(save).toBeDisabled();
+    await page.getByLabel('Sector', { exact: true }).selectOption(SECTOR);
+    await expect(save).toBeEnabled();
+    await save.click();
 
-  const addListBtn = page.locator('button:has-text("New List")').first();
-  await expect(addListBtn).toBeVisible();
-  await addListBtn.click();
-
-  const nameInput = page.locator('input[name="List_Name"]');
-  await nameInput.fill('Inspiring Founders');
-
-  const submitBtn = page.locator('button[type="submit"]:has-text("Create List")');
-  await submitBtn.click();
-
-  await page.goto('/recommendations/people/people-list-123');
-
-  const addPersonBtn = page.locator('button:has-text("Add Person")');
-  await expect(addPersonBtn).toBeVisible();
-  await addPersonBtn.click();
-
-  await expect(page).toHaveURL(/\/recommendations\/people\/people-list-123\/add/);
-
-  const urlInput = page.locator('input[placeholder*="linkedin.com"]');
-  await urlInput.fill('https://linkedin.com/in/test');
-
-  const fetchBtn = page.locator('button:has-text("Fetch")');
-  await fetchBtn.click();
-
-  const noteEditor = page.locator('.ql-editor');
-  await expect(noteEditor).toBeVisible();
-  await noteEditor.fill('Inspiring coding mentor.');
-
-  const saveBtn = page.locator('button:has-text("Add to List")');
-  await saveBtn.click();
-
-  await expect(page).toHaveURL(/\/recommendations\/people\/people-list-123/);
-  await expect(page.getByRole('heading', { name: 'Publish this list?' })).toBeVisible();
-  await page.getByRole('button', { name: 'Keep Draft' }).click();
-  await expect(page.getByRole('heading', { name: 'Publish this list?' })).toBeHidden();
-  expect(consoleErrors).toEqual([]);
+    await expect.poll(() => writes.some((w) => w.path === '/api/explorers/v1/recommendations')).toBe(true);
+    expect(writes.find((w) => w.path === 'link-preview')?.body).toEqual({ url: PROFILE });
+    expect(writes.find((w) => w.path === 'link-preview/image')?.body).toEqual({ imageUrl: preview.imageUrl });
+    expect(writes.find((w) => w.path === '/api/explorers/v1/entities/resolve')?.body.details).toMatchObject({
+      title: 'Ada Example', headline: 'Type designer', primaryPlatform: 'instagram', externalFollowerCountText: null,
+      socialUrls: { primary: PROFILE, instagram: PROFILE } });
+    expect(writes.find((w) => w.path === '/api/explorers/v1/recommendations')?.body).toMatchObject({ userRating: null, peopleSectorTermId: SECTOR, mediaIds: [PHOTO_ID] });
+  } finally { await closeFixture(handle); }
 });

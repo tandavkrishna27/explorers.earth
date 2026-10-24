@@ -1,3 +1,4 @@
+import {withSampleFlag} from '../../shared/samples/readIsSample';
 import type { EditableOwnerRecommendation, OwnerCollectionDto, OwnerMembershipDto } from '../../../../../tunes/shared/explorersOwnerContentContract';
 import { emptyBookDetails, safeBookUrlSchema, type BookRecommendationContext } from '../../../../../tunes/shared/explorersBookContract';
 import type { BookList, BuyLink, RecommendedBook } from '../types';
@@ -24,7 +25,7 @@ export function bookViewModel(detail:Readonly<EditableOwnerRecommendation>,membe
     Media:detail.mediaIds.map(id=>({documentId:id,url:`/api/explorers/v1/media/${id}/content`})),
   };
 }
-export function collectionViewModel(collection:Readonly<OwnerCollectionDto>,books:RecommendedBook[],username=''):BookList {
+function collectionViewModelBase(collection:Readonly<OwnerCollectionDto>,books:RecommendedBook[],username=''):BookList {
   return {documentId:collection.id,List_Name:collection.title,list_description:collection.description,slug:collection.slug,
     visibility:collection.visibility==='public'&&collection.publicationState==='published',
     cover_image:collection.coverMediaId?{documentId:collection.coverMediaId,url:`/api/explorers/v1/media/${collection.coverMediaId}/content`}:null,
@@ -32,3 +33,6 @@ export function collectionViewModel(collection:Readonly<OwnerCollectionDto>,book
     recommended_books:books.map(book=>({...book,book_list:{documentId:collection.id,List_Name:collection.title,slug:collection.slug}})),
     account:{documentId:collection.accountId,username}};
 }
+
+/** WP11: the legacy list carries isSample (only when true) so cards, picks and the list page can badge it. */
+export const collectionViewModel:typeof collectionViewModelBase=(...args)=>withSampleFlag(args[0],collectionViewModelBase(...args));

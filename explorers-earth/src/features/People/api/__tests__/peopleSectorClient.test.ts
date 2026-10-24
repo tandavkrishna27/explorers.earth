@@ -5,7 +5,7 @@ import {emptyPersonDetails} from '../../../../../../tunes/shared/explorersPerson
 const id=(n:number)=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const account=id(1),list=id(2),entity=id(3),recommendation=id(4),sector=id(5);
 const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status});
-const collection={id:list,accountId:account,category:'people',title:'People',slug:'people',visibility:'private',publicationState:'draft',revision:4,description:null,heading:null,coverMediaId:null,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',locationLink:null};
+const collection={id:list,accountId:account,category:'people',title:'People',slug:'people',visibility:'private',publicationState:'draft',revision:4,description:null,heading:null,coverMediaId:null,isSample:false,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',linkedLists:[]};
 const core={id:recommendation,accountId:account,category:'people',entityId:entity,userRating:null,publicationState:'draft',revision:1,mediaIds:[]};
 const detail={...core,archived:false,pin:null,categoryRevision:'9',note:null,entity:{id:entity,kind:'person',title:'Alex',details:emptyPersonDetails(),origin:'manual',suppressed:false},displayOverrides:{},displayTitle:'Alex',effectivePersonDetails:emptyPersonDetails(),peopleSector:{catalogState:'CONFIGURED',catalogVersion:1,defaultLocale:'en',sector:{id:sector,slug:'canonical-sector',label:'Approved',unavailable:false},selectionUnavailable:false}};
 const draft=(assignment?:string|null):ManualPersonDraft=>({title:'Alex',...emptyPersonDetails(),note:null,userRating:null,mediaIds:[],...(assignment===undefined?{}:{peopleSectorTermId:assignment})});

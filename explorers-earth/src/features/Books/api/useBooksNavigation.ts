@@ -3,6 +3,7 @@ import type {AccountDto} from '../../../../../tunes/shared/explorersContract';
 import useAuthStore from '../../../store/store';
 import {explorersApiClient} from '../../../lib/explorersApiClient';
 import {recordViewedAccount} from '../../../lib/viewedRevisions';
+import {queryClient} from '../../../lib/queryClient';
 import {publishPublicProfileInvalidation} from '../../PublicHome/api/publicProfileInvalidation';
 
 export function useBooksNavigation(){
@@ -26,6 +27,7 @@ export function useBooksNavigation(){
    const visible=intent.action==='publish';
    const categories=profile.categories.map(c=>({...c,...(c.category==='books'?{isPublic:visible,...(!visible?{pinnedOrder:null}:{})}:{})}));
    const saved=await explorersApiClient.updateAccount({expectedRevision:profile.revision,categories});
+   void queryClient.invalidateQueries({queryKey:['explorers-account']});
    if(!current())return;setAccount(saved);
    publishPublicProfileInvalidation({accountDocumentId:saved.id,username:saved.handle??'',category:'public_books',action:intent.action,eventId:crypto.randomUUID()});
   }catch(e){if(current())setError(e instanceof Error?e.message:'Category settings could not be saved');}finally{if(current())setBusy(false);}

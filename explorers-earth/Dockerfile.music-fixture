@@ -30,6 +30,7 @@ COPY tunes/shared/explorersPublicContentContract.ts /workspace/tunes/shared/expl
 COPY tunes/shared/explorersRichNoteContract.ts /workspace/tunes/shared/explorersRichNoteContract.ts
 COPY tunes/shared/explorersBookContract.ts /workspace/tunes/shared/explorersBookContract.ts
 COPY tunes/shared/explorersBookCoverContract.ts /workspace/tunes/shared/explorersBookCoverContract.ts
+COPY tunes/shared/explorersLinkPreviewContract.ts /workspace/tunes/shared/explorersLinkPreviewContract.ts
 COPY tunes/shared/explorersMovieContract.ts /workspace/tunes/shared/explorersMovieContract.ts
 COPY tunes/shared/explorersMovieMediaContract.ts /workspace/tunes/shared/explorersMovieMediaContract.ts
 COPY tunes/shared/explorersAppContract.ts /workspace/tunes/shared/explorersAppContract.ts
@@ -39,13 +40,15 @@ COPY tunes/shared/currency.ts /workspace/tunes/shared/currency.ts
 COPY tunes/shared/explorersPersonContract.ts /workspace/tunes/shared/explorersPersonContract.ts
 COPY tunes/shared/explorersPublicPeopleSectorContract.ts /workspace/tunes/shared/explorersPublicPeopleSectorContract.ts
 COPY tunes/shared/explorersPlaceContract.ts /workspace/tunes/shared/explorersPlaceContract.ts
-COPY tunes/shared/explorersPlaceLinkContract.ts /workspace/tunes/shared/explorersPlaceLinkContract.ts
+COPY tunes/shared/explorersPlacesNearbyContract.ts /workspace/tunes/shared/explorersPlacesNearbyContract.ts
+COPY tunes/shared/explorersListLinkContract.ts /workspace/tunes/shared/explorersListLinkContract.ts
 COPY tunes/shared/explorersGuideContract.ts /workspace/tunes/shared/explorersGuideContract.ts
 COPY tunes/shared/explorersLifecycleObservation.ts /workspace/tunes/shared/explorersLifecycleObservation.ts
 COPY tunes/shared/explorersGameContract.ts /workspace/tunes/shared/explorersGameContract.ts
 COPY tunes/shared/explorersGameOwnerContract.ts /workspace/tunes/shared/explorersGameOwnerContract.ts
 COPY tunes/shared/explorersTaxonomyContract.ts /workspace/tunes/shared/explorersTaxonomyContract.ts
 COPY tunes/shared/explorersReservedHandles.ts /workspace/tunes/shared/explorersReservedHandles.ts
+COPY tunes/shared/explorersListLinkContract.ts /workspace/tunes/shared/explorersListLinkContract.ts
 RUN npm run build
 
 FROM ghcr.io/tandavkrishna27/mirror/nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 AS runner

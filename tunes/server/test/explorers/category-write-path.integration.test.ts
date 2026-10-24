@@ -110,14 +110,14 @@ describePg("owner write path for typed categories", () => {
     // No offer supplied: the row is created as unknown, never as free.
     const created = await repository.createRecommendation(accountId, {category: "products", entityId: entity.id, collectionId: parent.id,
       expectedCollectionRevision: parent.revision}, key());
-    expect(await readProductOffer(pool, created.id, accountId)).toEqual({price: null, currencyCode: null, buyUrl: null});
+    expect(await readProductOffer(pool, created.id, accountId)).toEqual({price: null, currencyCode: null, buyUrl: null, affiliateDisclosed: false});
     // The reader returns the empty offer for an absent row too, so assert the row itself
     // exists: this recommendation owns its offer from creation.
     expect((await pool.query("SELECT count(*)::int AS count FROM product_recommendation_context WHERE recommendation_id=$1", [created.id])).rows[0].count).toBe(1);
     const updated = await repository.updateRecommendation(accountId, created.id, created.revision, {productOffer: {price: "0.00", currencyCode: "USD", buyUrl: null}}, key());
     expect(await readProductOffer(pool, created.id, accountId)).toMatchObject({price: "0.00", currencyCode: "USD"});
     await repository.updateRecommendation(accountId, created.id, updated.revision, {productOffer: {price: null, currencyCode: null, buyUrl: null}}, key());
-    expect(await readProductOffer(pool, created.id, accountId)).toEqual({price: null, currencyCode: null, buyUrl: null});
+    expect(await readProductOffer(pool, created.id, accountId)).toEqual({price: null, currencyCode: null, buyUrl: null, affiliateDisclosed: false});
   });
 
   it("accepts an App and a Product display override on update", async () => {
@@ -142,7 +142,7 @@ describePg("owner write path for typed categories", () => {
     const row = await repository.createRecommendation(accountId, {category: "apps", entityId: app.id, collectionId: appList.id, expectedCollectionRevision: appList.revision}, key());
     await expect(repository.updateRecommendation(accountId, row.id, row.revision, {productOffer: {price: "1.00", currencyCode: "USD", buyUrl: null}}, key())).rejects.toThrow();
     // The refused offer left nothing behind.
-    expect(await readProductOffer(pool, row.id, accountId)).toEqual({price: null, currencyCode: null, buyUrl: null});
+    expect(await readProductOffer(pool, row.id, accountId)).toEqual({price: null, currencyCode: null, buyUrl: null, affiliateDisclosed: false});
   });
 
   it("persists the typed Place facts and a context that starts private", async () => {
@@ -213,6 +213,31 @@ describePg("owner write path for typed categories", () => {
     const after = await readPlaceCollectionDetails(pool, list.id, accountId);
     // Replaced wholesale, not merged: a half-updated location is a different place.
     expect(after).toEqual({locationEntityId: null, locationSnapshot: moved, instagramMediaUrl: null});
+  });
+
+  it("allows several Places lists for the same city (NL-04)", async () => {
+    const accountId = await account();
+    const goa = {version: 1 as const, name: "Goa", address: "Goa, India", providerPlaceId: "ChIJ_goa", latitude: 15.4909, longitude: 73.8278};
+    const food = await repository.createCollection(accountId, {category: "places", title: "Goa food", slug: `goa-food-${randomUUID()}`,
+      placeLocation: {locationEntityId: null, locationSnapshot: goa, instagramMediaUrl: null}}, key());
+    const beaches = await repository.createCollection(accountId, {category: "places", title: "Goa beaches", slug: `goa-beaches-${randomUUID()}`,
+      placeLocation: {locationEntityId: null, locationSnapshot: goa, instagramMediaUrl: null}}, key());
+    expect(food.id).not.toBe(beaches.id);
+    const rows = (await pool.query(
+      "SELECT count(*)::int AS count FROM place_collection_details WHERE account_id=$1 AND location_snapshot->>'providerPlaceId'='ChIJ_goa'", [accountId])).rows[0];
+    expect(rows.count).toBe(2);
+  });
+
+  it("creates a located list without a social link or note, and sets both later on update (NL-05)", async () => {
+    const accountId = await account();
+    const snapshot = {version: 1 as const, name: "Lisbon", address: "Lisbon, Portugal", providerPlaceId: "ChIJ_lx", latitude: 38.7223, longitude: -9.1393};
+    const list = await repository.createCollection(accountId, {category: "places", title: "Lisbon", slug: `lisbon-${randomUUID()}`,
+      placeLocation: {locationEntityId: null, locationSnapshot: snapshot, instagramMediaUrl: null}}, key());
+    expect(await readPlaceCollectionDetails(pool, list.id, accountId)).toEqual({locationEntityId: null, locationSnapshot: snapshot, instagramMediaUrl: null});
+    const updated = await repository.updateCollection(accountId, list.id, list.revision,
+      {description: "Where I eat", placeLocation: {locationEntityId: null, locationSnapshot: snapshot, instagramMediaUrl: "https://example.com/reel"}}, key());
+    expect(updated.description).toBe("Where I eat");
+    expect((await readPlaceCollectionDetails(pool, list.id, accountId))?.instagramMediaUrl).toBe("https://example.com/reel");
   });
 
   it("refuses a location aggregate on a list of another category, on create and on update", async () => {

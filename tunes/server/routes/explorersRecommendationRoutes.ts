@@ -38,7 +38,7 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
       return response.status(status).json({[name]:result});
     } catch(error) {
       if(error instanceof BookProviderFailure||error instanceof MovieProviderFailure||error instanceof GameCatalogFailure){if(error instanceof BookProviderFailure&&error.retryAfter)response.set('Retry-After',String(error.retryAfter));return response.status(error.status).json({error:{code:error.code,message:error.message,requestId}});}
-      if(error instanceof RecommendationFailure) return response.status(error.status).json({error:{code:error.status===404?'NOT_FOUND':error.status===409?'CONFLICT':error.status===413?'RESOURCE_TOO_LARGE':'INVALID_INPUT',message:error.message,requestId}});
+      if(error instanceof RecommendationFailure) return response.status(error.status).json({error:{code:error.code??(error.status===404?'NOT_FOUND':error.status===409?'CONFLICT':error.status===413?'RESOURCE_TOO_LARGE':'INVALID_INPUT'),message:error.message,requestId}});
       sendActorError(request,response,error);
     }
   };
@@ -50,7 +50,7 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
     } catch(error) {
       if(error instanceof GamePresentationUnavailable)return response.status(error.status).json({error:{code:error.code,message:error.message,requestId}});
       if(error instanceof SearchFailure)return response.status(error.status).json({error:{code:error.status===503?'UNAVAILABLE':error.status===409?'CONFLICT':error.status===413?'RESOURCE_TOO_LARGE':error.status===404?'NOT_FOUND':'INVALID_INPUT',message:error.message,requestId,...(error.status===503?{retryable:true}:{})}});
-      if(error instanceof RecommendationFailure) return response.status(error.status).json({error:{code:error.status===404?'NOT_FOUND':error.status===409?'CONFLICT':error.status===413?'RESOURCE_TOO_LARGE':'INVALID_INPUT',message:error.message,requestId}});
+      if(error instanceof RecommendationFailure) return response.status(error.status).json({error:{code:error.code??(error.status===404?'NOT_FOUND':error.status===409?'CONFLICT':error.status===413?'RESOURCE_TOO_LARGE':'INVALID_INPUT'),message:error.message,requestId}});
       sendActorError(request,response,error);
     }
   };
@@ -64,10 +64,14 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
   routes.post('/api/explorers/v1/collections/:id/memberships/:recommendationId',async(req,res)=>mutation((a,id,b,c)=>service.gameMembership(a,id,String(req.params.recommendationId),b,c,true),'membership')(req,res));
   routes.delete('/api/explorers/v1/collections/:id/memberships/:recommendationId',async(req,res)=>mutation((a,id,b,c)=>service.gameMembership(a,id,String(req.params.recommendationId),b,c,false),'membership')(req,res));
   routes.all('/api/explorers/v1/collections/:id/memberships/:recommendationId',unsupported);
-  // Ticket 5.2. The one location a Products or People list may belong to.
-  routes.post('/api/explorers/v1/collections/:id/location',mutation((a,id,b,c)=>service.locationLink(a,id,b,c,true),'collection'));
-  routes.delete('/api/explorers/v1/collections/:id/location',mutation((a,id,b,c)=>service.locationLink(a,id,b,c,false),'collection'));
-  routes.all('/api/explorers/v1/collections/:id/location',unsupported);
+  // WP10 (LNK-01..08). Links between two of the owner's lists. Attach is addressed by the
+  // host list; role and detach by the link id. Detach returns the removed link so the client
+  // can Undo at its position.
+  routes.post('/api/explorers/v1/collections/:id/links',mutation((a,id,b,c)=>service.attachListLink(a,id,b,c),'link',201));
+  routes.all('/api/explorers/v1/collections/:id/links',unsupported);
+  routes.patch('/api/explorers/v1/collections/:id/links/:linkId',async(req,res)=>mutation((a,id,b,c)=>service.setListLinkRole(a,id,String(req.params.linkId??''),b,c),'link')(req,res));
+  routes.delete('/api/explorers/v1/collections/:id/links/:linkId',async(req,res)=>mutation((a,id,b,c)=>service.detachListLink(a,id,String(req.params.linkId??''),b,c),'link')(req,res));
+  routes.all('/api/explorers/v1/collections/:id/links/:linkId',unsupported);
   // Ticket 5.3. The guide aggregate: the parent's guide fields, its cover and a page of
   // ordered sections. Registration order matters here - 'sections/order' comes before
   // 'sections/:sectionId', or Express matches the literal 'order' as a section id and a
@@ -79,6 +83,30 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
   routes.patch('/api/explorers/v1/collections/:id/guide/sections/:sectionId',async(req,res)=>mutation((a,id,b,c)=>guides.setSection(a,id,String(req.params.sectionId??''),b,c),'guide')(req,res));
   routes.delete('/api/explorers/v1/collections/:id/guide/sections/:sectionId',async(req,res)=>mutation((a,id,b,c)=>guides.removeSection(a,id,String(req.params.sectionId??''),b,c),'guide')(req,res));
   routes.put('/api/explorers/v1/collections/:id/guide/cover',mutation((a,id,b,c)=>guides.setCover(a,id,b,c),'guide'));
+  // WP9 (GD-24..30). One route per user action. Literal sub-paths ('position', 'duplicate',
+  // 'clear', 'time-label', 'note') are registered before nothing that could swallow them:
+  // every day route has a fixed segment count.
+  const day=(req:Request)=>String(req.params.sectionId??''),item=(req:Request)=>String(req.params.localId??'');
+  routes.post('/api/explorers/v1/collections/:id/guide/days',mutation((a,id,b,c)=>guides.addDay(a,id,b,c),'guide',201));
+  routes.patch('/api/explorers/v1/collections/:id/guide/days/:sectionId/position',async(req,res)=>mutation((a,id,b,c)=>guides.moveDay(a,id,day(req),b,c),'guide')(req,res));
+  routes.post('/api/explorers/v1/collections/:id/guide/days/:sectionId/duplicate',async(req,res)=>mutation((a,id,b,c)=>guides.duplicateDay(a,id,day(req),b,c),'guide',201)(req,res));
+  routes.post('/api/explorers/v1/collections/:id/guide/days/:sectionId/clear',async(req,res)=>mutation((a,id,b,c)=>guides.clearDay(a,id,day(req),b,c),'guide')(req,res));
+  routes.delete('/api/explorers/v1/collections/:id/guide/days/:sectionId',async(req,res)=>mutation((a,id,b,c)=>guides.deleteDay(a,id,day(req),b,c),'guide')(req,res));
+  routes.post('/api/explorers/v1/collections/:id/guide/days/:sectionId/items',async(req,res)=>mutation((a,id,b,c)=>guides.addDayItem(a,id,day(req),b,c),'guide',201)(req,res));
+  routes.patch('/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/position',async(req,res)=>mutation((a,id,b,c)=>guides.moveDayItem(a,id,day(req),item(req),b,c),'guide')(req,res));
+  routes.put('/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/time-label',async(req,res)=>mutation((a,id,b,c)=>guides.setTimeLabel(a,id,day(req),item(req),b,c),'guide')(req,res));
+  routes.put('/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/note',async(req,res)=>mutation((a,id,b,c)=>guides.setNoteText(a,id,day(req),item(req),b,c),'guide')(req,res));
+  routes.delete('/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId',async(req,res)=>mutation((a,id,b,c)=>guides.removeDayItem(a,id,day(req),item(req),b,c),'guide')(req,res));
+  routes.all('/api/explorers/v1/collections/:id/guide/days',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/guide/days/:sectionId',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/guide/days/:sectionId/position',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/guide/days/:sectionId/duplicate',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/guide/days/:sectionId/clear',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/guide/days/:sectionId/items',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/position',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/time-label',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/note',unsupported);
   routes.all('/api/explorers/v1/collections/:id/guide',unsupported);
   routes.all('/api/explorers/v1/collections/:id/guide/sections/order',unsupported);
   routes.all('/api/explorers/v1/collections/:id/guide/sections',unsupported);
@@ -101,6 +129,12 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
   routes.patch('/api/explorers/v1/collections/:id',mutation((a,id,b,c)=>service.updateCollection(a,id,b,c),'collection'));
   routes.patch('/api/explorers/v1/collections/:id/order',mutation((a,id,b,c)=>service.reorderCollection(a,id,b,c),'collection'));
   routes.delete('/api/explorers/v1/collections/:id',mutation((a,id,b,c)=>service.archiveCollection(a,id,b,c),'collection'));
+  routes.post('/api/explorers/v1/collections/:id/make-it-mine',mutation((a,id,b,c)=>service.makeCollectionMine(a,id,b,c),'collection'));
+  routes.post('/api/explorers/v1/collections/:id/restore',mutation((a,id,b,c)=>service.restoreCollection(a,id,b,c),'collection'));
+  routes.post('/api/explorers/v1/collections/:id/purge',mutation((a,id,b,c)=>service.purgeCollection(a,id,b,c),'collection'));
+  routes.all('/api/explorers/v1/collections/:id/restore',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/purge',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/make-it-mine',unsupported);
   routes.get('/api/explorers/v1/recommendations/search',read((a,_id,q)=>{
     if(Object.values(q as object).some(v=>typeof v!=='string'))throw new RecommendationFailure(422,'Search parameters must be scalar');
     if(Object.hasOwn(q as object,'scope'))throw new RecommendationFailure(422,'Scope is specified by the route');

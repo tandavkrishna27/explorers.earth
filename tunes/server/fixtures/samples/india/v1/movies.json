@@ -1,0 +1,13 @@
+{"set":"india","version":"v1","category":"movies","lists":[
+ {"key":"in-movies-indian-classics","title":"Indian cinema classics","description":"Films everyone ends up quoting.","topPicks":true,"items":[
+  {"note":"The friendship, the songs, the villain. Still holds up.","rating":10,"details":{"title":"Sholay","mediaType":"movie","yearText":"1975","director":"Ramesh Sippy"}},
+  {"note":"A cricket match that carries a whole film.","rating":9,"details":{"title":"Lagaan","mediaType":"movie","yearText":"2001","director":"Ashutosh Gowariker"}},
+  {"note":"Funny first, then it makes you think.","rating":9,"details":{"title":"3 Idiots","mediaType":"movie","yearText":"2009","director":"Rajkumar Hirani"}},
+  {"note":"Epic in every sense; see it on the biggest screen you can.","rating":9,"details":{"title":"RRR","mediaType":"movie","yearText":"2022","director":"S. S. Rajamouli"}},
+  {"note":"A thriller with an ending you will not see coming.","rating":9,"details":{"title":"Drishyam","mediaType":"movie","yearText":"2013","director":"Jeethu Joseph"}}]},
+ {"key":"in-movies-feel-good","title":"Feel-good favourites","description":"For a quiet Sunday evening.","topPicks":false,"items":[
+  {"note":"Three friends, one road trip, and the urge to book a ticket.","rating":9,"details":{"title":"Zindagi Na Milegi Dobara","mediaType":"movie","yearText":"2011","director":"Zoya Akhtar"}},
+  {"note":"Hope, patience and one of the best endings in film.","rating":10,"details":{"title":"The Shawshank Redemption","mediaType":"movie","yearText":"1994","director":"Frank Darabont"}},
+  {"note":"Pure kindness on screen.","rating":9,"details":{"title":"Paddington 2","mediaType":"movie","yearText":"2017","director":"Paul King"}},
+  {"note":"Hand-drawn magic; every frame is a painting.","rating":10,"details":{"title":"Spirited Away","mediaType":"movie","yearText":"2001","director":"Hayao Miyazaki"}}]}
+]}

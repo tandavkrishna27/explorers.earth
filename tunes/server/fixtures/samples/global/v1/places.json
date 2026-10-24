@@ -1,0 +1,12 @@
+{"set":"global","version":"v1","category":"places","lists":[
+ {"key":"gl-places-paris-landmarks","title":"Paris landmarks","description":"The classics, done at the right time of day.","topPicks":true,"items":[
+  {"note":"Book the summit ahead; go at dusk.","rating":9,"googlePlaceId":null,"details":{"title":"Eiffel Tower","formattedAddress":"Champ de Mars, 5 Av. Anatole France, Paris","latitude":48.8584,"longitude":2.2945}},
+  {"note":"Pick one wing; you cannot see it all.","rating":10,"googlePlaceId":null,"details":{"title":"Louvre Museum","formattedAddress":"Rue de Rivoli, Paris","latitude":48.8606,"longitude":2.3376}},
+  {"note":"The Impressionists under a railway-station roof.","rating":10,"googlePlaceId":null,"details":{"title":"Musée d'Orsay","formattedAddress":"Esplanade Valéry Giscard d'Estaing, Paris","latitude":48.86,"longitude":2.3266}},
+  {"note":"Climb the steps for the view over the city.","rating":9,"googlePlaceId":null,"details":{"title":"Sacré-Cœur","formattedAddress":"35 Rue du Chevalier de la Barre, Paris","latitude":48.8867,"longitude":2.3431}}]},
+ {"key":"gl-places-new-york-classics","title":"New York classics","description":"A first visit, without the tourist traps.","topPicks":false,"items":[
+  {"note":"Rent a bike and loop the whole park.","rating":9,"googlePlaceId":null,"details":{"title":"Central Park","formattedAddress":"New York, NY","latitude":40.7829,"longitude":-73.9654}},
+  {"note":"The rooftop in summer is a bonus.","rating":10,"googlePlaceId":null,"details":{"title":"The Metropolitan Museum of Art","formattedAddress":"1000 5th Ave, New York, NY","latitude":40.7794,"longitude":-73.9632}},
+  {"note":"Walk it from Brooklyn towards Manhattan.","rating":9,"googlePlaceId":null,"details":{"title":"Brooklyn Bridge","formattedAddress":"Brooklyn Bridge, New York, NY","latitude":40.7061,"longitude":-73.9969}},
+  {"note":"The pastrami sandwich is the whole point.","rating":8,"googlePlaceId":null,"details":{"title":"Katz's Delicatessen","formattedAddress":"205 E Houston St, New York, NY","latitude":40.7223,"longitude":-73.9874}}]}
+]}

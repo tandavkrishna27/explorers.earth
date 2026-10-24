@@ -17,18 +17,20 @@ import { ownerCollectionPageSchema, ownerRecommendationPageSchema, ownerCollecti
   type OwnerCollectionsRequest, type OwnerRecommendationsRequest, type OwnerCollectionDto, type OwnerRecommendationDto } from '../../../tunes/shared/explorersOwnerContentContract';
 import {ownerTopPicksRequestSchema,ownerTopPickPageSchema,ownerContentSummarySchema,type OwnerTopPicksRequest,type OwnerContentSummary} from '../../../tunes/shared/explorersOwnerContentContract';
 import { z } from 'zod/v3';
-import {taxonomyCatalogQuerySchema,taxonomyCatalogPageSchema,type TaxonomyCatalogPage} from '../../../tunes/shared/explorersTaxonomyContract';
-import { createCollectionSchema,createCollectionResultSchema,type CreateCollectionResult,updateCollectionSchema,createRecommendationObjectSchema,createRecommendationSchema,updateRecommendationSchema,reorderCollectionSchema,collectionCoreDtoSchema,recommendationCoreDtoSchema,apiErrorSchema,contentIdSchema,type CreateCollectionInput,type UpdateCollectionInput,type CreateRecommendationInput,type UpdateRecommendationInput } from '../../../tunes/shared/explorersContract';
+import {taxonomyCatalogQuerySchema,taxonomyCatalogPageSchema,type TaxonomyCatalogPage,taxonomyCatalogCategorySchema} from '../../../tunes/shared/explorersTaxonomyContract';
+type TaxonomyCatalogCategory=z.infer<typeof taxonomyCatalogCategorySchema>;
+import { createCollectionSchema,createCollectionResultSchema,type CreateCollectionResult,updateCollectionSchema,createRecommendationObjectSchema,createRecommendationSchema,updateRecommendationSchema,reorderCollectionSchema,collectionCoreDtoSchema,contentRevisionSchema,recommendationCoreDtoSchema,apiErrorSchema,contentIdSchema,type CreateCollectionInput,type UpdateCollectionInput,type CreateRecommendationInput,type UpdateRecommendationInput } from '../../../tunes/shared/explorersContract';
 import { editableOwnerCollectionSchema,editableOwnerRecommendationSchema,type EditableOwnerCollection,type EditableOwnerRecommendation } from '../../../tunes/shared/explorersOwnerContentContract';
 import { resolveManualEntitySchema,resolveManualGameSchema,entityCoreDtoSchema,type ResolveManualEntityInput } from '../../../tunes/shared/explorersContract';
 import {bookCandidateRequestSchema,bookCandidatesSchema,bookEntityDtoSchema,resolveProviderBookSchema,resolveManualBookSchema,replaceRecommendationEntitySchema} from '../../../tunes/shared/explorersBookContract';
-import {attachLocationLinkSchema,detachLocationLinkSchema} from '../../../tunes/shared/explorersPlaceLinkContract';
+import {attachListLinkSchema,detachListLinkSchema,setListLinkRoleSchema,listLinkCommandResultSchema,type ListLinkCommandResult} from '../../../tunes/shared/explorersListLinkContract';
 import {appEntityDtoSchema,resolveManualAppSchema} from '../../../tunes/shared/explorersAppContract';
 import {productEntityDtoSchema,resolveManualProductSchema} from '../../../tunes/shared/explorersProductContract';
 import {personEntityDtoSchema,resolveManualPersonSchema} from '../../../tunes/shared/explorersPersonContract';
 import {placeEntityDtoSchema,resolveManualPlaceSchema} from '../../../tunes/shared/explorersPlaceContract';
 import {guideAggregateDtoSchema,attachGuideCoverSchema,createGuideSectionSchema,reorderGuideSectionsSchema,
- writeGuideDetailsSchema,writeGuideSectionSchema,guideRevisionSchema} from '../../../tunes/shared/explorersGuideContract';
+ writeGuideDetailsSchema,writeGuideSectionSchema,guideRevisionSchema,addGuideDaySchema,moveGuideDaySchema,addGuideDayItemSchema,
+ moveGuideDayItemSchema,setGuideTimeLabelSchema,setGuideNoteTextSchema,guideItemLocalIdSchema} from '../../../tunes/shared/explorersGuideContract';
 
 export type CompleteOwnerContent<T> = Readonly<{complete:true;items:readonly T[];snapshot:string;accountId:string;generation:number}>;
 const completedSets=new WeakSet<object>();
@@ -96,7 +98,7 @@ export class ExplorersApiError extends Error {
 }
 
 export type CompleteTaxonomyCatalog=Readonly<Omit<TaxonomyCatalogPage,'items'|'nextCursor'>&{complete:true;items:readonly TaxonomyCatalogPage['items'][number][];nextCursor:null;accountId:string;generation:number}>;
-async function taxonomyPage(input:{category:'places'|'people';locale?:string;limit?:number;cursor?:string},signal?:AbortSignal):Promise<TaxonomyCatalogPage>{
+async function taxonomyPage(input:{category:TaxonomyCatalogCategory;locale?:string;limit?:number;cursor?:string},signal?:AbortSignal):Promise<TaxonomyCatalogPage>{
  const query=taxonomyCatalogQuerySchema.parse({...input,...(input.limit===undefined?{}:{limit:String(input.limit)})});
  let page:TaxonomyCatalogPage;
  try{page=await ownerRead('/catalog/taxonomy',query,taxonomyCatalogPageSchema,signal,true);}catch(error){
@@ -106,7 +108,7 @@ async function taxonomyPage(input:{category:'places'|'people';locale?:string;lim
  if(page.category!==query.category||page.requestedLocale!==(query.locale??null))throw new ExplorersApiError(409,'CONFLICT','Catalog response changed; retry loading sectors');
  return page;
 }
-async function completeTaxonomyCatalog(input:{category:'places'|'people';locale?:string},signal?:AbortSignal):Promise<CompleteTaxonomyCatalog>{
+async function completeTaxonomyCatalog(input:{category:TaxonomyCatalogCategory;locale?:string},signal?:AbortSignal):Promise<CompleteTaxonomyCatalog>{
  const initial=useAuthStore.getState(),controller=new AbortController();
  const isCurrent=()=>{const now=useAuthStore.getState();return now.isAuthenticated&&now.accountId===initial.accountId&&now.generation===initial.generation;};
  const stop=()=>controller.abort(),check=()=>{if(controller.signal.aborted||!isCurrent())throw new DOMException('Catalog owner changed','AbortError');};
@@ -302,9 +304,11 @@ export type OwnerDetailObservation<T> = Readonly<{kind:'collection'|'recommendat
 export type CollectionObservation=OwnerDetailObservation<EditableOwnerCollection>;
 export type RecommendationObservation=OwnerDetailObservation<EditableOwnerRecommendation>;
 const issuedDetails=new WeakSet<object>();
-export function assertOwnerDetailObservation(value:OwnerDetailObservation<EditableOwnerCollection|EditableOwnerRecommendation>,kind?:'collection'|'recommendation'):void {
+// An archived detail is observed only to restore or permanently delete it (WP3B, LP-08):
+// every other command refuses it, restore requires it, delete takes either.
+export function assertOwnerDetailObservation(value:OwnerDetailObservation<EditableOwnerCollection|EditableOwnerRecommendation>,kind?:'collection'|'recommendation',archived:'refuse'|'allow'|'require'='refuse'):void {
  const state=useAuthStore.getState();
- if(!value||!issuedDetails.has(value)||kind&&value.kind!==kind||!state.isAuthenticated||state.accountId!==value.accountId||state.generation!==value.generation||Date.now()-value.observedAt>=600000||value.detail.archived)throw new ExplorersApiError(409,'CONFLICT','Reload the owner detail before saving');
+ if(!value||!issuedDetails.has(value)||kind&&value.kind!==kind||!state.isAuthenticated||state.accountId!==value.accountId||state.generation!==value.generation||Date.now()-value.observedAt>=600000||(archived==='refuse'&&value.detail.archived)||(archived==='require'&&!value.detail.archived))throw new ExplorersApiError(409,'CONFLICT','Reload the owner detail before saving');
 }
 /**
  * A command is composed against the version the owner's view showed. The re-read a command
@@ -325,14 +329,14 @@ export function copyOwnerDetailForStaging<T>(value:OwnerDetailObservation<T>):T 
  if(!issuedDetails.has(value))throw new ExplorersApiError(409,'CONFLICT','Reload the owner detail before staging');
  return structuredClone(value.detail);
 }
-async function editableDetail<K extends 'collection'|'recommendation'>(kind:K,id:string,signal?:AbortSignal):Promise<K extends 'collection'?CollectionObservation:RecommendationObservation> {
+async function editableDetail<K extends 'collection'|'recommendation'>(kind:K,id:string,signal?:AbortSignal,archived=false):Promise<K extends 'collection'?CollectionObservation:RecommendationObservation> {
  if(!contentIdSchema.safeParse(id).success)throw new ExplorersApiError(422,'INVALID_INPUT','Invalid resource ID');
  const state=useAuthStore.getState();
  try {
   const schema=kind==='collection'?z.object({collection:editableOwnerCollectionSchema}).strict():z.object({recommendation:editableOwnerRecommendationSchema}).strict();
-  const body=await ownerRead(`/`+(kind==='collection'?'collections':'recommendations')+`/${encodeURIComponent(id)}/editable`,{status:'active'},schema as z.ZodType<any>,signal);
+  const body=await ownerRead(`/`+(kind==='collection'?'collections':'recommendations')+`/${encodeURIComponent(id)}/editable`,{status:archived?'archived':'active'},schema as z.ZodType<any>,signal);
   const detail=body[kind] as EditableOwnerCollection|EditableOwnerRecommendation,current=useAuthStore.getState();
-  if(!current.isAuthenticated||current.generation!==state.generation||current.accountId!==state.accountId||detail.accountId!==state.accountId||detail.id!==id.toLowerCase()||detail.archived)throw new ExplorersApiError(409,'CONFLICT','Invalid editable owner detail');
+  if(!current.isAuthenticated||current.generation!==state.generation||current.accountId!==state.accountId||detail.accountId!==state.accountId||detail.id!==id.toLowerCase()||detail.archived!==archived)throw new ExplorersApiError(409,'CONFLICT','Invalid editable owner detail');
   const observed=deepFreeze({kind,accountId:detail.accountId,generation:state.generation,observedAt:Date.now(),resourceId:detail.id,resourceRevision:detail.revision,categoryRevision:detail.categoryRevision,detail});issuedDetails.add(observed);
   return observed as any;
  } catch(error) {
@@ -425,6 +429,9 @@ async function contentCommand<T extends {id:string}>(path:string,method:string,i
  } finally {unsubscribe();signal?.removeEventListener('abort',stop);}
 }
 const archivedResult=z.object({id:contentIdSchema,archived:z.literal(true)}).strict();
+const deletedResult=z.object({id:contentIdSchema,deleted:z.literal(true)}).strict();
+// Mirrors the server's restore body; the slug rule is the collection DTO's own.
+const restoreCollectionInputSchema=contentRevisionSchema.extend({slug:collectionCoreDtoSchema.shape.slug.optional()}).strict();
 // Ticket 5.3. The aggregate, re-presented with `id` so contentCommand's identity check
 // applies. The transform adds a field rather than renaming one, so nothing downstream has
 // to know the adapter happened.
@@ -435,6 +442,15 @@ async function guideCommand(collectionId:string,suffix:string,method:string,body
   guideCommandResult,signal,undefined,id);
  return result;
 }
+// WP10. The link command result is not a collection DTO; it is re-presented with `id` (the
+// link id) so contentCommand's auth, idempotency and error mapping apply unchanged.
+const listLinkCommandEnvelope=listLinkCommandResultSchema.transform(result=>({...result,id:result.link.id}));
+async function listLinkCommand(path:string,method:string,body:unknown,key:string,signal?:AbortSignal):Promise<ListLinkCommandResult>{
+ const {id:_id,...result}=await contentCommand(path,method,body,key,'link',listLinkCommandEnvelope,signal);
+ return result as ListLinkCommandResult;
+}
+const guideItemPath=(day:string,localId:string,suffix:string)=>
+ `/days/${encodeURIComponent(commandInput(contentIdSchema,day))}/items/${encodeURIComponent(commandInput(guideItemLocalIdSchema,localId))}${suffix}`;
 export const explorersApiClient = {
  getTaxonomyCatalogPage:taxonomyPage,
  getCompleteTaxonomyCatalog:completeTaxonomyCatalog,
@@ -499,6 +515,16 @@ export const explorersApiClient = {
   async attachMyGuideCover(collectionId:string,input:z.input<typeof attachGuideCoverSchema>,key:string,signal?:AbortSignal){
    return guideCommand(collectionId,'/cover','PUT',commandInput(attachGuideCoverSchema,input),key,signal);
   },
+  addMyGuideDay:async(id:string,input:z.input<typeof addGuideDaySchema>,key:string,signal?:AbortSignal)=>guideCommand(id,'/days','POST',commandInput(addGuideDaySchema,input),key,signal),
+  moveMyGuideDay:async(id:string,day:string,input:z.input<typeof moveGuideDaySchema>,key:string,signal?:AbortSignal)=>guideCommand(id,`/days/${encodeURIComponent(commandInput(contentIdSchema,day))}/position`,'PATCH',commandInput(moveGuideDaySchema,input),key,signal),
+  duplicateMyGuideDay:async(id:string,day:string,revision:number,key:string,signal?:AbortSignal)=>guideCommand(id,`/days/${encodeURIComponent(commandInput(contentIdSchema,day))}/duplicate`,'POST',commandInput(guideRevisionSchema,{revision}),key,signal),
+  clearMyGuideDay:async(id:string,day:string,revision:number,key:string,signal?:AbortSignal)=>guideCommand(id,`/days/${encodeURIComponent(commandInput(contentIdSchema,day))}/clear`,'POST',commandInput(guideRevisionSchema,{revision}),key,signal),
+  deleteMyGuideDay:async(id:string,day:string,revision:number,key:string,signal?:AbortSignal)=>guideCommand(id,`/days/${encodeURIComponent(commandInput(contentIdSchema,day))}`,'DELETE',commandInput(guideRevisionSchema,{revision}),key,signal),
+  addMyGuideDayItem:async(id:string,day:string,input:z.input<typeof addGuideDayItemSchema>,key:string,signal?:AbortSignal)=>guideCommand(id,`/days/${encodeURIComponent(commandInput(contentIdSchema,day))}/items`,'POST',commandInput(addGuideDayItemSchema,input),key,signal),
+  moveMyGuideDayItem:async(id:string,day:string,localId:string,input:z.input<typeof moveGuideDayItemSchema>,key:string,signal?:AbortSignal)=>guideCommand(id,guideItemPath(day,localId,'/position'),'PATCH',commandInput(moveGuideDayItemSchema,input),key,signal),
+  setMyGuideTimeLabel:async(id:string,day:string,localId:string,input:z.input<typeof setGuideTimeLabelSchema>,key:string,signal?:AbortSignal)=>guideCommand(id,guideItemPath(day,localId,'/time-label'),'PUT',commandInput(setGuideTimeLabelSchema,input),key,signal),
+  setMyGuideNoteText:async(id:string,day:string,localId:string,input:z.input<typeof setGuideNoteTextSchema>,key:string,signal?:AbortSignal)=>guideCommand(id,guideItemPath(day,localId,'/note'),'PUT',commandInput(setGuideNoteTextSchema,input),key,signal),
+  removeMyGuideDayItem:async(id:string,day:string,localId:string,revision:number,key:string,signal?:AbortSignal)=>guideCommand(id,guideItemPath(day,localId,''),'DELETE',commandInput(guideRevisionSchema,{revision}),key,signal),
   async resolvePlaceEntity(input:z.input<typeof resolveManualPlaceSchema>,key:string,signal?:AbortSignal){
    const body=commandInput(resolveManualPlaceSchema,input);
    const entity=await contentCommand('/entities/resolve','POST',body,key,'entity',placeEntityDtoSchema,signal);
@@ -590,7 +616,8 @@ export const explorersApiClient = {
   },
   /** HUB-X02. Per-category counts for Home in one read. */
   getMyContentSummary:async(signal?:AbortSignal):Promise<OwnerContentSummary>=>(await ownerRead('/content-summary',{},z.object({summary:ownerContentSummarySchema}).strict(),signal)).summary,
-  getMyEditableCollection:(id:string,signal?:AbortSignal)=>editableDetail('collection',id,signal),
+  // options.archived reads an archived list, for restore or permanent delete only (WP3B).
+  getMyEditableCollection:(id:string,signal?:AbortSignal,options:{archived?:boolean}={})=>editableDetail('collection',id,signal,options.archived===true),
   getMyEditableRecommendation:(id:string,signal?:AbortSignal)=>editableDetail('recommendation',id,signal),
   async createMyCollection(input:CreateCollectionInput,key:string,signal?:AbortSignal,parentObservation?:CollectionObservation):Promise<DeepReadonly<CreateCollectionResult>> {
    const initial=useAuthStore.getState(),parent=parentObservation;
@@ -604,17 +631,19 @@ export const explorersApiClient = {
     let enriched=input;
     if(parent!==undefined){
      assertOwnerDetailObservation(parent,'collection');
-     if(parent.detail.category!=='places'||!['products','people'].includes(input?.category)||input?.parentExpectedRevision!==undefined||input?.parentLocationCollectionId!==undefined&&input.parentLocationCollectionId!==parent.resourceId)
+     // WP10 (LNK-06). Create-and-attach: the issued host observation names the host; the
+     // host's CATEGORY content revision is the attach precondition.
+     if(input?.attachTo!==undefined&&input.attachTo.hostCollectionId!==parent.resourceId)
       throw new ExplorersApiError(422,'INVALID_INPUT','Invalid guarded parent create');
-     enriched={...input,parentLocationCollectionId:parent.resourceId,parentExpectedRevision:parent.resourceRevision};
-    } else if(input?.parentLocationCollectionId!==undefined||input?.parentExpectedRevision!==undefined){
+     enriched={...input,attachTo:{hostCollectionId:parent.resourceId,expectedHostRevision:Number(parent.categoryRevision),role:input?.attachTo?.role??null}};
+    } else if(input?.attachTo!==undefined){
      throw new ExplorersApiError(422,'INVALID_INPUT','Issued parent authority is required');
     }
     const body=commandInput(createCollectionSchema,enriched);commandInput(commandKeySchema,key);
     dispatched=true;
     const result=await contentCommand('/collections','POST',body,key,'collection',createCollectionResultSchema,signal,undefined,undefined,1);
     if(parent!==undefined&&lost())throw new ExplorersApiError(409,'CONFLICT','Content command cancelled or owner changed');
-    if(parent!==undefined?(!result.parentLocation||result.parentLocation.id!==parent.resourceId||result.parentLocation.revision!==parent.resourceRevision+1||result.id===parent.resourceId):result.parentLocation!==undefined)
+    if(parent!==undefined?(!result.attachedTo||result.attachedTo.hostCollectionId!==parent.resourceId||result.id===parent.resourceId):result.attachedTo!==undefined)
      throw new ExplorersApiError(503,'INVALID_OWNER_CONTENT','Invalid created collection parent receipt');
     if(parent!==undefined)issuedDetails.delete(parent);
     return result;
@@ -639,32 +668,42 @@ export const explorersApiClient = {
   },
   async updateMyCollection(observed:CollectionObservation,patch:Omit<UpdateCollectionInput,'expectedRevision'>,key:string,signal?:AbortSignal) {
    assertOwnerDetailObservation(observed,'collection');assertUnchangedSinceViewed(key,observed);const editable=commandInput(updateCollectionSchema.innerType().omit({expectedRevision:true}).strict(),patch);
-   if(editable.slug!==undefined&&observed.detail.category!=='places')throw new ExplorersApiError(422,'INVALID_INPUT','Invalid content command');
    const body=commandInput(updateCollectionSchema,{...editable,expectedRevision:observed.resourceRevision});return contentCommand(`/collections/${observed.resourceId}`,'PATCH',body,key,'collection',collectionCoreDtoSchema,signal,observed,observed.resourceId,observed.resourceRevision+1);
   },
-  /**
-   * Ticket 5.2. Links this list to one of the owner's location lists, or unlinks it.
-   *
-   * Both observations travel, because the command links a pair and a stale view of either
-   * side would link the wrong one. The child's revision advances either way, so the
-   * caller receives the list it just changed.
-   */
-  async setMyCollectionLocation(child:CollectionObservation,location:CollectionObservation|null,key:string,signal?:AbortSignal) {
-   assertOwnerDetailObservation(child,'collection');assertUnchangedSinceViewed(key,child);
-   if(location!==null){
-    assertOwnerDetailObservation(location,'collection');assertUnchangedSinceViewed(key,location);
-    if(location.detail.category!=='places')throw new ExplorersApiError(422,'INVALID_INPUT','A location list is required');
-    if(location.accountId!==child.accountId||location.generation!==child.generation)throw new ExplorersApiError(409,'CONFLICT','Owner changed between the two lists');
-   }
-   const body=location===null
-    ?commandInput(detachLocationLinkSchema,{childCollectionId:child.resourceId,expectedChildRevision:child.resourceRevision})
-    :commandInput(attachLocationLinkSchema,{childCollectionId:child.resourceId,expectedChildRevision:child.resourceRevision,
-      locationCollectionId:location.resourceId,expectedLocationRevision:location.resourceRevision});
-   const saved=await contentCommand(`/collections/${child.resourceId}/location`,location===null?'DELETE':'POST',body,key,'collection',collectionCoreDtoSchema,signal,child,child.resourceId,child.resourceRevision+1);
-   if(location!==null)settleObserved(location,undefined);return saved;
+  /** WP10. Links one of the owner's lists to another; addressed by the host list. Revisions are CATEGORY content revisions. */
+  async attachMyListLink(hostId:string,input:{expectedHostRevision:number;linkedCollectionId:string;expectedLinkedRevision:number;role?:string|null;position?:number},key:string,signal?:AbortSignal):Promise<ListLinkCommandResult>{
+   const {hostCollectionId,...body}=commandInput(attachListLinkSchema,{...input,hostCollectionId:hostId});
+   return listLinkCommand(`/collections/${encodeURIComponent(hostCollectionId)}/links`,'POST',body,key,signal);
+  },
+  /** `pageCollectionId` is the list whose page sent the command (either side); the link id selects the row. */
+  async detachMyListLink(pageCollectionId:string,linkId:string,expectedHostRevision:number,key:string,signal?:AbortSignal):Promise<ListLinkCommandResult>{
+   const page=commandInput(contentIdSchema,pageCollectionId),body=commandInput(detachListLinkSchema,{linkId,expectedHostRevision});
+   return listLinkCommand(`/collections/${encodeURIComponent(page)}/links/${encodeURIComponent(body.linkId)}`,'DELETE',{expectedHostRevision:body.expectedHostRevision},key,signal);
+  },
+  async setMyListLinkRole(pageCollectionId:string,linkId:string,expectedHostRevision:number,role:string|null,key:string,signal?:AbortSignal):Promise<ListLinkCommandResult>{
+   const page=commandInput(contentIdSchema,pageCollectionId),body=commandInput(setListLinkRoleSchema,{linkId,expectedHostRevision,role});
+   return listLinkCommand(`/collections/${encodeURIComponent(page)}/links/${encodeURIComponent(body.linkId)}`,'PATCH',{expectedHostRevision:body.expectedHostRevision,role:body.role},key,signal);
   },
   async archiveMyCollection(observed:CollectionObservation,key:string,signal?:AbortSignal) {
    assertOwnerDetailObservation(observed,'collection');assertUnchangedSinceViewed(key,observed);return contentCommand(`/collections/${observed.resourceId}`,'DELETE',{expectedRevision:observed.resourceRevision},key,'collection',archivedResult,signal,observed,observed.resourceId);
+  },
+  // WP11 (SMP-05). Turns a sample list into a normal draft in place; the revision advances by one.
+  async makeMyCollectionMine(observed:CollectionObservation,key:string,signal?:AbortSignal) {
+   assertOwnerDetailObservation(observed,'collection');assertUnchangedSinceViewed(key,observed);
+   const body=commandInput(contentRevisionSchema,{expectedRevision:observed.resourceRevision});
+   return contentCommand(`/collections/${observed.resourceId}/make-it-mine`,'POST',body,key,'collection',collectionCoreDtoSchema,signal,observed,observed.resourceId,observed.resourceRevision+1);
+  },
+  // WP3B (LP-08). Restore needs an archived observation (getMyEditableCollection(id,signal,{archived:true}));
+  // a reused slug comes back as 409 CONFLICT 'List URL is taken; choose a new URL to restore'.
+  async restoreMyCollection(observed:CollectionObservation,key:string,options:{slug?:string}={},signal?:AbortSignal) {
+   assertOwnerDetailObservation(observed,'collection','require');assertUnchangedSinceViewed(key,observed);
+   const body=commandInput(restoreCollectionInputSchema,{expectedRevision:observed.resourceRevision,...(options.slug===undefined?{}:{slug:options.slug})});
+   return contentCommand(`/collections/${observed.resourceId}/restore`,'POST',body,key,'collection',collectionCoreDtoSchema,signal,observed,observed.resourceId,observed.resourceRevision+1);
+  },
+  // WP3B (LP-08). Permanent delete of a live or archived list.
+  async purgeMyCollection(observed:CollectionObservation,key:string,signal?:AbortSignal) {
+   assertOwnerDetailObservation(observed,'collection','allow');assertUnchangedSinceViewed(key,observed);
+   return contentCommand(`/collections/${observed.resourceId}/purge`,'POST',{expectedRevision:observed.resourceRevision},key,'collection',deletedResult,signal,observed,observed.resourceId);
   },
   async createMyRecommendation(parent:CollectionObservation,input:Omit<CreateRecommendationInput,'collectionId'|'expectedCollectionRevision'|'category'>,key:string,signal?:AbortSignal) {
    assertOwnerDetailObservation(parent,'collection');const editable=commandInput(createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true}).strict(),input);

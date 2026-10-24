@@ -174,7 +174,10 @@ export function usePublicPagedResource(options: PublicPagedOptions): PublicPaged
   }, Boolean(options.revalidate && options.enabled && options.scope));
   const refetch = useCallback(() => start(true, true), [start]);
   // Effects run after render: never expose another scope's data in that gap.
-  const visible = options.enabled && options.scope && snapshot.scope === options.scope
+  // An idle snapshot (published while disabled) is not a settled read: once enabled it is
+  // loading until the effect starts the request, or pages report "ready" too early (OWN-08).
+  const idle = snapshot.data === undefined && !snapshot.error && !snapshot.partialError && !snapshot.loading;
+  const visible = options.enabled && options.scope && snapshot.scope === options.scope && !idle
     ? snapshot : empty(options.scope, options.enabled && Boolean(options.scope));
   const { partialError, ...state } = visible;
   return { ...state, error: state.error ?? partialError, loadMore, refetch };

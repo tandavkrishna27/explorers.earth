@@ -2,6 +2,7 @@ import {beforeEach,describe,it,expect,vi} from 'vitest';
 import {PlacesClient} from '../placesClient';
 import {ExplorersApiError} from '../../../../lib/explorersApiClient';
 import {readPlacesOwnerContent} from '../explorersAdapter';
+import {placesViewModel} from '../placesViewModel';
 import useAuthStore from '../../../../store/store';
 
 vi.mock('../placesClient',()=>({PlacesClient:{readCompleteOwner:vi.fn(),observeRecommendation:vi.fn(),observeCollection:vi.fn()}}));
@@ -112,10 +113,37 @@ describe('Places owner read orchestration',()=>{
   expect([...value.lists.keys()].sort()).toEqual(['live','live2']);
  });
 
- it('skips a list that returns 404 mid-read instead of failing the page',async()=>{
+ it('reports a list that still returns 404 after one retry as unavailable instead of failing the page',async()=>{
   vi.mocked(PlacesClient.readCompleteOwner).mockResolvedValue({...observed(0,2),collections:[{id:'a',revision:1},{id:'b',revision:1}]} as never);
   vi.mocked(PlacesClient.observeCollection).mockImplementation(async id=>{if(id==='a')throw new ExplorersApiError(404,'NOT_FOUND','missing');return fresh();});
   const value=await readPlacesOwnerContent();
   expect([...value.lists.keys()]).toEqual(['b']);
+  expect(vi.mocked(PlacesClient.observeCollection).mock.calls.filter(call=>call[0]==='a')).toHaveLength(2);
+  const unavailable=vi.mocked(placesViewModel.complete).mock.calls[0][4] as ReadonlySet<string>;
+  expect([...unavailable]).toEqual(['a']);
+ });
+
+ // OWN-19. A transient failure of one list read retries once, then keeps the page.
+ it('retries a failed list read once and keeps the list when the retry succeeds',async()=>{
+  vi.mocked(PlacesClient.readCompleteOwner).mockResolvedValue({...observed(0,1),collections:[{id:'a',revision:1}]} as never);
+  vi.mocked(PlacesClient.observeCollection).mockRejectedValueOnce(new ExplorersApiError(503,'UNAVAILABLE','busy')).mockResolvedValue(fresh());
+  const value=await readPlacesOwnerContent();
+  expect([...value.lists.keys()]).toEqual(['a']);
+  expect(PlacesClient.observeCollection).toHaveBeenCalledTimes(2);
+ });
+
+ it('reports a list whose read keeps failing with 5xx as unavailable, not a failed page',async()=>{
+  vi.mocked(PlacesClient.readCompleteOwner).mockResolvedValue({...observed(0,2),collections:[{id:'a',revision:1},{id:'b',revision:1}]} as never);
+  vi.mocked(PlacesClient.observeCollection).mockImplementation(async id=>{if(id==='a')throw new ExplorersApiError(500,'INTERNAL','boom');return fresh();});
+  const value=await readPlacesOwnerContent();
+  expect([...value.lists.keys()]).toEqual(['b']);
+  expect([...(vi.mocked(placesViewModel.complete).mock.calls[0][4] as ReadonlySet<string>)]).toEqual(['a']);
+ });
+
+ it('does not retry a list read refused for another reason',async()=>{
+  vi.mocked(PlacesClient.readCompleteOwner).mockResolvedValue({...observed(0,1),collections:[{id:'a',revision:1}]} as never);
+  vi.mocked(PlacesClient.observeCollection).mockRejectedValue(new ExplorersApiError(403,'FORBIDDEN','no'));
+  await expect(readPlacesOwnerContent()).rejects.toMatchObject({status:403});
+  expect(PlacesClient.observeCollection).toHaveBeenCalledTimes(1);
  });
 });

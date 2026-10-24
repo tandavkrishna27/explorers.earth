@@ -61,12 +61,6 @@ export const PlacesClient={
  // made the whole read throw 422 before a request went out.
  async readCompleteOwner(signal?:AbortSignal):Promise<CompletePlacesOwnerContent>{const value=await explorersApiClient.getCompleteMyCategoryContent({category:'places',status:'active'},signal);complete(value);return value;},
  async observeCollection(id:string,signal?:AbortSignal){const value=await explorersApiClient.getMyEditableCollection(id,signal);collection(value);return value;},
- async observeLocationChild(id:string,signal?:AbortSignal){
-  const value=await explorersApiClient.getMyEditableCollection(id,signal);
-  assertOwnerDetailObservation(value,'collection');
-  if(value.detail.category!=='products'&&value.detail.category!=='people')fail();
-  return value;
- },
  async observeRecommendation(id:string,signal?:AbortSignal){const value=await explorersApiClient.getMyEditableRecommendation(id,signal);recommendation(value);return value;},
  prepareManualIntent(parent:CollectionObservation,draft:ManualPlaceDraft):ManualPlaceIntent{
   collection(parent);
@@ -112,19 +106,6 @@ export const PlacesClient={
    photoMediaIds:[...draft.photoMediaIds]}});
   personIntents.add(intent);
   const state=useAuthStore.getState();intents.set(intent,{accountId:state.accountId,generation:state.generation,route:route()});return intent;
- },
- /**
-  * Ticket 5.2. Links a Products or People list to this location list, or unlinks it.
-  *
-  * Both observations are checked here, because the pair is what the command links: the
-  * parent must be one of the owner's location lists, and the child must not be.
-  */
- async setLocationLink(location:CollectionObservation,child:CollectionObservation,attached:boolean,commandKey:string,signal?:AbortSignal){
-  collection(location);
-  assertOwnerDetailObservation(child,'collection');
-  if(child.detail.category!=='products'&&child.detail.category!=='people')fail();
-  if(child.accountId!==location.accountId||child.generation!==location.generation)fail();
-  return explorersApiClient.setMyCollectionLocation(child,attached?location:null,commandKey,signal);
  },
  /**
   * Correct a shared place's provider facts for this owner alone.

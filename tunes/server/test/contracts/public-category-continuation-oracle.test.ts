@@ -12,7 +12,7 @@ function fixture(mutant?:'private-id'|'extra-field'|'missing-row'){
  let visible=true;const lists=Array.from({length:53},(_,n)=>({id:id(n),accountId:account,title:'People list '+n,slug:'people-list-'+n,description:null,heading:null,displayOrder:n,control:null,visibility:'public',publicationState:'published',archived:false}));
  const query=vi.fn(async(sql:string,params:unknown[]=[])=>{
   if(sql.includes('SELECT a.id FROM creator_accounts'))return {rows:[{id:account}]};
-  if(sql.includes('SELECT id,revision::text FROM collections'))return {rows:visible?[{id:id(0),revision:'1'}]:[]};
+  if(sql.includes('SELECT c.id,c.revision::text FROM collections'))return {rows:visible?[{id:id(0),revision:'1'}]:[]};
   if(sql.includes('SELECT coalesce((SELECT revision::text'))return {rows:[{revision:'7'}]};
   if(sql.includes('SELECT id,title,slug,description,heading,display_order FROM collections'))return {rows:lists.filter(r=>(visible||r.id!==id(0))&&(params[2]===null||r.displayOrder>Number(params[2]))).slice(0,Number(params[4])).map(r=>({id:r.id,title:r.title,slug:r.slug,description:null,heading:null,display_order:r.displayOrder}))};
   if(sql.includes('SELECT r.id,'))return {rows:Array.from({length:53},(_,n)=>({id:`30000000-0000-4000-8000-${String(n+1).padStart(12,'0')}`,canonical_title:'Person '+n,kind:'person',user_rating:null,title_bytes:20,content_category:'people',override_schema_version:null,display_values:{},display_order:n})).filter(r=>params[3]===null||r.display_order>Number(params[3])).slice(0,Number(params[5]))};

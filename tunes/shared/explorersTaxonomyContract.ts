@@ -2,7 +2,13 @@ import {z} from 'zod/v3';
 
 /** Places/People catalog contracts. Parsing grants neither import authority nor
  * provider provenance; the importer must also lock and validate existing rows. */
-export const taxonomyCategorySchema=z.enum(['places','people']);
+/** Categories the reviewed importer may write. Movies is configured in place by 0067. */
+export const taxonomyCategorySchema=z.enum(['places','people','books','games','apps','products']);
+/** Categories whose catalog can be read and assigned. */
+export const taxonomyCatalogCategorySchema=z.enum(['places','people','movies','books','games','apps','products']);
+export const FLAT_CURATED_CATEGORIES=['books','games','apps','products'] as const;
+export type FlatCuratedCategory=(typeof FLAT_CURATED_CATEGORIES)[number];
+export const isFlatCuratedCategory=(value:string):value is FlatCuratedCategory=>(FLAT_CURATED_CATEGORIES as readonly string[]).includes(value);
 const identity=z.string().uuid().refine(v=>v===v.toLowerCase(),'Canonical lowercase UUID required');
 const locale=z.string().regex(/^[a-z]{2}(-[A-Z]{2})?$/);
 const text=(max:number)=>z.string().min(1).max(max).refine(v=>v.trim().length>0&&!/[\u0000-\u001f\u007f]/.test(v)&&!/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(v),'Invalid text');
@@ -34,7 +40,7 @@ export const taxonomyImportSchema=z.object({
  for(const term of value.terms){
   if(term.parentId===null)continue;
   const parent=terms.get(term.parentId);
-  if(value.category==='people'||!parent||parent.id===term.id||parent.category!==term.category||parent.parentId!==null)
+  if(value.category!=='places'||!parent||parent.id===term.id||parent.category!==term.category||parent.parentId!==null)
    reject('Unsupported parent hierarchy');
  }
  const mappings=new Set<string>();
@@ -58,12 +64,15 @@ export type TaxonomyImport=z.infer<typeof taxonomyImportSchema>;
 export type TaxonomyTerm=z.infer<typeof taxonomyTermSchema>;
 
 export type PlacesTaxonomyAssignment=z.infer<typeof placesTaxonomyAssignmentSchema>;
-export type TaxonomyAssignmentInput={placesTaxonomy?:PlacesTaxonomyAssignment;peopleSectorTermId?:string|null};
-export const taxonomyCatalogQuerySchema=z.object({category:taxonomyCategorySchema,locale:locale.optional(),limit:z.string().regex(/^(?:[1-9]|1[0-9]|2[0-4])$/).transform(Number).optional().default('24'),cursor:z.string().min(1).max(4096).regex(/^[A-Za-z0-9_-]+$/).optional()}).strict();
-export const taxonomyCatalogItemSchema=z.object({id:identity,category:taxonomyCategorySchema,slug,parentId:identity.nullable(),position:z.number().int().nonnegative().safe(),label:text(200),resolvedLocale:locale}).strict();
-export const taxonomyCatalogPageSchema=z.object({version:z.literal('explorers-taxonomy-catalog/v1'),category:taxonomyCategorySchema,state:z.enum(['CONFIGURED','UNCONFIGURED']),catalogVersion:z.number().int().nonnegative().safe(),requestedLocale:locale.nullable(),defaultLocale:locale.nullable(),items:z.array(taxonomyCatalogItemSchema).max(24),nextCursor:z.string().min(1).max(4096).nullable()}).strict().superRefine((v,c)=>{if(v.state==='UNCONFIGURED'?(v.catalogVersion!==0||v.defaultLocale!==null||v.items.length!==0||v.nextCursor!==null):(v.catalogVersion===0||v.defaultLocale===null))c.addIssue({code:z.ZodIssueCode.custom,message:'Invalid catalog state'});if(v.items.some(i=>i.category!==v.category||i.resolvedLocale!==v.defaultLocale&&i.resolvedLocale!==v.requestedLocale))c.addIssue({code:z.ZodIssueCode.custom,message:'Invalid catalog item'});});
+export const taxonomyCatalogQuerySchema=z.object({category:taxonomyCatalogCategorySchema,locale:locale.optional(),limit:z.string().regex(/^(?:[1-9]|1[0-9]|2[0-4])$/).transform(Number).optional().default('24'),cursor:z.string().min(1).max(4096).regex(/^[A-Za-z0-9_-]+$/).optional()}).strict();
+export const taxonomyCatalogItemSchema=z.object({id:identity,category:taxonomyCatalogCategorySchema,slug,parentId:identity.nullable(),position:z.number().int().nonnegative().safe(),label:text(200),resolvedLocale:locale}).strict();
+export const taxonomyCatalogPageSchema=z.object({version:z.literal('explorers-taxonomy-catalog/v1'),category:taxonomyCatalogCategorySchema,state:z.enum(['CONFIGURED','UNCONFIGURED']),catalogVersion:z.number().int().nonnegative().safe(),requestedLocale:locale.nullable(),defaultLocale:locale.nullable(),items:z.array(taxonomyCatalogItemSchema).max(24),nextCursor:z.string().min(1).max(4096).nullable()}).strict().superRefine((v,c)=>{if(v.state==='UNCONFIGURED'?(v.catalogVersion!==0||v.defaultLocale!==null||v.items.length!==0||v.nextCursor!==null):(v.catalogVersion===0||v.defaultLocale===null))c.addIssue({code:z.ZodIssueCode.custom,message:'Invalid catalog state'});if(v.items.some(i=>i.category!==v.category||i.resolvedLocale!==v.defaultLocale&&i.resolvedLocale!==v.requestedLocale))c.addIssue({code:z.ZodIssueCode.custom,message:'Invalid catalog item'});});
 export type TaxonomyCatalogPage=z.infer<typeof taxonomyCatalogPageSchema>;
 export const taxonomySelectionReadSchema=z.object({id:identity,slug,label:text(200).nullable(),unavailable:z.boolean()}).strict();
 const catalogRead={catalogState:z.enum(['CONFIGURED','UNCONFIGURED']),catalogVersion:z.number().int().nonnegative().safe(),defaultLocale:locale.nullable()};
 export const placesTaxonomyReadSchema=z.object({...catalogRead,category:taxonomySelectionReadSchema.nullable(),subcategory:taxonomySelectionReadSchema.nullable(),selectionUnavailable:z.boolean()}).strict();
 export const peopleSectorReadSchema=z.object({...catalogRead,sector:taxonomySelectionReadSchema.nullable(),selectionUnavailable:z.boolean()}).strict();
+export const curatedTermAssignmentSchema=identity.nullable();
+export const curatedTermReadSchema=z.object({...catalogRead,term:taxonomySelectionReadSchema.nullable(),selectionUnavailable:z.boolean()}).strict();
+export type CuratedTermRead=z.infer<typeof curatedTermReadSchema>;
+export type TaxonomyAssignmentInput={placesTaxonomy?:PlacesTaxonomyAssignment;peopleSectorTermId?:string|null;curatedTermId?:string|null};

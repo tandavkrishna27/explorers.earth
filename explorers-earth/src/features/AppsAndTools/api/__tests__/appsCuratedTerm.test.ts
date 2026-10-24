@@ -1,0 +1,21 @@
+import {afterEach,beforeEach,it,expect,vi} from 'vitest';
+import {AppsClient,type ManualAppDraft} from '../appsClient';
+import useAuthStore from '../../../../store/store';
+const id=(n:number)=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
+const account=id(1),list=id(2),entity=id(3),recommendation=id(4),term=id(5);
+const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status});
+const collection={id:list,accountId:account,category:'apps',title:'Tools',slug:'tools',visibility:'private',publicationState:'draft',revision:4,description:null,heading:null,coverMediaId:null,isSample:false,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',linkedLists:[]};
+const core={id:recommendation,accountId:account,category:'apps',entityId:entity,userRating:null,publicationState:'draft',revision:1,mediaIds:[]};
+const details={appUrl:'https://apps.example/notion',developer:null,logoUrl:null,description:null,downloadUrl:null,priceTier:null,platforms:[],otherLinks:[]};
+const draft=(curatedTermId?:string|null):ManualAppDraft=>({title:'Notion',...details,note:null,userRating:null,mediaIds:[],screenshotMediaIds:[],...(curatedTermId===undefined?{}:{curatedTermId})});
+const writes:RequestInit[]=[];
+beforeEach(()=>{writes.length=0;useAuthStore.getState().login({id:'u',documentId:'u',username:'owner',email:'owner@example.invalid',blocked:false,token:'fixture'});useAuthStore.setState({accountId:account});history.replaceState({},'','/apps');
+ vi.stubGlobal('fetch',vi.fn(async(url:string,options:RequestInit)=>{if(!options.method)return reply({collection});writes.push(options);if(url.includes('/entities/'))return reply({entity:{id:entity,kind:'app',title:'Notion',details,origin:'manual'}});return reply({recommendation:core});}));
+});
+afterEach(()=>{vi.unstubAllGlobals();useAuthStore.getState().logout();});
+it.each([term,null,undefined])('creates with curated term %s, omitting it when not given',async assignment=>{
+ const intent=AppsClient.prepareManualIntent(await AppsClient.observeCollection(list),draft(assignment));
+ await AppsClient.createManual(intent);
+ const body=JSON.parse(writes[1].body as string);
+ if(assignment===undefined)expect(body).not.toHaveProperty('curatedTermId');else expect(body).toHaveProperty('curatedTermId',assignment);
+});

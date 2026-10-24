@@ -7,6 +7,7 @@ import { applyTaxonomyCatalogImport, dryRunTaxonomyCatalogImport, type TaxonomyI
 import type { TaxonomyImport } from "../shared/explorersTaxonomyContract";
 import { loadReviewedTaxonomyInputs, reviewedTaxonomyInputDirectory } from "./taxonomy-owned-import";
 import { loadReviewedPeopleSectors } from "./people-sector-reviewed-import";
+import { loadReviewedCuratedTaxonomy, type CuratedCategory } from "./curated-taxonomy-reviewed-import";
 
 /**
  * Operator entry for the reviewed taxonomy vocabulary. Production runs the compiled
@@ -15,22 +16,26 @@ import { loadReviewedPeopleSectors } from "./people-sector-reviewed-import";
  * and MUSIC_RUNTIME_DATABASE_USER, exactly as the migration gate is configured.
  * Places is the default. `--category people` applies the reviewed People sectors
  * (people-sector-reviewed-import.ts), never the empty Strapi people-import.json.
+ * `--category books|games|apps|products` applies the reviewed curated term lists
+ * (curated-taxonomy-reviewed-import.ts). Movies is configured by migration 0067 in
+ * place and has no apply.
  */
 type Environment = Record<string, string | undefined>;
 
 // Pinned with the same value as public-parity-owned-composition.ts and the loader's tests.
 export const reviewedTaxonomyManifestHash = "0087cf143b6f8ae68f60087539083bd0f7992c50c846b4c98a02dc1e9155ccff";
 
-export type TaxonomyApplyCategory = "places" | "people";
+export type TaxonomyApplyCategory = "places" | "people" | CuratedCategory;
 export type TaxonomyApplyArguments = { mode: "dry-run"; category: TaxonomyApplyCategory } | { mode: "apply"; reviewedBy: string; category: TaxonomyApplyCategory };
 
-const usage = "Usage: apply-reviewed-taxonomy [--category places|people] --dry-run | --apply --reviewed-by <operator>";
+const categories: readonly TaxonomyApplyCategory[] = ["places", "people", "books", "games", "apps", "products"];
+const usage = "Usage: apply-reviewed-taxonomy [--category places|people|books|games|apps|products] --dry-run | --apply --reviewed-by <operator>";
 
 export function parseTaxonomyApplyArguments(argv: readonly string[]): TaxonomyApplyArguments {
   let category: TaxonomyApplyCategory = "places";
   if (argv[0] === "--category") {
-    if (argv[1] !== "places" && argv[1] !== "people") throw new Error(usage);
-    category = argv[1];
+    if (!categories.includes(argv[1] as TaxonomyApplyCategory)) throw new Error(usage);
+    category = argv[1] as TaxonomyApplyCategory;
     argv = argv.slice(2);
   }
   if (argv.length === 1 && argv[0] === "--dry-run") return { mode: "dry-run", category };
@@ -50,7 +55,9 @@ export function resolveTaxonomyApplyPlan(): { places: TaxonomyImport; people: Ta
 }
 
 export function resolveTaxonomyApplyInput(category: TaxonomyApplyCategory): TaxonomyImport {
-  return category === "people" ? loadReviewedPeopleSectors().people : resolveTaxonomyApplyPlan().places;
+  if (category === "people") return loadReviewedPeopleSectors().people;
+  if (category === "places") return resolveTaxonomyApplyPlan().places;
+  return loadReviewedCuratedTaxonomy(category).input;
 }
 
 export async function assertMigratorPrincipal(environment: Environment): Promise<{ migrator: MusicDatabaseConnection; runtimeLoginRole: string }> {

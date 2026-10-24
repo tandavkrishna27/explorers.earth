@@ -1,0 +1,13 @@
+{"set":"india","version":"v1","category":"books","lists":[
+ {"key":"in-books-indian-fiction","title":"Indian fiction to start with","description":"Novels that stay with you.","topPicks":true,"items":[
+  {"note":"The language alone is worth it.","rating":10,"details":{"title":"The God of Small Things","authors":["Arundhati Roy"],"yearText":"1997"}},
+  {"note":"Long, but the family and the times are unforgettable.","rating":9,"details":{"title":"A Suitable Boy","authors":["Vikram Seth"],"yearText":"1993"}},
+  {"note":"Sharp, dark and funny.","rating":8,"details":{"title":"The White Tiger","authors":["Aravind Adiga"],"yearText":"2008"}},
+  {"note":"A whole country's story through one life.","rating":9,"details":{"title":"Midnight's Children","authors":["Salman Rushdie"],"yearText":"1981"}},
+  {"note":"Short stories about small towns that feel like home.","rating":9,"details":{"title":"Malgudi Days","authors":["R. K. Narayan"],"yearText":"1943"}}]},
+ {"key":"in-books-ideas","title":"Ideas worth reading","description":"Non-fiction that changed how I think.","topPicks":false,"items":[
+  {"note":"A big-picture history you can read on a flight.","rating":9,"details":{"title":"Sapiens","authors":["Yuval Noah Harari"],"yearText":"2011"}},
+  {"note":"Small changes, explained clearly.","rating":8,"details":{"title":"Atomic Habits","authors":["James Clear"],"yearText":"2018"}},
+  {"note":"Short chapters on money and behaviour.","rating":9,"details":{"title":"The Psychology of Money","authors":["Morgan Housel"],"yearText":"2020"}},
+  {"note":"Why we decide the way we do.","rating":8,"details":{"title":"Thinking, Fast and Slow","authors":["Daniel Kahneman"],"yearText":"2011"}}]}
+]}
