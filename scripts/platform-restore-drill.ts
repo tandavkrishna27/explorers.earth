@@ -385,6 +385,23 @@ function drillCommit(): string {
 
 type Phase = { phase: string; milliseconds: number };
 
+/** Restore-forward (a backup older than this code's head) runs the pending migrations as
+ *  the production migrator, exactly as production does: POSTGRES_USER is the migrator
+ *  there, while the drill connects as its container login. Run as the login, a migration
+ *  that creates a table (0066's collection_slug_redirects) leaves it owned by the login,
+ *  and the runtime attestation, which requires the migrator to own every public table,
+ *  refuses the drill. Every pooled connection assumes the role before any query. */
+export async function migrateRestoredForward(connectionString: string, migratorRole: string): Promise<void> {
+  if (!/^[a-z_][a-z0-9_]{1,62}$/.test(migratorRole)) throw new Error("migrator role name is invalid");
+  const pg = requireFromTunes("pg") as typeof import("../tunes/node_modules/@types/pg");
+  const pool = new pg.Pool({ connectionString, max: 4 });
+  pool.on("connect", connection => { connection.query(`SET ROLE ${migratorRole}`).catch(() => undefined); });
+  try {
+    const { migrateMusicDatabase } = await import("../tunes/server/db/migrate");
+    await migrateMusicDatabase(pool);
+  } finally { await pool.end(); }
+}
+
 export async function runRestoreDrill(argv: string[], environment: Record<string, string | undefined> = process.env): Promise<{ receiptPath: string; receipt: DrillReceipt }> {
   const command = parseDrillCommand(argv);
   assertNoAmbientAuthority(environment);
@@ -526,10 +543,7 @@ export async function runRestoreDrill(argv: string[], environment: Record<string
     proofs.journal = { rows: schema.rows, currentId: schema.currentId };
     proofs.rowCountsMatched = true;
     if (schema.pending.length) {
-      await timed("migrate-forward", async () => {
-        const { migrateMusicDatabase } = await import("../tunes/server/db/migrate");
-        await migrateMusicDatabase(ownerPool!);
-      });
+      await timed("migrate-forward", () => migrateRestoredForward(`${base}/${drillDatabase}`, manifest.migratorRole));
     }
 
     // 6. The restricted-role attestation the application runs before it creates its pool.

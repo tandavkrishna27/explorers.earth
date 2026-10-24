@@ -42,8 +42,6 @@ export const ROUTES: RouteCase[] = [
   ...owner('/profile', 'profile', undefined, heading('Profile details')),
   ...owner('/recommendations', 'recommendations', undefined, HUB),
   ...owner('/recommendations/places', 'recommendations/places'),
-  ...owner(`/recommendations/places/${ID}/add-people`, 'recommendations/places/:locationId/add-people', undefined, heading('Add People')),
-  ...owner(`/recommendations/places/${ID}/add-products`, 'recommendations/places/:locationId/add-products', undefined, heading('Add Products')),
   ...owner(`/${ID}/new`, ':listId/new', undefined, heading('Your Recommendation Details')),
   ...owner(`/${ID}/edit`, ':placeId/edit', undefined, heading('Your Recommendation Details')),
   ...owner('/recommendations/guides', 'recommendations/guides'),

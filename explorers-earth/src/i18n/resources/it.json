@@ -937,6 +937,37 @@
     "ZW": "Zimbabwe"
   },
   "dashboard": {
+    "wp4": {
+      "actions": "Item actions",
+      "addManually": "Add manually",
+      "addManuallyLink": "Can't find it? Add manually",
+      "backToSearch": "‹ Back to search",
+      "cancel": "Cancel",
+      "category": "Category",
+      "change": "Change",
+      "clearChoice": "None",
+      "close": "Close",
+      "findingNearby": "Finding nearby places…",
+      "locationOff": "Location is off. Type a place or use the map.",
+      "nearest": "Nearest named places",
+      "noLongerAvailable": "(no longer available)",
+      "noMatches": "No matches for \"{{query}}\"",
+      "noMatchesHint": "Add it yourself; what you typed comes with you.",
+      "noNearby": "No named places nearby. Use the pin.",
+      "noTerms": "No matching categories",
+      "pickOnMap": "Pick on map",
+      "pinAt": "Pin at {{lat}}, {{lng}}",
+      "placePlaceholder": "Search a place or paste coordinates",
+      "save": "Save",
+      "saveAndAnother": "Save and add another",
+      "searchFailed": "Search isn't working right now. Try again or add it manually.",
+      "searching": "Searching",
+      "subcategory": "Subcategory",
+      "tapToDrop": "Tap the map to drop the pin",
+      "useMyLocation": "Use my current location",
+      "usePin": "Use the pin as a custom place",
+      "useThisPin": "Use this pin"
+    },
     "categoryPages": {
       "publicVisibility": "Visibilità pubblica",
       "managePublicVisibility": "Gestisci la visibilità pubblica",
@@ -1446,6 +1477,7 @@
           "categoryRequired": "La categoria è obbligatoria",
           "socialUrlInvalid": "Inserisci un URL valido di Instagram o LinkedIn",
           "socialUrlRequired": "L'URL di Instagram o LinkedIn è richiesto per le raccomandazioni di persone",
+          "recommendationLinkInvalid": "Enter a link (https://…), an Instagram @handle or a LinkedIn profile URL",
           "titleRequired": "Il titolo è obbligatorio"
         }
       },
@@ -1555,6 +1587,171 @@
       "copied": "Copiato!",
       "copyLink": "Copia link",
       "linkCopiedToast": "Link copiato!!"
+    },
+    "wp2": {
+      "pill": {
+        "buttonLabel": "Visibility: {{state}}",
+        "comingSoon": "Coming soon",
+        "state": {
+          "public": "Public",
+          "hidden": "Hidden",
+          "draft": "Draft",
+          "private": "Private"
+        },
+        "explain": {
+          "categoryPublic": "{{category}} shows on your profile",
+          "categoryPublicGeneric": "Shows on your profile",
+          "categoryHidden": "Not on your profile; your public lists still work by link",
+          "listDraft": "Only you can see it",
+          "listPublic": "Anyone with the link, and on your profile",
+          "listPrivate": "Coming soon: only people you invite by email"
+        },
+        "toast": {
+          "public": "Now public",
+          "hidden": "Hidden from your profile",
+          "draft": "Back to draft"
+        }
+      },
+      "bottomAdd": {
+        "newList": "New list",
+        "newGuide": "New guide",
+        "addItem": "Add item",
+        "addToDay": "Add to Day {{day}}"
+      },
+      "nudge": {
+        "title": {
+          "list": "Publish this list?",
+          "guide": "Publish this guide?"
+        },
+        "body": {
+          "reachedThree": "\"{{name}}\" has 3 items now. Publish it so anyone with the link can see it, and it shows on your profile.",
+          "leaving": "\"{{name}}\" is still a draft, so only you can see it. Publish it so anyone with the link can see it, and it shows on your profile."
+        },
+        "notNow": "Not now",
+        "publish": "Publish"
+      }
+    },
+    "wp1": {
+      "back": {
+        "to": "Back to {{name}}",
+        "list": "Back to list",
+        "categories": {
+          "places": "Places",
+          "movies": "Movies & Shows",
+          "books": "Books",
+          "games": "Games",
+          "apps": "Apps & Tools",
+          "products": "Products",
+          "people": "People",
+          "guides": "Guides"
+        }
+      },
+      "loader": {
+        "boot": "Getting your recommendations ready…"
+      }
+    },
+    "wp10": {
+      "linkedLists": "Linked lists",
+      "attach": "Attach",
+      "attachTitle": "Attach a list",
+      "findList": "Find a list",
+      "yourLists": "Your lists",
+      "noLists": "No other lists to attach yet.",
+      "createNew": "Create a new list",
+      "newListCategory": "Category for the new list",
+      "emptyManage": "Link another of your lists to show it under this one.",
+      "detach": "Detach",
+      "detachNamed": "Detach {{title}}",
+      "detached": "Detached {{title}}",
+      "attached": "Attached {{title}}",
+      "attachFailed": "Couldn't attach the list",
+      "detachFailed": "Couldn't detach the list",
+      "undo": "Undo",
+      "undoFailed": "Couldn't undo",
+      "archived": "Archived",
+      "roleFor": "Role for {{title}}",
+      "noRole": "No role",
+      "customRole": "Custom…",
+      "customRoleFor": "Custom role for {{title}}",
+      "roleFailed": "Couldn't save the role"
+    },
+    "wp9": {
+      "addAsNote": "Add as a note: \"{{text}}\"",
+      "addDay": "+ Add day",
+      "addDayChip": "+ Day",
+      "addItemToDay": "Add {{title}} to {{day}}",
+      "addTime": "+ time",
+      "addToDay": "+ Add to {{day}}",
+      "addToDayButton": "+ Add to {{day}}",
+      "addToDayLabel": "Add to {{day}}",
+      "back": "BACK TO GUIDES",
+      "badTime": "Use a time like 9:30",
+      "cancel": "Cancel",
+      "clearDay": "Clear day",
+      "clearTime": "Clear time",
+      "createFailed": "Couldn't create the guide. Try again.",
+      "createGuide": "Create guide",
+      "dayOptions": "{{day}} options",
+      "days": "Days",
+      "daysLabel": "Days",
+      "deleteDay": "Delete day",
+      "destination": "Destination (optional)",
+      "done": "Done",
+      "duplicateDay": "Duplicate day",
+      "editNote": "Edit note",
+      "exactTime": "Exact time",
+      "fromMyLists": "From my lists",
+      "insertAfter": "Insert day after",
+      "insertBefore": "Insert day before",
+      "itemActions": "Actions for {{title}}",
+      "itinerary": "Itinerary",
+      "linkedLists": "Linked lists",
+      "list": "List",
+      "loadFailed": "Couldn't load this guide.",
+      "map": "Map",
+      "mapSoon": "Map view is coming soon.",
+      "moveEarlier": "Move earlier",
+      "moveLater": "Move later",
+      "moveToDay": "Move to day…",
+      "myLists": "My lists",
+      "newGuide": "New guide",
+      "nowDraft": "Guide is now Draft",
+      "nowPublic": "Guide is now Public",
+      "open": "Open",
+      "openList": "Open {{title}}",
+      "openSource": "Open source item",
+      "planSections": "Plan sections",
+      "removeItem": "Remove from guide",
+      "reorder": "Reorder {{title}}",
+      "retry": "Retry",
+      "sectionSoon": "This section opens in the guide details editor for now.",
+      "smartPlaceholder": "Search your lists, places, or type a note",
+      "startDate": "Start date (optional)",
+      "startsDraft": "Starts as a draft only you can see",
+      "statusFailed": "Couldn't change the status.",
+      "tab": {
+        "manage": "Manage",
+        "plan": "Plan",
+        "share": "Share"
+      },
+      "tags": "Tags (optional)",
+      "template": "Template",
+      "title": "Title",
+      "topicLater": "Topic guide (Later)",
+      "trip": "Trip",
+      "addedToDay": "Added to Day {{day}}",
+      "dayCount": "{{count}} days",
+      "dayDeleted": "Day deleted",
+      "google": "Google",
+      "listItemsFailed": "Couldn't load this list.",
+      "loadingLists": "Loading your lists…",
+      "movedToDay": "Moved to Day {{day}}",
+      "noLists": "No lists yet.",
+      "oneDay": "1 day",
+      "orderSaved": "Order saved",
+      "removedFromGuide": "Removed from guide",
+      "saveFailed": "Couldn't save that change",
+      "undo": "Undo"
     }
   },
   "emailVerification": {
@@ -2868,5 +3065,28 @@
   "imageCropper": {
     "success": "Immagine ritagliata con successo",
     "error": "Errore durante il ritaglio dell'immagine"
+  },
+  "samples": {
+    "badge": "Sample",
+    "makeMine": "Make it mine",
+    "nowYours": "Now yours",
+    "deleteSample": "Delete sample",
+    "deleteTitle": "Delete this sample?",
+    "deleteBody": "It won't come back.",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "open": "Open",
+    "cannotPublish": "Samples can't be published. Make it mine to edit and publish it.",
+    "cannotShare": "Samples can't be shared. Make it yours to publish and share it.",
+    "onlyYou": "Only you can see this",
+    "onlyYouCantPublish": "Only you can see this · can't be published",
+    "bar": "A sample to show how a list works. Keep it, delete it, or make it yours to edit and publish.",
+    "madeMineToast": "It's yours now: a draft you can edit and publish",
+    "deletedToast": "Sample deleted",
+    "failed": "That didn't work. Try again.",
+    "makeMineTitle": "Make \"{{name}}\" yours?",
+    "makeMineBody": "It becomes a normal draft list with its {{items}}. You can rename, edit, reorder and publish it. Your other samples stay until you delete them.",
+    "listName": "List name",
+    "fromSampleList": "From the sample list \"{{list}}\""
   }
 }

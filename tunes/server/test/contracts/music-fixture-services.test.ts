@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { ChildProcess, execFileSync, spawn } from "node:child_process";
+import { ChildProcess, execFile, spawn } from "node:child_process";
 import { resolve } from "node:path";
 import { PassThrough } from "node:stream";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -29,7 +29,28 @@ function checkedInGraphqlOperation(relativePath: string, operation: string): str
 
 type ProcessIdentity = { pid: number; started: string };
 
-function readProcessIdentity(pid: number): ProcessIdentity | undefined {
+// Windows identity probes are asynchronous and individually bounded. A synchronous 60s
+// powershell.exe call used to block the event loop: on windows-latest a probe occasionally
+// hangs (healthy probes return in well under a second; the failing case measured 60753ms,
+// i.e. the whole execFileSync cap), which also starved Vitest's own timer so the "25000ms"
+// timeout only fired after the 60s probe died. A hung probe is now killed after
+// identityProbeTimeoutMs and a fresh process retried; a genuinely absent PID still exits 3.
+const identityProbeTimeoutMs = 10_000;
+const identityProbeAttempts = 3;
+
+function probeWindowsStartTime(command: string): Promise<string | undefined> {
+  return new Promise((resolvePromise, rejectPromise) => {
+    execFile("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", command],
+      { encoding: "utf8", timeout: identityProbeTimeoutMs, windowsHide: true },
+      (error, stdout) => {
+        if (!error) return resolvePromise(stdout.trim());
+        if ((error as { code?: unknown }).code === 3) return resolvePromise(undefined);
+        rejectPromise(error);
+      });
+  });
+}
+
+async function readProcessIdentity(pid: number): Promise<ProcessIdentity | undefined> {
   if (!Number.isSafeInteger(pid) || pid <= 0) throw new Error("invalid child PID");
   if (process.platform === "linux") {
     try {
@@ -47,15 +68,22 @@ function readProcessIdentity(pid: number): ProcessIdentity | undefined {
     + "$p=[System.Diagnostics.Process]::GetProcessById(" + pid + "); "
     + "$p.StartTime.ToUniversalTime().Ticks.ToString() } "
     + "catch [System.ArgumentException] { exit 3 }";
-  try {
-    const started = execFileSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", command],
-      { encoding: "utf8", timeout: 60_000, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] }).trim();
+  let lastError: unknown;
+  for (let attempt = 0; attempt < identityProbeAttempts; attempt += 1) {
+    let started: string | undefined;
+    try {
+      started = await probeWindowsStartTime(command);
+    } catch (error) {
+      // Only a killed (timed-out) probe is retried; any other failure is a real fault.
+      if (!(error as { killed?: boolean }).killed) throw error;
+      lastError = error;
+      continue;
+    }
+    if (started === undefined) return undefined;
     if (!/^\d+$/.test(started)) throw new Error("malformed process creation time");
     return { pid, started };
-  } catch (error) {
-    if ((error as { status?: number }).status === 3) return undefined;
-    throw error;
   }
+  throw new Error(`process identity probe timed out ${identityProbeAttempts} times`, { cause: lastError });
 }
 
 function within<T>(promise: Promise<T>, milliseconds: number, message: string): Promise<T> {
@@ -170,7 +198,7 @@ function observeFixture(child: ChildProcess, nonce: string) {
 }
 
 type FixtureStopDependencies = {
-  readIdentity?: typeof readProcessIdentity;
+  readIdentity?: (pid: number) => ProcessIdentity | undefined | Promise<ProcessIdentity | undefined>;
   waitWithin?: typeof within;
 };
 
@@ -187,7 +215,7 @@ async function stopFixture(
     await waitWithin(closed, 2_000, "fixture cooperative close timeout");
   } catch {
     if (!before) throw new Error("fixture identity unavailable; escalation refused");
-    const current = readIdentity(before.pid);
+    const current = await readIdentity(before.pid);
     if (!current) {
       await waitWithin(closed, 1_000, "departed fixture close not observed");
       return;
@@ -199,7 +227,7 @@ async function stopFixture(
     await waitWithin(closed, 2_000, "fixture force-close not observed");
   }
   if (before) {
-    const current = readIdentity(before.pid);
+    const current = await readIdentity(before.pid);
     if (current && current.started === before.started) throw new Error("owned fixture survived cleanup");
   }
 }
@@ -632,7 +660,7 @@ describe("deterministic Music fixture services", () => {
     let processFailed = false;
     const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
     try {
-      processIdentity = readProcessIdentity(child.pid!);
+      processIdentity = await readProcessIdentity(child.pid!);
       if (!processIdentity) throw new Error("fixture exited before identity capture");
       const port = await observation.ready;
       if (child.exitCode !== null || child.signalCode !== null) throw new Error("fixture exited after readiness");
@@ -678,7 +706,9 @@ describe("deterministic Music fixture services", () => {
       observation.assertHealthy();
       if (processFailed) throw observation.withDiagnostics(processFailure);
     }
-  }, 25_000);
+    // Healthy windows-latest runs take ~6s. The bound admits one hung identity probe being
+    // killed and retried (identityProbeTimeoutMs) at capture and again at the post-stop check.
+  }, 45_000);
   it("routes authenticated browser mutations to the isolated fixture origin rather than a synthetic or production host", () => {
     // A real browser must reach the fixture Tunes gateway through its own
     // origin.  A Playwright-only route interception can make a broken bundle

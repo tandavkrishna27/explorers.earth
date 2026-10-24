@@ -1,7 +1,7 @@
 import { mapsBrowserKey } from "../../../lib/publicRuntimeConfig";
 import { ExplorersApiError } from "../../../lib/explorersApiClient";
 import useAuthStore from "../../../store/store";
-import { KeyValuePair } from "../components/RecommendForm";
+import { KeyValuePair } from "../formValues";
 import { toast } from "sonner";
 import { selectedCity, useCityStore } from "../../../store/useCityStore";
 import axios from "axios";
@@ -64,6 +64,43 @@ export function locationSnapshot(input: {
   };
 }
 
+/**
+ * The provider details plus an optional cover imported into owned media. Shared by the hook
+ * and the shared New list popup, so both keep the same cover behaviour.
+ *
+ * Only imports a thumbnail if the provider has one. The cover is optional, so a failed
+ * import still creates the list, and names the failed step instead of hiding it.
+ * The browser asks Google only for the photo's URI (skipHttpRedirect answers JSON from
+ * places.googleapis.com, which CSP allows). The bytes are fetched by the API: following
+ * the redirect here lands on googleusercontent.com, which CSP refuses.
+ */
+export async function importPlaceCover(placeId: string, importPlacePhoto: (photoUri: string) => Promise<{ id: string }>) {
+  const placeDetails = await axios.get(
+    `${GOOGLE_PLACES_API_BASE_URL}/${placeId}?fields=id,displayName,formattedAddress,primaryType,primaryTypeDisplayName,priceRange,rating,userRatingCount,location,photos&key=${mapsBrowserKey()}`
+  );
+  const photoReferences: string[] = placeDetails.data?.photos?.map((photo: { name: string }) => photo.name.split(`${placeId}/`)[1]) || [];
+  let coverMediaId: string | undefined;
+  let coverImportFailed = false;
+  if (photoReferences.length > 0) {
+    try {
+      const photo = await axios.get(`${GOOGLE_PLACES_API_BASE_URL}/${placeId}/${photoReferences[0]}/media?maxWidthPx=400&skipHttpRedirect=true&key=${mapsBrowserKey()}`);
+      const photoUri = photo.data?.photoUri;
+      if (typeof photoUri !== "string" || !photoUri) throw new Error("Google photo has no URI");
+      // Imported into owned media rather than linked, so the thumbnail keeps working
+      // when the provider does not.
+      coverMediaId = (await importPlacePhoto(photoUri)).id;
+    } catch (photoError) {
+      console.warn("Failed to import the place photo; creating the list without a cover:", photoError);
+      coverImportFailed = true;
+    }
+  }
+  return {
+    details: placeDetails.data as { displayName?: { text?: string }; formattedAddress?: string; location?: { latitude?: number; longitude?: number } | null },
+    coverMediaId,
+    coverImportFailed,
+  };
+}
+
 export const useCreateLocation = ({
   refetchCities,
   setIsLoading,
@@ -80,44 +117,9 @@ export const useCreateLocation = ({
     // Duplicate check is handled in AddLocationModal by place_id.
     setIsLoading(true);
     try {
-      const placeDetails = await axios.get(
-        `${GOOGLE_PLACES_API_BASE_URL}/${
-          values.placeId
-        }?fields=id,displayName,formattedAddress,primaryType,primaryTypeDisplayName,priceRange,rating,userRatingCount,location,photos&key=${
-          mapsBrowserKey()
-        }`
-      );
-      const photoReferences = placeDetails.data.photos?.map(
-        (photo: { name: string }) => photo.name.split(`${values.placeId}/`)[1]
-      ) || [];
-
-      let coverMediaId: string | undefined;
-      let coverImportFailed = false;
-
-      // Only import a thumbnail if the provider has one. The cover is optional, so a failed
-      // import still creates the list, and names the failed step instead of hiding it.
-      //
-      // The browser asks Google only for the photo's URI (skipHttpRedirect answers JSON from
-      // places.googleapis.com, which CSP allows). The bytes are fetched by the API: following
-      // the redirect here lands on googleusercontent.com, which CSP refuses, and that used to
-      // abort every Places create.
-      if (photoReferences.length > 0) {
-        try {
-          const photo = await axios.get(
-            `${GOOGLE_PLACES_API_BASE_URL}/${values.placeId}/${
-              photoReferences[0]
-            }/media?maxWidthPx=400&skipHttpRedirect=true&key=${mapsBrowserKey()}`
-          );
-          const photoUri = photo.data?.photoUri;
-          if (typeof photoUri !== "string" || !photoUri) throw new Error("Google photo has no URI");
-          // Imported into owned media rather than linked, so the thumbnail keeps working
-          // when the provider does not.
-          coverMediaId = (await commands.importPlacePhoto(photoUri)).id;
-        } catch (photoError) {
-          console.warn("Failed to import the place photo; creating the list without a cover:", photoError);
-          coverImportFailed = true;
-        }
-      }
+      const { details: placeDetailsData, coverMediaId, coverImportFailed } =
+        await importPlaceCover(String(values.placeId), commands.importPlacePhoto);
+      const placeDetails = { data: placeDetailsData };
 
       const snapshot = locationSnapshot({
         placeId: values.placeId,

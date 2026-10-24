@@ -1,5 +1,5 @@
 import type {Pool,PoolClient} from 'pg';
-import {placeEntityDtoSchema,placeEntityDetailsSchema,placeRecommendationContextSchema,placeAddressComponentSchema,
+import {placeEntityDtoSchema,placeEntityDetailsSchema,placeRecommendationContextSchema,placeRecommendationContextWriteSchema,PLACE_PERSON_TYPE_REFUSAL,placeAddressComponentSchema,
  emptyPlaceDetails,emptyPlaceContext,emptyPlaceCollectionDetails,placeCollectionDetailsSchema,type PlaceEntityDetails,type PlaceRecommendationContext,type PlaceCollectionDetails} from '../../shared/explorersPlaceContract';
 import {RecommendationFailure} from './explorersRecommendationRepository';
 
@@ -68,7 +68,8 @@ export async function readPlaceContext(db:Pick<Pool,'query'>,recommendationId:st
  * because the half-applied state could be a published number with visibility not yet set.
  */
 export async function writePlaceContext(db:PoolClient,recommendationId:string,accountId:string,context:PlaceRecommendationContext){
- const parsed=placeRecommendationContextSchema.safeParse(context);
+ const parsed=placeRecommendationContextWriteSchema.safeParse(context);
+ if(!parsed.success&&parsed.error.issues.some(issue=>issue.message===PLACE_PERSON_TYPE_REFUSAL))throw new RecommendationFailure(422,PLACE_PERSON_TYPE_REFUSAL);
  if(!parsed.success)throw new RecommendationFailure(422,'Invalid place recommendation context');
  const value=parsed.data;
  await db.query(`INSERT INTO place_recommendation_context(recommendation_id,account_id,recommendation_type,source_of_recommendation,contact_name,contact_number,contact_visibility,place_social_url,place_website_url,creator_social_url,legacy_place_note,person_profile_url,person_address)

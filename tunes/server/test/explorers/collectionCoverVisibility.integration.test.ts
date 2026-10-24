@@ -191,7 +191,7 @@ describe("collection cover public visibility", () => {
     const parent = await fixture(), product = await fixture("products", parent.owner), people = await fixture("people", parent.owner);
     const snapshot = { version: 1, name: "Lisbon", address: "Lisbon, Portugal", providerPlaceId: null, latitude: 38.7223, longitude: -9.1393 };
     await pool.query("INSERT INTO place_collection_details(collection_id,account_id,location_snapshot) VALUES($1,$2,$3)", [parent.list.id, parent.owner.accountId, snapshot]);
-    for (const child of [product, people]) await pool.query("INSERT INTO collection_location_links(child_collection_id,account_id,child_category,location_collection_id) VALUES($1,$2,$3,$4)", [child.list.id, parent.owner.accountId, child.list.category, parent.list.id]);
+    for (const [order, child] of [product, people].entries()) await pool.query("INSERT INTO collection_list_links(account_id,host_collection_id,host_category,linked_collection_id,linked_category,role,display_order) VALUES($1,$2,'places',$3,$4,NULL,$5)", [parent.owner.accountId, parent.list.id, child.list.id, child.list.category, order]);
     const manifest = (await pool.query("SELECT collection_id,media_id FROM collection_media WHERE account_id=$1 ORDER BY collection_id", [parent.owner.accountId])).rows;
     expect(manifest).toEqual([parent, product, people].map(f => ({ collection_id: f.list.id, media_id: f.media.id })).sort((a, b) => a.collection_id.localeCompare(b.collection_id)));
     const etags = await Promise.all([parent, product, people].map(f => positive(f.media)));
@@ -202,7 +202,7 @@ describe("collection cover public visibility", () => {
       expect(detail.status).toBe(200); expect(JSON.stringify(detail.body)).toContain(child.media.url);
       await positive(child.media);
       const owned = await request(composed.app).get(`/api/explorers/v1/collections/${child.list.id}/editable`).set("cookie", parent.owner.cookie);
-      expect(owned.status).toBe(200); expect(owned.body.collection.locationLink.locationCollectionId).toBe(parent.list.id);
+      expect(owned.status).toBe(200); expect(owned.body.collection.linkedLists.map((card: { direction: string; collection: { id: string } }) => [card.direction, card.collection.id])).toEqual([["incoming", parent.list.id]]);
     }
     await pool.query("UPDATE collections SET visibility='private' WHERE id=$1", [product.list.id]);
     await denied(product.media, etags[1]);

@@ -81,10 +81,10 @@ const DIALOG_MARKERS = /DialogPanel|useDialogA11y|<Modal\b|role="dialog"|role="a
 const NOT_A_DIALOG: Record<string, string> = {
   "layouts/PublicColdEntryBoundary.tsx": "full-page loading cover",
   "layouts/ResponsiveLayout.tsx": "full-page loading cover",
+  "components/EarthLoader/BootSplash.tsx": "boot loading cover (role=status), not interactive",
   "features/PublicHome/components/PublicGuideControlPortal.tsx": "map surface portal, not an overlay dialog",
   "features/PublicHome/components/PublicGuideViews/GuideMapView.tsx": "map surface; place detail is GooglePlaceModal (DialogPanel)",
   "features/PublicHome/components/PublicProfileChromePrimitives.tsx": "decorative wallpaper layers",
-  "features/Favorites/components/RecommendForm.tsx": "busy indicator (role=status), not interactive",
   "features/Guides/pages/GuideDetailsPage.tsx": "backdrop host; place detail is GooglePlaceModal (DialogPanel)",
   "features/PublicHome/components/PublicGuideViews/PublicGuideStayView.tsx": "backdrop host; place detail is GooglePlaceModal (DialogPanel)",
   "features/PublicHome/components/PublicGuideViews/DayNavigationView.tsx": "backdrop host; place detail is PlaceOverview (DialogPanel)",

@@ -25,6 +25,8 @@ export interface RecommendedProduct {
   price: number | null;
   currency: string | null;
   buy_url: string | null;
+  /** DS-14: the owner disclosed that the buy link is an affiliate link. */
+  affiliate_disclosed?: boolean;
   logo_url: string | null;
   description: string | null;
   specifications: Record<string, string> | null;

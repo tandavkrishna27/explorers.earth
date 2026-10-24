@@ -2,7 +2,7 @@
   "schemaVersion": "music-runtime-table-manifest/v1",
   "migrationChain": {
     "engine": "postgresql-15",
-    "expectedId": "0064_explorers_game_details",
+    "expectedId": "0071_explorers_samples",
     "files": [
       "0001_runtime_baseline.sql",
       "0002_identity_lifecycle.sql",
@@ -67,7 +67,14 @@
       "0061_explorers_product_spec_order_budget_scale.sql",
       "0062_explorers_handle_holds.sql",
       "0063_explorers_open_library_books.sql",
-      "0064_explorers_game_details.sql"
+      "0064_explorers_game_details.sql",
+      "0065_explorers_collection_live_slug.sql",
+      "0066_explorers_list_redirects_and_delete.sql",
+      "0067_explorers_curated_taxonomy_catalogs.sql",
+      "0068_explorers_category_data_shape.sql",
+      "0069_explorers_guide_day_items.sql",
+      "0070_explorers_list_links.sql",
+      "0071_explorers_samples.sql"
     ],
     "controlTables": [
       "music_schema_migrations",
@@ -313,6 +320,12 @@
       "lifecycle": "strip-on-deletion"
     },
     {
+      "name": "collection_list_links",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
       "name": "collection_location_links",
       "managedBy": "drizzle",
       "family": "user-content",
@@ -326,6 +339,12 @@
     },
     {
       "name": "collection_place_pins",
+      "managedBy": "unmanaged-raw-sql",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "collection_slug_redirects",
       "managedBy": "unmanaged-raw-sql",
       "family": "user-content",
       "lifecycle": "strip-on-deletion"
@@ -602,6 +621,12 @@
     },
     {
       "name": "recommendations",
+      "managedBy": "drizzle",
+      "family": "user-content",
+      "lifecycle": "strip-on-deletion"
+    },
+    {
+      "name": "sample_seeding_receipts",
       "managedBy": "drizzle",
       "family": "user-content",
       "lifecycle": "strip-on-deletion"

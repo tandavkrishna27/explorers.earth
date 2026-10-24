@@ -1,4 +1,6 @@
+import {publicLinkedLists} from './publicListLinkProjection';
 import type {Pool,PoolClient} from 'pg';
+import {listSlugPredicate} from '../application/collectionSlug';
 import {readProductEntity,readProductOffer,effectiveProductDetails} from '../repositories/productCatalogRepository';
 import {displayOverridesReadSchema} from '../../shared/explorersContract';
 import {normalizeRichNote} from '../application/richNote';
@@ -55,7 +57,7 @@ async function richProduct(db:PoolClient,row:any){
  // Converted once, at the display edge. An exact decimal that cannot be represented as a
  // double would round here and nowhere else; storage and the owner wire keep the string.
  price:offer.price===null?null:Number(offer.price),
- currency:offer.currencyCode,buy_url:offer.buyUrl,
+ currency:offer.currencyCode,buy_url:offer.buyUrl,affiliate_disclosed:offer.affiliateDisclosed,
  logo_url:facts.logoUrl,description:facts.description,
  specifications:facts.specifications.length?Object.fromEntries(facts.specifications.map(entry=>[entry.key,entry.value])):null,
  specification_list:facts.specifications.length?facts.specifications.map(entry=>({key:entry.key,value:entry.value})):null,
@@ -91,14 +93,10 @@ async function children(db:PoolClient,account:string,collectionId:string,limit:n
  * without touching the links.
  */
 export async function publicLinkedProductsLists(db:PoolClient,accountId:string,locationCollectionId:string,limit=12){
- const rows=(await db.query(`SELECT c.id,c.title,c.description,c.slug,c.heading,c.display_order,cm.media_id AS cover_media_id
-  FROM collection_location_links l
-  JOIN collections c ON c.id=l.child_collection_id AND c.account_id=l.account_id AND c.category=l.child_category
-  JOIN creator_accounts a ON a.id=c.account_id JOIN account_category_settings s ON s.account_id=a.id AND s.category=c.category
-  LEFT JOIN collection_media cm ON cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover' AND EXISTS(SELECT 1 FROM media_assets m WHERE m.id=cm.media_id AND m.account_id=cm.account_id AND m.status='ready')
-  WHERE l.account_id=$1 AND l.location_collection_id=$2 AND l.child_category='products'
-   AND ${gate} AND ${listGate}
-  ORDER BY c.display_order,c.id LIMIT $3`,[accountId,locationCollectionId,limit])).rows;
+ // WP10. Read through collection_list_links with S3's public rule on both ends; a place
+ // link backfilled from collection_location_links has the place list as host.
+ const rows=(await publicLinkedLists(db,accountId,locationCollectionId,{category:'products',limit}))
+  .map(c=>({id:c.collectionId,title:c.title,description:c.description,slug:c.slug,heading:c.heading,display_order:c.displayOrder,cover_media_id:c.coverMediaId}));
  const lists=[];
  for(const row of rows){
   const page=await children(db,accountId,row.id,12,0);
@@ -119,7 +117,7 @@ export async function publicProductsProjection(pool:Pool,username:string,limit:n
   const rows=(await db.query(`SELECT c.id,c.title,c.description,c.slug,c.heading,c.display_order,cm.media_id AS cover_media_id FROM collections c
    JOIN creator_accounts a ON a.id=c.account_id JOIN account_category_settings s ON s.account_id=a.id AND s.category=c.category
    LEFT JOIN collection_media cm ON cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover' AND EXISTS(SELECT 1 FROM media_assets m WHERE m.id=cm.media_id AND m.account_id=cm.account_id AND m.status='ready')
-   WHERE a.id=$1 AND c.category='products' AND ${gate} AND ${listGate} AND ($2::text IS NULL OR c.slug=$2)
+   WHERE a.id=$1 AND c.category='products' AND ${gate} AND ${listGate} AND ($2::text IS NULL OR ${listSlugPredicate('c','$2')})
    ORDER BY c.display_order,c.id LIMIT $3 OFFSET $4`,[observed.id,slug??null,slug?1:limit+1,slug?0:offset])).rows;
   if(slug&&!rows.length){await db.query('COMMIT');return undefined;}
   const lists=[];

@@ -2,6 +2,7 @@ import i18n from "i18next";
 import useAuthStore from "../store/store";
 import { explorersApiClient } from "./explorersApiClient";
 import { recordViewedAccount } from "./viewedRevisions";
+import { queryClient } from "./queryClient";
 
 /**
  * The account's interface language, persisted server-side so a choice follows the owner
@@ -27,6 +28,8 @@ export async function persistAccountLocale(locale: string): Promise<void> {
     // stale view, so it must not be refused (or announced) as a lost update.
     recordViewedAccount(current.revision);
     await explorersApiClient.updateAccount({ expectedRevision: current.revision, locale });
+    // The shared account read now shows an older revision; any later save must not build on it.
+    void queryClient.invalidateQueries({ queryKey: ["explorers-account"] });
   } catch {
     // The next choice retries; the language already applies in this browser.
   }

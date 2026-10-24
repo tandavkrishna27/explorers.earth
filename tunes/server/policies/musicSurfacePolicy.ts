@@ -176,6 +176,11 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
   if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/movies')return 'explorers-owner';
   if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/games')return 'explorers-owner';
   if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/taxonomy')return 'explorers-owner';
+  // WP8. Owner-initiated link preview (URL in the POST body only, trusted origin), its
+  // owned image copy, and the Apple app search read. Every other method stays tombstoned.
+  if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='POST'&&['/api/explorers/v1/catalog/link-preview','/api/explorers/v1/catalog/link-preview/image'].includes(route.path))return 'explorers-owner';
+  if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/apps')return 'explorers-owner';
+  if(route.source==='tunes/server/routes/explorersPlacesRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/places/nearby')return 'explorers-owner';
   if (route.source === 'tunes/server/routes/explorersAppEnrichmentRoutes.ts'
       && [
         ['PUT', '/api/explorers/v1/recommendations/:id/app-enrichment/binding'],
@@ -191,8 +196,9 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
         ["POST", "/api/explorers/v1/collections"],
         ["POST", "/api/explorers/v1/collections/:id/memberships/:recommendationId"],
         ["DELETE", "/api/explorers/v1/collections/:id/memberships/:recommendationId"],
-        ["POST", "/api/explorers/v1/collections/:id/location"],
-        ["DELETE", "/api/explorers/v1/collections/:id/location"],
+        ["POST", "/api/explorers/v1/collections/:id/links"],
+        ["PATCH", "/api/explorers/v1/collections/:id/links/:linkId"],
+        ["DELETE", "/api/explorers/v1/collections/:id/links/:linkId"],
         ["GET", "/api/explorers/v1/collections"],
         ["GET", "/api/explorers/v1/collections/:id"],
         ["GET", "/api/explorers/v1/collections/:id/editable"],
@@ -211,6 +217,9 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
         ["PATCH", "/api/explorers/v1/collections/:id"],
         ["PATCH", "/api/explorers/v1/collections/:id/order"],
         ["DELETE", "/api/explorers/v1/collections/:id"],
+        ["POST", "/api/explorers/v1/collections/:id/make-it-mine"],
+        ["POST", "/api/explorers/v1/collections/:id/restore"],
+        ["POST", "/api/explorers/v1/collections/:id/purge"],
         ["POST", "/api/explorers/v1/recommendations"],
         ["POST", "/api/explorers/v1/recommendations/:id/movie-media/import"], ["POST", "/api/explorers/v1/recommendations/:id/entity"], ["POST", "/api/explorers/v1/recommendations/:id/book-covers"],
         ["PATCH", "/api/explorers/v1/recommendations/:id"],
@@ -226,6 +235,17 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
         ["PATCH", "/api/explorers/v1/collections/:id/guide/sections/:sectionId"],
         ["DELETE", "/api/explorers/v1/collections/:id/guide/sections/:sectionId"],
         ["PUT", "/api/explorers/v1/collections/:id/guide/cover"],
+        // WP9 (GD-24..30). Day and day-item commands, declared one at a time for the same reason.
+        ["POST", "/api/explorers/v1/collections/:id/guide/days"],
+        ["PATCH", "/api/explorers/v1/collections/:id/guide/days/:sectionId/position"],
+        ["POST", "/api/explorers/v1/collections/:id/guide/days/:sectionId/duplicate"],
+        ["POST", "/api/explorers/v1/collections/:id/guide/days/:sectionId/clear"],
+        ["DELETE", "/api/explorers/v1/collections/:id/guide/days/:sectionId"],
+        ["POST", "/api/explorers/v1/collections/:id/guide/days/:sectionId/items"],
+        ["PATCH", "/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/position"],
+        ["PUT", "/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/time-label"],
+        ["PUT", "/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/note"],
+        ["DELETE", "/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId"],
       ].some(([method,path])=>route.method===method && route.path===path)) return "explorers-owner";
   if (route.source === "tunes/server/routes/explorersAccountRoutes.ts"
       && route.method === "PATCH" && route.path === "/api/explorers/v1/account") return "explorers-owner";

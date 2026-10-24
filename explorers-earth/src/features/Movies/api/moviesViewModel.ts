@@ -1,3 +1,4 @@
+import {withSampleFlag} from '../../shared/samples/readIsSample';
 import type {EditableOwnerRecommendation,OwnerCollectionDto,OwnerMembershipDto} from '../../../../../tunes/shared/explorersOwnerContentContract';
 import {emptyMovieDetails} from '../../../../../tunes/shared/explorersMovieContract';
 import type {MovieList,RecommendedMovie} from '../types';
@@ -12,4 +13,7 @@ export function movieViewModel(detail:Readonly<EditableOwnerRecommendation>,memb
  cast_details:facts.cast.slice(0,10).map((c,ordinal)=>({original_name:c.name,character:c.character,profile_url:detail.providerMedia?.cast.find(x=>x.slot.ordinal===ordinal)?.media?.url??c.profileUrl})),is_pinned:!!pin,pin_order:pin?.position??null,display_order:membership.displayOrder,
  Media:detail.mediaIds.map(id=>({documentId:id,url:`/api/explorers/v1/media/${id}/content`})),media_details:null,movie_list:{documentId:membership.collectionId,List_Name:'',slug:''},movie_categories:(detail.movieTerms??[]).map(t=>({documentId:t.id,genre_name:t.label,slug:t.slug}))};
 }
-export function collectionViewModel(collection:Readonly<OwnerCollectionDto>,movies:RecommendedMovie[],username=''):MovieList{return {documentId:collection.id,List_Name:collection.title,list_description:collection.description,slug:collection.slug,Visibility:collection.visibility==='public'&&collection.publicationState==='published',cover_image:collection.coverMediaId?{documentId:collection.coverMediaId,url:`/api/explorers/v1/media/${collection.coverMediaId}/content`}:null,display_order:collection.displayOrder,top_picks_heading:collection.heading,recommended_movies:movies.map(m=>({...m,movie_list:{documentId:collection.id,List_Name:collection.title,slug:collection.slug}})),account:{documentId:collection.accountId,username}};}
+function collectionViewModelBase(collection:Readonly<OwnerCollectionDto>,movies:RecommendedMovie[],username=''):MovieList{return {documentId:collection.id,List_Name:collection.title,list_description:collection.description,slug:collection.slug,Visibility:collection.visibility==='public'&&collection.publicationState==='published',cover_image:collection.coverMediaId?{documentId:collection.coverMediaId,url:`/api/explorers/v1/media/${collection.coverMediaId}/content`}:null,display_order:collection.displayOrder,top_picks_heading:collection.heading,recommended_movies:movies.map(m=>({...m,movie_list:{documentId:collection.id,List_Name:collection.title,slug:collection.slug}})),account:{documentId:collection.accountId,username}};}
+
+/** WP11: the legacy list carries isSample (only when true) so cards, picks and the list page can badge it. */
+export const collectionViewModel:typeof collectionViewModelBase=(...args)=>withSampleFlag(args[0],collectionViewModelBase(...args));

@@ -1,4 +1,5 @@
 import { readCanonicalNavigationContent, type NavigationContent } from './canonicalNavigationContent';
+import { QueryClientContext, type QueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useLayoutEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react';
 import { explorersApiClient } from '../../lib/explorersApiClient';
 import useAuthStore from '../../store/store';
@@ -34,7 +35,7 @@ function isGenericIntent(value: unknown): value is GenericNavigationIntent {
     && ['publish', 'unpublish', 'pin', 'unpin'].some((action) => action === intent.action);
 }
 
-function createNavigationController() {
+function createNavigationController(queryClient?: QueryClient) {
   let state: NavigationState = { busy: false, pending: [] };
   let generation = ++nextGeneration;
   let readSequence = 0;
@@ -52,12 +53,19 @@ function createNavigationController() {
       && auth.user?.id === origin.userDocumentId && auth.accountId === origin.accountDocumentId && generation === origin.generation
       && state.authority?.accountDocumentId === origin.accountDocumentId;
   };
-  const api = createCategoryNavigationApi({ profile: explorersApiClient, isCurrent });
+  const api = createCategoryNavigationApi({ profile: explorersApiClient, isCurrent,
+    // Opening the dashboard reuses the account the page already read instead of another /me.
+    ...(queryClient ? { accounts: { client: queryClient, identity: () => {
+      const auth = useAuthStore.getState();
+      return { identityKey: auth.user?.id ?? 'cookie-session', generation: auth.generation };
+    } } } : {}) });
   const invalidate = () => {
     generation = ++nextGeneration; readSequence++; operations = 0;
     publish({ busy: false, pending: [] });
   };
-  async function refresh() {
+  // Only the initial and session-change reads may reuse the shared account; every other
+  // refresh (focus, another tab's save, an explicit retry) reads it fresh.
+  async function refresh(options?: { cached?: boolean }) {
     if (!mounted || listeners.size === 0) return;
     const auth = useAuthStore.getState();
     if (!auth.isAuthenticated || auth.status !== 'active-complete' || !auth.user?.id || !auth.accountId || auth.user.blocked) return;
@@ -67,7 +75,7 @@ function createNavigationController() {
     const startedGeneration = generation;
     const sequence = ++readSequence;
     try {
-      const snapshot = await api.readAccount(scope);
+      const snapshot = await api.readAccount(scope, { fresh: options?.cached !== true });
       if (!mounted || listeners.size === 0 || generation !== startedGeneration || sequence !== readSequence
         || useAuthStore.getState().generation !== sessionGeneration) return;
       const authority = Object.freeze({ ...snapshot.scope, generation });
@@ -121,7 +129,7 @@ function createNavigationController() {
       if (next.generation === previous.generation && next.isAuthenticated === previous.isAuthenticated && next.user?.id === previous.user?.id && next.accountId === previous.accountId && next.status === previous.status
         && next.user?.blocked === previous.user?.blocked) return;
       observedSessionGeneration = next.generation;
-      invalidate(); void refresh();
+      invalidate(); void refresh({ cached: true });
     });
     try {
       if (typeof BroadcastChannel !== 'undefined') { channel = new BroadcastChannel(CHANNEL); channel.addEventListener('message', onMessage); }
@@ -217,7 +225,7 @@ function createNavigationController() {
       mount();
       const first = listeners.size === 0;
       listeners.add(listener);
-      if (first) void refresh();
+      if (first) void refresh({ cached: true });
       return () => { listeners.delete(listener); if (listeners.size === 0) invalidate(); };
     },
     unmount() {
@@ -231,7 +239,8 @@ function createNavigationController() {
 const NavigationContext = createContext<ReturnType<typeof createNavigationController> | undefined>(undefined);
 
 export function CategoryNavigationProvider({ children }: { children: ReactNode }) {
-  const controller = useMemo(() => createNavigationController(), []);
+  const queryClient = useContext(QueryClientContext);
+  const controller = useMemo(() => createNavigationController(queryClient), [queryClient]);
   useLayoutEffect(() => { controller.mount(); return () => controller.unmount(); }, [controller]);
   return <NavigationContext.Provider value={controller}>{children}</NavigationContext.Provider>;
 }

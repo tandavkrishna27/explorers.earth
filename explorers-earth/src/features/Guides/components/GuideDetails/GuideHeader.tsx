@@ -128,7 +128,7 @@ const GuideHeader: React.FC<GuideHeaderProps> = ({ guide, guideId, onVisibilityC
         {/* Guide Type Badge */}
         {guide.Guide_Type && (
           <span className="px-3 py-1.5 text-xs font-medium bg-white/20 backdrop-blur-sm rounded-full text-white">
-            {guide.Guide_Type}
+            {t(`dashboard.wp7.guideType.${guide.Guide_Type}`, guide.Guide_Type)}
           </span>
         )}
         {/* Budget tier, only when the owner chose one (legacy spelling: Mid_Range) */}

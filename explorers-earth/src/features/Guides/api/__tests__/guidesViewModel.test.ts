@@ -5,7 +5,7 @@ import {
 } from '../../../../../../tunes/shared/explorersGuideContract';
 import {
  mediaContentUrl, parseLegacyJsonField, toBudgetPlace, toCanonicalSectionBlocks, toDayPlace, toGuide,
- toGuideSection, toTransportSegment,
+ toGuideSection, toTimeline, toTransportSegment,
 } from '../guidesViewModel';
 
 /**
@@ -28,6 +28,15 @@ const canonicalPlace = (over: Record<string, unknown> = {}) => ({
  budgetAmount: '450.50', budgetCurrency: 'INR', source: 'google' as const, verified: true,
  ...over,
 });
+
+/** v2 items from the old slot layout: morning, then afternoon, then evening, each labelled with its slot. */
+type SlotPlace = {localId: string};
+const slotItems = (morning: SlotPlace[], afternoon: SlotPlace[] = [], evening: SlotPlace[] = []) => [
+ ...morning.map((place) => ({kind: 'place' as const, localId: place.localId, timeLabel: 'morning' as const, place})),
+ ...afternoon.map((place) => ({kind: 'place' as const, localId: place.localId, timeLabel: 'afternoon' as const, place})),
+ ...evening.map((place) => ({kind: 'place' as const, localId: place.localId, timeLabel: 'evening' as const, place})),
+];
+const itemPlaces = (blocks: GuideSectionBlocks) => blocks.items.flatMap((item) => item.kind === 'place' ? [item.place] : []);
 
 describe('day place mapping', () => {
  it('keeps geometry NESTED, which is what every Guides map reads', () => {
@@ -124,7 +133,7 @@ describe('section mapping', () => {
  it('carries a full timeline through to the shape the itinerary view reads', () => {
   const blocks = guideSectionBlocksSchema.parse({
    ...guideEmptySectionBlocks,
-   timeline: {morning: [canonicalPlace()], afternoon: [], evening: [canonicalPlace({localId: 'e1', name: 'ചായക്കട'})]},
+   items: slotItems([canonicalPlace()], [], [canonicalPlace({localId: 'e1', name: 'ചായക്കട'})]),
    transport: {segments: [{fromLocalId: 'm1', toLocalId: 'e1', mode: 'taxi', distanceKm: 8, estimatedMinutes: 25}]},
   });
   const mapped = toGuideSection(section(blocks));
@@ -236,26 +245,25 @@ describe('canonical round trip', () => {
  // the next save erases. This is the test that makes that impossible to do silently.
  const full = (): GuideSectionBlocks => guideSectionBlocksSchema.parse({
   ...guideEmptySectionBlocks,
-  timeline: {
-   morning: [canonicalPlace({photos: [{mediaId: uuid(1), fileName: 'a.jpg', width: 1600, height: 900, aspectRatio: '16:9'}]})],
-   afternoon: [canonicalPlace({localId: 'a1', placeId: 'ChIJa1', name: 'ചായക്കട — tea stall', tips: null,
+  items: slotItems(
+   [canonicalPlace({photos: [{mediaId: uuid(1), fileName: 'a.jpg', width: 1600, height: 900, aspectRatio: '16:9'}]})],
+   [canonicalPlace({localId: 'a1', placeId: 'ChIJa1', name: 'ചായക്കട — tea stall', tips: null,
     geometry: null, priceLevel: null, budgetAmount: null, budgetCurrency: null, source: 'ai-unverified', verified: false})],
-   evening: [canonicalPlace({localId: 'e1', placeId: 'ChIJe1', name: 'Sunset point', customBudget: 'about 500',
+   [canonicalPlace({localId: 'e1', placeId: 'ChIJe1', name: 'Sunset point', customBudget: 'about 500',
     budgetAmount: null, budgetCurrency: null})],
-  },
+  ),
   transport: {segments: [
    {fromLocalId: 'm1', toLocalId: 'a1', mode: 'auto', distanceKm: 3.4, estimatedMinutes: 12},
    {fromLocalId: 'a1', toLocalId: 'e1', mode: 'ferry', distanceKm: null, estimatedMinutes: null},
   ]},
   stay: {accommodations: [canonicalPlace({localId: 's1', placeId: 'ChIJs1', name: 'Brunton Boatyard'})]},
   activities: {activities: [canonicalPlace({localId: 'v1', placeId: 'ChIJv1', name: 'Kathakali — കഥകളി'})]},
-  budget: {
-   morning: [{localId: 'm1', placeId: 'ChIJN1t_tDeuEmsRUsoyG83frY4', name: 'Kashi Art Cafe', priceLevel: 2,
-    priceRange: null, customBudget: null, budgetAmount: '450.50', budgetCurrency: 'INR'}],
-   afternoon: [],
-   evening: [{localId: 'e1', placeId: 'ChIJe1', name: 'Sunset point', priceLevel: null, priceRange: null,
-    customBudget: 'about 500', budgetAmount: null, budgetCurrency: null}],
-  },
+  budget: {entries: [
+   {localId: 'm1', placeId: 'ChIJN1t_tDeuEmsRUsoyG83frY4', name: 'Kashi Art Cafe', priceLevel: 2,
+    priceRange: null, customBudget: null, budgetAmount: '450.50', budgetCurrency: 'INR'},
+   {localId: 'e1', placeId: 'ChIJe1', name: 'Sunset point', priceLevel: null, priceRange: null,
+    customBudget: 'about 500', budgetAmount: null, budgetCurrency: null},
+  ]},
   mapDetails: {center: {lat: 9.9658, lng: 76.2421}, zoom: 14},
   packingList: {items: [{localId: 'p1', label: 'Mosquito repellent', done: false}]},
   preTasks: {items: [{localId: 't1', label: 'Book the backwater ferry', done: true}]},
@@ -291,31 +299,31 @@ describe('canonical round trip', () => {
 
  it('keeps geometry nested through both directions', () => {
   const result = reverse(full());
-  expect(result.timeline.morning[0].geometry).toEqual({location: {lat: 9.9658, lng: 76.2421}});
-  expect(result.timeline.afternoon[0].geometry).toBeNull();
+  expect(itemPlaces(result)[0].geometry).toEqual({location: {lat: 9.9658, lng: 76.2421}});
+  expect(itemPlaces(result)[1].geometry).toBeNull();
  });
 
  it('keeps a photo as a media id and never reintroduces a url', () => {
-  const photo = reverse(full()).timeline.morning[0].photos[0];
+  const photo = itemPlaces(reverse(full()))[0].photos[0];
   expect(photo).toEqual({mediaId: uuid(1), fileName: 'a.jpg', width: 1600, height: 900, aspectRatio: '16:9'});
   expect(photo).not.toHaveProperty('url');
  });
 
  it('normalises money formatting but never the amount', () => {
   // "450.50" and 450.5 are the same amount; the decimal string is what storage keeps.
-  expect(reverse(full()).budget.morning[0].budgetAmount).toBe('450.50');
+  expect(reverse(full()).budget.entries[0].budgetAmount).toBe('450.50');
   const odd = guideSectionBlocksSchema.parse({...guideEmptySectionBlocks,
-   timeline: {morning: [canonicalPlace({budgetAmount: '7.5', budgetCurrency: 'EUR'})], afternoon: [], evening: []}});
-  expect(reverse(odd).timeline.morning[0].budgetAmount).toBe('7.50');
+   items: slotItems([canonicalPlace({budgetAmount: '7.5', budgetCurrency: 'EUR'})])});
+  expect(itemPlaces(reverse(odd))[0].budgetAmount).toBe('7.50');
  });
 
  it('will not let an unverified AI place come back claiming verification', () => {
-  expect(reverse(full()).timeline.afternoon[0]).toMatchObject({source: 'ai-unverified', verified: false});
+  expect(itemPlaces(reverse(full()))[1]).toMatchObject({source: 'ai-unverified', verified: false});
  });
 
  it('keeps transport segments pointing at entries the section contains', () => {
   const result = reverse(full());
-  const present = new Set([...result.timeline.morning, ...result.timeline.afternoon, ...result.timeline.evening,
+  const present = new Set([...itemPlaces(result),
    ...result.activities.activities, ...result.stay.accommodations].map((place) => place.localId));
   for (const segment of result.transport.segments) {
    expect(present.has(segment.fromLocalId)).toBe(true);
@@ -325,9 +333,25 @@ describe('canonical round trip', () => {
 
  it('keeps every budget row tied to an entry the section contains', () => {
   const result = reverse(full());
-  const present = new Set([...result.timeline.morning, ...result.timeline.afternoon, ...result.timeline.evening,
+  const present = new Set([...itemPlaces(result),
    ...result.activities.activities, ...result.stay.accommodations].map((place) => place.localId));
-  for (const row of [...result.budget.morning, ...result.budget.afternoon, ...result.budget.evening])
+  for (const row of result.budget.entries)
    expect(present.has(row.localId)).toBe(true);
+ });
+});
+
+describe('v2 blocks through the legacy view', () => {
+ const place = {localId: 'a', placeId: 'P1', name: 'Fort', formattedAddress: null, geometry: null, types: [], tips: null, photos: [],
+  priceLevel: null, priceRange: null, customBudget: null, budgetAmount: null, budgetCurrency: null, source: 'google' as const, verified: true};
+ const blocks: GuideSectionBlocks = {...guideEmptySectionBlocks, items: [
+  {kind: 'note', localId: 'n', timeLabel: null, text: 'Ferry'}, {kind: 'place', localId: 'a', timeLabel: '18:30', place}]};
+ it('buckets places by label for old readers', () => {
+  expect(toTimeline(blocks).evening.map((p) => p.place_id)).toEqual(['P1']);
+ });
+ it('round-trips an old-modal save without losing the note or the exact time', () => {
+  const section = toGuideSection({id: '11111111-1111-4111-8111-111111111111', collectionId: '22222222-2222-4222-8222-222222222222',
+   title: '', description: null, displayOrder: 0, blocks, archived: false, createdAt: new Date(0).toISOString(), updatedAt: new Date(0).toISOString()});
+  const saved = toCanonicalSectionBlocks({...section, Items: section.Items} as never);
+  expect(saved.items.map((i) => [i.localId, i.timeLabel])).toEqual([['n', null], ['a', '18:30']]);
  });
 });

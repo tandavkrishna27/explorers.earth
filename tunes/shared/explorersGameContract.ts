@@ -24,12 +24,12 @@ export type GamePrecision='day'|'month'|'year'|'quarter'|'unknown';
 export type GameReleaseFact={id:number;date:number|null;year:number|null;month:number|null;day:number|null;human:string|null;platform:number|null;dateFormat:{id:number;format:string}|null;releaseRegion:{id:number;region:string}|null;legacyCategory:number|null;legacyRegion:number|null;precision:GamePrecision;precisionSource:'current'|'legacy'|'timestamp-only'|'unknown'};
 export type GameProviderFacts={provider:'igdb';externalKind:'game';externalId:string;mappingVersion:1;fetchedAt:number;title:string;slug:string|null;summary:string|null;storyline:string|null;firstReleaseDate:number|null;providerRating:number|null;ratingsCount:number|null;genres:{id:number;name:string}[];platforms:{id:number;name:string}[];gameModes:{id:number;name:string}[];companies:GameProviderRow['involved_companies'];developer:string|null;publisher:string|null;coverImageId:string|null;screenshotIds:string[];providerUrl:string|null;releases:GameReleaseFact[]};
 /** What the add-game page shows for a search hit and fills its form from. */
-export const gameCandidateSchema=z.object({externalId:gameExternalIdSchema,title:name,year:z.number().int().min(1).max(9999).nullable(),coverUrl:z.string().max(200).regex(/^https:\/\/images\.igdb\.com\/igdb\/image\/upload\/t_cover_big\/[A-Za-z0-9_-]+\.jpg$/).nullable(),platforms:z.array(name).max(12),genres:z.array(name).max(12)}).strict();
+export const gameCandidateSchema=z.object({externalId:gameExternalIdSchema,title:name,year:z.number().int().min(1).max(9999).nullable(),coverUrl:z.string().max(200).regex(/^https:\/\/images\.igdb\.com\/igdb\/image\/upload\/t_cover_big\/[A-Za-z0-9_-]+\.jpg$/).nullable(),platforms:z.array(name).max(12),genres:z.array(name).max(12),developer:name.nullable().default(null)}).strict();
 export type GameCandidate=z.infer<typeof gameCandidateSchema>;
 export const gameCandidatePageSchema=z.object({version:z.literal('explorers-game-candidates/v1'),items:z.array(gameCandidateSchema).max(24),nextCursor:z.string().regex(/^[A-Za-z0-9_-]{1,512}$/).nullable()}).strict();
 export type GameCandidatePage=z.infer<typeof gameCandidatePageSchema>;
 /** A game's year, platforms and genres (GMS-X01), filled from an IGDB hit or typed by the owner. */
 const detailLabel=text(100).transform(v=>v.trim()).refine(v=>v.length>0);
-export const gameDetailsSchema=z.object({releaseYear:z.number().int().min(1900).max(2100).nullable(),platforms:z.array(detailLabel).max(12),genres:z.array(detailLabel).max(12)}).strict();
+export const gameDetailsSchema=z.object({releaseYear:z.number().int().min(1900).max(2100).nullable(),platforms:z.array(detailLabel).max(12),genres:z.array(detailLabel).max(12),developer:text(200).transform(v=>v.trim()).refine(v=>v.length>0).nullable().default(null)}).strict();
 export type GameDetails=z.infer<typeof gameDetailsSchema>;
-export const emptyGameDetails:GameDetails=Object.freeze({releaseYear:null,platforms:[],genres:[]}) as GameDetails;
+export const emptyGameDetails:GameDetails=Object.freeze({releaseYear:null,platforms:[],genres:[],developer:null}) as GameDetails;

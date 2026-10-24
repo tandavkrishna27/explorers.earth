@@ -1,5 +1,6 @@
 import {placePinsReadInteger,placePinJoin,placePinBucket,placeSortPosition} from './placePinsRead';
 import {readTaxonomyAssignment} from '../repositories/taxonomyAssignmentRepository';
+import {isFlatCuratedCategory} from '../../shared/explorersTaxonomyContract';
 import {readManualGamePresentation} from '../repositories/gameManualRepository';
 import {readMovieProviderMedia} from '../repositories/movieMedia';
 import {readMovieEntity,readMovieContext,readMovieTerms,effectiveMovieDetails} from '../repositories/movieCatalogRepository';
@@ -21,7 +22,7 @@ import {readAppEntity,readAppScreenshotMediaIds,effectiveAppDetails} from '../re
 import {readProductEntity,readProductOffer,effectiveProductDetails} from '../repositories/productCatalogRepository';
 import {readPersonEntity,effectivePersonDetails} from '../repositories/personCatalogRepository';
 import {readPlaceEntity,readPlaceContext,readPlacePhotoMediaIds,readPlaceCollectionDetails,effectivePlaceDetails} from '../repositories/placeCatalogRepository';
-import {readLocationLink,readLinkedChildren} from '../repositories/placeLinkRepository';
+import {readListLinksForCollection} from '../repositories/listLinkRepository';
 
 export const OWNER_PAGE_BYTES=4*1024*1024;
 const VERSION='explorers-owner-content/v2' as const;
@@ -31,9 +32,9 @@ type Snapshot=z.infer<typeof snapshotSchema>;
 type Cursor=z.infer<typeof cursorSchema>;
 // Compute the exact emitted JSON scalar bytes inside SQL, returning only a
 // numeric indicator before any unbounded text crosses the database connection.
-const collectionFields={id:'c.id',accountId:'c.account_id',category:'c.category',title:'c.title',slug:'c.slug',visibility:'c.visibility',publicationState:'c.publication_state',revision:'c.revision',description:'c.description',heading:'c.heading',coverMediaId:'m.media_id',archived:'(c.archived_at IS NOT NULL)',displayOrder:'c.display_order'};
+const collectionFields={id:'c.id',accountId:'c.account_id',category:'c.category',title:'c.title',slug:'c.slug',visibility:'c.visibility',publicationState:'c.publication_state',revision:'c.revision',description:'c.description',heading:'c.heading',coverMediaId:'m.media_id',archived:'(c.archived_at IS NOT NULL)',displayOrder:'c.display_order',isSample:'c.is_sample'};
 const collectionBytes=`octet_length(convert_to('{'||${Object.entries(collectionFields).map(([key,column],n)=>`'${n?',':''}"${key}":'||coalesce(to_json(${column})::text,'null')`).join('||')}||'}','UTF8'))`;
-const collectionProjection='c.id,c.account_id,c.category,c.title,c.slug,c.visibility,c.publication_state,c.revision,c.archived_at,c.display_order,c.pin_order,c.description,c.heading,m.media_id AS cover_media_id';
+const collectionProjection='c.id,c.account_id,c.category,c.title,c.slug,c.visibility,c.publication_state,c.revision,c.archived_at,c.display_order,c.pin_order,c.description,c.heading,c.is_sample,m.media_id AS cover_media_id';
 const collectionJoin="FROM collections c LEFT JOIN collection_media m ON m.collection_id=c.id AND m.account_id=c.account_id AND m.slot='cover'";
 const recommendationProjection='r.id,r.account_id,r.category,r.entity_id,r.user_rating,r.publication_state,r.revision,r.archived_at';
 const statusPredicate=(alias:string,status:string)=>status==='all'?'TRUE':`${alias}.archived_at IS ${status==='active'?'':'NOT '}NULL`;
@@ -94,7 +95,7 @@ export class OwnerContentService {
   return {cursor,...await this.snapshot(db,actor,input.category,input.snapshotToken??cursor?.snapshotToken)};
  }
  private collection(row:any) {
-  return wire.ownerCollectionDtoSchema.parse({id:row.id,accountId:row.account_id,category:row.category,title:row.title,slug:row.slug,visibility:row.visibility,publicationState:row.publication_state,revision:Number(row.revision),description:row.description,heading:row.heading,coverMediaId:row.cover_media_id??null,archived:row.archived_at!==null,displayOrder:row.display_order});
+  return wire.ownerCollectionDtoSchema.parse({id:row.id,accountId:row.account_id,category:row.category,title:row.title,slug:row.slug,visibility:row.visibility,publicationState:row.publication_state,revision:Number(row.revision),description:row.description,heading:row.heading,coverMediaId:row.cover_media_id??null,archived:row.archived_at!==null,displayOrder:row.display_order,isSample:row.is_sample===true});
  }
  private async recommendations(db:PoolClient,rows:any[]) {
   if(!rows.length) return [];
@@ -191,7 +192,7 @@ export class OwnerContentService {
     else{values.push(...(input.collectionId?[cursor.order,cursor.id]:[cursor.id]));where=input.collectionId?`AND (i.display_order,r.id)>($${values.length-1},$${values.length}::uuid)`:`AND r.id>$${values.length}::uuid`;}
    }
    values.push(input.limit+1);
-   const rows=(await db.query(`SELECT ${recommendationProjection},${pageOrder} AS page_order${places?`,${bucket} AS pin_bucket`:''} FROM recommendations r ${join} WHERE r.account_id=$1 AND r.category=$2 AND ${statusPredicate('r',input.status)} ${where} ORDER BY ${order} LIMIT $${values.length}`,values)).rows;
+   const rows=(await db.query(`SELECT ${recommendationProjection},${pageOrder} AS page_order${places?`,${bucket} AS pin_bucket`:''} FROM recommendations r ${join} WHERE r.account_id=$1 AND r.category=$2 AND ${statusPredicate('r',input.status)} ${input.collectionId?'':'AND NOT r.is_sample'} ${where} ORDER BY ${order} LIMIT $${values.length}`,values)).rows;
    const extra=places?{placePins:{collectionId:input.collectionId,collectionRevision,categoryContentRevision:ctx.state.revision,eligibleItemCount:placePinsReadInteger(counts.item_count,Number.MAX_SAFE_INTEGER),eligiblePinCount:placePinsReadInteger(counts.pin_count,Number.MAX_SAFE_INTEGER)}}:{};
    return wire.ownerRecommendationPageSchema.parse(this.page(rows,await this.recommendations(db,rows.slice(0,input.limit)),ctx,binding,r=>({order:places?placePinsReadInteger(r.page_order):r.page_order,id:r.id,...(places?{pinBucket:r.pin_bucket,collectionRevision}:{})}),extra));
   });
@@ -217,12 +218,12 @@ export class OwnerContentService {
    const ctx=await this.context(db,actor,input,binding),cursor=ctx.cursor;
    const values:any[]=[actor.accountId,input.category];
    let continuation='';if(cursor){values.push(cursor.order,cursor.id);continuation='AND (p.position,p.recommendation_id)>($3,$4::uuid)';}values.push(input.limit+1);
-   const rows=(await db.query(`SELECT p.recommendation_id,p.collection_id,p.position FROM category_recommendation_pins p
+   const rows=(await db.query(`SELECT p.recommendation_id,p.collection_id,p.position,c.is_sample FROM category_recommendation_pins p
     JOIN collections c ON c.id=p.collection_id AND c.account_id=p.account_id AND c.category=p.category AND c.archived_at IS NULL
     JOIN recommendations r ON r.id=p.recommendation_id AND r.account_id=p.account_id AND r.category=p.category AND r.archived_at IS NULL
     JOIN collection_items i ON i.collection_id=p.collection_id AND i.recommendation_id=p.recommendation_id AND i.account_id=p.account_id AND i.category=p.category
     WHERE p.account_id=$1 AND p.category=$2 ${continuation} ORDER BY p.position,p.recommendation_id LIMIT $${values.length}`,values)).rows;
-   const items=rows.slice(0,input.limit).map(r=>({recommendationId:r.recommendation_id,collectionId:r.collection_id,position:r.position}));
+   const items=rows.slice(0,input.limit).map(r=>({recommendationId:r.recommendation_id,collectionId:r.collection_id,position:r.position,isSample:r.is_sample===true}));
    return wire.ownerTopPickPageSchema.parse({...this.page(rows,items,ctx,binding,r=>({order:r.position,id:r.recommendation_id})),pinRevision:ctx.pinRevision});
   });
  }
@@ -236,12 +237,9 @@ export class OwnerContentService {
    if(Buffer.byteLength(JSON.stringify({collection}),'utf8')>OWNER_PAGE_BYTES) throw new RecommendationFailure(413,'Owner resource exceeds the response byte budget');
    if(!editable)return collection;
    const categoryRevision=(await db.query("SELECT coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category=$2),'0') AS revision",[actor.accountId,row.category])).rows[0].revision;
-   // A location list reports what is linked to it; a Products or People list reports
-   // the one location it belongs to, or null.
-   const links=row.category==='places'
-    ?{linkedChildren:(await readLinkedChildren(db,id,actor.accountId)).map(child=>({...child,locationCollectionId:id}))}
-    :row.category==='products'||row.category==='people'?{locationLink:await readLocationLink(db,id,actor.accountId)}:{};
-   return wire.editableOwnerCollectionSchema.parse({...collection,categoryRevision,pinOrder:row.pin_order===null||row.pin_order===undefined?null:Number(row.pin_order),...links,...(row.category==='places'?{placeLocation:await readPlaceCollectionDetails(db,id,actor.accountId)}:{})});
+   // WP10. Every list linked to or from this one, whatever its category, one level deep.
+   const linkedLists=await readListLinksForCollection(db,id,actor.accountId);
+   return wire.editableOwnerCollectionSchema.parse({...collection,categoryRevision,pinOrder:row.pin_order===null||row.pin_order===undefined?null:Number(row.pin_order),linkedLists,...(row.category==='places'?{placeLocation:await readPlaceCollectionDetails(db,id,actor.accountId)}:{})});
   });
  }
  async getRecommendation(actor:Actor,id:string,raw:unknown={},editable=false) {
@@ -264,7 +262,7 @@ export class OwnerContentService {
    // A Places list may hold a person recommendation, so the place entity read is
    // conditional on the entity kind while the context always travels.
    const place= row.category==='places'&&detail.kind==='place'?await readPlaceEntity(db,detail.entity_id):undefined;const movie=row.category==='movies'&&(await db.query('SELECT 1 FROM movie_entity_details WHERE entity_id=$1',[detail.entity_id])).rowCount?await readMovieEntity(db,detail.entity_id):undefined;
-   const taxonomy=row.category==='places'||row.category==='people'?await readTaxonomyAssignment(db,id,actor.accountId,row.category):{};
+   const taxonomy=row.category==='places'||row.category==='people'||isFlatCuratedCategory(row.category)?await readTaxonomyAssignment(db,id,actor.accountId,row.category):{};
    const result=wire.editableOwnerRecommendationSchema.parse({...recommendation,...taxonomy,note:normalizeRichNote(detail.note),categoryRevision:detail.category_revision,entity:book??movie??app??product??person??place??entity.data,displayOverrides:values.data,displayTitle,...(row.category==='games'?{gamePresentation:await readManualGamePresentation(db,id,actor.accountId)}:{}),...(book?{bookCovers:await readBookCovers(db,id),bookContext:await readBookContext(db,id,actor.accountId),effectiveBookDetails:effectiveBookDetails(book.details,values.data)}:{}),...(movie?{movieContext:await readMovieContext(db,id,actor.accountId),effectiveMovieDetails:effectiveMovieDetails(movie.details,values.data),movieTerms:await readMovieTerms(db,id,actor.accountId),providerMedia:await readMovieProviderMedia(db,id,actor.accountId)}:{}),...(app?{appScreenshots:{screenshotMediaIds:await readAppScreenshotMediaIds(db,id,actor.accountId)},effectiveAppDetails:effectiveAppDetails(app.details,values.data)}:{}),...(product?{productOffer:await readProductOffer(db,id,actor.accountId),effectiveProductDetails:effectiveProductDetails(product.details,values.data)}:{}),...(person?{effectivePersonDetails:effectivePersonDetails(person.details,values.data)}:{}),...(row.category==='places'?{placeContext:await readPlaceContext(db,id,actor.accountId),placePhotos:{photoMediaIds:await readPlacePhotoMediaIds(db,id,actor.accountId)},...(place?{effectivePlaceDetails:effectivePlaceDetails(place.details,values.data)}:{})}:{})});
    if(Buffer.byteLength(JSON.stringify({recommendation:result}),'utf8')>OWNER_PAGE_BYTES)throw new RecommendationFailure(413,'Owner resource exceeds the response byte budget');return result;
   });

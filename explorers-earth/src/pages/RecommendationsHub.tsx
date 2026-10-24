@@ -17,6 +17,7 @@ import TravelGuideIcon from "../assets/icons/TravelGuideIcon";
 import useAuthStore from "../store/store";
 import { toast } from "sonner";
 import { computePinnedNavTabIds, getVisibleNavTabIds } from "../utils/navPinning";
+import DashboardPageContainer from "../components/layout/DashboardPageContainer";
 
 type CategoryKey = "places" | "movies" | "books" | "games" | "guides" | "apps" | "products" | "people";
 
@@ -907,7 +908,7 @@ const RecommendationsHub = () => {
   };
 
   return (
-    <div className="min-h-screen bg-dashboard-bg text-dashboard px-4 md:px-8 py-6 md:py-8 pb-24 max-w-7xl mx-auto">
+    <DashboardPageContainer className="min-h-screen bg-dashboard-bg text-dashboard pt-2 pb-24">
       <NavigationStatus navigation={navigation} />
       <UnpublishCategoryDialog
         open={unpublishTarget !== null}
@@ -926,8 +927,8 @@ const RecommendationsHub = () => {
         </p>
       </div>
 
-      {/* Main 3x3 Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
+      {/* Two columns: the shared 720px column is too narrow for three hub cards. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         {CATEGORIES.map(cat => (
           <RecommendationCard
             key={cat.key}
@@ -943,7 +944,7 @@ const RecommendationsHub = () => {
           />
         ))}
       </div>
-    </div>
+    </DashboardPageContainer>
   );
 };
 

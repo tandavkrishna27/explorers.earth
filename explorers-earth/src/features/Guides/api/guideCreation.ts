@@ -70,6 +70,26 @@ export async function createGuide(input: NewGuide, signal?: AbortSignal): Promis
  return {collectionId: collection.id};
 }
 
+export type NewTrip = {title: string; days: number; startDate: string | null; tags: string[];
+ destination: {name: string; address: string | null; placeId: string | null; lat: number | null; lng: number | null} | null};
+
+/** GD-03: collection (draft, private) → details → N empty days, each against the previous revision. */
+export async function createTripGuide(input: NewTrip, signal?: AbortSignal): Promise<CreatedGuide> {
+ const collection = await explorersApiClient.createMyCollection({category: 'guides', title: input.title, slug: guideSlug(input.title)} as never, key(), signal);
+ let observation = await GuidesClient.observeWholeGuide(collection.id, signal);
+ observation = await GuidesClient.writeDetails(GuidesClient.prepareIntent(observation), {
+  guideType: 'itinerary', multiCity: false, numberOfDays: input.days, estimatedBudget: null, budgetCurrency: null, budgetType: null,
+  budgetTier: null, startDate: input.startDate, bestTimeToVisit: [], categories: [], tags: input.tags, tipsNotes: null,
+  place: input.destination ? {name: input.destination.name, address: input.destination.address, placeId: input.destination.placeId,
+   rating: null, ratingsCount: null, lat: input.destination.lat, lng: input.destination.lng} : {},
+  locationEntityId: null,
+ }, signal);
+ for (let i = 0; i < input.days; i += 1)
+  observation = await GuidesClient.run(GuidesClient.prepareIntent(observation),
+   (id, revision, k, s) => explorersApiClient.addMyGuideDay(id, {revision}, k, s), signal);
+ return {collectionId: collection.id};
+}
+
 /** A day or stop, from the shapes the create wizard holds in state. */
 export function guideSectionDraft(input: {
  title: string; description: string | null;

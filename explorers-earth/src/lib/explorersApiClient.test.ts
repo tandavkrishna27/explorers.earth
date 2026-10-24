@@ -21,7 +21,7 @@ describe('native recommendation category create validation',()=>{
   const extra=category==='places'?{placesTaxonomy:{categoryTermId:entityId,subcategoryTermId:null}}:category==='people'?{peopleSectorTermId:entityId}:{};
   vi.stubGlobal('fetch',vi.fn(async(_url:string,options:RequestInit)=>{
    if(options.method){writes.push(options);return new Response(JSON.stringify({recommendation:{id,accountId:account,category,entityId,userRating:null,publicationState:'draft',revision:1,mediaIds:[]}}),{status:200});}
-   return new Response(JSON.stringify({collection:{id:listId,accountId:account,category,title:'List',slug:'list',visibility:'private',publicationState:'draft',revision:7,description:null,heading:null,coverMediaId:null,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',...(category==='places'?{placeLocation:{locationEntityId:null,locationSnapshot:null,instagramMediaUrl:null},linkedChildren:[]}:category==='people'||category==='products'?{locationLink:null}:{})}}),{status:200});
+   return new Response(JSON.stringify({collection:{id:listId,accountId:account,category,title:'List',slug:'list',visibility:'private',publicationState:'draft',revision:7,description:null,heading:null,coverMediaId:null,isSample:false,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',...(category==='places'?{placeLocation:{locationEntityId:null,locationSnapshot:null,instagramMediaUrl:null}}:{}),linkedLists:[]}}),{status:200});
   }));
   const parent=await explorersApiClient.getMyEditableCollection(listId);
   const saved=await explorersApiClient.createMyRecommendation(parent,{entityId,...extra},`category-${category}`);
@@ -31,9 +31,9 @@ describe('native recommendation category create validation',()=>{
 });
 describe('authentic Games membership wire',()=>{
  const account='00000000-0000-4000-8000-000000000001',listId='00000000-0000-4000-8000-000000000002',recId='00000000-0000-4000-8000-000000000003',entityId='00000000-0000-4000-8000-000000000004';
- const collection={id:listId,accountId:account,category:'games',title:'List',slug:'list',visibility:'private',publicationState:'draft',revision:4,description:null,heading:null,coverMediaId:null};
+ const collection={id:listId,accountId:account,category:'games',title:'List',slug:'list',visibility:'private',publicationState:'draft',revision:4,description:null,heading:null,coverMediaId:null,isSample:false};
  const recommendation={id:recId,accountId:account,category:'games',entityId,userRating:null,publicationState:'draft',revision:2,mediaIds:[]};
- const collectionDetail={...collection,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9'};
+ const collectionDetail={...collection,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',linkedLists:[]};
  const recommendationDetail={...recommendation,archived:false,pin:null,note:null,categoryRevision:'9',entity:{id:entityId,kind:'game',title:'Manual'},displayOverrides:{},displayTitle:'Manual',gamePresentation:{version:'explorers-manual-game/v1',origin:'manual',providerExternalId:null,providerFacts:null,images:[],coverMediaId:null}};
  const reply=(value:unknown)=>new Response(JSON.stringify(value),{status:200});
  beforeEach(()=>{vi.unstubAllGlobals();useAuthStore.getState().logout();signIn(account);history.replaceState({},'','/games');});
@@ -128,13 +128,13 @@ describe("canonical API session expiry", () => {
 // Real issued observations and native Places adapter; only HTTP is replaced.
 describe('Places collection share slug wire', () => {
  const account='00000000-0000-4000-8000-000000000101',id='00000000-0000-4000-8000-000000000102';
- const base={id,accountId:account,category:'places',title:'Location',slug:'original-location',visibility:'private',publicationState:'draft',revision:4,description:'Preserved',heading:null,coverMediaId:null};
+ const base={id,accountId:account,category:'places',title:'Location',slug:'original-location',visibility:'private',publicationState:'draft',revision:4,description:'Preserved',heading:null,coverMediaId:null,isSample:false};
  beforeEach(()=>{vi.unstubAllGlobals();useAuthStore.getState().logout();signIn(account);history.replaceState({},'','/places');});
  async function observe(category='places') {
   const patches:RequestInit[]=[];
   vi.stubGlobal('fetch',vi.fn(async(_url:string,options:RequestInit)=>{
    if(options.method==='PATCH'){patches.push(options);const {expectedRevision,...patch}=JSON.parse(options.body as string);return new Response(JSON.stringify({collection:{...base,category,...patch,revision:expectedRevision+1}}),{status:200});}
-   return new Response(JSON.stringify({collection:{...base,category,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',...(category==='places'?{linkedChildren:[],placeLocation:{locationEntityId:null,locationSnapshot:null,instagramMediaUrl:null}}:category==='products'||category==='people'?{locationLink:null}:{})}}),{status:200});
+   return new Response(JSON.stringify({collection:{...base,category,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',...(category==='places'?{placeLocation:{locationEntityId:null,locationSnapshot:null,instagramMediaUrl:null}}:{}),linkedLists:[]}}),{status:200});
   }));
   const {PlacesClient}=await import('../features/Favorites/api/placesClient');
   return {PlacesClient,patches,observed:category==='places'?await PlacesClient.observeCollection(id):await explorersApiClient.getMyEditableCollection(id)};
@@ -150,9 +150,58 @@ describe('Places collection share slug wire', () => {
   for(const slug of ['', 'UPPER','double--dash','-leading','trailing-','spaces here','x'.repeat(201)])await expect(PlacesClient.updateCollection(observed,{title:'Edited',slug} as any,'places-bad-slug')).rejects.toMatchObject({status:422,code:'INVALID_INPUT'});
   expect(patches).toHaveLength(0);expect(await PlacesClient.updateCollection(observed,{title:'Ordinary'},'places-ordinary')).toMatchObject({slug:base.slug,title:'Ordinary',revision:5});expect(patches).toHaveLength(1);
  });
- it.each(['guides','movies','books','games','apps','products','people'])('rejects supplied slug for observed %s before PATCH',async category=>{
+ // WP3B (LP-09). Every category may rename its list URL; the server keeps the old one as a redirect.
+ it.each(['guides','movies','books','games','apps','products','people'])('sends a slug change for observed %s',async category=>{
   const {patches,observed}=await observe(category);
-  await expect(explorersApiClient.updateMyCollection(observed,{slug:'changed-slug'} as any,'other-slug-key')).rejects.toMatchObject({status:422,code:'INVALID_INPUT'});expect(patches).toHaveLength(0);
-  expect(await explorersApiClient.updateMyCollection(observed,{title:'Ordinary'},'other-ordinary-key')).toMatchObject({slug:base.slug,title:'Ordinary',revision:5});
+  expect(await explorersApiClient.updateMyCollection(observed,{slug:'cosy-picks'},'other-slug-key')).toMatchObject({slug:'cosy-picks',revision:5});
+  expect(patches).toHaveLength(1);expect(JSON.parse(patches[0].body as string)).toEqual({slug:'cosy-picks',expectedRevision:4});
+  await expect(explorersApiClient.updateMyCollection(await explorersApiClient.getMyEditableCollection(id),{slug:'Not A Slug'} as any,'other-bad-slug')).rejects.toMatchObject({status:422,code:'INVALID_INPUT'});expect(patches).toHaveLength(1);
+ });
+});
+// WP3B (LP-08). Restore an archived list and delete a list permanently; only HTTP is replaced.
+describe('list restore and permanent delete wire',()=>{
+ const account='00000000-0000-4000-8000-000000000301',id='00000000-0000-4000-8000-000000000302';
+ const core={id,accountId:account,category:'games',title:'Paris',slug:'paris',visibility:'private',publicationState:'draft',revision:5,description:null,heading:null,coverMediaId:null,isSample:false};
+ beforeEach(()=>{vi.unstubAllGlobals();useAuthStore.getState().logout();signIn(account);history.replaceState({},'','/games');});
+ function serve(archived:boolean,reply:(url:string,options:RequestInit)=>Response){
+  const writes:{url:string;options:RequestInit}[]=[],reads:string[]=[];
+  vi.stubGlobal('fetch',vi.fn(async(url:string,options:RequestInit)=>{
+   if(options.method){writes.push({url,options});return reply(url,options);}
+   reads.push(url);return new Response(JSON.stringify({collection:{...core,archived,displayOrder:0,pinOrder:null,categoryRevision:'9',linkedLists:[]}}),{status:200});
+  }));
+  return {writes,reads};
+ }
+ it('reads an archived list for restore only when asked',async()=>{
+  const {reads}=serve(true,()=>new Response('{}'));
+  await expect(explorersApiClient.getMyEditableCollection(id)).rejects.toMatchObject({status:409});
+  const observed=await explorersApiClient.getMyEditableCollection(id,undefined,{archived:true});
+  expect(observed.detail.archived).toBe(true);expect(reads[1]).toContain('status=archived');
+  await expect(explorersApiClient.updateMyCollection(observed,{title:'No'},'archived-edit')).rejects.toMatchObject({status:409});
+ });
+ it('restore posts the revision and optional slug',async()=>{
+  const {writes}=serve(true,(_url,options)=>{const {slug}=JSON.parse(options.body as string);return new Response(JSON.stringify({collection:{...core,slug:slug??core.slug,revision:6}}),{status:200});});
+  const observed=await explorersApiClient.getMyEditableCollection(id,undefined,{archived:true});
+  expect(await explorersApiClient.restoreMyCollection(observed,'restore-key',{slug:'paris-2019'})).toMatchObject({id,slug:'paris-2019',revision:6});
+  expect(writes).toHaveLength(1);expect(writes[0].url).toBe(`/api/explorers/v1/collections/${id}/restore`);expect(writes[0].options.method).toBe('POST');
+  expect(JSON.parse(writes[0].options.body as string)).toEqual({expectedRevision:5,slug:'paris-2019'});expect(new Headers(writes[0].options.headers).get('Idempotency-Key')).toBe('restore-key');
+  const again=await explorersApiClient.getMyEditableCollection(id,undefined,{archived:true});await explorersApiClient.restoreMyCollection(again,'restore-key-2');
+  expect(JSON.parse(writes[1].options.body as string)).toEqual({expectedRevision:5});
+ });
+ it('restore surfaces the slug-taken conflict and refuses a live list or a bad slug before sending',async()=>{
+  const {writes}=serve(true,()=>new Response(JSON.stringify({error:{code:'CONFLICT',message:'List URL is taken; choose a new URL to restore',requestId:'r'}}),{status:409}));
+  const observed=await explorersApiClient.getMyEditableCollection(id,undefined,{archived:true});
+  await expect(explorersApiClient.restoreMyCollection(observed,'restore-taken')).rejects.toMatchObject({status:409,code:'CONFLICT',message:'List URL is taken; choose a new URL to restore'});
+  const fresh=await explorersApiClient.getMyEditableCollection(id,undefined,{archived:true});
+  await expect(explorersApiClient.restoreMyCollection(fresh,'restore-bad',{slug:'Not A Slug'})).rejects.toMatchObject({status:422,code:'INVALID_INPUT'});
+  expect(writes).toHaveLength(1);
+  serve(false,()=>new Response('{}'));const live=await explorersApiClient.getMyEditableCollection(id);
+  await expect(explorersApiClient.restoreMyCollection(live,'restore-live')).rejects.toMatchObject({status:409});
+ });
+ it.each([false,true])('purge posts the revision (archived=%s)',async archived=>{
+  const {writes}=serve(archived,()=>new Response(JSON.stringify({collection:{id,deleted:true}}),{status:200}));
+  const observed=await explorersApiClient.getMyEditableCollection(id,undefined,{archived});
+  expect(await explorersApiClient.purgeMyCollection(observed,'purge-key')).toEqual({id,deleted:true});
+  expect(writes).toHaveLength(1);expect(writes[0].url).toBe(`/api/explorers/v1/collections/${id}/purge`);expect(writes[0].options.method).toBe('POST');
+  expect(JSON.parse(writes[0].options.body as string)).toEqual({expectedRevision:5});
  });
 });

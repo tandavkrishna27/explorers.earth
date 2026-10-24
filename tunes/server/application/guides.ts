@@ -1,12 +1,18 @@
+import {randomUUID} from 'node:crypto';
 import type {Pool, PoolClient} from 'pg';
+import {z} from 'zod/v3';
 import {contentIdSchema, type RequestContext} from '../../shared/explorersContract';
 import {
  GUIDE_SECTION_PAGE_LIMIT, attachGuideCoverSchema, createGuideSectionSchema, guideAggregateDtoSchema,
  guideEmptySectionBlocks, guideRevisionSchema, reorderGuideSectionsSchema, writeGuideDetailsSchema, writeGuideSectionSchema,
+ addGuideDayItemSchema, addGuideDaySchema, guideItemLocalIdSchema, moveGuideDayItemSchema, moveGuideDaySchema,
+ setGuideNoteTextSchema, setGuideTimeLabelSchema, type GuideDayItem, type GuideTimeLabel,
 } from '../../shared/explorersGuideContract';
 import {
  attachGuideCover, countGuideSections, createGuideSection, deleteGuideSection, readGuideCoverMediaId,
  readGuideDetails, readGuideSectionPage, reorderGuideSections, updateGuideSection, writeGuideDetails,
+ addGuideDay, addGuideDayItem, clearGuideDay, deleteGuideDay, duplicateGuideDay, moveGuideDay, moveGuideDayItem,
+ removeGuideDayItem, setGuideDayItemTimeLabel, setGuideDayNoteText,
 } from '../repositories/guideRepository';
 import {RecommendationFailure} from '../repositories/explorersRecommendationRepository';
 import {OWNER_PAGE_BYTES} from './ownerContent';
@@ -102,7 +108,7 @@ export class GuideService {
     // A guide with no details row yet reads as an empty guide rather than a 404, because
     // the collection exists the moment it is created and the wizard fills it afterwards.
     details:details??{
-     guideType:null,multiCity:false,numberOfDays:null,estimatedBudget:null,budgetCurrency:null,budgetType:null,budgetTier:null,
+     guideType:null,multiCity:false,numberOfDays:null,estimatedBudget:null,budgetCurrency:null,budgetType:null,budgetTier:null,startDate:null,
      bestTimeToVisit:[],categories:[],tags:[],tipsNotes:null,
      place:{name:null,address:null,placeId:null,rating:null,ratingsCount:null,lat:null,lng:null},
      locationEntityId:null,
@@ -191,6 +197,65 @@ export class GuideService {
    await this.transaction((client)=>attachGuideCover(client,collectionId,actor.accountId,command.revision,command.mediaId));
    return this.getAggregate(actor,collectionId);
   });
+ }
+
+ private command<S extends z.ZodTypeAny>(actor:Actor,collectionId:string,ids:string[],schema:S,input:unknown,
+  work:(client:PoolClient,command:z.infer<S>)=>Promise<unknown>) {
+  return this.authorized(actor,'collections:write',async()=>{
+   parseContent(contentIdSchema,collectionId);for(const id of ids)parseContent(contentIdSchema,id);
+   const command=parseContent(schema,input);
+   await this.transaction((client)=>work(client,command));
+   return this.getAggregate(actor,collectionId);
+  });
+ }
+ private localId(value:string){return parseContent(guideItemLocalIdSchema,value);}
+
+ /** A list item is resolved from the owner's own data; the client sends only the reference. */
+ private async listItem(client:PoolClient,accountId:string,input:{recommendationId:string;collectionId:string|null},timeLabel:GuideTimeLabel|null):Promise<GuideDayItem>{
+  const row=(await client.query(`SELECT r.id,r.category,e.title,
+    to_jsonb(pe) - 'entity_id' AS place,
+    c.id AS collection_id,c.title AS collection_title
+   FROM recommendations r JOIN entities e ON e.id=r.entity_id
+   LEFT JOIN place_entity_details pe ON pe.entity_id=e.id
+   LEFT JOIN LATERAL (SELECT c.id,c.title FROM collection_items i JOIN collections c ON c.id=i.collection_id
+     WHERE i.recommendation_id=r.id AND i.account_id=r.account_id AND ($3::uuid IS NULL OR c.id=$3) AND c.archived_at IS NULL
+     ORDER BY c.display_order LIMIT 1) c ON true
+   WHERE r.id=$1 AND r.account_id=$2 AND r.archived_at IS NULL`,[input.recommendationId,accountId,input.collectionId])).rows[0];
+  if(!row||(input.collectionId!==null&&!row.collection_id))throw new RecommendationFailure(404,'Resource unavailable');
+  const lat=row.place?.latitude,lng=row.place?.longitude;
+  return {kind:'listItem',localId:randomUUID(),timeLabel,
+   ref:{recommendationId:row.id,collectionId:row.collection_id??null,category:row.category},
+   snapshot:{title:String(row.title).slice(0,500),collectionTitle:row.collection_title??null,
+    geometry:lat!=null&&lng!=null?{location:{lat:Number(lat),lng:Number(lng)}}:null}};
+ }
+
+ addDay(actor:Actor,id:string,input:unknown,_c:RequestContext){return this.command(actor,id,[],addGuideDaySchema,input,(c,cmd)=>addGuideDay(c,id,actor.accountId,cmd.revision,{at:cmd.at,title:cmd.title}));}
+ moveDay(actor:Actor,id:string,sectionId:string,input:unknown,_c:RequestContext){return this.command(actor,id,[sectionId],moveGuideDaySchema,input,(c,cmd)=>moveGuideDay(c,id,actor.accountId,cmd.revision,sectionId,cmd.toIndex));}
+ duplicateDay(actor:Actor,id:string,sectionId:string,input:unknown,_c:RequestContext){return this.command(actor,id,[sectionId],guideRevisionSchema,input,(c,cmd)=>duplicateGuideDay(c,id,actor.accountId,cmd.revision,sectionId));}
+ clearDay(actor:Actor,id:string,sectionId:string,input:unknown,_c:RequestContext){return this.command(actor,id,[sectionId],guideRevisionSchema,input,(c,cmd)=>clearGuideDay(c,id,actor.accountId,cmd.revision,sectionId));}
+ deleteDay(actor:Actor,id:string,sectionId:string,input:unknown,_c:RequestContext){return this.command(actor,id,[sectionId],guideRevisionSchema,input,(c,cmd)=>deleteGuideDay(c,id,actor.accountId,cmd.revision,sectionId));}
+ addDayItem(actor:Actor,id:string,sectionId:string,input:unknown,_c:RequestContext){
+  return this.command(actor,id,[sectionId],addGuideDayItemSchema,input,async(c,cmd)=>{
+   const source=cmd.item;
+   const localId=randomUUID();
+   const item:GuideDayItem=source.kind==='place'?{kind:'place',localId,timeLabel:source.timeLabel,place:{...source.place,localId}}
+    :source.kind==='note'?{kind:'note',localId,timeLabel:source.timeLabel,text:source.text}
+    :await this.listItem(c,actor.accountId,source.ref,source.timeLabel);
+   await addGuideDayItem(c,id,actor.accountId,cmd.revision,sectionId,item,cmd.at);
+  });
+ }
+ moveDayItem(actor:Actor,id:string,sectionId:string,localId:string,input:unknown,_c:RequestContext){
+  return this.command(actor,id,[sectionId],moveGuideDayItemSchema,input,(c,cmd)=>moveGuideDayItem(c,id,actor.accountId,cmd.revision,
+   {fromSectionId:sectionId,localId:this.localId(localId),toSectionId:cmd.toSectionId,toIndex:cmd.toIndex}));
+ }
+ setTimeLabel(actor:Actor,id:string,sectionId:string,localId:string,input:unknown,_c:RequestContext){
+  return this.command(actor,id,[sectionId],setGuideTimeLabelSchema,input,(c,cmd)=>setGuideDayItemTimeLabel(c,id,actor.accountId,cmd.revision,sectionId,this.localId(localId),cmd.timeLabel));
+ }
+ setNoteText(actor:Actor,id:string,sectionId:string,localId:string,input:unknown,_c:RequestContext){
+  return this.command(actor,id,[sectionId],setGuideNoteTextSchema,input,(c,cmd)=>setGuideDayNoteText(c,id,actor.accountId,cmd.revision,sectionId,this.localId(localId),cmd.text));
+ }
+ removeDayItem(actor:Actor,id:string,sectionId:string,localId:string,input:unknown,_c:RequestContext){
+  return this.command(actor,id,[sectionId],guideRevisionSchema,input,(c,cmd)=>removeGuideDayItem(c,id,actor.accountId,cmd.revision,sectionId,this.localId(localId)));
  }
 }
 

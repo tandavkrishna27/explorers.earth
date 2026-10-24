@@ -75,7 +75,8 @@ describePg("Apps typed storage on a real PostgreSQL", () => {
 
     const entity = await readAppEntity(pool, entityId);
     expect(entity).toMatchObject({id: entityId, kind: "app", origin: "manual"});
-    expect(entity.details).toEqual(details({logoUrl: "https://example.com/l.png", downloadUrl: "https://example.com/get"}));
+    // 0068: a distinct download link is stored as an otherLinks Download entry, not download_url.
+    expect(entity.details).toEqual(details({logoUrl: "https://example.com/l.png", downloadUrl: null, otherLinks: [{label: "Download", url: "https://example.com/get"}]}));
   }, 30_000);
 
   it("refuses an app entity with no typed details instead of inventing an empty one", async () => {

@@ -163,13 +163,13 @@ async function uploaded(owner: Owner, purpose = "guide") {
   return {id: result.body.media.id as string, key: record!.object_key, url: result.body.media.url as string};
 }
 function blocks(mediaIds: string[]): GuideSectionBlocks {
-  return {...JSON.parse(JSON.stringify(guideEmptySectionBlocks)), timeline: {morning: [{
+  return {...JSON.parse(JSON.stringify(guideEmptySectionBlocks)), items: [{kind: "place", localId: "stop", timeLabel: "morning", place: {
     localId: "stop", placeId: "ChIJstop", name: "Stop", formattedAddress: "Kochi",
     geometry: {location: {lat: 9.93, lng: 76.26}}, types: ["cafe"], tips: null,
     photos: mediaIds.map(mediaId => ({mediaId, fileName: null, width: null, height: null, aspectRatio: null})),
     priceLevel: null, priceRange: null, customBudget: null, budgetAmount: null, budgetCurrency: null,
     source: "google", verified: true,
-  }], afternoon: [], evening: []}};
+  }}]};
 }
 const draft = (ids: string[]) => ({title: "Day one", description: null, blocks: blocks(ids)});
 async function nativeCover(owner: Owner, list: {id: string}, media: Asset) {

@@ -292,9 +292,10 @@ it('retains global and account import admission until timed-out native DNS actua
  const actor=(f:Awaited<ReturnType<typeof fixture>>):Actor=>({userId:f.a.userId,accountId:f.a.accountId,role:'owner',credential:{kind:'web-session',sessionId:f.a.sessionId,sessionVersion:1}});
  try{
   for(const f of fixtures.slice(0,4))pending.push(importer.import(actor(f),f.r.id,{expectedRevision:f.r.revision},{requestId:'native-held',idempotencyKey:randomUUID()}));
-  const until=Date.now()+3000;while(started<4&&Date.now()<until)await new Promise(r=>setTimeout(r,5));expect(started).toBe(4);await new Promise(r=>setTimeout(r,40));
+  // Each fixture has two pending images, fetched in one batch: 4 imports hold 8 native DNS lookups.
+  const until=Date.now()+3000;while(started<8&&Date.now()<until)await new Promise(r=>setTimeout(r,5));expect(started).toBe(8);await new Promise(r=>setTimeout(r,40));
   for(const f of [fixtures[0],fixtures[4]])await expect(importer.import(actor(f),f.r.id,{expectedRevision:f.r.revision},{requestId:'capacity-denied',idempotencyKey:randomUUID()})).rejects.toMatchObject({status:409});
-  expect(started).toBe(4);releaseDns();await Promise.all(pending);
+  expect(started).toBe(8);releaseDns();await Promise.all(pending);
   const f=fixtures[4],result=await importer.import(actor(f),f.r.id,{expectedRevision:f.r.revision},{requestId:'capacity-released',idempotencyKey:randomUUID()});expect(result.revision).toBe(f.r.revision+1);
  }finally{releaseDns();await Promise.allSettled(pending);await wide.end();}
 });
@@ -363,9 +364,10 @@ it('retains global and account import admission until rejected response native d
  const actor=(f:Awaited<ReturnType<typeof fixture>>):Actor=>({userId:f.a.userId,accountId:f.a.accountId,role:'owner',credential:{kind:'web-session',sessionId:f.a.sessionId,sessionVersion:1}});
  try{
   for(const f of fixtures.slice(0,4))pending.push(importer.import(actor(f),f.r.id,{expectedRevision:f.r.revision},{requestId:'native-held',idempotencyKey:randomUUID()}));
-  const until=Date.now()+3000;while(started<4&&Date.now()<until)await new Promise(r=>setTimeout(r,5));expect(started).toBe(4);await new Promise(r=>setTimeout(r,40));
+  // Each import fetches its two images in one batch; the 20 ms fixture deadline may abort a sibling before connect, so pin the count once every deadline has passed.
+  const until=Date.now()+3000;while(started<4&&Date.now()<until)await new Promise(r=>setTimeout(r,5));expect(started).toBeGreaterThanOrEqual(4);await new Promise(r=>setTimeout(r,40));const held=started;expect(held).toBeLessThanOrEqual(8);
   for(const f of [fixtures[0],fixtures[4]])await expect(importer.import(actor(f),f.r.id,{expectedRevision:f.r.revision},{requestId:'capacity-denied',idempotencyKey:randomUUID()})).rejects.toMatchObject({status:409});
-  expect(started).toBe(4);releaseDisposal();await Promise.all(pending);
+  expect(started).toBe(held);releaseDisposal();await Promise.all(pending);
   const f=fixtures[4],result=await importer.import(actor(f),f.r.id,{expectedRevision:f.r.revision},{requestId:'capacity-released',idempotencyKey:randomUUID()});expect(result.revision).toBe(f.r.revision+1);
  }finally{releaseDisposal();await Promise.allSettled(pending);await wide.end();}
 });
@@ -403,6 +405,71 @@ for(const [label,mutation,target] of [
  await pool.query("UPDATE creator_accounts SET handle=$2,display_name='Media owner',account_type='Creator',onboarding_status='complete',public_profile=true WHERE id=$1",[f.a.accountId,'media'+randomUUID().replaceAll('-','').slice(0,15)]);
  await pool.query("UPDATE account_category_settings SET is_public=true WHERE account_id=$1 AND category='movies'",[f.a.accountId]);await pool.query("UPDATE collections SET visibility='public',publication_state='published' WHERE id=$1",[f.c.id]);await pool.query("UPDATE recommendations SET publication_state='published' WHERE id=$1",[f.r.id]);expect(await repo.isPublicAttachment(f.mediaId)).toBe(true);
  await pool.query(mutation,[target==='account'?f.a.accountId:target==='list'?f.c.id:f.r.id]);expect(await repo.isPublicAttachment(f.mediaId)).toBe(false);
+});
+
+async function wideFixture(){
+ const f=await fixture();
+ await pool.query('UPDATE movie_entity_details SET backdrop_url=$2,cast_details=$3 WHERE entity_id=$1',[f.entityId,'https://image.tmdb.org/t/p/w1280/backdrop.jpg',JSON.stringify(Array.from({length:10},(_,i)=>({personId:i+1,creditId:`credit-${i}`,name:`Actor ${i}`,character:'',profileUrl:`https://image.tmdb.org/t/p/w185/actor-${i}.jpg`,order:i})))]);
+ return f;
+}
+// Counts every receipt progress write on any connection (import and media transactions) and records the counters each write carried.
+function countingPool(){
+ const writes:any[]=[];
+ const wrapped=new Proxy(pool,{get(target,property){if(property==='connect')return async()=>{const client=await target.connect();return new Proxy(client,{get(c,p){if(p==='query')return (...args:any[])=>{if(String(args[0]).startsWith('UPDATE application_command_receipts SET response='))writes.push(JSON.parse(args[1][2]));return (c.query as any)(...args);};const value=Reflect.get(c,p);return typeof value==='function'?value.bind(c):value;}});};const value=Reflect.get(target,property);return typeof value==='function'?value.bind(target):value;}});
+ return {wrapped,writes};
+}
+const ownedStorage=(bytes:Buffer):ObjectStorage=>({environment:'local',put:async()=>{throw Error('ordinary put');},putOwned:()=>{const nativeResult=Promise.resolve('v');return {completion:nativeResult,nativeResult,settlement:nativeResult.then(()=>undefined)};},get:async()=>bytes,delete:async()=>undefined});
+const ownerOf=(f:Awaited<ReturnType<typeof fixture>>):Actor=>({userId:f.a.userId,accountId:f.a.accountId,role:'owner',credential:{kind:'web-session',sessionId:f.a.sessionId,sessionVersion:1}});
+
+it('copies up to 3 provider images concurrently and never more, with one progress write per image plus one per batch',async()=>{
+ const f=await wideFixture(),bytes=Buffer.from([137,80,78,71,13,10,26,10]);let inFlight=0,peak=0,downloads=0;
+ const fetcher=new MovieImageFetcher({mode:'deterministic-fixture',resolve:async()=>[{address:'8.8.8.8',family:4}],connect:async()=>{downloads++;inFlight++;peak=Math.max(peak,inFlight);await new Promise(r=>setTimeout(r,185));inFlight--;return {status:200,mimeType:'image/png',length:8,body:(async function*(){yield bytes;})()};}});
+ const {wrapped,writes}=countingPool();
+ const started=Date.now();
+ const result=await new MovieMediaImportService(wrapped,new MediaService(wrapped,ownedStorage(bytes)),fetcher).import(ownerOf(f),f.r.id,{expectedRevision:f.r.revision},{requestId:'batched',idempotencyKey:randomUUID()});
+ const elapsed=Date.now()-started;process.stderr.write(`[movie-media-import] 12 slots x 185ms: ${elapsed}ms, ${writes.length} receipt progress writes, peak ${peak}\n`);
+ expect(result.slots).toHaveLength(12);expect(result.slots.every(s=>s.status==='copied')).toBe(true);expect(downloads).toBe(12);
+ expect(peak).toBe(3);
+ expect(writes.length).toBeLessThanOrEqual(12+4);
+ const last=writes[writes.length-1].counters;expect(last).toEqual({received:96,reserved:0,download:12,put:12,dns:12,connect:12,body:12});
+});
+
+it('a resumed import after a crash mid-batch never exceeds the lineage caps',async()=>{
+ const IMAGE=5*1024*1024,LINEAGE=60*1024*1024;
+ const f=await wideFixture(),e=await readMovieEntity(pool,f.entityId),key=randomUUID(),bytes=Buffer.from([137,80,78,71,13,10,26,10]);let downloads=0;
+ const source={entityId:e.id,provider:'tmdb',externalKind:'movie',externalId:f.externalId,fetchedAt:1700000000000,mappingVersion:1};
+ const slots=extractMovieImageSlots(e.details).map(x=>({slot:x.slot,url:x.url,status:'pending',reused:false}));
+ // Crashed after reserving a batch of 3: the reservation is never refunded, leaving room for exactly one more image by bytes and attempts.
+ const crashed={received:LINEAGE-5*IMAGE,reserved:3*IMAGE,download:21,put:0,dns:3,connect:3,body:3};
+ const digest=(v:string)=>createHash('sha256').update(v).digest();
+ await pool.query("INSERT INTO application_command_receipts(account_id,operation,idempotency_key_hash,request_hash,status,response) VALUES($1,'importMovieMedia',$2,$3,'pending',$4)",[f.a.accountId,digest(key),digest(JSON.stringify([f.r.id,f.r.revision])),JSON.stringify({source,expectedRevision:f.r.revision,slots,counters:crashed})]);
+ const fetcher=new MovieImageFetcher({mode:'deterministic-fixture',resolve:async()=>[{address:'8.8.8.8',family:4}],connect:async()=>{downloads++;return {status:200,mimeType:'image/png',length:8,body:(async function*(){yield bytes;})()};}});
+ const {wrapped,writes}=countingPool();
+ const result=await new MovieMediaImportService(wrapped,new MediaService(wrapped,ownedStorage(bytes)),fetcher).import(ownerOf(f),f.r.id,{expectedRevision:f.r.revision},{requestId:'resume-caps',idempotencyKey:key});
+ expect(result.slots.filter(s=>s.status==='copied')).toHaveLength(1);expect(result.slots.filter(s=>s.status==='unavailable')).toHaveLength(11);expect(downloads).toBe(1);
+ for(const w of writes){expect(w.counters.download+w.counters.put).toBeLessThanOrEqual(24);expect(w.counters.received+w.counters.reserved).toBeLessThanOrEqual(LINEAGE);}
+});
+
+it('durably counts storage puts whose ready write never committed before any later resume',async()=>{
+ const f=await wideFixture(),bytes=Buffer.from([137,80,78,71,13,10,26,10]);let puts=0;
+ const fetcher=new MovieImageFetcher({mode:'deterministic-fixture',resolve:async()=>[{address:'8.8.8.8',family:4}],connect:async()=>({status:200,mimeType:'image/png',length:8,body:(async function*(){yield bytes;})()})});
+ // The native put is issued and then fails, so no ready transaction ever records it.
+ const storage:ObjectStorage={environment:'local',put:async()=>{throw Error('ordinary put');},putOwned:()=>{puts++;const nativeResult=Promise.reject(Error('put lost after send'));nativeResult.catch(()=>undefined);return {completion:nativeResult,nativeResult,settlement:Promise.resolve()};},get:async()=>bytes,delete:async()=>undefined};
+ const {wrapped,writes}=countingPool();
+ const result=await new MovieMediaImportService(wrapped,new MediaService(wrapped,storage),fetcher).import(ownerOf(f),f.r.id,{expectedRevision:f.r.revision},{requestId:'lost-puts',idempotencyKey:randomUUID()});
+ expect(result.slots.every(s=>s.status==='unavailable')).toBe(true);expect(puts).toBe(12);
+ // Every durable snapshot must already count the requests a resume could otherwise repeat past the 24 cap.
+ const last=writes[writes.length-1].counters;expect(last.download+last.put).toBeGreaterThanOrEqual(24);expect(last.put).toBeGreaterThanOrEqual(puts);
+});
+
+it('the caller deadline aborts every in-flight provider fetch of a batch',async()=>{
+ const f=await wideFixture();let started=0,aborted=0,releaseAll!:()=>void,reached!:()=>void;const gate=new Promise<void>(r=>{releaseAll=r;}),three=new Promise<void>(r=>{reached=r;});
+ const fetcher=new MovieImageFetcher({mode:'deterministic-fixture',resolve:async()=>[{address:'8.8.8.8',family:4}],connect:async target=>{started++;if(started===3)reached();target.signal.addEventListener('abort',()=>{aborted++;});await gate;throw Error('aborted');}});
+ const realTimeout=globalThis.setTimeout;let fireCallerDeadline!:()=>void;const clock=vi.spyOn(globalThis,'setTimeout').mockImplementation(((callback:any,delay:number,...args:any[])=>{if(delay===60000){fireCallerDeadline=()=>callback(...args);}return realTimeout(callback,delay,...args);}) as any);
+ try{
+  const caller=new MovieMediaImportService(pool,new MediaService(pool),fetcher).import(ownerOf(f),f.r.id,{expectedRevision:f.r.revision},{requestId:'deadline-batch',idempotencyKey:randomUUID()}).then(()=>({resolved:true}),error=>error);
+  await Promise.race([three,new Promise(r=>realTimeout(r,3000))]);expect(started).toBe(3);fireCallerDeadline();expect(await caller).toMatchObject({status:409,message:'Movie import caller deadline exceeded'});expect(aborted).toBe(3);
+ }finally{releaseAll();clock.mockRestore();}
 });
 
 it('rechecks copied Movie public ancestry after an in-flight storage read before returning any bytes',async()=>{

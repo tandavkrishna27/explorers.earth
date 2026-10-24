@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { canonicalCategoryAccount, categories, closeFixture, fixtureState, fixtureUser, openFixture, settings, toggle } from './setup/category-navigation';
+import { canonicalCategoryAccount, categories, closeFixture, fixtureState, fixtureUser, openFixture, settings, headerVisibility, setHeaderVisibility, toggle } from './setup/category-navigation';
 import { TOP_LEVEL_DESTINATIONS } from './setup/public-shell-continuity';
 import { expectTask6Shell, submitPinnedCategoryUnpublish, beginTask6FrameAudit, finishTask6FrameAudit, assertTask6FrameWindow, computedContrast, seedTask6App } from './setup/category-navigation-helpers';
 
@@ -445,13 +445,17 @@ test('Places ripple radius stays finite at startup, repeat and route re-entry', 
   try {
     for (let visit = 0; visit < 2; visit++) {
       if (visit === 0) await owner.page.goto('/recommendations/places'); else await owner.page.goBack();
-      await expect(owner.page.getByText('Map your world', { exact: true })).toBeVisible();
+      // The shared category template's first-visit state replaced the old animated empty state.
+      await expect(owner.page.getByText('Your best picks go here', { exact: true })).toBeVisible();
+      await expect(owner.page.getByRole('button', { name: /Create your first list/ })).toBeVisible();
       await owner.page.waitForTimeout(3000); // Includes the 2.4s repeat boundary.
       const invalid = await owner.page.evaluate(() => (window as any).__invalidFixtureRadii);
       await test.info().attach(`circle-startup-${visit}`, { body: JSON.stringify(invalid), contentType: 'application/json' });
       expect(invalid).toEqual([]);
       const radii = await owner.page.locator('circle[r]').evaluateAll(circles => circles.map(circle => Number(circle.getAttribute('r'))));
-      expect(radii.length).toBeGreaterThan(0); expect(radii.every(r => Number.isFinite(r) && r >= 0)).toBe(true);
+      // The ripple animation no longer exists (WP3A first-visit state has no SVG circles), so the
+      // invariant is checked on whatever circles remain: none may ever carry a non-finite radius.
+      expect(radii.every(r => Number.isFinite(r) && r >= 0)).toBe(true);
       await owner.page.getByText('Settings', { exact: true }).first().click();
     }
   } finally { await closeFixture(owner); }
@@ -477,8 +481,8 @@ for (const category of categories) {
     const guest = await openFixture(browser, baseURL!, state);
     try {
       await owner.page.goto(`/recommendations/${category.route}`);
-      await toggle(owner.page.getByRole('checkbox').first(), false);
-      await owner.page.reload(); await expect(owner.page.getByRole('checkbox').first()).not.toBeChecked();
+      await setHeaderVisibility(owner.page, false);
+      await owner.page.reload(); await expect(headerVisibility(owner.page)).toHaveAccessibleName('Visibility: Hidden');
       expect(state.account.pinned_nav_tabs).toEqual(['public_profile', other]); expect(state.account.auto_pinning).toBe(true);
       await guest.page.goto(`/${fixtureUser.username}/${category.route}`); await expect(guest.page).toHaveURL(`${baseURL}/${fixtureUser.username}`);
       await owner.page.goto('/recommendations');

@@ -119,21 +119,23 @@ describe("Books bounded diagnostic rendered branch attributes", () => {
     ["missing", false, false, false, false],
     ["ready-empty", true, false, false, true],
     ["ready-nonempty", true, false, false, true],
-    ["ready-empty", true, true, true, true],
+    // A refresh of an empty list shows the shared Recommendations skeleton, not the add CTA.
+    ["ready-empty", true, true, true, false],
     ["ready-nonempty", true, true, true, true],
   ])("labels %s from the existing rendered branch", (state, present, loading, error, add) => {
     ownerState.present = present as boolean; ownerState.loading = loading as boolean;
     ownerState.error = error ? new Error("Owner read failed") : undefined;
     if (state === "ready-nonempty") listState.books = [{ documentId: "b1", title: "Dune", is_pinned: false }];
     const { container } = renderView({}); marker(container, state as string);
+    // The shared list page: the add action lives in the Recommendations tab, back names the category.
     if (add) {
-      expect(screen.getByRole("button", { name: "Add Book", exact: true })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Back", exact: true })).toBeInTheDocument();
-    } else expect(screen.queryByRole("button", { name: "Add Book", exact: true })).not.toBeInTheDocument();
+      expect(screen.getAllByRole("button", { name: /^＋ Add/ }).length).toBeGreaterThan(0);
+      expect(screen.getByRole("button", { name: /Back to Books/ })).toBeInTheDocument();
+    } else expect(screen.queryByRole("button", { name: /^＋ Add/ })).not.toBeInTheDocument();
     if (state === "missing") expect(screen.getByRole("alert")).toHaveTextContent("List not found.");
     if (state === "error") {
-      expect(screen.getByRole("alert")).toHaveTextContent("Owner read failed");
-      expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toHaveTextContent("This list didn't load.");
+      expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
     }
   });
   it("rerenders across existing branches without retaining duplicate roots", () => {

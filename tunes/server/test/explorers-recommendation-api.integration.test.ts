@@ -27,72 +27,78 @@ async function list(owner:{cookie:string},category='books') {
   const result=await command(owner,'post','/collections',{category,title:'Reading',slug:`reading-${randomUUID()}`,visibility:'private',publicationState:'draft'});expect(result.status).toBe(201);return result.body.collection;
 }
 async function entity(kind='book') {return (await pool.query("INSERT INTO entities(kind,title,origin) VALUES($1,'Shared title','manual') RETURNING id",[kind])).rows[0].id;}
+// People are not rated on new writes (DS-02, 0068 contract), so the helper rates every other category.
 async function recommendation(owner:{cookie:string},collection:any,entityId:string,revision=1) {
-  const result=await command(owner,'post','/recommendations',{category:collection.category,entityId,collectionId:collection.id,expectedCollectionRevision:revision,userRating:8,publicationState:'draft'});expect(result.status).toBe(201);return result.body.recommendation;
+  const result=await command(owner,'post','/recommendations',{category:collection.category,entityId,collectionId:collection.id,expectedCollectionRevision:revision,userRating:collection.category==='people'?null:8,publicationState:'draft'});expect(result.status).toBe(201);return result.body.recommendation;
 }
 
-async function parentCreateRevision(id:string) {
-  return Number((await pool.query('SELECT revision::text FROM collections WHERE id=$1',[id])).rows[0].revision);
-}
-async function parentCreateHttpState(accountIds:string[]) {
+async function attachCreateHttpState(accountIds:string[]) {
   const collections=(await pool.query('SELECT id,account_id,category,revision::text,archived_at FROM collections WHERE account_id=ANY($1::uuid[]) ORDER BY id',[accountIds])).rows;
-  const links=(await pool.query('SELECT * FROM collection_location_links WHERE account_id=ANY($1::uuid[]) ORDER BY child_collection_id',[accountIds])).rows;
+  const links=(await pool.query('SELECT * FROM collection_list_links WHERE account_id=ANY($1::uuid[]) ORDER BY id',[accountIds])).rows;
   const categories=(await pool.query('SELECT * FROM account_category_content_state WHERE account_id=ANY($1::uuid[]) ORDER BY account_id,category',[accountIds])).rows;
   const receipts=(await pool.query('SELECT * FROM application_command_receipts WHERE account_id=ANY($1::uuid[]) ORDER BY id',[accountIds])).rows;
   return {collections,links,categories,receipts};
 }
-it('guarded parent create HTTP strictly validates pairs and preserves ordinary collection DTOs',async()=>{
-  const a=await persona(),parent=await list(a,'places');
+it('WP10 create-and-attach HTTP strictly validates attachTo and preserves ordinary collection DTOs',async()=>{
+  const a=await persona(),host=await list(a,'places');
   const ordinaryInput={category:'products',title:'Ordinary',slug:`ordinary-${randomUUID()}`},key=randomUUID();
   const ordinary=await command(a,'post','/collections',ordinaryInput,key);expect(ordinary.status).toBe(201);
-  expect(ordinary.body).toEqual({collection:{id:expect.any(String),accountId:a.accountId,...ordinaryInput,visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null}});
-  const unchanged=await parentCreateHttpState([a.accountId]);
+  expect(ordinary.body).toEqual({collection:{id:expect.any(String),accountId:a.accountId,...ordinaryInput,visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null,isSample:false}});
+  const unchanged=await attachCreateHttpState([a.accountId]);
   expect((await command(a,'post','/collections',ordinaryInput,key)).body).toEqual(ordinary.body);
-  expect(await parentCreateHttpState([a.accountId])).toEqual(unchanged);
-  const pair={category:'products',title:'Invalid',slug:`invalid-${randomUUID()}`,parentLocationCollectionId:parent.id,parentExpectedRevision:await parentCreateRevision(parent.id)};
-  const {parentExpectedRevision,...idOnly}=pair,{parentLocationCollectionId,...revisionOnly}=pair;
-  const invalid=[idOnly,revisionOnly,...[0,-1,1.5,Number.MAX_SAFE_INTEGER+1,'1',null].map(value=>({...pair,parentExpectedRevision:value})),...['places','books','movies','games','apps','guides'].map(category=>({...pair,category})),{...pair,unknownField:true},{...pair,parentLocationCollectionId:'invalid-id'}];
-  for(const input of invalid){const before=await parentCreateHttpState([a.accountId]);expect((await command(a,'post','/collections',input)).status).toBe(422);expect(await parentCreateHttpState([a.accountId])).toEqual(before);}
+  expect(await attachCreateHttpState([a.accountId])).toEqual(unchanged);
+  const attachTo={hostCollectionId:host.id,expectedHostRevision:await categoryContentRevision(a.accountId,'places')};
+  const base={category:'products',title:'Invalid',slug:`invalid-${randomUUID()}`};
+  const invalid=[...[0,-1,1.5,Number.MAX_SAFE_INTEGER+1,'1',null].map(value=>({...base,attachTo:{...attachTo,expectedHostRevision:value}})),
+    {...base,attachTo:{expectedHostRevision:attachTo.expectedHostRevision}},{...base,attachTo:{hostCollectionId:host.id}},
+    {...base,attachTo:{...attachTo,hostCollectionId:'invalid-id'}},{...base,attachTo:{...attachTo,role:'x'.repeat(81)}},{...base,attachTo:{...attachTo,unknownField:true}},
+    {...base,parentLocationCollectionId:host.id,parentExpectedRevision:1}];
+  for(const input of invalid){const before=await attachCreateHttpState([a.accountId]);expect((await command(a,'post','/collections',input)).status).toBe(422);expect(await attachCreateHttpState([a.accountId])).toEqual(before);}
 });
-it('guarded parent create HTTP links Products and People and gives equal foreign missing refusals without orphans',async()=>{
-  const a=await persona(),b=await persona(),parent=await list(a,'places'),foreign=await list(b,'places'),archived=await list(a,'places'),wrong=await list(a,'books');
+it('WP10 create-and-attach HTTP links a new list of any category and gives equal foreign and missing refusals without orphans',async()=>{
+  const a=await persona(),b=await persona(),host=await list(a,'guides'),foreign=await list(b,'guides'),archived=await list(a,'guides');
   await pool.query('UPDATE collections SET archived_at=now() WHERE id=$1',[archived.id]);
-  expect((await pool.query('SELECT recommendation_id FROM collection_items WHERE collection_id=$1',[parent.id])).rowCount).toBe(0);
-  for(const category of ['products','people']){
-    const observed=await parentCreateRevision(parent.id),before=await parentCreateHttpState([a.accountId,b.accountId]);
-    const input={category,title:'Guarded HTTP child',slug:`guarded-${randomUUID()}`,parentLocationCollectionId:category==='products'?parent.id.toUpperCase():parent.id,parentExpectedRevision:observed},key=randomUUID();
+  for(const category of ['products','people','books','guides']){
+    const observed=await categoryContentRevision(a.accountId,'guides'),before=await attachCreateHttpState([a.accountId,b.accountId]);
+    const input={category,title:'Attached HTTP list',slug:`attached-${randomUUID()}`,attachTo:{hostCollectionId:category==='products'?host.id.toUpperCase():host.id,expectedHostRevision:observed,role:'  Packing list  '}},key=randomUUID();
     const saved=await command(a,'post','/collections',input,key);expect(saved.status).toBe(201);
-    expect(saved.body.collection).toEqual({id:expect.any(String),accountId:a.accountId,category,title:input.title,slug:input.slug,visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null,parentLocation:{id:parent.id,revision:observed+1}});
-    expect(saved.body.collection.id).not.toBe(parent.id);expect(await parentCreateRevision(parent.id)).toBe(observed+1);
-    const after=await parentCreateHttpState([a.accountId,b.accountId]);
+    expect(saved.body.collection).toEqual({id:expect.any(String),accountId:a.accountId,category,title:input.title,slug:input.slug,visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null,isSample:false,
+      attachedTo:{hostCollectionId:host.id,linkId:expect.any(String),hostCategoryRevision:await categoryContentRevision(a.accountId,'guides')}});
+    const after=await attachCreateHttpState([a.accountId,b.accountId]);
     expect(after.collections).toHaveLength(before.collections.length+1);expect(after.links).toHaveLength(before.links.length+1);expect(after.receipts).toHaveLength(before.receipts.length+1);
-    expect(after.links.filter(row=>row.child_collection_id===saved.body.collection.id)).toHaveLength(1);
-    expect(after.links.find(row=>row.child_collection_id===saved.body.collection.id)).toMatchObject({account_id:a.accountId,location_collection_id:parent.id,child_category:category});
-    for(const changed of ['places',category]){const cursor=(state:typeof after)=>Number(state.categories.find(row=>row.account_id===a.accountId&&row.category===changed)?.revision??0);expect(cursor(after)).toBeGreaterThan(cursor(before));}
-    expect((await command(a,'post','/collections',input,key)).body).toEqual(saved.body);expect(await parentCreateHttpState([a.accountId,b.accountId])).toEqual(after);
-    if(category==='products'){
-      expect(input.parentLocationCollectionId).not.toBe(parent.id);
-      expect((await command(a,'post','/collections',{...input,parentLocationCollectionId:parent.id},key)).status).toBe(409);
-      expect(await parentCreateHttpState([a.accountId,b.accountId])).toEqual(after);
-    }
-    const refusalInput={...input,slug:`refused-${randomUUID()}`},states=await parentCreateHttpState([a.accountId,b.accountId]);
-    const denied=await command(a,'post','/collections',{...refusalInput,parentLocationCollectionId:foreign.id,parentExpectedRevision:await parentCreateRevision(foreign.id)});
-    expect(denied.status).toBe(404);expect(await parentCreateHttpState([a.accountId,b.accountId])).toEqual(states);
-    const missing=await command(a,'post','/collections',{...refusalInput,parentLocationCollectionId:randomUUID(),parentExpectedRevision:1});
+    expect(after.links.find(row=>row.id===saved.body.collection.attachedTo.linkId)).toMatchObject({account_id:a.accountId,host_collection_id:host.id,host_category:'guides',linked_collection_id:saved.body.collection.id,linked_category:category,role:'Packing list'});
+    for(const changed of ['guides',category]){const cursor=(state:typeof after)=>Number(state.categories.find(row=>row.account_id===a.accountId&&row.category===changed)?.revision??0);expect(cursor(after)).toBeGreaterThan(cursor(before));}
+    expect((await command(a,'post','/collections',input,key)).body).toEqual(saved.body);expect(await attachCreateHttpState([a.accountId,b.accountId])).toEqual(after);
+    const refusalInput={...input,slug:`refused-${randomUUID()}`},states=await attachCreateHttpState([a.accountId,b.accountId]);
+    const denied=await command(a,'post','/collections',{...refusalInput,attachTo:{hostCollectionId:foreign.id,expectedHostRevision:await categoryContentRevision(b.accountId,'guides')}});
+    expect(denied.status).toBe(404);expect(await attachCreateHttpState([a.accountId,b.accountId])).toEqual(states);
+    const missing=await command(a,'post','/collections',{...refusalInput,attachTo:{hostCollectionId:randomUUID(),expectedHostRevision:1}});
     expect(missing.status).toBe(404);
     const {requestId:deniedRequestId,...deniedSemantic}=apiErrorSchema.parse(denied.body).error;
     const {requestId:missingRequestId,...missingSemantic}=apiErrorSchema.parse(missing.body).error;
     expect(contentIdSchema.safeParse(deniedRequestId).success).toBe(true);
     expect(contentIdSchema.safeParse(missingRequestId).success).toBe(true);
-    expect(deniedSemantic).toEqual({code:'NOT_FOUND',message:'Collection unavailable'});
+    expect(deniedSemantic).toEqual({code:'NOT_FOUND',message:'Resource unavailable'});
     expect(missingSemantic).toEqual(deniedSemantic);
-    expect(await parentCreateHttpState([a.accountId,b.accountId])).toEqual(states);
-    for(const [id,expected,status] of [[parent.id,observed,409],[archived.id,await parentCreateRevision(archived.id),404],[wrong.id,await parentCreateRevision(wrong.id),422]] as const){expect((await command(a,'post','/collections',{...refusalInput,parentLocationCollectionId:id,parentExpectedRevision:expected})).status).toBe(status);expect(await parentCreateHttpState([a.accountId,b.accountId])).toEqual(states);}
+    expect(await attachCreateHttpState([a.accountId,b.accountId])).toEqual(states);
+    for(const [id,expected,status] of [[host.id,observed,409],[archived.id,await categoryContentRevision(a.accountId,'guides'),404]] as const){expect((await command(a,'post','/collections',{...refusalInput,attachTo:{hostCollectionId:id,expectedHostRevision:expected}})).status).toBe(status);expect(await attachCreateHttpState([a.accountId,b.accountId])).toEqual(states);}
   }
-  const bare=await recommendation(a,{...parent,category:'places'},await entity('place'),await parentCreateRevision(parent.id));
-  const before=await parentCreateHttpState([a.accountId,b.accountId]);
-  expect((await command(a,'post','/collections',{category:'people',title:'Bare recommendation refused',slug:`bare-${randomUUID()}`,parentLocationCollectionId:bare.id,parentExpectedRevision:1})).status).toBe(404);
-  expect(await parentCreateHttpState([a.accountId,b.accountId])).toEqual(before);
+});
+async function categoryContentRevision(accountId:string,category:string) {
+  return Number((await pool.query("SELECT coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category=$2),'0') revision",[accountId,category])).rows[0].revision);
+}
+it('WP10 links two own lists over HTTP, refuses the reverse pair and detaches by link id',async()=>{
+  const a=await persona(),books=await list(a,'books'),apps=await list(a,'apps');
+  const attached=await command(a,'post',`/collections/${books.id}/links`,{expectedHostRevision:await categoryContentRevision(a.accountId,'books'),linkedCollectionId:apps.id,expectedLinkedRevision:await categoryContentRevision(a.accountId,'apps')});
+  expect(attached.status).toBe(201);
+  expect(attached.body.link).toMatchObject({attached:true,link:{hostCollectionId:books.id,hostCategory:'books',linkedCollectionId:apps.id,linkedCategory:'apps',role:null,displayOrder:0}});
+  expect(attached.body.link.revisions).toEqual({books:await categoryContentRevision(a.accountId,'books'),apps:await categoryContentRevision(a.accountId,'apps')});
+  const reverse=await command(a,'post',`/collections/${apps.id}/links`,{expectedHostRevision:await categoryContentRevision(a.accountId,'apps'),linkedCollectionId:books.id,expectedLinkedRevision:await categoryContentRevision(a.accountId,'books')});
+  expect(reverse.status).toBe(409);expect(reverse.body.error.code).toBe('CONFLICT');
+  const detached=await command(a,'delete',`/collections/${books.id}/links/${attached.body.link.link.id}`,{expectedHostRevision:attached.body.link.revisions.books});
+  expect(detached.status).toBe(200);
+  expect(detached.body.link).toMatchObject({attached:false,link:{id:attached.body.link.link.id}});
+  expect((await pool.query('SELECT count(*)::int n FROM collection_list_links WHERE account_id=$1',[a.accountId])).rows[0].n).toBe(0);
 });
 it('persists independent versioned notes and preserves omitted, clear and retry semantics',async()=>{
  const a=await persona(),b=await persona(),shared=await entity(),la=await list(a),lb=await list(b);
@@ -243,11 +249,18 @@ it('writes purpose-compatible owned media and rolls invalid replacement back ato
   const detached=await command(a,'patch',`/recommendations/${id}`,{expectedRevision:1,mediaIds:[]},key);expect(detached.status).toBe(200);expect(detached.body.recommendation.mediaIds).toEqual([]);
   expect((await command(a,'patch',`/collections/${c.id}`,{expectedRevision:2,coverMediaId:null,description:null,heading:null})).status).toBe(200);
 });
-it.each([['places','place'],['places','person'],['books','book'],['movies','movie'],['games','game'],['apps','app'],['products','product'],['people','person']])('validates %s core against entity kind %s',async(category,kind)=>{
+it.each([['places','place'],['books','book'],['movies','movie'],['games','game'],['apps','app'],['products','product'],['people','person']])('validates %s core against entity kind %s',async(category,kind)=>{
   const a=await persona(),c=await list(a,category),entityId=await entity(kind);
-  const created=await recommendation(a,c,entityId);expect(created).toMatchObject({category,entityId,userRating:8,publicationState:'draft',mediaIds:[]});
+  const created=await recommendation(a,c,entityId);expect(created).toMatchObject({category,entityId,userRating:category==='people'?null:8,publicationState:'draft',mediaIds:[]});
   for(const body of [{expectedRevision:1,userRating:0},{expectedRevision:1,userRating:11},{expectedRevision:1,userRating:1.5},{expectedRevision:1,userRating:'5'},{expectedRevision:1,note:{version:1,arbitrary:true}},{expectedRevision:1,entityId:randomUUID()},{expectedRevision:1,category:'books'},{expectedRevision:1}]) expect((await command(a,'patch',`/recommendations/${created.id}`,body)).status).toBe(422);
   const published=await command(a,'patch',`/recommendations/${created.id}`,{expectedRevision:1,publicationState:'published',userRating:null});expect(published.status).toBe(200);expect(published.body.recommendation).toMatchObject({publicationState:'published',userRating:null,revision:2});
+});
+// WP6 Task 6-3: a person entity in a Places list was once a supported case; people are now
+// recommended in the People category, so a new one is refused.
+it('refuses a new places recommendation over a person entity',async()=>{
+  const a=await persona(),c=await list(a,'places'),entityId=await entity('person');
+  const reply=await command(a,'post','/recommendations',{category:'places',entityId,collectionId:c.id,expectedCollectionRevision:c.revision,userRating:8,publicationState:'draft'});
+  expect(reply.status).toBe(422);expect(reply.body.error.message).toBe('Recommend people in the People category');
 });
 it('archives one recommendation with replay and leaves another owner and catalog intact',async()=>{
   const a=await persona(),b=await persona(),shared=await entity(),c=await list(a),other=await list(b),r=await recommendation(a,c,shared),rb=await recommendation(b,other,shared),key=randomUUID();
@@ -469,7 +482,7 @@ it('Places native client renames title and share slug, preserves aggregates, rel
  try {
   const oldSlug=`native-${randomUUID()}`,newSlug=`edited-${randomUUID()}`,location={locationEntityId:null,locationSnapshot:{version:1 as const,name:'Mumbai',address:'Mumbai, India',providerPlaceId:null,latitude:19.076,longitude:72.8777},instagramMediaUrl:null};
   const c=await PlacesClient.createCollection({title:'Native location',slug:oldSlug,description:'Retained description',placeLocation:location},randomUUID());
-  const r=await recommendation(a,c,await entity('place'));const linkedParent=await PlacesClient.observeCollection(c.id);const child=await command(a,'post','/collections',{category:'products',title:'Linked',slug:`linked-${randomUUID()}`,parentLocationCollectionId:c.id,parentExpectedRevision:linkedParent.resourceRevision});expect(child.status).toBe(201);
+  const r=await recommendation(a,c,await entity('place'));const child=await command(a,'post','/collections',{category:'products',title:'Linked',slug:`linked-${randomUUID()}`,attachTo:{hostCollectionId:c.id,expectedHostRevision:await categoryContentRevision(a.accountId,'places')}});expect(child.status).toBe(201);
   const cover=(await pool.query("INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,ready_at,content_sha256) VALUES($1,'collection','ready','image/png',1,now(),decode(repeat('00',32),'hex')) RETURNING id",[a.accountId])).rows[0].id;
   const initial=await PlacesClient.observeCollection(c.id);expect((await command(a,'patch',`/collections/${c.id}`,{expectedRevision:initial.resourceRevision,coverMediaId:cover,heading:'Retained heading'})).status).toBe(200);
   const observed=await PlacesClient.observeCollection(c.id),before=await slugState(a,c.id),links=(await pool.query('SELECT * FROM collection_items WHERE collection_id=$1',[c.id])).rows,key=randomUUID(),patch={title:'Edited location',slug:newSlug};
@@ -481,7 +494,7 @@ it('Places native client renames title and share slug, preserves aggregates, rel
   const handle=`p${randomUUID().replaceAll("-", "").slice(0,20)}`;await pool.query("UPDATE creator_accounts SET handle=$2,display_name='Public owner',account_type='Creator',onboarding_status='complete',public_profile=true WHERE id=$1",[a.accountId,handle]);await pool.query("UPDATE account_category_settings SET is_public=true WHERE account_id=$1 AND category='places'",[a.accountId]);
   const publicRead=(slug:string)=>request(composed.app).get(`/api/explorers/v1/public/profiles/${handle}/collections/places/${slug}/recommendations`);
   expect((await publicRead(newSlug)).status).toBe(404);
-  const publish=await command(a,'patch',`/collections/${c.id}`,{expectedRevision:saved.revision,visibility:'public',publicationState:'published'});expect(publish.status).toBe(200);expect((await publicRead(newSlug)).status).toBe(200);expect((await publicRead(oldSlug)).status).toBe(404);
+  const publish=await command(a,'patch',`/collections/${c.id}`,{expectedRevision:saved.revision,visibility:'public',publicationState:'published'});expect(publish.status).toBe(200);expect((await publicRead(newSlug)).status).toBe(200);expect((await publicRead(oldSlug)).status).toBe(200); // LP-09 (0066): the old slug redirects
   await pool.query("UPDATE account_category_settings SET is_public=false WHERE account_id=$1 AND category='places'",[a.accountId]);expect((await publicRead(newSlug)).status).toBe(404);await pool.query("UPDATE account_category_settings SET is_public=true WHERE account_id=$1 AND category='places'",[a.accountId]);await pool.query('UPDATE creator_accounts SET public_profile=false WHERE id=$1',[a.accountId]);expect((await publicRead(newSlug)).status).toBe(404);
   const retryObserved=await PlacesClient.observeCollection(c.id),retryKey=randomUUID(),retryPatch={slug:`lost-${randomUUID()}`},retryBefore=await slugState(a,c.id);lose=true;
   await expect(PlacesClient.updateCollection(retryObserved,retryPatch,retryKey)).rejects.toMatchObject({status:503});const replay=await PlacesClient.updateCollection(retryObserved,retryPatch,retryKey);expect(replay.revision).toBe(retryObserved.resourceRevision+1);const retryAfter=await slugState(a,c.id);expect(retryAfter.resource.revision).toBe(retryBefore.resource.revision+1);expect(retryAfter.receipts).toBe(retryBefore.receipts+1);expect(wires.slice(-2)).toEqual([wires.at(-1),wires.at(-1)]);expect(r.id).toBeTruthy();expect(before.resource.slug).toBe(oldSlug);
@@ -493,9 +506,10 @@ it('Places guarded PATCH replays exactly once, rejects changed body and stale re
  expect((await command(a,'patch',`/collections/${c.id}`,{...body,slug:`different-${randomUUID()}`},key)).status).toBe(409);expect((await command(a,'patch',`/collections/${c.id}`,body)).status).toBe(409);expect(await slugState(a,c.id)).toEqual(state);
  const unchanged=await command(a,'patch',`/collections/${c.id}`,{expectedRevision:2,title:'Unchanged slug',slug:body.slug});expect(unchanged.status).toBe(200);expect(unchanged.body.collection).toMatchObject({slug:body.slug,revision:3});
 });
-it('Places unique slug collisions include archived rows and roll back all command state; other owners and categories are independent',async()=>{
+// OWN-01 (0065): an archived list no longer reserves its slug; collection-slug.integration.test.ts covers reuse.
+it('Places unique slug collisions with a live list roll back all command state; other owners and categories are independent',async()=>{
  const a=await persona(),b=await persona(),c=await list(a,'places'),occupied=await list(a,'places');
- for(const archived of [false,true]){if(archived)await pool.query('UPDATE collections SET archived_at=now() WHERE id=$1',[occupied.id]);const before=await slugState(a,c.id);expect((await command(a,'patch',`/collections/${c.id}`,{expectedRevision:1,title:'Must roll back',slug:occupied.slug})).status).toBe(409);expect(await slugState(a,c.id)).toEqual(before);}
+ {const before=await slugState(a,c.id);expect((await command(a,'patch',`/collections/${c.id}`,{expectedRevision:1,title:'Must roll back',slug:occupied.slug})).status).toBe(409);expect(await slugState(a,c.id)).toEqual(before);}
  const otherOwner=await list(b,'places'),otherCategory=await list(a,'books');
  for(const slug of [otherOwner.slug,otherCategory.slug]){const current=await slugState(a,c.id),saved=await command(a,'patch',`/collections/${c.id}`,{expectedRevision:current.resource.revision,slug});expect(saved.status).toBe(200);expect(saved.body.collection.slug).toBe(slug);}
 });
@@ -506,12 +520,10 @@ it('Places foreign and archived targets deny edits; invalid cover rolls back slu
  expect((await command(a,'patch',`/collections/${c.id}`,{expectedRevision:1,title:'Must roll back',slug:'rollback-location',coverMediaId:media})).status).toBe(422);expect(await slugState(a,c.id)).toEqual(before);
  await pool.query('UPDATE collections SET archived_at=now() WHERE id=$1',[c.id]);const archived=await slugState(a,c.id);expect((await command(a,'patch',`/collections/${c.id}`,{expectedRevision:1,slug:'archived-denied'})).status).toBe(404);expect(await slugState(a,c.id)).toEqual(archived);expect((await slugState(b,foreign.id)).resource.slug).toBe(foreign.slug);
 });
-it.each(['guides','movies','books','games','apps','products','people'])('guarded stored %s rejects slug without writes and ordinary omitted slug works',async category=>{
- const a=await persona(),c=await list(a,category),before=(await pool.query('SELECT * FROM collections WHERE id=$1',[c.id])).rows[0],state=(await pool.query('SELECT * FROM account_category_content_state WHERE account_id=$1 AND category=$2',[a.accountId,category])).rows;
- const receipts=()=>pool.query("SELECT count(*)::int n FROM application_command_receipts WHERE account_id=$1 AND operation='updateCollection'",[a.accountId]);const count=(await receipts()).rows[0].n;
- expect((await command(a,'patch',`/collections/${c.id}`,{expectedRevision:1,title:'Rejected',slug:'rejected-category'})).status).toBe(422);expect((await pool.query('SELECT * FROM collections WHERE id=$1',[c.id])).rows[0]).toEqual(before);expect((await pool.query('SELECT * FROM account_category_content_state WHERE account_id=$1 AND category=$2',[a.accountId,category])).rows).toEqual(state);expect((await receipts()).rows[0].n).toBe(count);
- const {ExplorersRecommendationRepository}=await import('../repositories/explorersRecommendationRepository');
- await expect(new ExplorersRecommendationRepository(pool).updateCollection(a.accountId,c.id,1,{slug:'trusted-category-bypass'} as any,randomUUID())).rejects.toMatchObject({status:422});
- expect((await pool.query('SELECT * FROM collections WHERE id=$1',[c.id])).rows[0]).toEqual(before);expect((await receipts()).rows[0].n).toBe(count);
- const ordinary=await command(a,'patch',`/collections/${c.id}`,{expectedRevision:1,title:'Ordinary'});expect(ordinary.status).toBe(200);expect(ordinary.body.collection).toMatchObject({title:'Ordinary',slug:c.slug,revision:2});
+// WP3B (LP-09). Every category renames its list URL; the old slug becomes a redirect.
+it.each(['guides','movies','books','games','apps','products','people'])('stored %s renames its slug with a redirect and ordinary omitted slug works',async category=>{
+ const a=await persona(),c=await list(a,category);
+ const renamed=await command(a,'patch',`/collections/${c.id}`,{expectedRevision:1,title:'Renamed',slug:'renamed-category'});expect(renamed.status,JSON.stringify(renamed.body)).toBe(200);expect(renamed.body.collection).toMatchObject({title:'Renamed',slug:'renamed-category',revision:2});
+ expect((await pool.query('SELECT old_slug FROM collection_slug_redirects WHERE collection_id=$1',[c.id])).rows).toEqual([{old_slug:c.slug}]);
+ const ordinary=await command(a,'patch',`/collections/${c.id}`,{expectedRevision:2,title:'Ordinary'});expect(ordinary.status).toBe(200);expect(ordinary.body.collection).toMatchObject({title:'Ordinary',slug:'renamed-category',revision:3});
 });

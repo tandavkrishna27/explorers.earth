@@ -18,7 +18,6 @@ const createFn = vi.fn(async () => ({
   data: { createMovieList: { documentId: "movie-1" } },
 }));
 import MoviesHome from "../MoviesHome";
-import TopPicksManager from '../TopPicksManager';
 import {render} from '@testing-library/react';
 import {MemoryRouter,Routes,Route} from 'react-router-dom';
 import AddMoviePage from '../AddMoviePage';
@@ -44,19 +43,13 @@ describe("MoviesHome create-list navigation (BUG-3)", () => {
     });
     await h.ready();
 
-    // Open the create-list modal (header renders a New List button).
-    const newListButtons = await screen.findAllByRole("button", {
-      name: /New List/i,
-    });
+    // Open the shared New list popup (header renders a New list button).
+    const newListButtons = await screen.findAllByRole("button", { name: /New list/i });
     await userEvent.click(newListButtons[0]);
 
     // Fill the list name and submit.
-    const nameInput = await screen.findByPlaceholderText(/Enter List Name/i);
-    await userEvent.type(nameInput, "Sci-Fi Picks");
-
-    await userEvent.click(
-      screen.getByRole("button", { name: /Create List/i })
-    );
+    await userEvent.type(await screen.findByLabelText("Name"), "Sci-Fi Picks");
+    await userEvent.click(screen.getByRole("button", { name: /Create list/i }));
 
     await waitFor(() => expect(explorersApiClient.createMyCollection).toHaveBeenCalledWith(expect.objectContaining({category:'movies',title:'Sci-Fi Picks',visibility:'private',publicationState:'draft'}),expect.any(String)));
     await waitFor(() =>
@@ -68,25 +61,16 @@ describe("MoviesHome create-list navigation (BUG-3)", () => {
   });
 });
 
-it('saves category top picks as one exact observed command', async()=>{
-  const save=vi.spyOn(explorersApiClient,'setMyCategoryTopPicks').mockResolvedValue({} as never);
-  const {readMoviesOwnerContent}=await import('../../../api/moviesClient');
-  vi.mocked(readMoviesOwnerContent).mockResolvedValueOnce({lists:[],details:new Map(),observation:{memberships:[{recommendationId:'a',collectionId:'first',collectionArchived:false,recommendationArchived:false},{recommendationId:'b',collectionId:'second',collectionArchived:false,recommendationArchived:false}],topPicks:[]}} as never);
-  render(<TopPicksManager movies={[{documentId:'a',title:'First',pin_order:0},{documentId:'b',title:'Second',pin_order:1}] as never} allMovies={[]} listId="first" onClose={()=>{}} onRefetch={()=>{}}/>);
-  await userEvent.click(screen.getByRole('button',{name:'Save Top Picks'}));
-  await waitFor(()=>expect(save).toHaveBeenCalledWith(expect.objectContaining({memberships:expect.any(Array)}),[{recommendationId:'a',collectionId:'first'},{recommendationId:'b',collectionId:'second'}],expect.any(String)));
-});
-
 it('creates a manual recommendation with canonical entity identity and observed parent',async()=>{
- vi.spyOn(explorersApiClient,'getMovieGenres').mockResolvedValue({items:[]} as never);
+ vi.spyOn(explorersApiClient,'getCompleteTaxonomyCatalog').mockResolvedValue({state:'CONFIGURED',items:[]} as never);
  const parent={resourceId:'list',detail:{id:'list',category:'movies'}};
  vi.spyOn(explorersApiClient,'getMyEditableCollection').mockResolvedValue(parent as never);
  const resolve=vi.spyOn(explorersApiClient,'resolveMovieEntity').mockResolvedValue({id:'entity',title:'Manual movie',origin:'manual',details:emptyMovieDetails(),provenance:null} as never);
  const create=vi.spyOn(explorersApiClient,'createMyRecommendation').mockResolvedValue({id:'recommendation'} as never);
  render(<MemoryRouter initialEntries={['/recommendations/movies/list/add']}><Routes><Route path="/recommendations/movies/:listId/add" element={<AddMoviePage/>}/></Routes></MemoryRouter>);
- await userEvent.click(screen.getByRole('button',{name:'Add manually'}));
+ await userEvent.click(screen.getByRole('button',{name:/Add manually/}));
  await userEvent.type(screen.getAllByPlaceholderText('Movie title')[0],'Manual movie');
- await userEvent.click(screen.getByRole('button',{name:'Add to List'}));
+ await userEvent.click(screen.getByRole('button',{name:'Save'}));
  await waitFor(()=>expect(resolve).toHaveBeenCalledWith(expect.objectContaining({kind:'manual',category:'movies',details:expect.objectContaining({title:'Manual movie'})}),expect.any(String),expect.any(AbortSignal)));
  expect(create).toHaveBeenCalledWith(parent,expect.objectContaining({entityId:'entity',publicationState:'published',mediaIds:[]}),expect.any(String),expect.any(AbortSignal));
 });
@@ -99,7 +83,7 @@ it('renders a server genre page without filtering a category preview',async()=>{
 
 it('preserves an edited draft and its original revision after owner invalidation', async()=>{
  loginSurface();
- vi.spyOn(explorersApiClient,'getMovieGenres').mockResolvedValue({items:[]} as never);
+ vi.spyOn(explorersApiClient,'getCompleteTaxonomyCatalog').mockResolvedValue({state:'CONFIGURED',items:[]} as never);
  const original={resourceId:'rec',resourceRevision:1,detail:{id:'rec'}};
  const changed={resourceId:'rec',resourceRevision:2,detail:{id:'rec'}};
  const movie={documentId:'rec',entity_id:'entity',title:'Original',media_type:'Movie',poster_path:null,backdrop_path:null,genres:[],watch_providers:[],Media:[],movie_categories:[],movie_list:{documentId:'list'},user_recommendation_note:null};
@@ -113,21 +97,21 @@ it('preserves an edited draft and its original revision after owner invalidation
  const {invalidateMovies}=await import('../../../api/explorersAdapter');
  const {act}=await import('@testing-library/react');await act(async()=>invalidateMovies());
  expect(screen.getByDisplayValue('My unsaved draft')).toBeInTheDocument();
- await userEvent.click(screen.getByRole('button',{name:'Save Changes'}));
+ await userEvent.click(screen.getByRole('button',{name:'Save'}));
  await waitFor(()=>expect(update).toHaveBeenCalledWith(original,expect.objectContaining({displayOverrides:expect.objectContaining({title:'My unsaved draft'})}),expect.any(String),expect.any(AbortSignal)));
 });
 
 it('replays an unchanged create intent with its original parent observation after a lost response', async()=>{
- loginSurface();vi.spyOn(explorersApiClient,'getMovieGenres').mockResolvedValue({items:[]} as never);
+ loginSurface();vi.spyOn(explorersApiClient,'getCompleteTaxonomyCatalog').mockResolvedValue({state:'CONFIGURED',items:[]} as never);
  const parent={resourceId:'list',resourceRevision:1,detail:{id:'list',category:'movies'}};
  const readParent=vi.spyOn(explorersApiClient,'getMyEditableCollection').mockResolvedValue(parent as never);
  vi.spyOn(explorersApiClient,'resolveMovieEntity').mockResolvedValue({id:'entity',title:'Retry movie',origin:'manual',details:emptyMovieDetails(),provenance:null} as never);
  const create=vi.spyOn(explorersApiClient,'createMyRecommendation').mockRejectedValueOnce(new Error('Response lost')).mockResolvedValueOnce({id:'recommendation'} as never);
  readParent.mockClear();create.mockClear();
  render(<MemoryRouter initialEntries={['/recommendations/movies/list/add']}><Routes><Route path="/recommendations/movies/:listId/add" element={<AddMoviePage/>}/></Routes></MemoryRouter>);
- await userEvent.click(screen.getByRole('button',{name:'Add manually'}));await userEvent.type(screen.getAllByPlaceholderText('Movie title')[0],'Retry movie');
- await userEvent.click(screen.getByRole('button',{name:'Add to List'}));await waitFor(()=>expect(create).toHaveBeenCalledTimes(1));
- await userEvent.click(screen.getByRole('button',{name:'Add to List'}));await waitFor(()=>expect(create).toHaveBeenCalledTimes(2));
+ await userEvent.click(screen.getByRole('button',{name:/Add manually/}));await userEvent.type(screen.getAllByPlaceholderText('Movie title')[0],'Retry movie');
+ await userEvent.click(screen.getByRole('button',{name:'Save'}));await waitFor(()=>expect(create).toHaveBeenCalledTimes(1));
+ await userEvent.click(screen.getByRole('button',{name:'Save'}));await waitFor(()=>expect(create).toHaveBeenCalledTimes(2));
  expect(readParent).toHaveBeenCalledTimes(1);
  expect(create.mock.calls[1].slice(0,3)).toEqual(create.mock.calls[0].slice(0,3));
 });
@@ -157,9 +141,9 @@ it('fences owner summary data when the canonical account generation changes',asy
 });
 
 it('shows an empty manual Original Title field before the user enters a value',async()=>{
- loginSurface();vi.spyOn(explorersApiClient,'getMovieGenres').mockResolvedValue({items:[]} as never);
+ loginSurface();vi.spyOn(explorersApiClient,'getCompleteTaxonomyCatalog').mockResolvedValue({state:'CONFIGURED',items:[]} as never);
  render(<MemoryRouter initialEntries={['/recommendations/movies/list/add']}><Routes><Route path="/recommendations/movies/:listId/add" element={<AddMoviePage/>}/></Routes></MemoryRouter>);
- await userEvent.click(screen.getByRole('button',{name:'Add manually'}));
+ await userEvent.click(screen.getByRole('button',{name:/Add manually/}));
  const inputs=screen.getAllByPlaceholderText('Movie title');expect(inputs).toHaveLength(2);
  await userEvent.type(inputs[1],'Original manual title');expect(screen.getByDisplayValue('Original manual title')).toBeInTheDocument();
 });
@@ -170,7 +154,7 @@ it.each([['manual','account'],['manual','route'],['parent','account'],['parent',
  function SwitchRoute(){const navigate=actualRouter.useNavigate();return <button onClick={()=>navigate('/recommendations/movies/other/add')}>Switch route</button>;}
  loginSurface();const previous=auth.getState();navigateSpy.mockClear();
  const {toast}=await import('sonner');const success=vi.spyOn(toast,'success').mockReturnValue('success');const error=vi.spyOn(toast,'error').mockReturnValue('error');const info=vi.spyOn(toast,'info').mockReturnValue('info');success.mockClear();error.mockClear();info.mockClear();
- vi.spyOn(explorersApiClient,'getMovieGenres').mockResolvedValue({items:[]} as never);
+ vi.spyOn(explorersApiClient,'getCompleteTaxonomyCatalog').mockResolvedValue({state:'CONFIGURED',items:[]} as never);
  let release:(value:unknown)=>void=()=>{};const pending=new Promise(resolve=>{release=resolve;});
  const entity={id:'entity',title:'Manual',origin:'manual',details:emptyMovieDetails(),provenance:null};
  const parent={resourceId:'list',resourceRevision:1,detail:{id:'list',category:'movies'}};
@@ -179,7 +163,7 @@ it.each([['manual','account'],['manual','route'],['parent','account'],['parent',
  const create=vi.spyOn(explorersApiClient,'createMyRecommendation').mockResolvedValue({id:'r'} as never);create.mockClear();
  const copy=vi.spyOn(explorersApiClient,'importMovieMedia').mockResolvedValue({slots:[]} as never);copy.mockClear();
  render(<MemoryRouter initialEntries={['/recommendations/movies/list/add']}><SwitchRoute/><Routes><Route path="/recommendations/movies/:listId/add" element={<AddMoviePage/>}/></Routes></MemoryRouter>);
- await userEvent.click(screen.getByRole('button',{name:'Add manually'}));await userEvent.type(screen.getAllByPlaceholderText('Movie title')[0],'Manual');await userEvent.click(screen.getByRole('button',{name:'Add to List'}));
+ await userEvent.click(screen.getByRole('button',{name:/Add manually/}));await userEvent.type(screen.getAllByPlaceholderText('Movie title')[0],'Manual');await userEvent.click(screen.getByRole('button',{name:'Save'}));
  await waitFor(()=>expect(stage==='manual'?resolve:readParent).toHaveBeenCalledTimes(1));
  if(abandonment==='account')await act(async()=>auth.setState({generation:previous.generation+1,accountId:'new-account'}));else await userEvent.click(screen.getByRole('button',{name:'Switch route'}));
  await act(async()=>release(stage==='manual'?entity:parent));
@@ -190,16 +174,16 @@ it.each([['manual','account'],['manual','route'],['parent','account'],['parent',
 
 // The manual Type select used the browser's default white box, unreadable in dark mode.
 it('themes the manual Type select and its options with the dashboard colours',async()=>{
- loginSurface();vi.spyOn(explorersApiClient,'getMovieGenres').mockResolvedValue({items:[]} as never);
+ loginSurface();vi.spyOn(explorersApiClient,'getCompleteTaxonomyCatalog').mockResolvedValue({state:'CONFIGURED',items:[]} as never);
  render(<MemoryRouter initialEntries={['/recommendations/movies/list/add']}><Routes><Route path="/recommendations/movies/:listId/add" element={<AddMoviePage/>}/></Routes></MemoryRouter>);
- await userEvent.click(screen.getByRole('button',{name:'Add manually'}));
+ await userEvent.click(screen.getByRole('button',{name:/Add manually/}));
  const type=screen.getByRole('combobox',{name:'Type'});
  expect(type).toHaveClass('dt-input','bg-dashboard-muted','text-dashboard');
  for(const option of Array.from((type as HTMLSelectElement).options))expect(option).toHaveClass('bg-dashboard-sidebar','text-dashboard');
 });
 
 it('tells the owner when a provider title cannot be resolved instead of failing silently', async()=>{
- loginSurface();vi.spyOn(explorersApiClient,'getMovieGenres').mockResolvedValue({items:[]} as never);
+ loginSurface();vi.spyOn(explorersApiClient,'getCompleteTaxonomyCatalog').mockResolvedValue({state:'CONFIGURED',items:[]} as never);
  const {toast}=await import('sonner');const error=vi.spyOn(toast,'error');
  vi.spyOn(explorersApiClient,'searchMovieCandidates').mockResolvedValue({version:'explorers-movie-candidates/v1',items:[{provider:'tmdb',externalKind:'movie',externalId:'370755',title:'Paterson',posterUrl:null,yearText:'2016'}],nextCursor:null,expiresAt:Date.now()+60000} as never);
  const {ExplorersApiError}=await import('../../../../../lib/explorersApiClient');
@@ -208,4 +192,25 @@ it('tells the owner when a provider title cannot be resolved instead of failing 
  await userEvent.type(screen.getByPlaceholderText(/Search "Interstellar"/),'Paterson');
  await userEvent.click(await screen.findByText('Paterson'));
  await waitFor(()=>expect(error).toHaveBeenCalledWith(expect.stringMatching(/Provider details unavailable/)));expect(screen.getByRole('alert')).toHaveTextContent(/retry or add manually/);
+});
+
+
+// OWN-17: the provider-image copy no longer holds the add page; it runs after navigation.
+it('navigates as soon as the create returns, before the provider image import finishes',async()=>{
+ loginSurface();navigateSpy.mockClear();vi.spyOn(explorersApiClient,'getCompleteTaxonomyCatalog').mockResolvedValue({state:'CONFIGURED',items:[]} as never);
+ vi.spyOn(explorersApiClient,'searchMovieCandidates').mockResolvedValue({version:'explorers-movie-candidates/v1',items:[{provider:'tmdb',externalKind:'movie',externalId:'1',title:'Zodiac',posterUrl:null,yearText:'2007'}],nextCursor:null,expiresAt:Date.now()+60000} as never);
+ vi.spyOn(explorersApiClient,'resolveMovieEntity').mockResolvedValue({id:'entity',title:'Zodiac',origin:'provider',details:{...emptyMovieDetails(),mediaType:'movie'},provenance:null} as never);
+ vi.spyOn(explorersApiClient,'getMyEditableCollection').mockResolvedValue({resourceId:'list',resourceRevision:1,detail:{id:'list',category:'movies'}} as never);
+ vi.spyOn(explorersApiClient,'createMyRecommendation').mockResolvedValue({id:'r'} as never);
+ const observe=vi.spyOn(explorersApiClient,'getMyEditableRecommendation').mockResolvedValue({resourceId:'r',resourceRevision:1} as never);observe.mockClear();
+ let finishImport:()=>void=()=>{};
+ const copy=vi.spyOn(explorersApiClient,'importMovieMedia').mockImplementation(()=>new Promise(resolve=>{finishImport=()=>resolve({slots:[]} as never);}) as never);copy.mockClear();
+ render(<MemoryRouter initialEntries={['/recommendations/movies/list/add']}><Routes><Route path="/recommendations/movies/:listId/add" element={<AddMoviePage/>}/></Routes></MemoryRouter>);
+ await userEvent.type(screen.getByPlaceholderText('Search "Interstellar", "Breaking Bad"...'),'Zodiac');
+ await userEvent.click(await screen.findByText('Zodiac'));
+ await userEvent.click(await screen.findByRole('button',{name:'Save'}));
+ await waitFor(()=>expect(navigateSpy).toHaveBeenCalledWith('/recommendations/movies/list',expect.anything()));
+ await waitFor(()=>expect(copy).toHaveBeenCalledTimes(1));
+ expect(observe).toHaveBeenCalledTimes(1);
+ finishImport();
 });

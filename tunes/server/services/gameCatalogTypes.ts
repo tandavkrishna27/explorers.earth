@@ -12,8 +12,10 @@ export type ActorBinding={accountId:string;userId:string;credentialKey:string;au
 export type Credentials={clientId:string;clientSecret:string};
 export type Release=()=>void;
 export type NativeOperation<T>={outcome:Promise<T>;settled:Promise<void>;cancel:()=>void};
+/** search answers 24 rows (256 KiB body cap); resolve answers one game (64 KiB). */
+export type CatalogProfile='search'|'resolve';
 export type CatalogHooks={beforeStart:()=>Promise<void>;onStart:()=>void};
-export type ProviderTransport={catalog:(query:string,signal:AbortSignal,hooks?:CatalogHooks)=>NativeOperation<readonly GameProviderRow[]>};
+export type ProviderTransport={catalog:(query:string,signal:AbortSignal,hooks?:CatalogHooks,profile?:CatalogProfile)=>NativeOperation<readonly GameProviderRow[]>};
 export type GameSearchPage={version:'explorers-game-candidates/v1';items:readonly GameProviderFacts[];nextCursor:string|null;expiresAt:number};
 export type CatalogOptions={coordinator:import('./gameProviderBudget').GameProviderCoordinator;transport:ProviderTransport;authorize:(actor:Actor)=>Promise<ActorBinding>;now?:()=>number;randomBytes?:(n:number)=>Uint8Array;callerMs?:number};
 /** Outcome cancellation does not imply resource settlement. */

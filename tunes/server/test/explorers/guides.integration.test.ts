@@ -9,6 +9,8 @@ import {
 } from "../../repositories/guideRepository";
 import {guideEmptySectionBlocks, type GuideCollectionDetails, type GuideSectionBlocks} from "../../../shared/explorersGuideContract";
 import {publicGuidesProjection} from "../../publicProfile/publicGuidesProjection";
+import {GuideService} from "../../application/guides";
+import type {Actor} from "../../application/actor";
 
 /**
  * Ticket 5.3. The guide aggregate against a real PostgreSQL 15.
@@ -72,6 +74,30 @@ async function tx<T>(run: (client: pg.PoolClient) => Promise<T>): Promise<T> {
   }
 }
 
+let service: GuideService;
+const ctx = () => ({requestId: randomUUID(), idempotencyKey: randomUUID()});
+
+/** An owner actor for the service layer: membership plus security state, OAuth so no session row is needed. */
+async function actorFor(accountId: string): Promise<Actor> {
+  const userId = `u-${randomUUID()}`;
+  await pool.query("INSERT INTO auth_user(id,name,email,email_verified) VALUES($1,'Owner',$2,true)", [userId, `${userId}@example.invalid`]);
+  await pool.query("INSERT INTO user_security_state(user_id) VALUES($1)", [userId]);
+  await pool.query("INSERT INTO account_memberships(account_id,user_id,role) VALUES($1,$2,'owner')", [accountId, userId]);
+  return {userId, accountId, role: "owner",
+    credential: {kind: "oauth", grantId: randomUUID(), scopes: ["collections:read", "collections:write"]}};
+}
+
+/** A list of the category holding one recommendation titled `title`. */
+async function recommendationIn(accountId: string, category: "places" | "books", title: string) {
+  const list = await repository.createCollection(accountId, {category, title: `${category} list`, slug: `${category}-${randomUUID()}`}, key());
+  const entity = category === "places"
+    ? await repository.resolvePlaceEntity(accountId, {kind: "manual", category: "places", details: {title}}, key())
+    : await repository.resolveManualEntity(accountId, {category: "books" as never, details: {title}}, key());
+  const created = await repository.createRecommendation(accountId, {category, entityId: entity.id, collectionId: list.id,
+    expectedCollectionRevision: list.revision}, key());
+  return {collectionId: list.id, recommendationId: created.id};
+}
+
 async function readyMedia(accountId: string, salt: string, purpose = "guide") {
   return (await pool.query(`INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,content_sha256,ready_at)
     VALUES($1,$3,'ready','image/jpeg',2048,$2,now()) RETURNING id`,
@@ -80,7 +106,7 @@ async function readyMedia(accountId: string, salt: string, purpose = "guide") {
 
 const details = (over: Partial<GuideCollectionDetails> = {}): GuideCollectionDetails => ({
   guideType: "itinerary", multiCity: true, numberOfDays: 5, estimatedBudget: "42000.50", budgetCurrency: "INR",
-  budgetType: "per-person", budgetTier: null, bestTimeToVisit: ["October"], categories: ["Backwaters"], tags: ["slow"],
+  budgetType: "per-person", budgetTier: null, startDate: null, bestTimeToVisit: ["October"], categories: ["Backwaters"], tags: ["slow"],
   tipsNotes: {blocks: [{text: "Carry cash — ഒരു കാര്യം"}]},
   place: {name: "Kochi", address: "Kerala, India", placeId: "ChIJ1", rating: 4.6, ratingsCount: 12044, lat: 9.9312, lng: 76.2673},
   locationEntityId: null, ...over,
@@ -95,7 +121,7 @@ const place = (localId: string, photos: string[] = []) => ({
 });
 
 const withMorning = (places: ReturnType<typeof place>[]): GuideSectionBlocks =>
-  ({...guideEmptySectionBlocks, timeline: {morning: places, afternoon: [], evening: []}});
+  ({...guideEmptySectionBlocks, items: places.map((p) => ({kind: "place" as const, localId: p.localId, timeLabel: "morning" as const, place: p}))});
 
 describePg("C6 guide aggregate", () => {
   beforeAll(async () => {
@@ -107,6 +133,7 @@ describePg("C6 guide aggregate", () => {
     pool = new pg.Pool({connectionString: target.toString(), max: 4});
     await migrateMusicDatabase(pool);
     repository = new ExplorersRecommendationRepository(pool);
+    service = new GuideService(pool);
   }, 120_000);
 
   afterAll(async () => {
@@ -130,6 +157,27 @@ describePg("C6 guide aggregate", () => {
     const written = details({estimatedBudget: amount, budgetCurrency: code});
     await tx(async (client) => writeGuideDetails(client, collection.id, accountId, await categoryRevision(accountId), written));
     expect(await readGuideDetails(pool, collection.id, accountId)).toEqual(written);
+  });
+
+  it("stores v2 items and a start date, and keeps the photo registry equal to item photos", async () => {
+    const accountId = await account();
+    const created = await guide(accountId);
+    const photo = (await pool.query(`INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,ready_at,content_sha256)
+      VALUES($1,'guide','ready','image/png',10,now(),decode(repeat('00',32),'hex')) RETURNING id`, [accountId])).rows[0].id;
+    const blocks: GuideSectionBlocks = {...guideEmptySectionBlocks, items: [{kind: "place", localId: "p1", timeLabel: "09:30", place: {
+      localId: "p1", placeId: "ChIJN1t_tDeuEmsRUsoyG83frY4", name: "Fort Aguada", formattedAddress: null, geometry: null, types: [],
+      tips: null, photos: [{mediaId: photo, fileName: null, width: null, height: null, aspectRatio: null}], priceLevel: null,
+      priceRange: null, customBudget: null, budgetAmount: null, budgetCurrency: null, source: "google", verified: true}},
+      {kind: "note", localId: "n1", timeLabel: null, text: "Sunset at the fort"}]};
+    const revision = await categoryRevision(accountId);
+    await tx((c) => createGuideSection(c, created.id, accountId, revision, {title: "", description: null, blocks}));
+    const page = await readGuideSectionPage(pool, created.id, accountId);
+    expect(page.sections[0].blocks.items.map((i) => i.localId)).toEqual(["p1", "n1"]);
+    expect((await pool.query("SELECT media_id FROM guide_section_photos WHERE section_id=$1", [page.sections[0].id])).rows).toEqual([{media_id: photo}]);
+    const details = {guideType: "itinerary", multiCity: false, numberOfDays: 1, estimatedBudget: null, budgetCurrency: null, budgetType: null,
+      budgetTier: null, startDate: "2026-12-12", bestTimeToVisit: [], categories: [], tags: [], tipsNotes: null, place: {}, locationEntityId: null} as GuideCollectionDetails;
+    await tx(async (c) => writeGuideDetails(c, created.id, accountId, await categoryRevision(accountId), details));
+    expect((await readGuideDetails(pool, created.id, accountId))?.startDate).toBe("2026-12-12");
   });
 
   it("stores the optional budget tier, keeps an unset tier null, and refuses an unknown one", async () => {
@@ -218,7 +266,7 @@ describePg("C6 guide aggregate", () => {
 
     const after = await readGuideSectionPage(pool, collection.id, accountId);
     expect(after.sections.find((section) => section.id === s2)).toEqual(untouched);
-    expect(after.sections.find((section) => section.id === s1)?.blocks.timeline.morning).toHaveLength(2);
+    expect(after.sections.find((section) => section.id === s1)?.blocks.items).toHaveLength(2);
   });
 
   it("registers section photos from the block JSON and refuses a desynchronised write", async () => {
@@ -349,7 +397,7 @@ describePg("C6 guide aggregate", () => {
     const section = await tx(async (client) => createGuideSection(client, collection.id, accountId, await categoryRevision(accountId), {title: "Day one", description: null, blocks: guideEmptySectionBlocks}));
     // The column CHECK refuses an unknown version outright, so the reader's own refusal is
     // belt and braces rather than the only gate. Assert the database half here.
-    await expect(pool.query("UPDATE guide_sections SET block_version='guide-section-blocks/v2' WHERE id=$1", [section]))
+    await expect(pool.query("UPDATE guide_sections SET block_version='guide-section-blocks/v3' WHERE id=$1", [section]))
       .rejects.toMatchObject({code: "23514"});
   });
 
@@ -585,5 +633,77 @@ describePg("C6 guide aggregate", () => {
     expect(await countGuideSections(pool, collection.id, accountId)).toBe(0);
     expect(await readGuideDetails(pool, collection.id, accountId)).toBeNull();
     expect((await pool.query("SELECT 1 FROM media_assets WHERE id=$1", [media])).rowCount).toBe(1);
+  });
+
+  describe("day commands (GD-24..30)", () => {
+    async function trip(days: number) {
+      const accountId = await account();
+      const created = await guide(accountId);
+      const actor = await actorFor(accountId);
+      let g = await service.getAggregate(actor, created.id);
+      for (let i = 0; i < days; i++) g = await service.addDay(actor, created.id, {revision: g.revision}, ctx());
+      return {accountId, actor, id: created.id, g};
+    }
+    const note = (text: string) => ({kind: "note" as const, text});
+
+    it("keeps numberOfDays equal to the day count on add, duplicate and delete", async () => {
+      const t = await trip(2);
+      expect(t.g.details.numberOfDays).toBe(2);
+      let g = await service.duplicateDay(t.actor, t.id, t.g.sections[0].id, {revision: t.g.revision}, ctx());
+      expect(g.details.numberOfDays).toBe(3);
+      g = await service.deleteDay(t.actor, t.id, g.sections[2].id, {revision: g.revision}, ctx());
+      expect(g.details.numberOfDays).toBe(2);
+    });
+
+    it("refuses to delete the last day", async () => {
+      const t = await trip(1);
+      await expect(service.deleteDay(t.actor, t.id, t.g.sections[0].id, {revision: t.g.revision}, ctx())).rejects.toMatchObject({status: 422});
+    });
+
+    it("moves an item across days atomically and keeps order dense", async () => {
+      const t = await trip(2);
+      let g = await service.addDayItem(t.actor, t.id, t.g.sections[0].id, {revision: t.g.revision, item: note("a")}, ctx());
+      g = await service.addDayItem(t.actor, t.id, g.sections[0].id, {revision: g.revision, item: note("b")}, ctx());
+      g = await service.addDayItem(t.actor, t.id, g.sections[1].id, {revision: g.revision, item: note("c")}, ctx());
+      const b = g.sections[0].blocks.items[1].localId;
+      g = await service.moveDayItem(t.actor, t.id, g.sections[0].id, b, {revision: g.revision, toSectionId: g.sections[1].id, toIndex: 0}, ctx());
+      expect(g.sections[0].blocks.items.map((i) => i.kind === "note" && i.text)).toEqual(["a"]);
+      expect(g.sections[1].blocks.items.map((i) => i.kind === "note" && i.text)).toEqual(["b", "c"]);
+    });
+
+    it("a move at a stale revision changes nothing", async () => {
+      const t = await trip(2);
+      const g = await service.addDayItem(t.actor, t.id, t.g.sections[0].id, {revision: t.g.revision, item: note("a")}, ctx());
+      const id = g.sections[0].blocks.items[0].localId;
+      await expect(service.moveDayItem(t.actor, t.id, g.sections[0].id, id, {revision: t.g.revision, toSectionId: g.sections[1].id, toIndex: 0}, ctx()))
+        .rejects.toMatchObject({status: 409});
+      const after = await service.getAggregate(t.actor, t.id);
+      expect(after.sections[0].blocks.items).toHaveLength(1);
+    });
+
+    it("labels, clears, reorders days and never touches a source list item on remove", async () => {
+      const t = await trip(2);
+      const rec = await recommendationIn(t.accountId, "places", "Thalassa");   // helper: creates a places list + recommendation, returns {collectionId, recommendationId}
+      let g = await service.addDayItem(t.actor, t.id, t.g.sections[0].id,
+        {revision: t.g.revision, item: {kind: "listItem", ref: {recommendationId: rec.recommendationId}}}, ctx());
+      const item = g.sections[0].blocks.items[0];
+      expect(item.kind === "listItem" && item.snapshot.title).toBe("Thalassa");
+      g = await service.setTimeLabel(t.actor, t.id, g.sections[0].id, item.localId, {revision: g.revision, timeLabel: "19:30"}, ctx());
+      expect(g.sections[0].blocks.items[0].timeLabel).toBe("19:30");
+      const first = g.sections[0].id;
+      g = await service.moveDay(t.actor, t.id, first, {revision: g.revision, toIndex: 1}, ctx());
+      expect(g.sections[1].id).toBe(first);
+      g = await service.removeDayItem(t.actor, t.id, first, item.localId, {revision: g.revision}, ctx());
+      expect((await pool.query("SELECT archived_at FROM recommendations WHERE id=$1", [rec.recommendationId])).rows[0].archived_at).toBeNull();
+      g = await service.clearDay(t.actor, t.id, first, {revision: g.revision}, ctx());
+      expect(g.sections[1].blocks.items).toEqual([]);
+    });
+
+    it("refuses another account's recommendation as a list item", async () => {
+      const t = await trip(1);
+      const other = await recommendationIn(await account(), "books", "Not yours");
+      await expect(service.addDayItem(t.actor, t.id, t.g.sections[0].id,
+        {revision: t.g.revision, item: {kind: "listItem", ref: {recommendationId: other.recommendationId}}}, ctx())).rejects.toMatchObject({status: 404});
+    });
   });
 });

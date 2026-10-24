@@ -6,6 +6,7 @@ import AddAppPage from '../AddAppPage';
 import AppListView from '../AppListView';
 import { AppsClient } from '../../../api/appsClient';
 import useAuthStore from '../../../../../store/store';
+import { reorderListItems } from '../../../../../lib/reorderListItems';
 
 // Replaces scrape-flow.integration.test.tsx. That suite drove the paste-a-URL step
 // against /api/apps/scrape-url, a path the server no longer has and a containment test
@@ -15,20 +16,20 @@ const fixture = vi.hoisted(() => ({ content: { view: { lists: [] as unknown[] },
 vi.mock('../../../hooks/useAppsOwner', () => ({ useAppsOwner: () => ({ content: fixture.content, data: { appLists: fixture.content.view.lists }, loading: fixture.loading, error: fixture.error, refetch: fixture.refetch }), invalidateApps: vi.fn() }));
 vi.mock('../../../api/appsClient', () => ({ AppsClient: { observeCollection: vi.fn(), prepareManualIntent: vi.fn(), createManual: vi.fn(), upload: vi.fn(), updateRecommendation: vi.fn(), observeRecommendation: vi.fn(), updateCollection: vi.fn(), archiveCollection: vi.fn(), archiveRecommendation: vi.fn(), createCollection: vi.fn(), readCompleteOwner: vi.fn(), setTopPicks: vi.fn(), prepareMembershipIntent: vi.fn(), saveMembership: vi.fn() } }));
 vi.mock('../../../../Favorites/components/TiptapEditor', () => ({ default: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => <textarea aria-label="Note" value={value} onChange={event => onChange(event.target.value)} /> }));
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), loading: vi.fn() } }));
+vi.mock('../../../../../lib/reorderListItems', () => ({ reorderListItems: vi.fn() }));
+vi.mock('sonner',() => ({ toast: { success: vi.fn(), error: vi.fn(), loading: vi.fn() } }));
 
 function mount() { return render(<MockedProvider><MemoryRouter initialEntries={['/apps/list-1/add']}><Routes><Route path="/apps/:listId/add" element={<AddAppPage />} /><Route path="/recommendations/apps/:listId" element={<p>Saved list</p>} /></Routes></MemoryRouter></MockedProvider>); }
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(r => { resolve = r; }); return { promise, resolve }; }
 const fill = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } });
 
 describe('native manual Apps', () => {
- it('gives rating an exact label independent of option text and preserves its selected value', async () => {
-  mount(); const rating=screen.getByRole('combobox', {name:'Your rating'});
-  expect(rating.getAttribute('aria-label')).toBe('Your rating');
-  fireEvent.change(rating,{target:{value:'8'}});
+ it('rates with the shared star widget and saves the stored value', async () => {
+  mount(); const rating=screen.getByRole('slider', {name:'Your rating'});
+  fireEvent.keyDown(rating,{key:'End'});
   fill('App title','Rated app');fill('App URL','https://example.com/rated');
-  fireEvent.click(screen.getByRole('button',{name:'Save app'}));await screen.findByText('Saved list');
-  expect(vi.mocked(AppsClient.prepareManualIntent).mock.calls[0][1].userRating).toBe(8);
+  fireEvent.click(screen.getByRole('button',{name:'Save'}));await screen.findByText('Saved list');
+  expect(vi.mocked(AppsClient.prepareManualIntent).mock.calls[0][1].userRating).toBe(10);
  });
  beforeEach(() => {
   vi.clearAllMocks(); fixture.loading = false; fixture.error = undefined; fixture.content.view.lists = []; fixture.content.details.clear();
@@ -39,52 +40,50 @@ describe('native manual Apps', () => {
  });
  afterEach(() => { cleanup(); useAuthStore.getState().logout(); });
 
- it('round-trips the price tier, platforms and download URL the legacy type requires', async () => {
+ it('round-trips the price tier, platforms and other links, with no download URL', async () => {
   mount();
   fill('App title', 'Focus Timer'); fill('App URL', 'https://example.com/focus');
-  fill('Developer', 'Quiet Software'); fill('Download URL', 'https://example.com/get');
-  fireEvent.click(screen.getByRole('button', { name: 'Paid' }));
+  fill('Developer', 'Quiet Software');
+  fireEvent.click(screen.getByRole('button', { name: '+ Add another platform link' }));
+  fill('Other link 1', 'https://example.com/get');
+  fill('Price', 'Paid');
   fireEvent.click(screen.getByRole('button', { name: 'iOS' })); fireEvent.click(screen.getByRole('button', { name: 'Web' }));
   fill('Note', '<p>Keeps me honest</p>');
-  fireEvent.click(screen.getByRole('button', { name: 'Save app' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   await screen.findByText('Saved list');
   expect(AppsClient.prepareManualIntent).toHaveBeenCalledWith(expect.anything(), {
    title: 'Focus Timer', appUrl: 'https://example.com/focus', developer: 'Quiet Software',
-   logoUrl: null, description: null, downloadUrl: 'https://example.com/get', priceTier: 'Paid',
-   platforms: ['iOS', 'Web'], note: { version: 1, format: 'quill-html', html: '<p>Keeps me honest</p>' },
-   userRating: null, mediaIds: [], screenshotMediaIds: [],
+   logoUrl: null, description: null, downloadUrl: null, priceTier: 'Paid',
+   platforms: ['iOS', 'Web'], otherLinks: [{ label: 'Link', url: 'https://example.com/get' }], note: { version: 1, format: 'quill-html', html: '<p>Keeps me honest</p>' },
+   userRating: null, mediaIds: [], screenshotMediaIds: [], curatedTermId: null,
   });
  });
 
  it('sends an unstated price tier as null rather than defaulting to a charge', async () => {
   mount(); fill('App title', 'Free Thing'); fill('App URL', 'https://example.com/free');
-  fireEvent.click(screen.getByRole('button', { name: 'Not stated' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Save app' }));
+  expect(screen.getByLabelText('Price')).toHaveValue('');
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   await screen.findByText('Saved list');
   expect(vi.mocked(AppsClient.prepareManualIntent).mock.calls[0][1]).toMatchObject({ priceTier: null });
  });
 
  it('refuses to save without the app URL the storage requires', async () => {
   mount(); fill('App title', 'No link');
-  expect(screen.getByRole('button', { name: 'Save app' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
   expect(AppsClient.observeCollection).not.toHaveBeenCalled();
-  // The field says it is required, and why Save is off, instead of leaving the owner guessing.
-  const url = screen.getByLabelText('App URL');
-  expect(url).toBeRequired();
-  expect(url).toHaveAccessibleDescription(/required.*save/i);
   fill('App URL', 'https://example.com/link');
-  expect(screen.getByRole('button', { name: 'Save app' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
  });
 
  it('waits for uploaded screenshot readiness before saving and sends them as ordered ids', async () => {
   const upload = deferred<{ id: string }>(); vi.mocked(AppsClient.upload).mockReturnValue(upload.promise as never);
   mount(); fill('App title', 'Shot app'); fill('App URL', 'https://example.com/shot');
   fireEvent.change(screen.getByLabelText('Screenshots'), { target: { files: [new File(['bytes'], 'shot.png', { type: 'image/png' })] } });
-  expect(screen.getByRole('button', { name: 'Save app' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
   expect(AppsClient.createManual).not.toHaveBeenCalled();
   await act(async () => upload.resolve({ id: 'media-1' }));
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Save app' })).toBeEnabled());
-  fireEvent.click(screen.getByRole('button', { name: 'Save app' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled());
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   await screen.findByText('Saved list');
   expect(vi.mocked(AppsClient.prepareManualIntent).mock.calls[0][1]).toMatchObject({ screenshotMediaIds: ['media-1'] });
  });
@@ -92,11 +91,11 @@ describe('native manual Apps', () => {
  it('preserves every typed field when the save fails and retries the same intent', async () => {
   vi.mocked(AppsClient.createManual).mockRejectedValueOnce(new Error('Temporarily unavailable')).mockResolvedValueOnce({ id: 'app-1' } as never);
   mount(); fill('App title', 'Retained draft'); fill('App URL', 'https://example.com/retained'); fill('Developer', 'Retained dev');
-  fireEvent.click(screen.getByRole('button', { name: 'Save app' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   await screen.findByRole('alert');
   expect(screen.getByLabelText('App title')).toHaveValue('Retained draft');
   expect(screen.getByLabelText('Developer')).toHaveValue('Retained dev');
-  fireEvent.click(screen.getByRole('button', { name: 'Save app' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   await screen.findByText('Saved list');
   expect(AppsClient.prepareManualIntent).toHaveBeenCalledTimes(1);
   expect(vi.mocked(AppsClient.createManual).mock.calls[0][0]).toBe(vi.mocked(AppsClient.createManual).mock.calls[1][0]);
@@ -105,7 +104,7 @@ describe('native manual Apps', () => {
  it('cannot create an app once the account is replaced while the parent read is pending',async () => {
   const parent = deferred<never>(); vi.mocked(AppsClient.observeCollection).mockReturnValue(parent.promise);
   mount(); fill('App title', 'Old owner draft'); fill('App URL', 'https://example.com/old');
-  fireEvent.click(screen.getByRole('button', { name: 'Save app' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   act(() => useAuthStore.getState().logout());
   await act(async () => parent.resolve({ detail: { id: 'list-1' } } as never));
   expect(AppsClient.prepareManualIntent).not.toHaveBeenCalled();
@@ -117,37 +116,40 @@ describe('native manual Apps', () => {
   mount(); fill('App title', 'Invalid draft'); fill('App URL', 'https://example.com/invalid');
   const note = '<p>' + 'a'.repeat(256 * 1024) + '</p>';
   fill('Note', note);
-  fireEvent.click(screen.getByRole('button', { name: 'Save app' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Rich note exceeds byte limit');
   expect(screen.getByLabelText('Note')).toHaveValue(note);
   expect(AppsClient.observeCollection).not.toHaveBeenCalled();
   expect(AppsClient.createManual).not.toHaveBeenCalled();
  });
 
- it('offers Reorder apps for a list of two or more, and not for a list of one', async () => {
+ // The separate "Reorder apps" panel (ListItemOrder) is gone (LP-05): every row carries its own
+ // grip, which is the drag handle and the keyboard path (Space to pick up, arrows, Enter to drop).
+ it('every app row has a reorder grip, and a keyboard move saves the new order', async () => {
+  const saved = vi.mocked(reorderListItems).mockResolvedValue({} as never);
   const app = (id: string, title: string) => ({ documentId: id, title, app_url: `https://example.com/${id}`, user_rating: null, user_recommendation_note: '', logo_url: null, developer: null, platforms: null, price_tier: null, download_url: null, description: null, screenshots: null, is_pinned: false });
-  const show = (apps: unknown[]) => { fixture.content.view.lists = [{ documentId: 'list-1', List_Name: 'List', slug: 'list', Visibility: false, recommended_apps: apps, account: { documentId: 'a1', username: 'owner' } }]; fixture.content = { ...fixture.content }; };
-  const view = <MockedProvider><MemoryRouter initialEntries={['/recommendations/apps/list-1']}><Routes><Route path="/recommendations/apps/:listId" element={<AppListView />} /></Routes></MemoryRouter></MockedProvider>;
-  show([app('a', 'Alpha')]); const first = render(view);
-  expect(screen.queryByRole('button', { name: 'Reorder apps' })).toBeNull(); first.unmount();
-  show([app('a', 'Alpha'), app('b', 'Beta')]); render(view);
-  fireEvent.click(screen.getByRole('button', { name: 'Reorder apps' }));
-  expect(screen.getByRole('list', { name: 'App order' })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Move App 1 down' })).toBeEnabled();
+  fixture.content.view.lists = [{ documentId: 'list-1', List_Name: 'List', slug: 'list', Visibility: false, recommended_apps: [app('a', 'Alpha'), app('b', 'Beta')], account: { documentId: 'a1', username: 'owner' } }]; fixture.content = { ...fixture.content };
+  render(<MockedProvider><MemoryRouter initialEntries={['/recommendations/apps/list-1']}><Routes><Route path="/recommendations/apps/:listId" element={<AppListView />} /></Routes></MemoryRouter></MockedProvider>);
+  expect(screen.queryByRole('button', { name: 'Reorder apps' })).toBeNull();
+  const grip = screen.getByRole('button', { name: 'Drag Alpha to reorder' }); expect(screen.getByRole('button', { name: 'Drag Beta to reorder' })).toBeEnabled();
+  fireEvent.keyDown(grip, { key: ' ' }); fireEvent.keyDown(grip, { key: 'ArrowDown' }); fireEvent.keyDown(screen.getByRole('button', { name: 'Drag Alpha to reorder' }), { key: 'Enter' });
+  await waitFor(() => expect(saved).toHaveBeenCalledWith('apps', 'list-1', ['b', 'a']));
  });
 
- it('offers explicit recommendation publication without inheriting the list publication', async () => {
+ // LP-04: per-item publication is gone from the list page. The list's own publish pill changes
+ // only the collection; it never writes a recommendation's publication state.
+ it('list publication goes through the list pill and never writes a recommendation', async () => {
   const app = { documentId: 'app-a', title: 'Manual app', app_url: 'https://example.com/a', user_rating: null, user_recommendation_note: '', logo_url: null, developer: null, platforms: null, price_tier: null, download_url: null, description: null, screenshots: null, is_pinned: false, app_list: { documentId: 'list-1', List_Name: 'Published list' } };
   fixture.content.view.lists = [{ documentId: 'list-1', List_Name: 'Published list', slug: 'published', Visibility: true, recommended_apps: [app], account: { documentId: 'a1', username: 'owner' } }];
-  const observed = { detail: { id: 'app-a', revision: 1, publicationState: 'draft', category: 'apps' } };
-  fixture.content.details.set('app-a', observed);
-  vi.mocked(AppsClient.observeRecommendation).mockResolvedValue(observed as never);
-  vi.mocked(AppsClient.updateRecommendation).mockResolvedValue({} as never);
+  const observed = { detail: { id: 'list-1', revision: 1, category: 'apps' } };
+  vi.mocked(AppsClient.observeCollection).mockResolvedValue(observed as never);
+  vi.mocked(AppsClient.updateCollection).mockResolvedValue({} as never);
   render(<MockedProvider><MemoryRouter initialEntries={['/recommendations/apps/list-1']}><Routes><Route path="/recommendations/apps/:listId" element={<AppListView />} /></Routes></MemoryRouter></MockedProvider>);
-  expect(screen.getByText('Recommendation is Draft')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Publish Manual app' }));
-  await waitFor(() => expect(AppsClient.updateRecommendation).toHaveBeenCalledWith(observed, { publicationState: 'published' }, expect.any(String), expect.any(AbortSignal)));
-  expect(AppsClient.updateCollection).not.toHaveBeenCalled();
+  expect(screen.queryByRole('button', { name: 'Publish Manual app' })).toBeNull();
+  expect(screen.queryByText(/Recommendation is/)).toBeNull();
+  fireEvent.click(document.querySelector('[aria-haspopup="menu"]')!); fireEvent.click(screen.getByRole('menuitemradio', { name: /draft/i }));
+  await waitFor(() => expect(AppsClient.updateCollection).toHaveBeenCalledWith(observed, { visibility: 'private', publicationState: 'draft' }, expect.any(String), expect.any(AbortSignal)));
+  expect(AppsClient.updateRecommendation).not.toHaveBeenCalled();
  });
 });
 
@@ -168,7 +170,7 @@ describe('manual Apps edit', () => {
   expect(screen.getByLabelText('App URL')).toHaveValue('https://example.com/original');
   // The URL is the shared entity's identity, so one owner cannot re-point it.
   expect(screen.getByLabelText('App URL')).toBeDisabled();
-  expect(screen.getByRole('button', { name: 'Free' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByLabelText('Price')).toHaveValue('Free');
   expect(screen.getByRole('button', { name: 'Web' })).toHaveAttribute('aria-pressed', 'true');
   expect(screen.getByAltText('App screenshot')).toHaveAttribute('src', '/api/explorers/v1/media/media-7/content');
  });
@@ -177,7 +179,7 @@ describe('manual Apps edit', () => {
   loaded(); vi.mocked(AppsClient.updateRecommendation).mockResolvedValue({} as never);
   render(editElement());
   fireEvent.change(await screen.findByLabelText('App title'), { target: { value: 'Renamed' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Save app' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   await waitFor(() => expect(AppsClient.updateRecommendation).toHaveBeenCalledTimes(1));
   const patch = vi.mocked(AppsClient.updateRecommendation).mock.calls[0][1] as { displayOverrides: Record<string, unknown> };
   expect(patch.displayOverrides).not.toHaveProperty('appUrl');
@@ -211,7 +213,7 @@ describe('manual Apps edit', () => {
   loaded(); fixture.content.details.set('app-a', { detail: { id: 'app-a', revision: 2, category: 'apps' } });
   view.rerender(editElement());
   expect(screen.getByLabelText('App title')).toHaveValue('My unsaved edit');
-  fireEvent.click(screen.getByRole('button', { name: 'Save app' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Reload the app before saving');
   expect(AppsClient.updateRecommendation).not.toHaveBeenCalled();
   expect(fixture.content.details.get('app-a')).not.toBe(original);

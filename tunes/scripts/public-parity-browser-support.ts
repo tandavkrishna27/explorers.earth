@@ -45,7 +45,7 @@ function typedDetails(category:Category,index:number){
   case 'products':return productEntityDetailsSchema.parse({productUrl:`https://example.com/fixture-product-${index}`,brand:'Fixture brand',logoUrl:null,description:'Fixture product',specifications:{},imageUrls:[]});
   case 'people':return personEntityDetailsSchema.parse({...emptyPersonDetails(),headline:'Fixture person'});
   case 'places':return placeEntityDetailsSchema.parse({...emptyPlaceDetails(),latitude:0,longitude:0,formattedAddress:'Fixture location'});
-  case 'guides':return guideSectionBlocksSchema.parse({...guideEmptySectionBlocks,timeline:{morning:[{localId:'public-parity-photo-activity',placeId:'public-parity-manual-place',name:'Fixture manual activity',formattedAddress:null,geometry:null,types:[],tips:null,photos:[],priceLevel:null,priceRange:null,customBudget:null,budgetAmount:null,budgetCurrency:null,source:'manual',verified:false}],afternoon:[],evening:[]},tags:['Fixture section'],packingList:{items:[{localId:'water',label:'Fixture water',done:false}]}});
+  case 'guides':return guideSectionBlocksSchema.parse({...guideEmptySectionBlocks,items:[{kind:'place',localId:'public-parity-photo-activity',timeLabel:'morning',place:{localId:'public-parity-photo-activity',placeId:'public-parity-manual-place',name:'Fixture manual activity',formattedAddress:null,geometry:null,types:[],tips:null,photos:[],priceLevel:null,priceRange:null,customBudget:null,budgetAmount:null,budgetCurrency:null,source:'manual',verified:false}}],tags:['Fixture section'],packingList:{items:[{localId:'water',label:'Fixture water',done:false}]}});
  }
 }
 function guideDetails(){return guideCollectionDetailsSchema.parse({guideType:'itinerary',multiCity:false,numberOfDays:53,estimatedBudget:null,budgetCurrency:null,budgetType:null,bestTimeToVisit:[],categories:['Fixture guide category'],tags:[],tipsNotes:null,place:{name:'Fixture city',address:null,placeId:null,rating:null,ratingsCount:null,lat:0,lng:0},locationEntityId:null});}
@@ -155,7 +155,7 @@ export const publicParityExpectedManifestSchema=jsonData(issuedExpectedSchema);
 function projectedItemDetails(category:Category,baseline:unknown,row:{id:string;accountId:string;collectionId:string|null},media:PublicParityIssuedManifest['media']):unknown{
  const attached=media.flatMap(asset=>asset.attachments.filter(a=>a.accountId===row.accountId&&a.category===category&&a.collectionId===row.collectionId&&a.subresourceId===row.id).map(a=>({asset,a}))).sort((x,y)=>x.a.position-y.a.position);
  if(category==='games'){const images=attached.filter(x=>x.a.slot==='recommendation-media').map(x=>({mediaId:x.asset.id,url:`/api/explorers/v1/media/${x.asset.id}/content`}));return {...baseline as object,images,coverMediaId:images[0]?.mediaId??null}}
- if(category==='guides'){const blocks=structuredClone(baseline) as z.infer<typeof guideSectionBlocksSchema>;blocks.timeline.morning[0].photos=attached.filter(x=>x.a.slot==='guide-section-photo').map(x=>x.a.photo!);return blocks}
+ if(category==='guides'){const blocks=structuredClone(baseline) as z.infer<typeof guideSectionBlocksSchema>;const first=blocks.items[0];if(first?.kind!=='place')throw new Error('Guide parity seed has no place item');first.place.photos=attached.filter(x=>x.a.slot==='guide-section-photo').map(x=>x.a.photo!);return blocks}
  return baseline;
 }
 /** DATA validation only. Root's private issuer and protected session channel grant custody. */

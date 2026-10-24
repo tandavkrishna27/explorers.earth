@@ -1,33 +1,33 @@
 {
   "version": "explorers-platform-restore-drill/v1",
-  "runId": "24f68d7d868f22e7ea8731784682b5c8",
+  "runId": "8d8aae1e388de194062b1e8fb3a1964f",
   "result": "passed",
-  "drilledAt": "2026-10-22T09:13:41.904Z",
-  "drillCommit": "e14ac5fcbb15c21f110f844054004f2eca1ac793",
-  "manifestDigest": "7b5fd8290d99b688841a42af899d91ceab95d6231e0ee2ffd4d7fea15730c95a",
-  "migrationMarker": "0063_explorers_open_library_books",
-  "schemaChecksum": "15c4e5ea3565d2d62def9f1a71d54e4701ced90e19151f5b4ec6eda02e24c7d9",
+  "drilledAt": "2026-10-23T20:06:34.589Z",
+  "drillCommit": "ed71ecaaac929853637f6815fe03dfd00dcf0b0f",
+  "manifestDigest": "a5fa72b09d8f682ca8c45ca54b272c0e78732d9064a455df00984fe231738ce3",
+  "migrationMarker": "0068_explorers_category_data_shape",
+  "schemaChecksum": "9751d1032c89010e0af4efcee23cdadb52c5116d54fb315ed637c31bf7fc2a1e",
   "cleanup": "database-dropped-container-removed",
   "phases": [
     {
       "phase": "download",
-      "milliseconds": 3094
+      "milliseconds": 3707
     },
     {
       "phase": "decrypt",
-      "milliseconds": 605
+      "milliseconds": 769
     },
     {
       "phase": "acquire-target",
-      "milliseconds": 2153
+      "milliseconds": 1970
     },
     {
       "phase": "bootstrap-roles",
-      "milliseconds": 8
+      "milliseconds": 9
     },
     {
       "phase": "pg-restore",
-      "milliseconds": 995
+      "milliseconds": 1041
     },
     {
       "phase": "repair-known-drift",
@@ -35,29 +35,29 @@
     },
     {
       "phase": "attest-schema",
-      "milliseconds": 299
+      "milliseconds": 324
     },
     {
       "phase": "attest-runtime-role",
-      "milliseconds": 318
+      "milliseconds": 326
     },
     {
       "phase": "boot",
-      "milliseconds": 1879
+      "milliseconds": 2349
     },
     {
       "phase": "probe",
-      "milliseconds": 250
+      "milliseconds": 323
     },
     {
       "phase": "media",
-      "milliseconds": 291
+      "milliseconds": 1618
     }
   ],
   "proofs": {
     "journal": {
-      "rows": 63,
-      "currentId": "0063_explorers_open_library_books"
+      "rows": 68,
+      "currentId": "0068_explorers_category_data_shape"
     },
     "identity": {
       "authUsers": 1,
@@ -65,16 +65,17 @@
       "creatorAccounts": 1
     },
     "categories": {
-      "books": 3,
+      "places": 8,
+      "books": 5,
       "guides": 0,
       "products": 18
     },
     "media": {
-      "objects": 23,
-      "hashesMatched": 23,
-      "gatedRouteResolved": 1
+      "objects": 86,
+      "hashesMatched": 86,
+      "gatedRouteResolved": 33
     },
     "rowCountsMatched": true
   },
-  "recoveryMilliseconds": 9902
+  "recoveryMilliseconds": 12446
 }

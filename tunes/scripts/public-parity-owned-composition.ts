@@ -284,7 +284,9 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
             for (const link of plan.links) {
                 markMaterialization('link',link.category,plan.links.indexOf(link));
                 const child = lists.get(link.childCollectionKey)!, parent = lists.get(link.parentCollectionKey)!;
-                await recommendations.locationLink(actor('ownerA'), child.id, { expectedChildRevision: await listRevision(child.id, 'ownerA'), locationCollectionId: parent.id, expectedLocationRevision: await listRevision(parent.id, 'ownerA') }, context(), true);
+                // WP10. A place link is a list link hosted by the Places list (collection_list_links).
+                const categoryRevision = async (category: string) => Number((await row("SELECT coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category=$2),'0') revision", [actor('ownerA').accountId, category])).revision);
+                await recommendations.attachListLink(actor('ownerA'), parent.id, { expectedHostRevision: await categoryRevision('places'), linkedCollectionId: child.id, expectedLinkedRevision: await categoryRevision(link.category) }, context());
             }
         }
         else {
@@ -413,9 +415,10 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
         const photo = await upload('guide', png, 'image/png');
         markMaterialization('media-attachment','guides',[...mediaIds].indexOf(photo.id));
         const nativeSection = await row('SELECT title,description,blocks FROM guide_sections WHERE id=$1 AND collection_id=$2 AND account_id=$3', [section.id, section.collectionId, actor('ownerA').accountId]), blocks = guideSectionBlocksSchema.parse(nativeSection.blocks);
-        if (blocks.timeline.morning.length !== 1 || blocks.timeline.morning[0].source !== 'manual' || blocks.timeline.morning[0].verified || blocks.timeline.morning[0].photos.length)
+        const dayPlaces = blocks.items.flatMap(item => item.kind === 'place' ? [item.place] : []);
+        if (blocks.items.length !== 1 || dayPlaces.length !== 1 || dayPlaces[0].source !== 'manual' || dayPlaces[0].verified || dayPlaces[0].photos.length)
             throw refuse();
-        blocks.timeline.morning[0].photos.push({ mediaId: photo.id, fileName: 'parity.png', width: 8, height: 8, aspectRatio: '1:1' });
+        dayPlaces[0].photos.push({ mediaId: photo.id, fileName: 'parity.png', width: 8, height: 8, aspectRatio: '1:1' });
         markMaterialization('media-attachment','guides',[...mediaIds].indexOf(photo.id));
         const revision = Number(await categoryRevision('ownerA', 'guides'));
         await transaction(db => updateGuideSection(db, section.collectionId, actor('ownerA').accountId, revision, section.id, { title: nativeSection.title, description: nativeSection.description, blocks: guideSectionBlocksSchema.parse(blocks) }));
@@ -455,7 +458,7 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
             for (const value of sections.rows) {
                 if (![...items.values()].some(item => item.id === value.section_id && item.category === 'guides' && item.collectionId === value.collection_id))
                     throw refuse();
-                const blocks = guideSectionBlocksSchema.parse(value.blocks), photos = [...blocks.timeline.morning, ...blocks.timeline.afternoon, ...blocks.timeline.evening, ...blocks.activities.activities, ...blocks.stay.accommodations].flatMap(place => place.photos), photo = photos.find(photo => photo.mediaId === id);
+                const blocks = guideSectionBlocksSchema.parse(value.blocks), photos = [...blocks.items.flatMap(item => item.kind === 'place' ? [item.place] : []), ...blocks.activities.activities, ...blocks.stay.accommodations].flatMap(place => place.photos), photo = photos.find(photo => photo.mediaId === id);
                 if (!photo)
                     throw refuse();
                 attachments.push({ accountId: value.account_id, category: 'guides', collectionId: value.collection_id, subresourceId: value.section_id, slot: 'guide-section-photo', position: photos.findIndex(photo => photo.mediaId === id), photo });
@@ -528,7 +531,7 @@ export function createPublicParityOwnedComposition(input: PublicParityOwnedCompo
             categories.push({ category, categoryVisible, accountRevisions, traversal: graphPlan?.traversal ?? null, catalogFacet: facet ? { ...facet, providerId: 'providerId' in facet ? facet.providerId : null, entityIds: Object.fromEntries((['ownerA', 'ownerB'] as const).map(owner => [owner, [...new Set(nativeItems.filter(item => item.accountId === actor(owner).accountId && item.control === null && !item.archived && item.publicationState === 'published' && nativeLists.some(list => list.id === item.collectionId && list.visibility === 'public' && list.publicationState === 'published' && !list.archived)).map(item => item.entityId))]])) } : null, lists: nativeLists, entities: nativeEntities, items: nativeItems });
         }
         markMaterialization('snapshot');
-        const links = expected.family === 'public-parity' ? (await pool.query('SELECT account_id,location_collection_id,child_collection_id,child_category FROM collection_location_links WHERE account_id=$1 ORDER BY CASE child_category WHEN $$products$$ THEN 0 WHEN $$people$$ THEN 1 ELSE 2 END,child_collection_id', [actor('ownerA').accountId])).rows.map(value => ({ accountId: value.account_id, locationCollectionId: value.location_collection_id, childCollectionId: value.child_collection_id, childCategory: value.child_category })) : [];
+        const links = expected.family === 'public-parity' ? (await pool.query("SELECT account_id,host_collection_id AS location_collection_id,linked_collection_id AS child_collection_id,linked_category AS child_category FROM collection_list_links WHERE account_id=$1 AND host_category='places' ORDER BY CASE linked_category WHEN $$products$$ THEN 0 WHEN $$people$$ THEN 1 ELSE 2 END,linked_collection_id", [actor('ownerA').accountId])).rows.map(value => ({ accountId: value.account_id, locationCollectionId: value.location_collection_id, childCollectionId: value.child_collection_id, childCategory: value.child_category })) : [];
         const taxonomy: any = { people: null, places: null };
         for (const category of expected.family === 'public-parity' ? ['people', 'places'] as const : ['people'] as const) {
             const native = await row("SELECT c.state,c.version,c.default_locale,(SELECT count(*)::int FROM taxonomy_terms t WHERE t.category=c.category) term_count,(SELECT count(*)::int FROM taxonomy_source_mappings m WHERE m.category=c.category) mapping_count,(SELECT r.input_hash FROM taxonomy_import_receipts r WHERE r.category=c.category AND r.catalog_version=c.version ORDER BY r.created_at DESC,r.id DESC LIMIT 1) input_hash FROM taxonomy_catalogs c WHERE c.category=$1", [category]);

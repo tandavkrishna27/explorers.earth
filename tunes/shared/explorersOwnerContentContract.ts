@@ -1,4 +1,4 @@
-import {placesTaxonomyReadSchema,peopleSectorReadSchema} from './explorersTaxonomyContract';
+import {placesTaxonomyReadSchema,peopleSectorReadSchema,curatedTermReadSchema,isFlatCuratedCategory} from './explorersTaxonomyContract';
 import {manualGamePresentationSchema} from './explorersGameOwnerContract';
 import {movieProviderMediaSchema} from './explorersMovieMediaContract';
 import {movieEntityDtoSchema,movieDetailsSchema,movieContextSchema,movieTermsSchema,movieDisplayFieldsSchema} from './explorersMovieContract';
@@ -10,7 +10,7 @@ import {placeEntityDtoSchema,placeEntityDetailsSchema,placeDisplayFieldsSchema,p
 import { z } from 'zod/v3';
 import { collectionCoreDtoSchema, recommendationCoreDtoSchema, contentCategorySchema, contentIdSchema, topPickCategorySchema,entityCoreDtoSchema,displayOverridesReadSchema,catalogTitleSchema } from './explorersContract';
 import { richNoteSchema } from './explorersRichNoteContract';
-import {locationLinkDtoSchema} from './explorersPlaceLinkContract';
+import {linkedListCardSchema,LIST_LINK_LIMIT} from './explorersListLinkContract';
 import {bookEntityDtoSchema,bookEntityDetailsSchema,bookRecommendationContextSchema,bookDisplayFieldsSchema} from './explorersBookContract';
 const status=z.enum(['active','archived','all']).default('active');
 const token=z.string().min(1).max(4096);
@@ -30,19 +30,18 @@ const revision=z.string().regex(/^(0|[1-9][0-9]{0,15})$/).refine(v=>Number.isSaf
 // pinOrder is the list's own pin among its category's lists, which is not the same thing
 // as the pinned recommendations inside it. Null means not pinned.
 export const editableOwnerCollectionSchema=ownerCollectionDtoSchema.extend({categoryRevision:revision,pinOrder:z.number().int().nonnegative().nullable(),placeLocation:placeCollectionDetailsSchema.optional(),
- // Ticket 5.2. Where this list belongs, for a list that can belong somewhere; and for
- // a location list, the lists that belong to it. Absent where the question does not
- // apply, because an empty array would claim it does.
- locationLink:locationLinkDtoSchema.nullable().optional(),linkedChildren:z.array(locationLinkDtoSchema).max(200).optional()}).strict()
+ // WP10. Every list linked to or from this one, for every category: outgoing first (host's
+ // display order), then incoming. One level: each card is the other list's own row, never its
+ // links. A list can be linked to at most LIST_LINK_LIMIT lists as host; incoming has no cap,
+ // so only outgoing is bounded here.
+ linkedLists:z.array(linkedListCardSchema)}).strict()
  .superRefine((v,ctx)=>{
   if((v.placeLocation!==undefined)!==(v.category==='places'))ctx.addIssue({code:'custom',message:'Inconsistent location aggregate'});
-  if((v.linkedChildren!==undefined)!==(v.category==='places'))ctx.addIssue({code:'custom',message:'Inconsistent linked children'});
-  if((v.locationLink!==undefined)!==(v.category==='products'||v.category==='people'))ctx.addIssue({code:'custom',message:'Inconsistent location link'});
-  if(v.locationLink&&(v.locationLink.childCollectionId!==v.id||v.locationLink.childCategory!==v.category))ctx.addIssue({code:'custom',message:'Location link identity mismatch'});
-  if(v.linkedChildren?.some(child=>child.locationCollectionId!==v.id))ctx.addIssue({code:'custom',message:'Linked child belongs to another location'});
+  if(v.linkedLists.filter(card=>card.direction==='outgoing').length>LIST_LINK_LIMIT)ctx.addIssue({code:'custom',message:'Too many linked lists'});
+  if(v.linkedLists.some(card=>card.collection.id.toLowerCase()===v.id.toLowerCase()))ctx.addIssue({code:'custom',message:'A list cannot link to itself'});
  });
-export const editableOwnerRecommendationSchema=ownerRecommendationDtoSchema.extend({categoryRevision:revision,gamePresentation:manualGamePresentationSchema.optional(),bookCovers:bookCoversSchema.optional(),note:richNoteSchema.nullable(),entity:z.union([entityCoreDtoSchema,bookEntityDtoSchema,movieEntityDtoSchema,appEntityDtoSchema,productEntityDtoSchema,personEntityDtoSchema,placeEntityDtoSchema]),displayOverrides:displayOverridesReadSchema,displayTitle:catalogTitleSchema.nullable(),bookContext:bookRecommendationContextSchema.optional(),effectiveBookDetails:bookEntityDetailsSchema.optional(),movieContext:movieContextSchema.optional(),effectiveMovieDetails:movieDetailsSchema.optional(),movieTerms:movieTermsSchema.optional(),providerMedia:movieProviderMediaSchema.nullable().optional(),appScreenshots:appScreenshotsSchema.optional(),effectiveAppDetails:appEntityDetailsSchema.optional(),productOffer:productOfferSchema.optional(),effectiveProductDetails:productEntityDetailsSchema.optional(),effectivePersonDetails:personEntityDetailsSchema.optional(),placeContext:placeRecommendationContextSchema.optional(),placePhotos:placePhotosSchema.optional(),effectivePlaceDetails:placeEntityDetailsSchema.optional(),placesTaxonomy:placesTaxonomyReadSchema.optional(),peopleSector:peopleSectorReadSchema.optional()}).strict().superRefine((v,ctx)=>{
- if((v.placesTaxonomy!==undefined)!==(v.category==='places')||(v.peopleSector!==undefined)!==(v.category==='people'))ctx.addIssue({code:'custom',message:'Inconsistent taxonomy assignment'});
+export const editableOwnerRecommendationSchema=ownerRecommendationDtoSchema.extend({categoryRevision:revision,gamePresentation:manualGamePresentationSchema.optional(),bookCovers:bookCoversSchema.optional(),note:richNoteSchema.nullable(),entity:z.union([entityCoreDtoSchema,bookEntityDtoSchema,movieEntityDtoSchema,appEntityDtoSchema,productEntityDtoSchema,personEntityDtoSchema,placeEntityDtoSchema]),displayOverrides:displayOverridesReadSchema,displayTitle:catalogTitleSchema.nullable(),bookContext:bookRecommendationContextSchema.optional(),effectiveBookDetails:bookEntityDetailsSchema.optional(),movieContext:movieContextSchema.optional(),effectiveMovieDetails:movieDetailsSchema.optional(),movieTerms:movieTermsSchema.optional(),providerMedia:movieProviderMediaSchema.nullable().optional(),appScreenshots:appScreenshotsSchema.optional(),effectiveAppDetails:appEntityDetailsSchema.optional(),productOffer:productOfferSchema.optional(),effectiveProductDetails:productEntityDetailsSchema.optional(),effectivePersonDetails:personEntityDetailsSchema.optional(),placeContext:placeRecommendationContextSchema.optional(),placePhotos:placePhotosSchema.optional(),effectivePlaceDetails:placeEntityDetailsSchema.optional(),placesTaxonomy:placesTaxonomyReadSchema.optional(),peopleSector:peopleSectorReadSchema.optional(),curatedTerm:curatedTermReadSchema.optional()}).strict().superRefine((v,ctx)=>{
+ if((v.placesTaxonomy!==undefined)!==(v.category==='places')||(v.peopleSector!==undefined)!==(v.category==='people')||v.curatedTerm!==undefined&&!isFlatCuratedCategory(v.category))ctx.addIssue({code:'custom',message:'Inconsistent taxonomy assignment'});
  if(v.category==='games'?!v.gamePresentation||v.gamePresentation.images.length!==v.mediaIds.length||v.gamePresentation.images.some((image,index)=>image.mediaId!==v.mediaIds[index]):v.gamePresentation!==undefined)ctx.addIssue({code:'custom',message:'Inconsistent Game presentation'});
  const expected={places:['place','person'],movies:['movie'],books:['book'],games:['game'],apps:['app'],products:['product'],people:['person']};
  const title=Object.prototype.hasOwnProperty.call(v.displayOverrides,'title')?v.displayOverrides.title:v.entity.title;
@@ -86,7 +85,9 @@ export const ownerCollectionPageSchema=z.object({version:z.literal('explorers-ow
 export const ownerRecommendationPageSchema=ownerCollectionPageSchema.extend({items:z.array(ownerRecommendationDtoSchema).max(100),placePins:z.object({collectionId:contentIdSchema,collectionRevision:z.number().int().positive().safe(),categoryContentRevision:revision,eligibleItemCount:z.number().int().nonnegative().safe(),eligiblePinCount:z.number().int().nonnegative().safe()}).strict().optional()}).strict();
 export const ownerMembershipPageSchema=ownerCollectionPageSchema.extend({items:z.array(ownerMembershipDtoSchema).max(100)}).strict();
 export const ownerTopPicksRequestSchema=z.object({category:topPickCategorySchema,limit,cursor:token.optional(),snapshotToken:token.optional()}).strict();
-export const ownerTopPickDtoSchema=z.object({recommendationId:contentIdSchema,collectionId:contentIdSchema,position:z.number().int().nonnegative()}).strict();
+export const ownerTopPickDtoSchema=z.object({recommendationId:contentIdSchema,collectionId:contentIdSchema,position:z.number().int().nonnegative(),
+ // WP11. True when the pin comes from a first-visit sample list.
+ isSample:z.boolean().optional()}).strict();
 export const ownerTopPickPageSchema=ownerCollectionPageSchema.extend({pinRevision:z.number().int().positive().safe().nullable(),items:z.array(ownerTopPickDtoSchema).max(100)}).strict();
 export type OwnerTopPicksRequest=z.input<typeof ownerTopPicksRequestSchema>;
 export type OwnerCollectionsRequest=z.input<typeof ownerCollectionsRequestSchema>;

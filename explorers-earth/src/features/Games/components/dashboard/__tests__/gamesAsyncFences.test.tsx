@@ -1,7 +1,6 @@
 import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
-import TopGamesManager from '../TopGamesManager';
 import { useGamesCommands, useGamesCallerCustody } from '../../../api/query';
 import { toast } from 'sonner';
 import { GamesClient } from '../../../api/gamesClient';
@@ -68,17 +67,6 @@ describe('Games operation authority', () => {
   expect(calls[1][0]).toBe(original); expect(calls[1][2]).toBe(calls[0][2]); expect(GamesClient.observeCollection).toHaveBeenCalledTimes(1);
  });
 
- it('stages top pick removal and ordering until one explicit full-category save', async () => {
-  const first = { documentId: 'game-a', title: 'First game', pin_order: 0, game_list: { documentId: 'selected-b', List_Name: 'Chosen list' } }, second = { documentId: 'game-c', title: 'Other game', pin_order: 1, game_list: { documentId: 'other-c', List_Name: 'Other list' } };
-  const complete = { revision: '8', topPicks: [{ recommendationId: 'game-a', collectionId: 'selected-b' }, { recommendationId: 'game-c', collectionId: 'other-c' }] };
-  vi.mocked(GamesClient.readCompleteOwner).mockResolvedValue(complete as never); vi.mocked(GamesClient.setTopPicks).mockResolvedValue({} as never);
-  render(<MemoryRouter><TopGamesManager games={[first, second] as never} allGames={[first, second] as never} onClose={vi.fn()} onRefetch={vi.fn()} /></MemoryRouter>);
-  fireEvent.click(screen.getByRole('button', { name: 'Move Other game up' })); expect(GamesClient.setTopPicks).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole('button', { name: 'Unpin First game' })); expect(GamesClient.setTopPicks).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole('button', { name: 'Save Top Picks' })); await waitFor(() => expect(GamesClient.setTopPicks).toHaveBeenCalledTimes(1));
-  expect(GamesClient.setTopPicks).toHaveBeenCalledWith(complete, [{ recommendationId: 'game-c', collectionId: 'other-c' }], expect.any(String), expect.any(AbortSignal));
- });
-
  it('publishes only the explicitly selected recommendation through its original observed revision', async () => {
   const observed = { detail: { id: 'game-a', revision: 4, publicationState: 'draft' } }; vi.mocked(GamesClient.observeRecommendation).mockResolvedValue(observed as never); vi.mocked(GamesClient.updateRecommendation).mockResolvedValue({} as never);
   const { result } = renderHook(useGamesCommands, { wrapper }); await act(async () => { await result.current.publishRecommendation('game-a', true); });
@@ -104,27 +92,6 @@ describe('Games operation authority', () => {
   const calls = vi.mocked(GamesClient.updateRecommendation).mock.calls; expect(calls[2][0]).toBe(last); expect(calls[2][2]).not.toBe(calls[0][2]); expect(GamesClient.observeRecommendation).toHaveBeenCalledTimes(3);
  });
 });
-
- describe('Top Picks caller custody', () => {
-  afterEach(cleanup);
-  beforeEach(() => { vi.clearAllMocks(); useAuthStore.getState().login({ id: 'u1', documentId: 'u1', username: 'owner', token: 'fixture' }); useAuthStore.setState({ accountId: 'a1' }); });
-  it.each(['logout', 'unmount', 'route'])('does not emit effects after %s abandons the observation', async kind => {
-   const observation = deferred<never>(); vi.mocked(GamesClient.readCompleteOwner).mockReturnValue(observation.promise);
-   const closed = vi.fn(), refreshed = vi.fn(); let navigate!: ReturnType<typeof useNavigate>;
-   function App() { navigate = useNavigate(); return <TopGamesManager games={[]} allGames={[]} onClose={closed} onRefetch={refreshed} />; }
-   const view = render(<MemoryRouter><App /></MemoryRouter>);
-   fireEvent.click(screen.getByRole('button', { name: 'Save Top Picks' }));
-   if (kind === 'unmount') view.unmount(); else act(() => { if (kind === 'logout') useAuthStore.getState().logout(); else navigate('/other'); });
-   await act(async () => observation.resolve({ topPicks: [] } as never));
-   expect(GamesClient.setTopPicks).not.toHaveBeenCalled(); expect(toast.error).not.toHaveBeenCalled(); expect(toast.success).not.toHaveBeenCalled(); expect(closed).not.toHaveBeenCalled(); expect(refreshed).not.toHaveBeenCalled();
-  });
-  it('retains an actual current-owner error and permits explicit retry', async () => {
-   vi.mocked(GamesClient.readCompleteOwner).mockRejectedValueOnce(new Error('unavailable')).mockResolvedValueOnce({ topPicks: [] } as never); vi.mocked(GamesClient.setTopPicks).mockResolvedValue({} as never);
-   render(<MemoryRouter><TopGamesManager games={[]} allGames={[]} onClose={vi.fn()} onRefetch={vi.fn()} /></MemoryRouter>);
-   fireEvent.click(screen.getByRole('button', { name: 'Save Top Picks' })); await waitFor(() => expect(toast.error).toHaveBeenCalledTimes(1));
-   fireEvent.click(screen.getByRole('button', { name: 'Save Top Picks' })); await waitFor(() => expect(toast.success).toHaveBeenCalledTimes(1));
-  });
- });
 
  it('a newer caller operation retires prior success/error/finally custody', () => {
   const { result, unmount } = renderHook(useGamesCallerCustody, { wrapper });

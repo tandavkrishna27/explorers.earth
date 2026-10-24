@@ -2,7 +2,6 @@
 export { default as BooksHome } from "./components/dashboard/BooksHome";
 export { default as BookListView } from "./components/dashboard/BookListView";
 export { default as AddBookPage } from "./components/dashboard/AddBookPage";
-export { default as TopReadsManager } from "./components/dashboard/TopReadsManager";
 
 // Public components
 export { default as PublicBooks } from "./components/public/PublicBooks";

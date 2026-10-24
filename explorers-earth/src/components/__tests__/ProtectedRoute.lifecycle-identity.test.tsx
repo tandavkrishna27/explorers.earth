@@ -9,7 +9,7 @@ vi.mock("../../features/Profile/api/useCanonicalAccount", () => ({ useCanonicalA
   data: account.error || account.loading ? undefined : { id: "current-account", onboardingStatus: account.status },
   isLoading: account.loading, error: account.error ? new Error("outage") : null, refetch: vi.fn(),
 }) }));
-vi.mock("../EarthLoader", () => ({ EarthLoader: () => <div>Verifying session</div> }));
+vi.mock("../EarthLoader", () => ({ EarthLoader: () => <div>Verifying session</div>, BootSplash: () => <div>Verifying session</div> }));
 vi.mock("../../hooks/useLogout", () => ({ useLogout: () => async () => useAuthStore.getState().logout() }));
 
 function verify(id: string, complete = true) {

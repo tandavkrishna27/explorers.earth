@@ -38,12 +38,20 @@ describe("runtime route/event/job inventory", () => {
     // (GET /api/explorers/v1/share-page, explorersSharePageRoutes.ts).
     // 197 = 195 + Home's content summary GET and its fail-closed method boundary (HUB-X02).
     // 198 = 197 + the IGDB game cover import (POST /api/explorers/v1/media/game-cover, GMS-X01).
-    expect(inventory.routes).toHaveLength(198);
+    // 202 = 198 + restore and permanent delete of a list, each with its fail-closed method boundary (WP3B, LP-08).
+    // 204 = 202 + WP6 places nearby (GET /api/explorers/v1/places/nearby and its ALL guard)
+    // 210 = 204 + WP8 link preview POST, its image import POST and the app search GET, each with its fail-closed method boundary.
+    // 230 = 210 + the ten guide day and day-item commands, each with its fail-closed method boundary (WP9, GD-24..30).
+    // 232 = 230 + WP11 Make it mine (POST /api/explorers/v1/collections/:id/make-it-mine and its ALL guard)
+    // 234 = 232 + WP10 list links (POST/PATCH/DELETE links and their 2 ALL guards replace
+    // the 2 Places location commands and their ALL guard).
+    expect(inventory.routes).toHaveLength(234);
     expect(inventory.events).toHaveLength(15);
     // 38 = 37 + the Google profile photo fetch deadline (googleAvatarFetch.ts).
     // 39 = 38 + the place photo fetch deadline (tunes/server/services/placePhotoFetch.ts).
     // 40 = 39 + the Open Library request spacing in the Book catalog (bookCatalog.ts).
-    expect(inventory.jobs).toHaveLength(40);
+    // 41 = 40 + the link preview whole-operation deadline (linkPreviewFetch.ts, WP8).
+    expect(inventory.jobs).toHaveLength(41);
     expect(inventory.jobs).toContainEqual(expect.objectContaining({kind:'setTimeout',source:'tunes/server/application/appEnrichmentLocalScheduler.ts',lifecycle:'scheduled-callback'}));
     expect(inventory.jobs).toContainEqual(expect.objectContaining({kind:'setTimeout',source:'tunes/server/services/appEnrichmentFetch.ts',lifecycle:'scheduled-callback'}));
     expect(inventory.routes.filter(route => route.path === '/api/explorers/v1/profiles/:username/recommendations/people/sectors/:sectorSlug')).toEqual([
@@ -88,13 +96,14 @@ describe("runtime route/event/job inventory", () => {
     ]));
     // Taxonomy adds the eleventh fallback outside recommendation routes. The Places
     // pin-storage routes used to add six more ALL guards (twelfth through seventeenth);
+    // WP8 adds three (link-preview, link-preview/image, apps): 16 -> 19.
     // P5-8a removed them with explorersPlacePinsRoutes.ts, so 22 -> 16.
     // Pin the count so every new surface receives an explicit method-boundary review.
     // One of them is P1's canonical retired-surface boundary,
     // tunes/server/routes/canonicalRetiredSurfaceRoutes.ts, which answers 410 on every
     // method for a retired path and calls next() for everything else.
     expect(inventory.routes.filter((route) => route.method === "ALL"
-      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(16);
+      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(20); // 20 = 16 + WP6 places nearby + WP8 link preview, image import, app search
     // Decision D2. GET reports the address and must not write; POST performs it, which is
     // also what RFC 8058 one-click unsubscribe sends. Both are public: the authority is
     // the purpose-bound HMAC in the token, not the caller.
@@ -103,6 +112,8 @@ describe("runtime route/event/job inventory", () => {
     expect(inventory.routes).toContainEqual(expect.objectContaining({ method: "ALL", path: "/api/explorers/v1/public/email/unsubscribe", classification: "tombstone" }));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/catalog/games',classification:'canonical-explorers-owner'}));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'ALL',path:'/api/explorers/v1/catalog/games',classification:'tombstone'}));
+    expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/places/nearby',classification:'canonical-explorers-owner'}));
+    expect(inventory.routes).toContainEqual(expect.objectContaining({method:'ALL',path:'/api/explorers/v1/places/nearby',classification:'tombstone'}));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/catalog/movie-genres',classification:'canonical-explorers-owner'}));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'ALL',path:'/api/explorers/v1/catalog/movie-genres',classification:'tombstone'}));
     expect(inventory.routes).toContainEqual(expect.objectContaining({method:'GET',path:'/api/explorers/v1/catalog/movies',classification:'canonical-explorers-owner'}));
@@ -131,11 +142,17 @@ describe("runtime route/event/job inventory", () => {
     const ownerCommands=[
       ['POST','/api/explorers/v1/collections/:id/memberships/:recommendationId'],
       ['DELETE','/api/explorers/v1/collections/:id/memberships/:recommendationId'],
-      ['POST','/api/explorers/v1/collections/:id/location'],
-      ['DELETE','/api/explorers/v1/collections/:id/location'],
+      // WP10. Links between two of the owner's lists.
+      ['POST','/api/explorers/v1/collections/:id/links'],
+      ['PATCH','/api/explorers/v1/collections/:id/links/:linkId'],
+      ['DELETE','/api/explorers/v1/collections/:id/links/:linkId'],
       ['POST','/api/explorers/v1/entities/resolve'], ['POST','/api/explorers/v1/collections'],
       ['PATCH','/api/explorers/v1/collections/:id'], ['PATCH','/api/explorers/v1/collections/:id/order'],
       ['DELETE','/api/explorers/v1/collections/:id'], ['POST','/api/explorers/v1/recommendations'],
+      // WP3B (LP-08). Restore an archived list; delete a list permanently.
+      ['POST','/api/explorers/v1/collections/:id/restore'], ['POST','/api/explorers/v1/collections/:id/purge'],
+      // WP11 (SMP-04). Make a sample list your own, in place.
+      ['POST','/api/explorers/v1/collections/:id/make-it-mine'],
       ['PATCH','/api/explorers/v1/recommendations/:id'], ['DELETE','/api/explorers/v1/recommendations/:id'],
       ['POST','/api/explorers/v1/recommendations/:id/entity'], ['POST','/api/explorers/v1/recommendations/:id/movie-media/import'], ['POST','/api/explorers/v1/recommendations/:id/book-covers'],
       ['GET','/api/explorers/v1/collections'], ['GET','/api/explorers/v1/collections/:id'],
@@ -158,19 +175,41 @@ describe("runtime route/event/job inventory", () => {
       ['PATCH','/api/explorers/v1/collections/:id/guide/sections/order'],
       ['PATCH','/api/explorers/v1/collections/:id/guide/sections/:sectionId'],
       ['DELETE','/api/explorers/v1/collections/:id/guide/sections/:sectionId'],
+      // WP9 (GD-24..30). Day and day-item commands.
+      ['POST','/api/explorers/v1/collections/:id/guide/days'],
+      ['PATCH','/api/explorers/v1/collections/:id/guide/days/:sectionId/position'],
+      ['POST','/api/explorers/v1/collections/:id/guide/days/:sectionId/duplicate'],
+      ['POST','/api/explorers/v1/collections/:id/guide/days/:sectionId/clear'],
+      ['DELETE','/api/explorers/v1/collections/:id/guide/days/:sectionId'],
+      ['POST','/api/explorers/v1/collections/:id/guide/days/:sectionId/items'],
+      ['PATCH','/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/position'],
+      ['PUT','/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/time-label'],
+      ['PUT','/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/note'],
+      ['DELETE','/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId'],
       ['PUT','/api/explorers/v1/collections/:id/guide/cover'],
     ];
     const methodBoundaries=['/api/explorers/v1/entities/resolve','/api/explorers/v1/collections','/api/explorers/v1/content-summary',
       '/api/explorers/v1/collections/:id/memberships/:recommendationId',
-      '/api/explorers/v1/collections/:id/location',
+      '/api/explorers/v1/collections/:id/links','/api/explorers/v1/collections/:id/links/:linkId',
       '/api/explorers/v1/collections/:id','/api/explorers/v1/collections/:id/order',
+      '/api/explorers/v1/collections/:id/restore','/api/explorers/v1/collections/:id/purge','/api/explorers/v1/collections/:id/make-it-mine',
       '/api/explorers/v1/collections/:id/editable','/api/explorers/v1/recommendations/:id/editable',
       '/api/explorers/v1/recommendations','/api/explorers/v1/recommendations/:id','/api/explorers/v1/recommendations/search',
       '/api/explorers/v1/categories/:category/content-snapshot','/api/explorers/v1/categories/:category/content-snapshot/validate','/api/explorers/v1/categories/:category/memberships',
       '/api/explorers/v1/categories/:category/top-picks','/api/explorers/v1/categories/:category/top-picks/order','/api/explorers/v1/categories/:category/lists/order','/api/explorers/v1/recommendations/:id/entity','/api/explorers/v1/recommendations/:id/book-covers','/api/explorers/v1/recommendations/:id/movie-media/import',
       '/api/explorers/v1/collections/:id/guide','/api/explorers/v1/collections/:id/guide/sections',
       '/api/explorers/v1/collections/:id/guide/sections/order','/api/explorers/v1/collections/:id/guide/sections/:sectionId',
-      '/api/explorers/v1/collections/:id/guide/cover'];
+      '/api/explorers/v1/collections/:id/guide/cover',
+      '/api/explorers/v1/collections/:id/guide/days',
+      '/api/explorers/v1/collections/:id/guide/days/:sectionId',
+      '/api/explorers/v1/collections/:id/guide/days/:sectionId/position',
+      '/api/explorers/v1/collections/:id/guide/days/:sectionId/duplicate',
+      '/api/explorers/v1/collections/:id/guide/days/:sectionId/clear',
+      '/api/explorers/v1/collections/:id/guide/days/:sectionId/items',
+      '/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId',
+      '/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/position',
+      '/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/time-label',
+      '/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/note'];
     expect(routes).toHaveLength(ownerCommands.length+methodBoundaries.length);
     for(const [method,path] of ownerCommands) expect(routes).toContainEqual(expect.objectContaining({
       method,path,classification:'canonical-explorers-owner',ownerSource:'verified-google-session+active-initial-account-binding',

@@ -2,7 +2,7 @@ import { usePublicCategoryThemeStyles } from "../../../PublicHome/components/Pub
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ModalPortal from "../../../../components/ui/ModalPortal";
-import { X, Star, Share2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Share2, ExternalLink, ChevronLeft, ChevronRight } from "lucide-react";
 import type { RecommendedPerson } from "../../types";
 import { buildImageUrl, extractNoteText, getPlatformColor } from "../../utils/personHelpers";
 import PlatformIcon from "../PlatformIcon";
@@ -186,16 +186,9 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
                 </div>
 
                 <div className="px-5 mt-4 space-y-5 pb-6">
-                  {/* Meta pills */}
+                  {/* Meta pills. People are not rated and follower counts are not shown (DS-08,
+                      DS-09), even for old rows that still hold both values. */}
                   <div className="flex flex-wrap items-center gap-2 text-sm">
-                    {person.user_rating && (
-                      <span className="flex items-center gap-1 text-[color:var(--category-text,#facc15)] font-semibold">
-                        <Star size={13} fill="currentColor" className="text-[color:var(--category-rating,#facc15)]" /> {person.user_rating}/10
-                      </span>
-                    )}
-                    {person.follower_count && (
-                      <span className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-xs">{person.follower_count} followers</span>
-                    )}
                     {person.location && (
                       <span className="text-[color:var(--category-muted,rgba(255,255,255,0.4))] text-xs">📍 {person.location}</span>
                     )}
@@ -230,23 +223,6 @@ const PersonDetailModal = ({ person, open, onClose }: PersonDetailModalProps) =>
                         className="text-sm text-[color:var(--category-text,rgba(255,255,255,0.8))] leading-relaxed [&_p]:mb-2 [&_p]:last:mb-0 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_h1]:text-lg [&_h2]:text-md [&_h3]:text-base font-normal max-w-none"
                         html={noteText}
                       />
-                    </div>
-                  )}
-
-                  {/* Creator Rating */}
-                  {person.user_rating && (
-                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 flex items-center justify-between">
-                      <p className="text-xs font-semibold text-[color:var(--category-text,#eab308)] uppercase tracking-wider">Creator's Rating</p>
-                      <div className="flex gap-1 flex-wrap justify-end">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(star => (
-                          <Star
-                            key={star}
-                            size={16}
-                            fill={person.user_rating! >= star ? "currentColor" : "none"}
-                            className={person.user_rating! >= star ? "text-[color:var(--category-rating,#facc15)]" : "text-[color:var(--category-muted,rgba(255,255,255,0.2))]"}
-                          />
-                        ))}
-                      </div>
                     </div>
                   )}
 
