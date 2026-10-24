@@ -4,7 +4,8 @@ import { toListTopPicks } from "../shared/category/models";
 import { NavigationStatus } from "../navigation/NavigationStatus";
 import { useCategoryNavigation } from "../navigation/CategoryNavigationProvider";
 import React, { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import NewGuideDialog from "./components/NewGuideDialog";
 import Button from "../../components/ui/Button";
 import { invalidateGuides, useGuidesOwner } from "./hooks/useGuidesOwner";
 import { reorderCategoryLists } from "../../lib/reorderCategoryLists";
@@ -30,6 +31,14 @@ const GuidesPage: React.FC = () => {
   const navigation = useCategoryNavigation();
   const categoryVisible = navigation.snapshot?.visibility.public_guides === "Yes";
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const newGuideOpen = searchParams.get("new") === "1";
+  const setNewGuideOpen = (open: boolean) => {
+    const next = new URLSearchParams(searchParams);
+    if (open) next.set("new", "1"); else next.delete("new");
+    setSearchParams(next, { replace: true });
+  };
   const { user } = useAuthStore();
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [deletingGuideId, setDeletingGuideId] = useState<string>("");
@@ -396,11 +405,11 @@ const GuidesPage: React.FC = () => {
   };
 
   const handleGuideClick = (documentId: string) => {
-    navigate(`/guides/${documentId}`);
+    navigate(`/recommendations/guides/${documentId}`, { state: { from: location } });
   };
 
   const handleEditGuide = (documentId: string) => {
-    navigate(`/guides/${documentId}/edit`);
+    navigate(`/recommendations/guides/${documentId}`, { state: { from: location, tab: "manage" } });
   };
 
   const handleDeleteGuide = (documentId: string) => {
@@ -560,11 +569,11 @@ const GuidesPage: React.FC = () => {
         categoryVisibility={categoryVisible ? "public" : "hidden"}
         visibilityBusy={navigation.busy || !navigation.authority}
         onCategoryVisibility={() => handleVisibilityToggle()}
-        onOpenList={(id) => navigate(`/guides/${id}`)}
+        onOpenList={(id) => navigate(`/recommendations/guides/${id}`, { state: { from: location } })}
         onRetry={() => refetch()}
         onChanged={() => { invalidateGuides(); refetch(); archived.reload(); }}
         onSetListStatus={async (id, next) => { await handleToggleVisibility(id, next !== "public"); }}
-        newList={{ kind: "navigate", onNew: () => navigate("/guides/new") }}
+        newList={{ kind: "navigate", onNew: () => setNewGuideOpen(true) }}
         toolbar={<>
             {!isLoading && !error && filterOptions.locations.length > 0 && (
               <div className="mb-4">
@@ -594,6 +603,7 @@ const GuidesPage: React.FC = () => {
         </>}
       />
       {publishNoticeModal}
+      <NewGuideDialog open={newGuideOpen} onOpenChange={setNewGuideOpen} />
     </>
   );
 };

@@ -1,18 +1,21 @@
 import {explorersApiClient,assertCompleteMyCategoryContent,assertOwnerDetailObservation,ExplorersApiError,type CompleteMyCategoryContent,type CollectionObservation,type RecommendationObservation} from '../../../lib/explorersApiClient';
 import {createRecommendationObjectSchema,type UpdateCollectionInput,type UpdateRecommendationInput} from '../../../../../tunes/shared/explorersContract';
-import {resolveManualAppSchema,appScreenshotsSchema} from '../../../../../tunes/shared/explorersAppContract';
+import {resolveManualAppSchema,appScreenshotsSchema,type AppOtherLink} from '../../../../../tunes/shared/explorersAppContract';
 import type {RichNote} from '../../../../../tunes/shared/explorersRichNoteContract';
 import useAuthStore from '../../../store/store';
 
-// Ticket 4.3. Apps has no provider: /itunes-api/search was retired, so unlike Games there
-// is no search or resolveProvider here and every fact in a draft is owner-entered. The
-// manual draft therefore carries the typed details, and appUrl is required because 0043
-// declares app_url NOT NULL.
+// Ticket 4.3 / WP8. The App Store search lives in linkPreviewClient.searchApps (catalog
+// route); a picked hit only prefills the form, so every fact in a draft is still
+// owner-confirmed and resolved manually here. appUrl is required because 0043 declares
+// app_url NOT NULL; otherLinks (0068) carries up to four other platform links.
 
 export type CompleteAppsOwnerContent=CompleteMyCategoryContent&{readonly category:'apps'};
 export type ManualAppDraft={
  title:string;appUrl:string;developer:string|null;logoUrl:string|null;description:string|null;
  downloadUrl:string|null;priceTier:'Free'|'Freemium'|'Paid'|'Subscription'|null;platforms:string[];
+ otherLinks:AppOtherLink[];
+ /** WP7 curated category. Absent leaves the assignment alone; null clears it. */
+ curatedTermId?:string|null;
  note:RichNote|null;userRating:number|null;mediaIds:string[];screenshotMediaIds:string[];
 };
 export type ManualAppIntent=Readonly<{entityKey:string;recommendationKey:string;parent:CollectionObservation;draft:Readonly<ManualAppDraft>}>;
@@ -52,10 +55,10 @@ export const AppsClient={
   // entity cannot exist without its URL.
   const details=resolveManualAppSchema.parse({kind:'manual',category:'apps',details:{
    title:draft.title,appUrl:draft.appUrl,developer:draft.developer,logoUrl:draft.logoUrl,
-   description:draft.description,downloadUrl:draft.downloadUrl,priceTier:draft.priceTier,platforms:draft.platforms,
+   description:draft.description,downloadUrl:draft.downloadUrl,priceTier:draft.priceTier,platforms:draft.platforms,otherLinks:draft.otherLinks,
   }}).details;
   const normalized=createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict()
-   .parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft',appScreenshots:{screenshotMediaIds:draft.screenshotMediaIds}});
+   .parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft',appScreenshots:{screenshotMediaIds:draft.screenshotMediaIds},...(draft.curatedTermId===undefined?{}:{curatedTermId:draft.curatedTermId})});
   const screenshots=appScreenshotsSchema.parse({screenshotMediaIds:draft.screenshotMediaIds});
   const intent=freeze({entityKey:key(),recommendationKey:key(),parent,draft:{
    ...draft,...details,note:normalized.note,userRating:normalized.userRating,
@@ -65,10 +68,10 @@ export const AppsClient={
  },
  async createManual(intent:ManualAppIntent,signal?:AbortSignal){
   const scope=intents.get(intent);if(!scope)fail();current(scope,signal);collection(intent.parent);
-  const {title,appUrl,developer,logoUrl,description,downloadUrl,priceTier,platforms}=intent.draft;
-  const entity=await explorersApiClient.resolveAppEntity({kind:'manual',category:'apps',details:{title,appUrl,developer,logoUrl,description,downloadUrl,priceTier,platforms:[...platforms]}},intent.entityKey,signal);
+  const {title,appUrl,developer,logoUrl,description,downloadUrl,priceTier,platforms,otherLinks}=intent.draft;
+  const entity=await explorersApiClient.resolveAppEntity({kind:'manual',category:'apps',details:{title,appUrl,developer,logoUrl,description,downloadUrl,priceTier,platforms:[...platforms],otherLinks:otherLinks.map(link=>({...link}))}},intent.entityKey,signal);
   current(scope,signal);collection(intent.parent);
-  const result=await explorersApiClient.createMyRecommendation(intent.parent,{entityId:entity.id,note:intent.draft.note,userRating:intent.draft.userRating,mediaIds:[...intent.draft.mediaIds],publicationState:'draft',appScreenshots:{screenshotMediaIds:[...intent.draft.screenshotMediaIds]}},intent.recommendationKey,signal);
+  const result=await explorersApiClient.createMyRecommendation(intent.parent,{entityId:entity.id,note:intent.draft.note,userRating:intent.draft.userRating,mediaIds:[...intent.draft.mediaIds],publicationState:'draft',appScreenshots:{screenshotMediaIds:[...intent.draft.screenshotMediaIds]},...(intent.draft.curatedTermId===undefined?{}:{curatedTermId:intent.draft.curatedTermId})},intent.recommendationKey,signal);
   current(scope,signal);return result;
  },
  createCollection(input:{title:string;slug:string;description?:string|null},commandKey:string,signal?:AbortSignal){return explorersApiClient.createMyCollection({...input,category:'apps',visibility:'private',publicationState:'draft'},commandKey,signal);},

@@ -5,7 +5,7 @@ import {setupExplorersCatalogRoutes} from '../../routes/explorersCatalogRoutes';
 function harness(){
  const handlers=new Map<string,any>(),calls:string[]=[];let version=1;
  const query=async(s:string)=>{calls.push(s);if(s.includes('account_memberships'))return {rows:[{status:'active',role:'owner'}]};if(s.includes('FROM taxonomy_catalogs'))return {rows:[{state:'CONFIGURED',version,default_locale:'en'}]};if(s.includes('FROM taxonomy_terms'))return {rows:Array.from({length:25},(_,i)=>({id:`00000000-0000-4000-8000-${String(i+1).padStart(12,'0')}`,category:'places',slug:`term-${i}`,parentId:null,position:i,label:'Fixture',resolvedLocale:'en',defaultLabel:'Fixture'}))};return {rows:[]};};
- const pool:any={query,connect:async()=>({query,release(){}})},app:any={get:(path:string,handler:any)=>handlers.set(`GET ${path}`,handler),all:(path:string,handler:any)=>handlers.set(`ALL ${path}`,handler)};
+ const pool:any={query,connect:async()=>({query,release(){}})},app:any={get:(path:string,handler:any)=>handlers.set(`GET ${path}`,handler),post:(path:string,handler:any)=>handlers.set(`POST ${path}`,handler),all:(path:string,handler:any)=>handlers.set(`ALL ${path}`,handler)};
  setupExplorersCatalogRoutes(app,pool,{} as any,{secret:'secret'} as any,{} as any);
  const request=async(method:string,query:any)=>{const result:any={status:200,headers:{},body:null};const res:any={set:(k:string,v:string)=>{result.headers[k]=v;return res;},status:(n:number)=>{result.status=n;return res;},json:(body:any)=>{result.body=body;return res;}};await handlers.get(`${method==='GET'?'GET':'ALL'} /api/explorers/v1/catalog/taxonomy`)({query},res);return result;};
  return {request,calls,setVersion:(n:number)=>{version=n;}};

@@ -34,6 +34,7 @@ export function appViewModel(detail:Readonly<EditableOwnerRecommendation>,member
   platforms:facts.platforms.length?[...facts.platforms]:null,
   price_tier:facts.priceTier,
   download_url:facts.downloadUrl,
+  other_links:facts.otherLinks.map(link=>({...link})),
   user_recommendation_note:detail.note,
   user_rating:detail.userRating,
   is_pinned:selectedPin!==undefined,

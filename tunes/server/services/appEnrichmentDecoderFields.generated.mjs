@@ -4746,7 +4746,7 @@ var resolveManualEntitySchema = external_exports.object({ kind: external_exports
 var resolveManualGameSchema = external_exports.object({ kind: external_exports.literal("manual"), category: external_exports.literal("games"), details: gameDetailsSchema.partial().extend({ title: displayTitleWriteSchema }).strict() }).strict();
 var resolveProviderGameSchema = external_exports.object({ kind: external_exports.literal("provider"), category: external_exports.literal("games"), provider: external_exports.literal("igdb"), externalKind: external_exports.literal("game"), externalId: gameExternalIdSchema }).strict();
 var resolveEntitySchema = external_exports.union([resolveExistingEntitySchema, resolveManualEntitySchema, resolveManualGameSchema, resolveProviderBookSchema, resolveManualBookSchema, resolveProviderMovieSchema, resolveManualMovieSchema, resolveProviderGameSchema, resolveManualAppSchema, resolveManualProductSchema, resolveManualPersonSchema, resolveManualPlaceSchema]);
-var apiErrorCodes = ["UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "CONFLICT", "INVALID_INPUT", "RATE_LIMITED", "RESOURCE_TOO_LARGE", "READ_LIMIT", "CONTINUATION_LIMIT", "CURSOR_EXPIRED", "PROVIDER_UNAVAILABLE", "PROVIDER_INVALID_RESPONSE", "UNAVAILABLE"];
+var apiErrorCodes = ["UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "CONFLICT", "INVALID_INPUT", "RATE_LIMITED", "RESOURCE_TOO_LARGE", "READ_LIMIT", "CONTINUATION_LIMIT", "CURSOR_EXPIRED", "PROVIDER_UNAVAILABLE", "PROVIDER_INVALID_RESPONSE", "UNAVAILABLE", "LINK_PREVIEW_BLOCKED", "LINK_PREVIEW_UNAVAILABLE"];
 var apiErrorSchema = external_exports.object({
   error: external_exports.object({
     code: external_exports.enum(apiErrorCodes),

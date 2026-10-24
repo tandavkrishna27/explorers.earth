@@ -317,7 +317,7 @@ for (const category of nativeCategories) {
     const state = fixtureState();
     const owner = await openFixture(browser, baseURL!, state, { owner: true });
     const list = `/recommendations/${category.route}/${category.route}-list`;
-    const back = () => owner.page.getByRole('button', { name: /^Back to / }).first();
+    const back = () => owner.page.getByRole('button', { name: /^(‹ )?Back to / }).first();
     try {
       // Deep link: no origin -> the list.
       await owner.page.goto(`${list}/add`);
@@ -331,8 +331,8 @@ for (const category of nativeCategories) {
         window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
       }, `${list}/add`);
       await owner.page.reload();
-      await expect(owner.page.getByRole('button', { name: 'Back to Home' })).toBeVisible();
-      await owner.page.getByRole('button', { name: 'Back to Home' }).click();
+      await expect(owner.page.getByRole('button', { name: /^(‹ )?Back to Home$/ })).toBeVisible();
+      await owner.page.getByRole('button', { name: /^(‹ )?Back to Home$/ }).click();
       await expect(owner.page).toHaveURL(`${baseURL}/home`);
 
       // Linked page (Places -> add person/product) passes redirectBack.
@@ -348,7 +348,17 @@ test('WP1 guides: Back from a guide returns to the origin or the Guides page', a
   const owner = await openFixture(browser, baseURL!, state, { owner: true });
   try {
     await owner.page.goto('/recommendations/guides/guides-list');
-    await owner.page.getByRole('button', { name: /^Back to / }).first().click();
+    await owner.page.getByRole('button', { name: /^(‹ )?Back to / }).first().click();
     await expect(owner.page).toHaveURL(`${baseURL}/recommendations/guides`);
+
+    // In-app origin that is not the Guides page (Home), surviving a browser refresh.
+    await owner.page.goto('/home');
+    await owner.page.evaluate((to) => {
+      window.history.pushState({ usr: { from: { pathname: '/home', search: '', label: 'Home' } }, key: 'wp1', idx: 1 }, '', to);
+      window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
+    }, '/recommendations/guides/guides-list');
+    await owner.page.reload();
+    await owner.page.getByRole('button', { name: /^(‹ )?Back to Home$/ }).click();
+    await expect(owner.page).toHaveURL(`${baseURL}/home`);
   } finally { await closeFixture(owner); }
 });

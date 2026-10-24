@@ -17,7 +17,8 @@ import { ownerCollectionPageSchema, ownerRecommendationPageSchema, ownerCollecti
   type OwnerCollectionsRequest, type OwnerRecommendationsRequest, type OwnerCollectionDto, type OwnerRecommendationDto } from '../../../tunes/shared/explorersOwnerContentContract';
 import {ownerTopPicksRequestSchema,ownerTopPickPageSchema,ownerContentSummarySchema,type OwnerTopPicksRequest,type OwnerContentSummary} from '../../../tunes/shared/explorersOwnerContentContract';
 import { z } from 'zod/v3';
-import {taxonomyCatalogQuerySchema,taxonomyCatalogPageSchema,type TaxonomyCatalogPage} from '../../../tunes/shared/explorersTaxonomyContract';
+import {taxonomyCatalogQuerySchema,taxonomyCatalogPageSchema,type TaxonomyCatalogPage,taxonomyCatalogCategorySchema} from '../../../tunes/shared/explorersTaxonomyContract';
+type TaxonomyCatalogCategory=z.infer<typeof taxonomyCatalogCategorySchema>;
 import { createCollectionSchema,createCollectionResultSchema,type CreateCollectionResult,updateCollectionSchema,createRecommendationObjectSchema,createRecommendationSchema,updateRecommendationSchema,reorderCollectionSchema,collectionCoreDtoSchema,contentRevisionSchema,recommendationCoreDtoSchema,apiErrorSchema,contentIdSchema,type CreateCollectionInput,type UpdateCollectionInput,type CreateRecommendationInput,type UpdateRecommendationInput } from '../../../tunes/shared/explorersContract';
 import { editableOwnerCollectionSchema,editableOwnerRecommendationSchema,type EditableOwnerCollection,type EditableOwnerRecommendation } from '../../../tunes/shared/explorersOwnerContentContract';
 import { resolveManualEntitySchema,resolveManualGameSchema,entityCoreDtoSchema,type ResolveManualEntityInput } from '../../../tunes/shared/explorersContract';
@@ -28,7 +29,8 @@ import {productEntityDtoSchema,resolveManualProductSchema} from '../../../tunes/
 import {personEntityDtoSchema,resolveManualPersonSchema} from '../../../tunes/shared/explorersPersonContract';
 import {placeEntityDtoSchema,resolveManualPlaceSchema} from '../../../tunes/shared/explorersPlaceContract';
 import {guideAggregateDtoSchema,attachGuideCoverSchema,createGuideSectionSchema,reorderGuideSectionsSchema,
- writeGuideDetailsSchema,writeGuideSectionSchema,guideRevisionSchema} from '../../../tunes/shared/explorersGuideContract';
+ writeGuideDetailsSchema,writeGuideSectionSchema,guideRevisionSchema,addGuideDaySchema,moveGuideDaySchema,addGuideDayItemSchema,
+ moveGuideDayItemSchema,setGuideTimeLabelSchema,setGuideNoteTextSchema,guideItemLocalIdSchema} from '../../../tunes/shared/explorersGuideContract';
 
 export type CompleteOwnerContent<T> = Readonly<{complete:true;items:readonly T[];snapshot:string;accountId:string;generation:number}>;
 const completedSets=new WeakSet<object>();
@@ -96,7 +98,7 @@ export class ExplorersApiError extends Error {
 }
 
 export type CompleteTaxonomyCatalog=Readonly<Omit<TaxonomyCatalogPage,'items'|'nextCursor'>&{complete:true;items:readonly TaxonomyCatalogPage['items'][number][];nextCursor:null;accountId:string;generation:number}>;
-async function taxonomyPage(input:{category:'places'|'people';locale?:string;limit?:number;cursor?:string},signal?:AbortSignal):Promise<TaxonomyCatalogPage>{
+async function taxonomyPage(input:{category:TaxonomyCatalogCategory;locale?:string;limit?:number;cursor?:string},signal?:AbortSignal):Promise<TaxonomyCatalogPage>{
  const query=taxonomyCatalogQuerySchema.parse({...input,...(input.limit===undefined?{}:{limit:String(input.limit)})});
  let page:TaxonomyCatalogPage;
  try{page=await ownerRead('/catalog/taxonomy',query,taxonomyCatalogPageSchema,signal,true);}catch(error){
@@ -106,7 +108,7 @@ async function taxonomyPage(input:{category:'places'|'people';locale?:string;lim
  if(page.category!==query.category||page.requestedLocale!==(query.locale??null))throw new ExplorersApiError(409,'CONFLICT','Catalog response changed; retry loading sectors');
  return page;
 }
-async function completeTaxonomyCatalog(input:{category:'places'|'people';locale?:string},signal?:AbortSignal):Promise<CompleteTaxonomyCatalog>{
+async function completeTaxonomyCatalog(input:{category:TaxonomyCatalogCategory;locale?:string},signal?:AbortSignal):Promise<CompleteTaxonomyCatalog>{
  const initial=useAuthStore.getState(),controller=new AbortController();
  const isCurrent=()=>{const now=useAuthStore.getState();return now.isAuthenticated&&now.accountId===initial.accountId&&now.generation===initial.generation;};
  const stop=()=>controller.abort(),check=()=>{if(controller.signal.aborted||!isCurrent())throw new DOMException('Catalog owner changed','AbortError');};
@@ -440,6 +442,8 @@ async function guideCommand(collectionId:string,suffix:string,method:string,body
   guideCommandResult,signal,undefined,id);
  return result;
 }
+const guideItemPath=(day:string,localId:string,suffix:string)=>
+ `/days/${encodeURIComponent(commandInput(contentIdSchema,day))}/items/${encodeURIComponent(commandInput(guideItemLocalIdSchema,localId))}${suffix}`;
 export const explorersApiClient = {
  getTaxonomyCatalogPage:taxonomyPage,
  getCompleteTaxonomyCatalog:completeTaxonomyCatalog,
@@ -504,6 +508,16 @@ export const explorersApiClient = {
   async attachMyGuideCover(collectionId:string,input:z.input<typeof attachGuideCoverSchema>,key:string,signal?:AbortSignal){
    return guideCommand(collectionId,'/cover','PUT',commandInput(attachGuideCoverSchema,input),key,signal);
   },
+  addMyGuideDay:async(id:string,input:z.input<typeof addGuideDaySchema>,key:string,signal?:AbortSignal)=>guideCommand(id,'/days','POST',commandInput(addGuideDaySchema,input),key,signal),
+  moveMyGuideDay:async(id:string,day:string,input:z.input<typeof moveGuideDaySchema>,key:string,signal?:AbortSignal)=>guideCommand(id,`/days/${encodeURIComponent(commandInput(contentIdSchema,day))}/position`,'PATCH',commandInput(moveGuideDaySchema,input),key,signal),
+  duplicateMyGuideDay:async(id:string,day:string,revision:number,key:string,signal?:AbortSignal)=>guideCommand(id,`/days/${encodeURIComponent(commandInput(contentIdSchema,day))}/duplicate`,'POST',commandInput(guideRevisionSchema,{revision}),key,signal),
+  clearMyGuideDay:async(id:string,day:string,revision:number,key:string,signal?:AbortSignal)=>guideCommand(id,`/days/${encodeURIComponent(commandInput(contentIdSchema,day))}/clear`,'POST',commandInput(guideRevisionSchema,{revision}),key,signal),
+  deleteMyGuideDay:async(id:string,day:string,revision:number,key:string,signal?:AbortSignal)=>guideCommand(id,`/days/${encodeURIComponent(commandInput(contentIdSchema,day))}`,'DELETE',commandInput(guideRevisionSchema,{revision}),key,signal),
+  addMyGuideDayItem:async(id:string,day:string,input:z.input<typeof addGuideDayItemSchema>,key:string,signal?:AbortSignal)=>guideCommand(id,`/days/${encodeURIComponent(commandInput(contentIdSchema,day))}/items`,'POST',commandInput(addGuideDayItemSchema,input),key,signal),
+  moveMyGuideDayItem:async(id:string,day:string,localId:string,input:z.input<typeof moveGuideDayItemSchema>,key:string,signal?:AbortSignal)=>guideCommand(id,guideItemPath(day,localId,'/position'),'PATCH',commandInput(moveGuideDayItemSchema,input),key,signal),
+  setMyGuideTimeLabel:async(id:string,day:string,localId:string,input:z.input<typeof setGuideTimeLabelSchema>,key:string,signal?:AbortSignal)=>guideCommand(id,guideItemPath(day,localId,'/time-label'),'PUT',commandInput(setGuideTimeLabelSchema,input),key,signal),
+  setMyGuideNoteText:async(id:string,day:string,localId:string,input:z.input<typeof setGuideNoteTextSchema>,key:string,signal?:AbortSignal)=>guideCommand(id,guideItemPath(day,localId,'/note'),'PUT',commandInput(setGuideNoteTextSchema,input),key,signal),
+  removeMyGuideDayItem:async(id:string,day:string,localId:string,revision:number,key:string,signal?:AbortSignal)=>guideCommand(id,guideItemPath(day,localId,''),'DELETE',commandInput(guideRevisionSchema,{revision}),key,signal),
   async resolvePlaceEntity(input:z.input<typeof resolveManualPlaceSchema>,key:string,signal?:AbortSignal){
    const body=commandInput(resolveManualPlaceSchema,input);
    const entity=await contentCommand('/entities/resolve','POST',body,key,'entity',placeEntityDtoSchema,signal);

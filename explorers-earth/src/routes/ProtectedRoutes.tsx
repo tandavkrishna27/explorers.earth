@@ -1,6 +1,6 @@
 import { lazy, type ReactElement } from "react";
 import { lazyNamed } from "./lazy";
-import { Route, Navigate } from "react-router-dom";
+import { Route, Navigate, useParams } from "react-router-dom";
 import ProtectedRoute from "../components/ProtectedRoute";
 
 const ResponsiveLayout = lazy(() => import("../layouts/ResponsiveLayout"));
@@ -15,8 +15,7 @@ const RecommendationsHub = lazy(() => import("../pages/RecommendationsHub"));
 const AddRecommendation = lazy(() => import("../features/Favorites/components/AddRecommendation"));
 const PlacesListView = lazy(() => import("../features/Favorites/components/PlacesListView"));
 const GuidesPage = lazyNamed(() => import("../features/Guides"), "GuidesPage");
-const CreateGuidePage = lazyNamed(() => import("../features/Guides"), "CreateGuidePage");
-const GuideDetailsPage = lazyNamed(() => import("../features/Guides"), "GuideDetailsPage");
+const GuideEditorPage = lazyNamed(() => import("../features/Guides"), "GuideEditorPage");
 const GuideSectionFormPage = lazyNamed(() => import("../features/Guides"), "GuideSectionFormPage");
 const MoviesHome = lazyNamed(() => import("../features/Movies"), "MoviesHome");
 const MovieListView = lazyNamed(() => import("../features/Movies"), "MovieListView");
@@ -39,6 +38,12 @@ const AddPersonPage = lazyNamed(() => import("../features/People"), "AddPersonPa
 const AddLinkedPeoplePage = lazy(() => import("../features/Favorites/components/AddLinkedPeoplePage"));
 const AddLinkedProductsPage = lazy(() => import("../features/Favorites/components/AddLinkedProductsPage"));
 
+/** Old guide addresses land in the in-page editor; /edit opens its Manage tab. */
+function GuideEditorPageRedirect({ tab }: { tab?: "manage" }) {
+  const { guideId = "" } = useParams();
+  return <Navigate to={`/recommendations/guides/${guideId}`} state={tab ? { tab } : undefined} replace />;
+}
+
 const ProtectedRoutes = (): ReactElement[] => {
   const dashboardRoutes = (
     <Route key="dashboard-routes" path="/*" element={<ResponsiveLayout />}>
@@ -49,18 +54,18 @@ const ProtectedRoutes = (): ReactElement[] => {
       <Route path="recommendations/places/:listId/add" element={<AddRecommendation />} />
       <Route path="recommendations/places/:listId/edit/:placeId" element={<AddRecommendation type="edit" />} />
       <Route path="recommendations/guides" element={<GuidesPage />} />
-      <Route path="recommendations/guides/new" element={<CreateGuidePage />} />
-      <Route path="recommendations/guides/:guideId" element={<GuideDetailsPage />} />
-      <Route path="recommendations/guides/:guideId/edit" element={<CreateGuidePage type="edit" />} />
+      <Route path="recommendations/guides/new" element={<Navigate to="/recommendations/guides?new=1" replace />} />
+      <Route path="recommendations/guides/:guideId" element={<GuideEditorPage />} />
+      <Route path="recommendations/guides/:guideId/edit" element={<GuideEditorPageRedirect tab="manage" />} />
       <Route path="recommendations/guides/:guideId/sections/new" element={<GuideSectionFormPage />} />
       <Route path="recommendations/guides/:guideId/sections/:sectionId/edit" element={<GuideSectionFormPage />} />
       <Route path="recommendations/music" element={<Navigate to="/recommendations" replace />} />
 
       {/* Legacy redirects & aliases */}
       <Route path="guides" element={<Navigate to="/recommendations/guides" replace />} />
-      <Route path="guides/new" element={<CreateGuidePage />} />
-      <Route path="guides/:guideId" element={<GuideDetailsPage />} />
-      <Route path="guides/:guideId/edit" element={<CreateGuidePage type="edit" />} />
+      <Route path="guides/new" element={<Navigate to="/recommendations/guides?new=1" replace />} />
+      <Route path="guides/:guideId" element={<GuideEditorPageRedirect />} />
+      <Route path="guides/:guideId/edit" element={<GuideEditorPageRedirect tab="manage" />} />
       <Route path="guides/:guideId/sections/new" element={<GuideSectionFormPage />} />
       <Route path="guides/:guideId/sections/:sectionId/edit" element={<GuideSectionFormPage />} />
       <Route path="music" element={<Navigate to="/recommendations" replace />} />
