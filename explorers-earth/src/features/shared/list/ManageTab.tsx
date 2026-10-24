@@ -38,6 +38,7 @@ export default function ManageTab({ adapter }: { adapter: ListPageAdapter }) {
         <button type="button" disabled={busy || !title.trim()} onClick={() => run(() => adapter.rename({ title: title.trim(), description: description.trim() || null }), t("dashboard.wp3b.saved", "Saved"))}
           className="justify-self-start min-h-11 rounded-xl bg-blue-400 px-4 text-white disabled:opacity-50">{t("dashboard.wp3b.saveDetails", "Save details")}</button>
       </section>
+      {adapter.renderManageExtras?.()}
       <section className="grid gap-2 rounded-2xl border border-white/10 bg-[#151a25] p-4">
         <label className="grid gap-1 text-xs">{t("dashboard.wp3b.listUrl", "List URL")}
           <input className={field} value={slug} onChange={(e) => setSlug(e.target.value.trim())} aria-invalid={!!slugError} /></label>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Reorder } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import AddressInput from "../../Profile/components/AddressInput";
 import Button from "../../../components/ui/Button";
 import DeleteIcon from "../../../assets/icons/DeleteIcon";
@@ -59,6 +60,7 @@ const CreateGuideStep1: React.FC<CreateGuideStep1Props> = ({
   onNext,
   onCancel,
 }) => {
+  const { t } = useTranslation();
   // Guide type state
   const [guideType, setGuideType] = useState(initialGuideType);
   
@@ -388,7 +390,7 @@ const CreateGuideStep1: React.FC<CreateGuideStep1Props> = ({
               <option value="">Select type</option>
               {guideTypes.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {t(`dashboard.wp7.guideType.${type}`, type)}
                 </option>
               ))}
             </select>

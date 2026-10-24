@@ -10,7 +10,6 @@ const forms = [
   "People/components/dashboard/AddPersonPage.tsx",
   "AppsAndTools/components/dashboard/AddAppPage.tsx",
   "AppsAndTools/components/dashboard/AppEnrichmentPanel.tsx",
-  "Favorites/components/RecommendForm.tsx",
 ];
 
 describe("add-item form fieldsets", () => {

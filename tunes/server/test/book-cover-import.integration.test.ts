@@ -1,8 +1,10 @@
 import {BookCoverFetcher} from '../services/bookCoverFetch';
 import {createHash} from 'node:crypto';
 import {provisionMusicRuntimeLogin} from '../db/music-runtime-role';
-let fetchCount=0;let failThumbnail=false;let duringFetch:(()=>Promise<void>)|undefined;let failDelete=false;
-const coverFetcher=new BookCoverFetcher({mode:'deterministic-fixture',resolve:async()=>[{address:'142.250.1.1',family:4}],connect:async(target)=>{fetchCount++;const hook=duringFetch;duringFetch=undefined;if(hook)await hook();if(failThumbnail&&target.url.searchParams.get('size')==='thumb')throw Error('fixture unavailable');return {status:200,mimeType:'image/png',body:(async function*(){yield png;})()};}});
+let fetchCount=0;let failThumbnail=false;let duringFetch:(()=>Promise<void>)|undefined;let failDelete=false;const redirectHops:string[]=[];
+// Open Library's real cover chain: covers.openlibrary.org -> archive.org/download -> ia*.us.archive.org.
+const openLibraryRedirects:Record<string,string>={'covers.openlibrary.org':'https://archive.org/download/olcovers24/olcovers24-L.zip/240727-L.jpg','archive.org':'https://ia600603.us.archive.org/view_archive.php?archive=/18/items/olcovers24/olcovers24-L.zip&file=240727-L.jpg'};
+const coverFetcher=new BookCoverFetcher({mode:'deterministic-fixture',resolve:async()=>[{address:'142.250.1.1',family:4}],connect:async(target)=>{const location=openLibraryRedirects[target.url.hostname];if(location){redirectHops.push(target.url.hostname);return {status:302,mimeType:'text/html',location,body:(async function*(){})()};}fetchCount++;const hook=duringFetch;duringFetch=undefined;if(hook)await hook();if(failThumbnail&&target.url.searchParams.get('size')==='thumb')throw Error('fixture unavailable');return {status:200,mimeType:'image/png',body:(async function*(){yield png;})()};}});
 import {BookCatalog} from '../services/bookCatalog';
 import {MediaService} from '../application/media';
 import type {Actor} from '../application/actor';
@@ -61,6 +63,15 @@ it('copies both canonical cover slots, replays receipt and denies caller URLs an
  const detail=await request(composed.app).get(`/api/explorers/v1/recommendations/${r.id}/editable`).set('cookie',a.cookie);expect(detail.status).toBe(200);expect(detail.body.recommendation.bookCovers.cover.id).toBe(copied.body.coverImport.slots.cover.media.id);expect(detail.body.recommendation.revision).toBe(2);
  await expect(pool.query("UPDATE media_assets SET status='pending_delete' WHERE id=$1",[copied.body.coverImport.slots.cover.media.id])).rejects.toMatchObject({code:'23514'});
  await expect(pool.query("UPDATE media_assets SET mime_type='video/mp4' WHERE id=$1",[copied.body.coverImport.slots.cover.media.id])).rejects.toMatchObject({code:'23514'});
+});
+it('copies an Open Library cover through its two-hop archive.org redirect chain',async()=>{
+ const a=await persona(),id=await entity();await pool.query("INSERT INTO book_entity_details(entity_id,cover_url,cover_large_url) VALUES($1,$2,$2)",[id,'https://covers.openlibrary.org/b/id/240727-L.jpg']);
+ await pool.query("INSERT INTO entity_identifiers(entity_id,provider,external_kind,external_id,fetched_at,source_url) VALUES($1,'open_library','edition',$2,now(),'https://openlibrary.org/books/'||$2||'.json')",[id,`OL${Math.floor(Math.random()*1e9)}M`]);
+ const r=await recommendation(a,await list(a),id),before=fetchCount;redirectHops.length=0;
+ const result=await command(a,'post',`/recommendations/${r.id}/book-covers`,{expectedRevision:1});expect(result.status).toBe(200);
+ expect(result.body.coverImport.slots.cover.status).toBe('copied');expect(redirectHops).toEqual(['covers.openlibrary.org','archive.org']);expect(fetchCount).toBe(before+1);
+ expect((await pool.query("SELECT media_id FROM recommendation_book_covers WHERE recommendation_id=$1 AND slot='cover'",[r.id])).rows[0]?.media_id).toBe(result.body.coverImport.slots.cover.media.id);
+ const detail=await request(composed.app).get(`/api/explorers/v1/recommendations/${r.id}/editable`).set('cookie',a.cookie);expect(detail.body.recommendation.bookCovers.cover.url).toMatch(/^\/api\/explorers\/v1\/media\//);
 });
 it('deduplicates equal provider URLs while retaining both slots and references',async()=>{
  const a=await persona(),{r}=await fixtureBook(a,true),before=fetchCount;const result=await command(a,'post',`/recommendations/${r.id}/book-covers`,{expectedRevision:1});expect(result.status).toBe(200);expect(fetchCount).toBe(before+1);expect(result.body.coverImport.slots.cover.media.id).toBe(result.body.coverImport.slots.thumbnail.media.id);
