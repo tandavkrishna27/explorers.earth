@@ -165,7 +165,7 @@ function Editor({initial, guide, list, refresh}: {initial: GuideObservation; gui
       </div>
      </div>
     )}
-    <BottomAddButton label={t('dashboard.wp9.addToDayLabel', {defaultValue: 'Add to {{day}}', day: dayName(index)})} onClick={() => setAdding(selected)} hidden={tab !== 'plan'} />
+    <BottomAddButton label={t('dashboard.wp9.addToDayLabel', {defaultValue: 'Add to {{day}}', day: dayName(index)})} onClick={() => setAdding(selected)} hidden={tab !== 'plan' || adding !== null} />
    </div>
    <div hidden={tab !== 'share'}><ShareTab adapter={adapter} /></div>
    <div hidden={tab !== 'manage'}><ManageTab adapter={adapter} /></div>
