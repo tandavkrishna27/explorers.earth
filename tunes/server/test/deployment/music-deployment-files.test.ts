@@ -196,10 +196,10 @@ describe("Music deployment authority files", () => {
       "/app/migrations/0035_explorers_book_cover_import.sql",
     ]) expect(ci).toContain(file);
     expect(read("tunes/deployment/music-deploy-engine.sh")).toContain(
-      'production_current_marker="0068_explorers_category_data_shape"',
+      'production_current_marker="0071_explorers_samples"',
     );
     expect(read("tunes/scripts/music-docker-release-rehearsal.ts")).toContain(
-      'const marker = "0068_explorers_category_data_shape"',
+      'const marker = "0071_explorers_samples"',
     );
     expect(read("tunes/deployment/music-deploy-engine.sh")).toContain(
       "verify-publication-authority.mjs",
@@ -494,11 +494,11 @@ describe("Music deployment authority files", () => {
       "STRAPI_JWT_SECRET: fixture-strapi-jwt-secret-at-least-32-characters",
     );
     expect(fixture).toContain("ALLOWED_ORIGINS: http://localhost:55173");
-    expect(fixture).toContain("MUSIC_MIGRATION_MARKER: 0068_explorers_category_data_shape");
-    expect(fixture).toContain("MUSIC_EXPECTED_MIGRATION_ID: 0068_explorers_category_data_shape");
-    expect(read("docker-compose.yml")).toContain("TUNES_BLUE_MIGRATION:-0068_explorers_category_data_shape");
-    expect(read("docker-compose.yml")).toContain("TUNES_GREEN_MIGRATION:-0068_explorers_category_data_shape");
-    expect(read("docker-compose.yml")).toContain("TUNES_CANDIDATE_MIGRATION:-0068_explorers_category_data_shape");
+    expect(fixture).toContain("MUSIC_MIGRATION_MARKER: 0071_explorers_samples");
+    expect(fixture).toContain("MUSIC_EXPECTED_MIGRATION_ID: 0071_explorers_samples");
+    expect(read("docker-compose.yml")).toContain("TUNES_BLUE_MIGRATION:-0071_explorers_samples");
+    expect(read("docker-compose.yml")).toContain("TUNES_GREEN_MIGRATION:-0071_explorers_samples");
+    expect(read("docker-compose.yml")).toContain("TUNES_CANDIDATE_MIGRATION:-0071_explorers_samples");
   });
 
   it("proves the built C2 commit contains C1 and carries the observed legacy Compose project through deploy", () => {

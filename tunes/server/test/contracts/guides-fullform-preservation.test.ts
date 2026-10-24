@@ -36,11 +36,11 @@ async function submit(initialData:ReturnType<typeof fixture>['initialData'],over
 }
 it('actual title-only submit preserves every canonical block and independent budget metadata',async()=>{
  const {blocks,initialData}=fixture();
- blocks.budget.morning[0].budgetAmount='0.00';
+ blocks.budget.entries[0].budgetAmount='0.00';
  initialData.Budget.morning[0].budgetAmount=0;
  const stayBudget={...initialData.Budget.morning[0],localId:initialData.Stay.accommodations[0].id};
  initialData.Budget.evening.push(stayBudget);
- blocks.budget.evening.push({...blocks.budget.morning[0],localId:stayBudget.localId});
+ blocks.budget.entries.push({...blocks.budget.entries[0],localId:stayBudget.localId});
  const saved=await submit(initialData);
  expect(guideSectionBlocksSchema.parse(toCanonicalSectionBlocks(saved))).toEqual(blocks);
 });

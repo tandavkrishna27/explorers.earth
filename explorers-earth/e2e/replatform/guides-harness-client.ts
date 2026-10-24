@@ -499,7 +499,7 @@ export function createGuidesHarnessClient(environment: Record<string, string | u
             if (new Set(rows.attachments.map(attachmentKey)).size !== rows.attachments.length || new Set(rows.objects.map((o: any) => JSON.stringify([o.mediaId, o.variant, o.environment]))).size !== rows.objects.length)
                 denied();
             for (const s of rows.sections) {
-                const ids = new Set([...s.blocks.timeline.morning, ...s.blocks.timeline.afternoon, ...s.blocks.timeline.evening, ...s.blocks.stay.accommodations, ...s.blocks.activities.activities].flatMap((p: any) => p.photos.map((p: any) => p.mediaId)));
+                const ids = new Set([...s.blocks.items.flatMap((item: any) => item.kind === 'place' ? [item.place] : []), ...s.blocks.stay.accommodations, ...s.blocks.activities.activities].flatMap((p: any) => p.photos.map((p: any) => p.mediaId)));
                 const registered = rows.attachments.filter((a: any) => a.slot === 'section-photo' && a.sectionId === s.id).map((a: any) => a.mediaId);
                 if (ids.size !== registered.length || registered.some((id: string) => !ids.has(id)))
                     denied();

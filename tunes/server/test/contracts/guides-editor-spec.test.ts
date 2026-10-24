@@ -4,7 +4,9 @@ import ts from 'typescript';
 import {expect,it} from 'vitest';
 import {buildGuidesSeedPlan,GUIDES_CASES} from '../../../scripts/guides-browser-support';
 import {toDayPlace,toCanonicalDayPlace,toCanonicalBudgetPlace,toTransportSegment,toGuide,toGuideSection} from '../../../../explorers-earth/src/features/Guides/api/guidesViewModel';
-import {guideAggregateDtoSchema} from '../../../shared/explorersGuideContract';
+import {guideAggregateDtoSchema,legacyBudgetFromEntries,legacyTimelineFromItems,type GuideSectionBlocks} from '../../../shared/explorersGuideContract';
+// The seed is v2 day items; these forms still read the legacy slot view.
+const slotted=(b:GuideSectionBlocks)=>({timeline:legacyTimelineFromItems(b.items),budget:legacyBudgetFromEntries(b.budget.entries,b.items)});
 import {ownerCollectionDtoSchema} from '../../../shared/explorersOwnerContentContract';
 import {calculateDistance} from '../../../../explorers-earth/src/features/Guides/utils/distanceCalculator';
 import {calculateTravelTime} from '../../../../explorers-earth/src/features/Guides/utils/travelModeConfig';
@@ -57,7 +59,7 @@ it('native full section form retains seeded budget entry local identity',()=>{
  const found:ts.VariableDeclaration[]=[];function walk(n:ts.Node){if(ts.isVariableDeclaration(n)&&n.name.getText(ast)==='extractBudgetData')found.push(n);ts.forEachChild(n,walk);}walk(ast);expect(found).toHaveLength(1);
  const code=ts.transpileModule('const extract='+ts.createPrinter().printNode(ts.EmitHint.Expression,found[0].initializer!,ast),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
  const extract=new Function(code+';return extract;')() as (places:DayPlace[])=>Parameters<typeof toCanonicalBudgetPlace>[0][];
- const blocks=buildGuidesSeedPlan(GUIDES_CASES[1]).sections[0].blocks;
+ const blocks=slotted(buildGuidesSeedPlan(GUIDES_CASES[1]).sections[0].blocks);
  expect(extract(blocks.timeline.morning.map(toDayPlace)).map(toCanonicalBudgetPlace)).toEqual(blocks.budget.morning);
 });
 
@@ -65,7 +67,7 @@ it('native full section form retains existing transport by entry identity',()=>{
  const file=resolve(import.meta.dirname,'../../../..','explorers-earth/src/features/Guides/components/GuideSectionForm.tsx'),ast=ts.createSourceFile(file,readFileSync(file,'utf8'),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
  const found:ts.VariableDeclaration[]=[];function walk(n:ts.Node){if(ts.isVariableDeclaration(n)&&n.name.getText(ast)==='generateCompleteTransportSegments')found.push(n);ts.forEachChild(n,walk);}walk(ast);expect(found).toHaveLength(1);
  const code=ts.transpileModule('const generate='+ts.createPrinter().printNode(ts.EmitHint.Expression,found[0].initializer!,ast),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
- const blocks=buildGuidesSeedPlan(GUIDES_CASES[1]).sections[0].blocks,existing=blocks.transport.segments.map(toTransportSegment);
+ const seedBlocks=buildGuidesSeedPlan(GUIDES_CASES[1]).sections[0].blocks,blocks=slotted(seedBlocks),existing=seedBlocks.transport.segments.map(toTransportSegment);
  const generate=new Function('morningPlaces','afternoonPlaces','eveningPlaces','transportSegments','calculateDistance','calculateTravelTime','initialData',code+';return generate;')(blocks.timeline.morning.map(toDayPlace),blocks.timeline.afternoon.map(toDayPlace),blocks.timeline.evening.map(toDayPlace),existing,calculateDistance,calculateTravelTime,{Timeline:{morning:blocks.timeline.morning.map(toDayPlace),afternoon:blocks.timeline.afternoon.map(toDayPlace),evening:blocks.timeline.evening.map(toDayPlace)}}) as ()=>typeof existing;
  const actual=generate();expect(actual[0]).toEqual(existing[0]);expect(actual.every(s=>[...blocks.timeline.morning,...blocks.timeline.afternoon,...blocks.timeline.evening].some(p=>p.localId===s.fromPlaceId)&&[...blocks.timeline.morning,...blocks.timeline.afternoon,...blocks.timeline.evening].some(p=>p.localId===s.toPlaceId))).toBe(true);
 });
@@ -83,7 +85,7 @@ it('actual transport tab renders seeded canonical entry endpoints for native mod
  const callback=(found[0].initializer as ts.CallExpression).arguments[0],code=ts.transpileModule('const groups='+ts.createPrinter().printNode(ts.EmitHint.Expression,callback,ast),{compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText;
  const seed=buildGuidesSeedPlan(GUIDES_CASES[1]).sections[0],section=toGuideSection({id:'section',collectionId:'guide',title:seed.title,description:seed.description,displayOrder:0,blocks:seed.blocks,archived:false,createdAt:'old',updatedAt:'old'});
  const groups=new Function('guide','getTransportSegments','parseTimeline','parseStay','parseActivity',code+';return groups;')({guide_sections:[section]},getTransportSegments,parseTimeline,parseStay,parseActivity) as ()=>{sectionId:string;transportNodes:{segment:unknown;from:{name:string};to:{name:string}}[]}[];
- expect(groups()).toMatchObject([{sectionId:'section',transportNodes:[{segment:toTransportSegment(seed.blocks.transport.segments[0]),from:{name:seed.blocks.timeline.morning[0].name},to:{name:seed.blocks.timeline.afternoon[0].name}}]}]);
+ expect(groups()).toMatchObject([{sectionId:'section',transportNodes:[{segment:toTransportSegment(seed.blocks.transport.segments[0]),from:{name:slotted(seed.blocks).timeline.morning[0].name},to:{name:slotted(seed.blocks).timeline.afternoon[0].name}}]}]);
 });
 
 it('actual editor scope accepts only addressed content plus owning category revisions',()=>{
