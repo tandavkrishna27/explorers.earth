@@ -968,6 +968,12 @@
     "ZW": "Zimbabwe"
   },
   "dashboard": {
+    "wp7": {
+      "guideType": {
+        "Itinerary": "Itinerary",
+        "Theme": "Theme"
+      }
+    },
     "categoryPages": {
       "publicVisibility": "Public Visibility",
       "managePublicVisibility": "Manage Public Visibility",

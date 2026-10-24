@@ -965,6 +965,12 @@
     "ZW": "Zimbabwe"
   },
   "dashboard": {
+    "wp7": {
+      "guideType": {
+        "Itinerary": "خط سير الرحلة",
+        "Theme": "موضوع"
+      }
+    },
     "wp4": {
       "actions": "Item actions",
       "addManually": "Add manually",

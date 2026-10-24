@@ -1,6 +1,13 @@
 import ReorderableMediaStrip from '../../../../components/reorder/ReorderableMediaStrip';
 import ReorderableFileStrip from '../../../../components/reorder/ReorderableFileStrip';
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { suggestTermFromLabels, useCuratedCatalog } from "../../../../lib/curatedTaxonomy";
+import ProviderRatingChip from "../../../../components/ProviderRatingChip";
+import StarRating from "../../../../components/StarRating";
+import TaxonomyCombobox from "../../../../components/TaxonomyCombobox";
+import AddItemPage from "../../../shared/addItem/AddItemPage";
+import ItemSearch, { type ItemSearchResult } from "../../../shared/addItem/ItemSearch";
+import PickedItemCard from "../../../shared/addItem/PickedItemCard";
 import { friendlyErrorMessage, urlFieldError } from "../../../../utils/friendlyError";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -11,8 +18,8 @@ import { bookContextFromLinks } from "../../api/booksViewModel";
 import {createRecommendationObjectSchema} from "../../../../../../tunes/shared/explorersContract";
 import type { BookCandidate } from "../../../../../../tunes/shared/explorersBookContract";
 import {
-  ArrowLeft, Search, Star, Upload, X, Loader2, Check,
-  BookOpen, Calendar, Hash, ExternalLink, Plus,
+  Search, Star, Upload, X, Loader2, Check,
+  BookOpen, ExternalLink, Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import useAuthStore from "../../../../store/store";
@@ -154,9 +161,20 @@ const AddBookPage = () => {
   const pendingCreate=useRef<{parent:CollectionObservation;input:Parameters<typeof explorersApiClient.createMyRecommendation>[1];key:string}>();
   const uploadedFiles=useRef(new Map<File,{id:string;url:string}>());
   const selectionSequence=useRef(0);
+  // Curated Category: shown and sent only when the Books catalog is configured. On edit it is sent only
+  // after the owner changes it, so an untouched save never rewrites the stored assignment.
+  const catalog=useCuratedCatalog("books"),configured=!catalog.loading&&!catalog.error&&!catalog.unconfigured&&catalog.terms.length>0;
+  const taxonomyTerms=useMemo(()=>catalog.terms.map((term,position)=>({id:term.id,parentId:null,position,label:term.label})),[catalog.terms]);
+  const [categoryId,setCategoryId]=useState<string|null>(null),[categoryTouched,setCategoryTouched]=useState(false);
+  const [query,setQuery]=useState(""),hits=useRef(new Map<string,BookCandidate>());
+  const searchBooks=useCallback(async(text:string,signal:AbortSignal):Promise<ItemSearchResult[]>=>{
+    const page=await explorersApiClient.searchBookCandidates({query:text,limit:12},signal);
+    hits.current=new Map(page.items.map(item=>[item.externalId,item]));
+    return page.items.map(item=>({id:item.externalId,title:item.title,subtitle:[formatAuthors(item.preview.authors),item.preview.yearText].filter(Boolean).join(" · "),imageUrl:item.preview.coverUrl}));
+  },[]);
   const [snapshotPreviews,setSnapshotPreviews]=useState<string[]>([]);
   useEffect(()=>{const urls=newSnapshots.map(file=>URL.createObjectURL(file));setSnapshotPreviews(urls);return()=>urls.forEach(url=>URL.revokeObjectURL(url));},[newSnapshots]);
-  useEffect(()=>{operationAbort.current=new AbortController();setSelectedBook(null);setEntityId(undefined);setManualOpen(false);setIsManualBook(false);setNote("");setUserRating(null);setIsPinned(false);setBuyLinks([]);setNewSnapshots([]);setExistingSnapshots([]);setSaving(false);initialized.current=undefined;editedObservation.current=undefined;createdRecommendation.current=undefined;pendingCreate.current=undefined;uploadedFiles.current.clear();return()=>{operationAbort.current.abort();selectionSequence.current++;};},[generation,listId,bookId]);
+  useEffect(()=>{operationAbort.current=new AbortController();setSelectedBook(null);setEntityId(undefined);setManualOpen(false);setIsManualBook(false);setNote("");setUserRating(null);setIsPinned(false);setBuyLinks([]);setNewSnapshots([]);setExistingSnapshots([]);setSaving(false);setCategoryId(null);setCategoryTouched(false);setQuery("");initialized.current=undefined;editedObservation.current=undefined;createdRecommendation.current=undefined;pendingCreate.current=undefined;uploadedFiles.current.clear();return()=>{operationAbort.current.abort();selectionSequence.current++;};},[generation,listId,bookId]);
 
   // Load existing book list (for display_order)
   const { data:listData,content,error:loadError } = useBooksOwnerContent(listId);
@@ -173,6 +191,7 @@ const AddBookPage = () => {
       const book = existingBooks.find((b) => b.documentId === bookId);
       if (book) {
         editedObservation.current=content?.details.get(bookId);initialized.current=bookId;setEntityId(book.entity_id);
+        setCategoryId(editedObservation.current?.detail.curatedTerm?.term?.id??null);setCategoryTouched(false);
         setSelectedBook({
           volume_id: book.volume_id,
           title: book.title,
@@ -207,8 +226,10 @@ const AddBookPage = () => {
       const f=item.preview;setEntityId(entity.id);
       setSelectedBook({volume_id:item.externalId,title:item.title,subtitle:f.subtitle,authors:f.authors,year:f.yearText??"",cover_url:f.coverUrl??"",cover_url_large:f.coverLargeUrl??"",subjects:f.subjects,publisher:f.publisher,page_count:f.pageCount,google_rating:f.providerRating,description:f.description,isbn_13:f.isbn13??"",preview_link:f.previewLink,google_books_buy_link:item.buyLinkSuggestion});
       setBuyLinks(item.buyLinkSuggestion?[{name:"Google Books",url:item.buyLinkSuggestion,logo:"google-books"}]:[]);
+      // Pre-selection only, from the provider's subjects; the owner can change it.
+      setCategoryId(suggestTermFromLabels(catalog.terms,f.subjects));
     }catch(e){toast.error(friendlyErrorMessage(e, "Could not select Book"));}
-  },[generation]);
+  },[generation,catalog.terms]);
   const handleManualBook = useCallback(async(draft:ManualBookDraft) => {
     const selection=++selectionSequence.current;
     const title=draft.title.trim(),authors=draft.authors.split(",").map(a=>a.trim()).filter(Boolean);
@@ -240,7 +261,7 @@ const AddBookPage = () => {
       const snapshots=[...existingSnapshots];
       for(const file of newSnapshots){let uploaded=uploadedFiles.current.get(file);if(!uploaded){const media=await explorersApiClient.createMedia(file,"recommendation",signal);signal.throwIfAborted();if(useAuthStore.getState().generation!==generation)return;uploaded={id:media.id,url:`/api/explorers/v1/media/${media.id}/content`};uploadedFiles.current.set(file,uploaded);}snapshots.push(uploaded);}
       signal.throwIfAborted();
-      const patch={note:note?{version:1 as const,format:"quill-html" as const,html:String(note)}:null,userRating,bookContext:bookContextFromLinks(buyLinks),mediaIds:snapshots.map(media=>media.id)};
+      const patch={note:note?{version:1 as const,format:"quill-html" as const,html:String(note)}:null,userRating,bookContext:bookContextFromLinks(buyLinks),mediaIds:snapshots.map(media=>media.id),...(configured&&(!isEdit||categoryTouched)?{curatedTermId:categoryId}:{})};
       const retryCreated=!isEdit&&Boolean(createdRecommendation.current||pendingCreate.current);
       let recommendationId=bookId??createdRecommendation.current;
       if(isEdit&&bookId){if(!editedObservation.current)throw new Error("Refresh before editing this Book");await explorersApiClient.updateMyRecommendation(editedObservation.current,patch,booksCommandKey(),signal);editedObservation.current=await explorersApiClient.getMyEditableRecommendation(bookId,signal);}
@@ -255,28 +276,18 @@ const AddBookPage = () => {
       toast.success(isEdit?"Book updated!":"Book added to list!");back.goBack({state:{justAddedRecommendation:true}});
     }catch(e){if(useAuthStore.getState().generation===generation)toast.error(friendlyErrorMessage(e, "Failed to save. Please try again."));}finally{if(useAuthStore.getState().generation===generation)setSaving(false);}
   };
+  const clearSelection = () => { selectionSequence.current++; setSelectedBook(null); setBuyLinks([]); setEntityId(undefined); setIsManualBook(false); setCategoryId(null); };
+  const mode = selectedBook || isEdit ? "picked" as const : manualOpen ? "manual" as const : "search" as const;
   return (
-    <div className="min-h-screen text-dashboard pb-32">
-       {/* Sticky header */}
-       <div className="border-b border-dashboard-border px-4 md:px-6 py-3 flex items-center gap-3 sticky top-0 bg-dashboard-bg z-40 w-full">
-         <button
-           aria-label={backText}
-           onClick={() => back.goBack()}
-           className="text-white/40 hover:text-white transition-colors"
-         >
-           <ArrowLeft size={20} />
-         </button>
-         <div className="flex-1">
-           <h1 className="text-base font-semibold text-dashboard">
-             {isEdit ? "Edit Book" : "Add a Book"}
-           </h1>
-           <p className="text-xs text-dashboard-muted mt-0.5">
-              {isEdit ? "Update the details and save your changes" : selectedBook ? "Edit the details below before saving" : "Find a book using Google Books"}
-           </p>
-         </div>
-       </div>
-
-      <div className="max-w-2xl mx-auto px-4 pt-4 md:px-0">
+    <div className="min-h-screen text-dashboard">
+    <AddItemPage
+      title={isEdit ? "Edit Book" : "Add a Book"}
+      backLabel={backText}
+      onBack={() => back.goBack()}
+      mode={mode}
+      onBackToSearch={() => setManualOpen(false)}
+      bar={{ onCancel: () => back.goBack(), onSave: () => { void handleSave(); }, saving: saving || uploadingCover ? "save" : null, canSave: Boolean(selectedBook && entityId) }}
+    >
         {loadError && <p role="alert">{loadError.message}</p>}
         {bookNotFound && (
           <p role="alert" className="text-red-400">
@@ -284,88 +295,43 @@ const AddBookPage = () => {
             <Link to="/recommendations/books" className="text-blue-400 underline">{t("dashboard.recommendations.goBack")}</Link>
           </p>
         )}
-        {/* Step 1: Search */}
-        {!isEdit && (
-          <div className="mb-4 bg-dashboard-sidebar border border-dashboard-border rounded-2xl p-4">
-          {selectedBook ? (
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-16 rounded-lg overflow-hidden bg-white/5 flex-shrink-0">
-                {selectedBook.cover_url_large || selectedBook.cover_url ? (
-                  <img
-                    src={selectedBook.cover_url_large || selectedBook.cover_url}
-                    alt=""
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <BookOpen size={16} className="text-white/20" />
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white truncate">{selectedBook.title}</p>
-                {selectedBook.subtitle && (
-                  <p className="text-xs text-white/40 truncate">{selectedBook.subtitle}</p>
-                )}
-                <p className="text-xs text-white/50">{formatAuthors(selectedBook.authors)}</p>
-                <div className="flex items-center gap-2 mt-0.5 text-[11px] text-white/30">
-                  {selectedBook.year && <span className="flex items-center gap-0.5"><Calendar size={9} /> {selectedBook.year}</span>}
-                  {selectedBook.page_count && <span className="flex items-center gap-0.5"><Hash size={9} /> {selectedBook.page_count}p</span>}
-                  {selectedBook.google_rating && (
-                    <span className="flex items-center gap-0.5 text-amber-400">
-                      <Star size={9} fill="currentColor" /> {(selectedBook.google_rating * 2).toFixed(1)}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <button
-                onClick={() => { selectionSequence.current++; setSelectedBook(null); setBuyLinks([]); setEntityId(undefined); setIsManualBook(false); }}
-                className="text-white/30 hover:text-white transition-colors flex-shrink-0"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          ) : (
-            <>
-              <InlineSearch key={generation} onSelect={handleSelectBook} />
-              {manualOpen
-                ? <ManualBookForm onCancel={() => setManualOpen(false)} onSubmit={handleManualBook} />
-                : <button type="button" onClick={() => setManualOpen(true)}
-                    className="mt-3 text-xs font-medium text-amber-400 hover:text-amber-300 transition-colors">
-                    Add manually
-                  </button>}
-            </>
-          )}
-        </div>
-      )}
+        {mode === "search" && (
+          <ItemSearch
+            key={generation}
+            query={query}
+            onQueryChange={setQuery}
+            search={searchBooks}
+            onPick={(result) => { const hit = hits.current.get(result.id); if (hit) void handleSelectBook(hit); }}
+            onAddManually={() => setManualOpen(true)}
+            placeholder="Search by title, author, or ISBN..."
+          />
+        )}
+        {mode === "manual" && <ManualBookForm initialTitle={query.trim()} onCancel={() => setManualOpen(false)} onSubmit={handleManualBook} />}
 
-      {/* Selected book preview in edit mode */}
-      {isEdit && selectedBook && (
-        <div className="flex items-center gap-3 mb-6 bg-dashboard-sidebar border border-dashboard-border rounded-2xl p-4">
-          <div className="w-12 h-16 rounded-lg overflow-hidden bg-white/5 flex-shrink-0">
-            {selectedBook.cover_url_large || selectedBook.cover_url ? (
-              <img src={selectedBook.cover_url_large || selectedBook.cover_url} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <BookOpen size={16} className="text-white/20" />
-              </div>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white truncate">{selectedBook.title}</p>
-            <p className="text-xs text-white/50">{formatAuthors(selectedBook.authors)}</p>
-          </div>
-        </div>
+      {selectedBook && (
+        <>
+          <PickedItemCard
+            title={selectedBook.title}
+            subtitle={[formatAuthors(selectedBook.authors), selectedBook.year, selectedBook.page_count ? `${selectedBook.page_count}p` : ""].filter(Boolean).join(" · ")}
+            imageUrl={selectedBook.cover_url_large || selectedBook.cover_url || null}
+            onChange={clearSelection}
+            locked={isEdit}
+          />
+          {/* Google Books' score is a source chip only, never the owner's stars. */}
+          {selectedBook.google_rating != null && (
+            <div className="flex items-center gap-2"><ProviderRatingChip source="Google Books" value={selectedBook.google_rating} /></div>
+          )}
+        </>
       )}
 
       {/* Form fields (only shown once a book is selected) */}
       {selectedBook && (
         <div className="space-y-5">
-          <div className="border-t border-dashboard-border pt-1">
-            <p className="text-xs text-dashboard-muted uppercase tracking-wider mb-4 font-medium">
-              Your Details
-            </p>
-          </div>
+          {configured && (
+            <TaxonomyCombobox terms={taxonomyTerms} levels={1} value={{ categoryId, subcategoryId: null }}
+              onChange={value => { setCategoryId(value.categoryId); setCategoryTouched(true); }}
+              labels={{ category: "Category", subcategory: "" }} />
+          )}
 
           {/* Personal note */}
           <div>
@@ -384,23 +350,8 @@ const AddBookPage = () => {
 
           {/* User Rating */}
           <div className="mt-4">
-            <label className="text-sm font-semibold text-dashboard mb-2 block">Your Rating</label>
-            <div className="flex gap-1.5 flex-wrap">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
-                <button
-                  key={star}
-                  aria-label={`Rate ${star} out of 10`}
-                  type="button"
-                  onClick={() => setUserRating(userRating === star ? null : star)}
-                  className={`p-1 transition-all hover:scale-110 active:scale-95 ${userRating && userRating >= star ? "text-amber-400" : "text-white/20 hover:text-white/40"}`}
-                >
-                  <Star size={24} fill={userRating && userRating >= star ? "currentColor" : "none"} />
-                </button>
-              ))}
-            </div>
-            {userRating && (
-              <p className="text-xs text-white/30 mt-1">{userRating}/10</p>
-            )}
+            <p className="text-sm font-semibold text-dashboard mb-2">Your Rating</p>
+            <StarRating value={userRating} onChange={setUserRating} label="Your rating" disabled={saving} />
           </div>
 
           {/* Pin to Top Reads */}
@@ -495,38 +446,10 @@ const AddBookPage = () => {
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="pt-4 border-t border-dashboard-border">
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => back.goBack()}
-                className="px-6 py-3 rounded-xl bg-dashboard-muted hover:bg-white/10 text-sm text-white font-medium transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving || !selectedBook || !entityId}
-                className="flex-1 py-3 rounded-xl bg-dashboard-accent hover:opacity-90 text-sm text-white font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-              >
-                {saving || uploadingCover ? (
-                  <>
-                    <Loader2 size={15} className="animate-spin" />
-                    {uploadingCover ? "Uploading cover..." : "Saving..."}
-                  </>
-                ) : (
-                  <>
-                    <Check size={15} />
-                    {isEdit ? "Save Changes" : "Add to List"}
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
+          {uploadingCover && <p className="flex items-center gap-2 text-xs text-dashboard-muted"><Loader2 size={12} className="animate-spin" /> Uploading cover...</p>}
         </div>
       )}
-      </div>
+    </AddItemPage>
     </div>
   );
 };
@@ -534,8 +457,8 @@ const AddBookPage = () => {
 type ManualBookDraft = { title: string; authors: string; year: string; publisher: string; pages: string; description: string };
 
 /** The manual path, for a book Google Books cannot find (or when its key is not set). */
-function ManualBookForm({ onSubmit, onCancel }: { onSubmit: (draft: ManualBookDraft) => Promise<void>; onCancel: () => void }) {
-  const [draft, setDraft] = useState<ManualBookDraft>({ title: "", authors: "", year: "", publisher: "", pages: "", description: "" });
+function ManualBookForm({ onSubmit, onCancel, initialTitle = "" }: { onSubmit: (draft: ManualBookDraft) => Promise<void>; onCancel: () => void; initialTitle?: string }) {
+  const [draft, setDraft] = useState<ManualBookDraft>({ title: initialTitle, authors: "", year: "", publisher: "", pages: "", description: "" });
   const [submitting, setSubmitting] = useState(false);
   const field = "w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-amber-400/50 transition-colors";
   const set = (key: keyof ManualBookDraft) => (event: { target: { value: string } }) => setDraft(prev => ({ ...prev, [key]: event.target.value }));

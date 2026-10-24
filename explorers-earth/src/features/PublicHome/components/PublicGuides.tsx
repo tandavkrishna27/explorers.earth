@@ -1,4 +1,5 @@
 import { memo, useMemo, useState, useEffect, useRef, type CSSProperties } from "react";
+import { useTranslation } from "react-i18next";
 import { usePublicCategoryThemeStyles } from "./PublicCategoryThemeContext";
 import { useParams, useNavigate, useOutletContext, useLocation } from "react-router-dom";
 import GuideCardSkeleton from "../../../components/ui/GuideCardSkeleton";
@@ -42,6 +43,7 @@ const isRenderableGuide = (value: unknown): value is Guide =>
   isNonNullObject(value) && typeof value.documentId === "string" && typeof value.Title === "string";
 
 const PublicGuides = memo(() => {
+  const { t } = useTranslation();
   const categoryStyles = usePublicCategoryThemeStyles();
   const { username } = useParams();
   const navigate = useNavigate();
@@ -617,7 +619,7 @@ const PublicGuides = memo(() => {
                               {guide.Guide_Type && (
                                 <>
                                   <span className="text-white/40">•</span>
-                                  <span>{guide.Guide_Type}</span>
+                                  <span>{t(`dashboard.wp7.guideType.${guide.Guide_Type}`, guide.Guide_Type)}</span>
                                 </>
                               )}
                               {guide.Budget_Type && (
@@ -773,7 +775,7 @@ const PublicGuides = memo(() => {
                               {guide.Guide_Type && (
                                 <>
                                   <span className="text-white/40">•</span>
-                                  <span>{guide.Guide_Type}</span>
+                                  <span>{t(`dashboard.wp7.guideType.${guide.Guide_Type}`, guide.Guide_Type)}</span>
                                 </>
                               )}
                             </div>
@@ -866,7 +868,7 @@ const PublicGuides = memo(() => {
                       <option value="">All Types</option>
                       {filterOptions.guideTypes.map((type) => (
                         <option key={type} value={type}>
-                          {type}
+                          {t(`dashboard.wp7.guideType.${type}`, type)}
                         </option>
                       ))}
                     </select>
@@ -1010,7 +1012,7 @@ const PublicGuides = memo(() => {
                     <option value="">All Types</option>
                     {filterOptions.guideTypes.map((type) => (
                       <option key={type} value={type}>
-                        {type}
+                        {t(`dashboard.wp7.guideType.${type}`, type)}
                       </option>
                     ))}
                   </select>

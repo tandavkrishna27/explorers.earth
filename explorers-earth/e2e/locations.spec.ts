@@ -1,6 +1,10 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Browser } from '@playwright/test';
 import { setupMockAuthentication } from './setup/auth';
 import { denyHostedEgress } from './setup/deny-hosted-egress';
+import { closeFixture, fixtureState, openFixture } from './setup/category-navigation';
+import { bookFixtureId } from './setup/books-owner-content';
+import { canonicalAccountFixture } from '../src/test/canonicalAccountFixture';
+import { emptyPlaceDetails } from '../../tunes/shared/explorersPlaceContract';
 
 test.beforeEach(async ({ context, page }) => {
   await denyHostedEgress(page);
@@ -579,4 +583,115 @@ test('Flow 8: Locations List and Autocomplete E2E', async ({ page }) => {
   await expect(page.getByText('Recommendation and selected media saved successfully.')).toBeVisible();
   expect(failedResponses).toEqual([]);
   expect(consoleIssues).toEqual([]);
+});
+
+// WP6 (Task 6-8): the four ways to add a place on the shared add page. Owner reads, auth and
+// the taxonomy catalog come from the contained fixture; the nearby endpoint and the two save
+// commands are stubbed here so each case can save and land on the shared list route.
+test.describe('Places add page entry paths', () => {
+  const listId = bookFixtureId('collection', 'places-list');
+  type Harness = Awaited<ReturnType<typeof openPlacesAdd>>;
+  async function openPlacesAdd(browser: Browser, baseURL: string, mapsFixture: Record<string, unknown> = {}) {
+    const fixture = await openFixture(browser, baseURL, fixtureState(), { owner: true });
+    const { context, page } = fixture;
+    await context.addInitScript((value) => { (globalThis as any).__mapsFixture = value; }, mapsFixture);
+    const nearbyRequests: string[] = [];
+    await page.route(url => url.pathname === '/api/explorers/v1/places/nearby', async route => {
+      nearbyRequests.push(route.request().url());
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ source: 'google', places: [
+        { id: 'nearby-1', title: 'Miramar Beach', subtitle: 'Beach', lat: 15.4909, lng: 73.8165 },
+      ] }) });
+    });
+    const created: { entity?: any; recommendation?: any } = {};
+    await page.route(url => url.pathname === '/api/explorers/v1/entities/resolve', async route => {
+      const body = route.request().postDataJSON();
+      created.entity = body;
+      const { title, ...details } = body.details;
+      await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ entity: {
+        id: bookFixtureId('entity', title), kind: 'place', title, details: { ...emptyPlaceDetails(), ...details }, origin: 'manual', providerPlaceId: null,
+      } }) });
+    });
+    await page.route(url => url.pathname === '/api/explorers/v1/recommendations', async route => {
+      if (route.request().method() !== 'POST') return route.fallback();
+      const body = route.request().postDataJSON();
+      created.recommendation = body;
+      await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ recommendation: {
+        id: bookFixtureId('recommendation', body.entityId), accountId: canonicalAccountFixture().id, entityId: body.entityId,
+        category: 'places', userRating: body.userRating ?? null, publicationState: 'published', revision: 1, mediaIds: [],
+      } }) });
+    });
+    await page.goto(`/recommendations/places/${listId}/add`);
+    await expect(page.getByPlaceholder('Search a place or paste coordinates')).toBeVisible();
+    return { fixture, context, page, nearbyRequests, created };
+  }
+  async function saveAndLand({ page, created }: Harness, title?: string) {
+    if (title) await page.getByLabel('Place name').fill(title);
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await page.waitForURL(new RegExp(`/recommendations/places/${listId}$`));
+    return created;
+  }
+
+  test('adds a place by name', async ({ browser, baseURL }) => {
+    const h = await openPlacesAdd(browser, baseURL!, { places: {
+      suggestions: [{ placeId: 'g-fontainhas', main: 'Fontainhas', secondary: 'Panaji, Goa' }],
+      place: { id: 'g-fontainhas', displayName: 'Fontainhas', formattedAddress: 'Panaji, Goa', lat: 15.4989, lng: 73.8278 },
+    } });
+    // The WP5 save path reads the picked Google place's facts once (and its photos); the
+    // fixture answers as Google would, with no photos.
+    const googleReads: string[] = [];
+    await h.page.route(url => url.hostname === 'places.googleapis.com', async route => {
+      googleReads.push(new URL(route.request().url()).pathname);
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+        id: 'g-fontainhas', displayName: { text: 'Fontainhas' }, formattedAddress: 'Panaji, Goa', location: { latitude: 15.4989, longitude: 73.8278 }, photos: [],
+      }) });
+    });
+    await h.page.getByPlaceholder('Search a place or paste coordinates').fill('Fontain');
+    await h.page.getByRole('option', { name: /Fontainhas/ }).click();
+    await expect(h.page.getByRole('status').filter({ hasText: 'Fontainhas' })).toBeVisible();
+    const created = await saveAndLand(h);
+    expect(created.entity.details).toMatchObject({ title: 'Fontainhas', formattedAddress: 'Panaji, Goa', latitude: 15.4989, longitude: 73.8278 });
+    expect(googleReads.every(path => path === '/v1/places/g-fontainhas')).toBe(true);
+    await closeFixture(h.fixture);
+  });
+
+  test('adds a place by coordinates with one nearby lookup per area', async ({ browser, baseURL }) => {
+    const h = await openPlacesAdd(browser, baseURL!);
+    const search = h.page.getByPlaceholder('Search a place or paste coordinates');
+    await search.fill('15.49, 73.82');
+    await expect(h.page.getByText('Pin at 15.4900, 73.8200')).toBeVisible();
+    await expect(h.page.getByRole('option', { name: /Miramar Beach/ })).toBeVisible();
+    await search.fill('15.4901, 73.8201');
+    await expect(h.page.getByText('Pin at 15.4901, 73.8201')).toBeVisible();
+    await expect(h.page.getByRole('option', { name: /Miramar Beach/ })).toBeVisible();
+    expect(h.nearbyRequests).toHaveLength(1);
+    await h.page.getByRole('button', { name: 'Use the pin as a custom place' }).click();
+    const created = await saveAndLand(h, 'Secret cove');
+    expect(created.entity.details).toMatchObject({ title: 'Secret cove', latitude: 15.4901, longitude: 73.8201 });
+    await closeFixture(h.fixture);
+  });
+
+  test('adds a place by my location', async ({ browser, baseURL }) => {
+    const h = await openPlacesAdd(browser, baseURL!);
+    await h.context.grantPermissions(['geolocation']);
+    await h.context.setGeolocation({ latitude: 15.49, longitude: 73.82 });
+    expect(h.nearbyRequests).toHaveLength(0);
+    await h.page.getByRole('button', { name: 'Use my current location' }).click();
+    await expect(h.page.getByRole('option', { name: /Miramar Beach/ })).toBeVisible();
+    expect(h.nearbyRequests).toHaveLength(1);
+    await h.page.getByRole('button', { name: 'Use the pin as a custom place' }).click();
+    const created = await saveAndLand(h, 'Where I stand');
+    expect(created.entity.details).toMatchObject({ latitude: 15.49, longitude: 73.82 });
+    await closeFixture(h.fixture);
+  });
+
+  test('adds a place by map pin', async ({ browser, baseURL }) => {
+    const h = await openPlacesAdd(browser, baseURL!, { click: { lat: 15.55, lng: 73.75 } });
+    await h.page.getByRole('button', { name: 'Pick on map' }).click();
+    await h.page.getByRole('button', { name: 'Fixture map' }).click();
+    await h.page.getByRole('button', { name: 'Use this pin' }).click();
+    const created = await saveAndLand(h, 'Dropped pin');
+    expect(created.entity.details).toMatchObject({ title: 'Dropped pin', latitude: 15.55, longitude: 73.75 });
+    expect(h.nearbyRequests).toHaveLength(0);
+    await closeFixture(h.fixture);
+  });
 });

@@ -17,7 +17,8 @@ import { ownerCollectionPageSchema, ownerRecommendationPageSchema, ownerCollecti
   type OwnerCollectionsRequest, type OwnerRecommendationsRequest, type OwnerCollectionDto, type OwnerRecommendationDto } from '../../../tunes/shared/explorersOwnerContentContract';
 import {ownerTopPicksRequestSchema,ownerTopPickPageSchema,ownerContentSummarySchema,type OwnerTopPicksRequest,type OwnerContentSummary} from '../../../tunes/shared/explorersOwnerContentContract';
 import { z } from 'zod/v3';
-import {taxonomyCatalogQuerySchema,taxonomyCatalogPageSchema,type TaxonomyCatalogPage} from '../../../tunes/shared/explorersTaxonomyContract';
+import {taxonomyCatalogQuerySchema,taxonomyCatalogPageSchema,type TaxonomyCatalogPage,taxonomyCatalogCategorySchema} from '../../../tunes/shared/explorersTaxonomyContract';
+type TaxonomyCatalogCategory=z.infer<typeof taxonomyCatalogCategorySchema>;
 import { createCollectionSchema,createCollectionResultSchema,type CreateCollectionResult,updateCollectionSchema,createRecommendationObjectSchema,createRecommendationSchema,updateRecommendationSchema,reorderCollectionSchema,collectionCoreDtoSchema,contentRevisionSchema,recommendationCoreDtoSchema,apiErrorSchema,contentIdSchema,type CreateCollectionInput,type UpdateCollectionInput,type CreateRecommendationInput,type UpdateRecommendationInput } from '../../../tunes/shared/explorersContract';
 import { editableOwnerCollectionSchema,editableOwnerRecommendationSchema,type EditableOwnerCollection,type EditableOwnerRecommendation } from '../../../tunes/shared/explorersOwnerContentContract';
 import { resolveManualEntitySchema,resolveManualGameSchema,entityCoreDtoSchema,type ResolveManualEntityInput } from '../../../tunes/shared/explorersContract';
@@ -97,7 +98,7 @@ export class ExplorersApiError extends Error {
 }
 
 export type CompleteTaxonomyCatalog=Readonly<Omit<TaxonomyCatalogPage,'items'|'nextCursor'>&{complete:true;items:readonly TaxonomyCatalogPage['items'][number][];nextCursor:null;accountId:string;generation:number}>;
-async function taxonomyPage(input:{category:'places'|'people';locale?:string;limit?:number;cursor?:string},signal?:AbortSignal):Promise<TaxonomyCatalogPage>{
+async function taxonomyPage(input:{category:TaxonomyCatalogCategory;locale?:string;limit?:number;cursor?:string},signal?:AbortSignal):Promise<TaxonomyCatalogPage>{
  const query=taxonomyCatalogQuerySchema.parse({...input,...(input.limit===undefined?{}:{limit:String(input.limit)})});
  let page:TaxonomyCatalogPage;
  try{page=await ownerRead('/catalog/taxonomy',query,taxonomyCatalogPageSchema,signal,true);}catch(error){
@@ -107,7 +108,7 @@ async function taxonomyPage(input:{category:'places'|'people';locale?:string;lim
  if(page.category!==query.category||page.requestedLocale!==(query.locale??null))throw new ExplorersApiError(409,'CONFLICT','Catalog response changed; retry loading sectors');
  return page;
 }
-async function completeTaxonomyCatalog(input:{category:'places'|'people';locale?:string},signal?:AbortSignal):Promise<CompleteTaxonomyCatalog>{
+async function completeTaxonomyCatalog(input:{category:TaxonomyCatalogCategory;locale?:string},signal?:AbortSignal):Promise<CompleteTaxonomyCatalog>{
  const initial=useAuthStore.getState(),controller=new AbortController();
  const isCurrent=()=>{const now=useAuthStore.getState();return now.isAuthenticated&&now.accountId===initial.accountId&&now.generation===initial.generation;};
  const stop=()=>controller.abort(),check=()=>{if(controller.signal.aborted||!isCurrent())throw new DOMException('Catalog owner changed','AbortError');};
