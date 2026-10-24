@@ -3,12 +3,21 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (_k: string, d: string, o?: Record<string, string>) => d.replace(/{{(\w+)}}/g, (_m, k) => o?.[k] ?? "") }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+const manageLinked = vi.hoisted(() => vi.fn((_props: { collectionId: string; rolesEnabled?: boolean }) => null));
+vi.mock("../OwnerListLinks", () => ({ ManageLinkedLists: manageLinked }));
 import ManageTab from "../ManageTab";
 import { adapterFixture } from "./adapterFixture";
 
 const renderTab = (over = {}) => { const adapter = adapterFixture(over); render(<MemoryRouter><ManageTab adapter={adapter} /></MemoryRouter>); return adapter; };
 
 describe("ManageTab", () => {
+  it("mounts Linked lists with roles for a guide only (LNK-08)", () => {
+    renderTab({ category: "guides" });
+    expect(manageLinked.mock.lastCall?.[0]).toMatchObject({ collectionId: "list_1", rolesEnabled: true });
+    renderTab({ category: "movies" });
+    expect(manageLinked.mock.lastCall?.[0]).toMatchObject({ rolesEnabled: false });
+  });
+
   it("saves name and description on Save details", async () => {
     const a = renderTab();
     fireEvent.change(screen.getByLabelText("List name"), { target: { value: "Cosy movies" } });

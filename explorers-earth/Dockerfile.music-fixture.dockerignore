@@ -673,7 +673,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Guides/GuideEditor/DayStrip.tsx
 !explorers-earth/src/features/Guides/GuideEditor/GooglePlaceResults.tsx
 !explorers-earth/src/features/Guides/GuideEditor/GuideEditorPage.tsx
-!explorers-earth/src/features/Guides/GuideEditor/LinkedListsBlock.tsx
 !explorers-earth/src/features/Guides/GuideEditor/MyListsPanel.tsx
 !explorers-earth/src/features/Guides/GuideEditor/PlanChips.tsx
 !explorers-earth/src/features/Guides/GuideEditor/SmartAddBox.tsx

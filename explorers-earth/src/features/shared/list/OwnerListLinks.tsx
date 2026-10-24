@@ -19,13 +19,13 @@ import { LIST_LINKS_KEY, useAllMyLists, useListLinkState, useListLinks } from ".
 function useHasQueryClient() { return useContext(QueryClientContext) !== undefined; }
 
 /** LNK-03/05. The "Linked lists" section under a list's items. */
-export function LinkedListsUnderItems({ collectionId, originLabel }: { collectionId: string | null | undefined; originLabel?: string }) {
+export function LinkedListsUnderItems({ collectionId, originLabel, readOnly }: { collectionId: string | null | undefined; originLabel?: string; readOnly?: boolean }) {
   if (!useHasQueryClient() || !collectionId) return null;
-  return <UnderItems collectionId={collectionId} originLabel={originLabel} />;
+  return <UnderItems collectionId={collectionId} originLabel={originLabel} readOnly={readOnly} />;
 }
-function UnderItems({ collectionId, originLabel }: { collectionId: string; originLabel?: string }) {
+function UnderItems({ collectionId, originLabel, readOnly }: { collectionId: string; originLabel?: string; readOnly?: boolean }) {
   const state = useListLinkState(collectionId).data;
-  return state ? <LinkedListsSection linkedLists={state.linkedLists} originLabel={originLabel ?? state.title} /> : null;
+  return state ? <LinkedListsSection linkedLists={state.linkedLists} originLabel={originLabel ?? state.title} readOnly={readOnly} /> : null;
 }
 
 export function showLinkToast(note: LinkToast) {

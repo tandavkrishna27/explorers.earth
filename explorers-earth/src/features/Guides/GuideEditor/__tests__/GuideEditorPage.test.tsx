@@ -17,6 +17,8 @@ vi.mock('../../../../components/controls/BottomAddButton', () => ({default: ({la
 vi.mock('../../../shared/list/ShareTab', () => ({default: () => <div>share-tab</div>}));
 vi.mock('../../../shared/list/ManageTab', () => ({default: () => <div>manage-tab</div>}));
 vi.mock('../MyListsPanel', () => ({default: () => <aside>panel</aside>}));
+vi.mock('../../../shared/list/OwnerListLinks', () => ({LinkedListsUnderItems: ({collectionId, readOnly}: {collectionId: string; readOnly?: boolean}) =>
+ <div>{`linked-lists ${collectionId} ${readOnly ? 'read-only' : 'editable'}`}</div>}));
 import GuideEditorPage from '../GuideEditorPage';
 afterEach(cleanup);
 // jsdom has no scrollIntoView; DayStrip jumps to the selected day with it.
@@ -32,6 +34,10 @@ describe('GuideEditorPage', () => {
   expect(screen.getByText('share-tab')).toBeVisible();
   await userEvent.click(screen.getByRole('tab', {name: 'Plan'}));
   expect(screen.getByRole('region', {name: 'Day 1'})).toBeVisible();
+ });
+ it('Plan shows the guide linked lists read-only (LNK-08)', () => {
+  at('/recommendations/guides/g1');
+  expect(screen.getByText('linked-lists g1 read-only')).toBeVisible();
  });
  it('phone bottom button opens the add box for the selected day', async () => {
   at('/recommendations/guides/g1');
