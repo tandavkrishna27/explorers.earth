@@ -4,7 +4,7 @@ import useAuthStore from '../../../../store/store';
 const id=(n:number)=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const account=id(1),list=id(2),entity=id(3),recommendation=id(4),term=id(5);
 const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status});
-const collection={id:list,accountId:account,category:'apps',title:'Tools',slug:'tools',visibility:'private',publicationState:'draft',revision:4,description:null,heading:null,coverMediaId:null,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9'};
+const collection={id:list,accountId:account,category:'apps',title:'Tools',slug:'tools',visibility:'private',publicationState:'draft',revision:4,description:null,heading:null,coverMediaId:null,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',linkedLists:[]};
 const core={id:recommendation,accountId:account,category:'apps',entityId:entity,userRating:null,publicationState:'draft',revision:1,mediaIds:[]};
 const details={appUrl:'https://apps.example/notion',developer:null,logoUrl:null,description:null,downloadUrl:null,priceTier:null,platforms:[],otherLinks:[]};
 const draft=(curatedTermId?:string|null):ManualAppDraft=>({title:'Notion',...details,note:null,userRating:null,mediaIds:[],screenshotMediaIds:[],...(curatedTermId===undefined?{}:{curatedTermId})});

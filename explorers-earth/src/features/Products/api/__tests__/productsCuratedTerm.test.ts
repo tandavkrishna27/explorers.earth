@@ -5,7 +5,7 @@ import {emptyProductOffer} from '../../../../../../tunes/shared/explorersProduct
 const id=(n:number)=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const account=id(1),list=id(2),entity=id(3),recommendation=id(4),term=id(5);
 const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status});
-const collection={id:list,accountId:account,category:'products',title:'Gear',slug:'gear',visibility:'private',publicationState:'draft',revision:4,description:null,heading:null,coverMediaId:null,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9'};
+const collection={id:list,accountId:account,category:'products',title:'Gear',slug:'gear',visibility:'private',publicationState:'draft',revision:4,description:null,heading:null,coverMediaId:null,archived:false,displayOrder:0,pinOrder:null,categoryRevision:'9',linkedLists:[]};
 const core={id:recommendation,accountId:account,category:'products',entityId:entity,userRating:null,publicationState:'draft',revision:1,mediaIds:[]};
 const details={productUrl:'https://shop.example/p',brand:null,logoUrl:null,description:null,specifications:[],imageUrls:[]};
 const draft=(curatedTermId?:string|null):ManualProductDraft=>({title:'Shoe',...details,offer:emptyProductOffer(),note:null,userRating:null,mediaIds:[],...(curatedTermId===undefined?{}:{curatedTermId})});
