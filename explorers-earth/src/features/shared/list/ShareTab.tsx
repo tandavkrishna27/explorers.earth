@@ -41,14 +41,14 @@ export default function ShareTab({ adapter }: { adapter: ListPageAdapter }) {
           {t("dashboard.wp3b.shareDraft", "Publish this list to share it. Only you can see drafts.")}
         </p>
       )}
-      <div className="grid gap-2 rounded-2xl border border-white/10 bg-[#151a25] p-4">
+      <div className="grid gap-2 rounded-2xl border border-white/10 bg-dashboard-sidebar p-4">
         <h2 className="text-sm font-semibold">{t("dashboard.wp3b.shareTitle", "Share this list")}</h2>
         <div className="flex gap-2">
           <input
             readOnly
             value={list.publicUrl}
             aria-label={t("dashboard.wp3b.listLink", "List link")}
-            className="min-w-0 flex-1 rounded-lg border border-white/10 bg-[#0b0f15] px-3 py-2 text-xs"
+            className="min-w-0 flex-1 rounded-lg border border-white/10 bg-dashboard-muted px-3 py-2 text-xs"
           />
           <button type="button" onClick={copy} disabled={!isPublic} className="min-h-11 rounded-xl bg-blue-400 px-4 text-white disabled:opacity-50">
             {t("dashboard.wp3b.copyLink", "Copy link")}

@@ -466,21 +466,6 @@ describe('ordinary category headers use verified navigation', () => {
     expect(h.navigation.snapshot?.visibility.public_movie).toBe('Yes');
     expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_movie', 'public_books']);
   });
-  it('Favorites per-list Visibility never changes category visibility or saved pins', async () => {
-    const list = { ...listFixture.recommendationLists[0], recommended_places: [{ documentId: 'p1' }] };
-    useCityStore.setState({ selectedCity: list });
-    const update = vi.mocked(explorersApiClient.updateMyCollection);
-    update.mockResolvedValue({ id: 'place-list', revision: 2 } as never);
-    const h = surfaceHarness(<Favorites />, { lists: { recommendationLists: [list] } }); await h.ready();
-    fireEvent.click((await screen.findAllByText('My places'))[0]);
-    const control = await waitFor(() => { const node = document.querySelector('[data-walkthrough="togglePublish"] input'); if (!node) throw new Error('Waiting for list details'); return node; });
-    fireEvent.click(control);
-    // Taking one list out of public view is a list command, not an account write.
-    await waitFor(() => expect(update.mock.calls.some(call => (call[0] as { resourceId: string }).resourceId === PLACE_LIST_ID
-      && (call[1] as { visibility?: string }).visibility === 'private')).toBe(true));
-    expect(h.writes).toEqual([]);
-    expect(h.navigation.snapshot?.visibility.public_recommendations).toBe('Yes');
-  });
 });
 describe('Settings verified ordinary publication', () => {
   beforeEach(async () => { loginSurface(); await i18n.use(initReactI18next).init({ lng: 'en', resources: { en: { translation: english } } }); vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 404 }))); });

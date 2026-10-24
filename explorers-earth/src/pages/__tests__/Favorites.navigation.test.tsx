@@ -46,7 +46,8 @@ import Favorites from "../Favorites";
 
 function Probe() { const l = useLocation(); return <output data-testid="url">{l.pathname + l.search}</output>; }
 function renderAt(url: string) {
-  return render(<MemoryRouter initialEntries={[url]}><Routes><Route path="/recommendations/places" element={<><Favorites /><Probe /></>} /></Routes></MemoryRouter>);
+  return render(<MemoryRouter initialEntries={[url]}><Routes><Route path="/recommendations/places" element={<><Favorites /><Probe /></>} />
+    <Route path="/recommendations/places/:listId" element={<Probe />} /></Routes></MemoryRouter>);
 }
 const listA = { documentId: "location-a", List_Name: "Alpha City", slug: "alpha", Visibility: true, recommended_places: [], List_Name_Details: {} };
 const listB = { documentId: "location-b", List_Name: "Beta City", slug: "beta", Visibility: false, recommended_places: [], List_Name_Details: {} };
@@ -73,12 +74,11 @@ describe("Favorites open list in the URL (OWN-05, WP6)", () => {
     expect(screen.getByTestId("url").textContent).toBe("/recommendations/places");
   });
 
-  it("opens a list in place from the Places page", async () => {
+  it("opens a list card on the shared list page; the legacy in-page view is retired", async () => {
     renderAt("/recommendations/places");
-    await waitFor(() => expect(h.selected?.documentId).toBe("location-a"));
     fireEvent.click(screen.getAllByText("Beta City")[0]);
-    await waitFor(() => expect(h.selected?.documentId).toBe("location-b"));
-    expect(screen.getByTestId("url").textContent).toBe("/recommendations/places");
+    await waitFor(() => expect(screen.getByTestId("url").textContent).toBe("/recommendations/places/location-b"));
+    expect(document.getElementById("step-2-list-details")).toBeNull();
   });
 });
 
@@ -98,10 +98,4 @@ describe("Favorites tab switch (OWN-06)", () => {
     expect(screen.getByTestId("earth-loader")).toBeInTheDocument();
   });
 
-  it("switching to Manage does not refetch", async () => {
-    renderAt("/recommendations/places");
-    fireEvent.click(screen.getAllByText("Alpha City")[0]);
-    fireEvent.click(screen.getByRole("button", { name: "Manage" }));
-    expect(h.refetch).not.toHaveBeenCalled();
-  });
 });

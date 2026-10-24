@@ -17,6 +17,15 @@ describe("ListCard", () => {
     expect(h.onOpen).toHaveBeenCalledWith("l1");
     expect(screen.queryByText(/^Open$/)).toBeNull();
   });
+  it("never says No items yet beside a non-zero count, even without covers (UAT)", () => {
+    wrap(<ListCard category="movies" list={{ ...model, itemCount: 1, covers: [] }} {...handlers()} />);
+    expect(screen.getByText("1 movie")).toBeInTheDocument();
+    expect(screen.queryByText("No items yet")).toBeNull();
+  });
+  it("shows No items yet only for an empty list", () => {
+    wrap(<ListCard category="movies" list={{ ...model, itemCount: 0, covers: [] }} {...handlers()} />);
+    expect(screen.getByText("No items yet")).toBeInTheDocument();
+  });
   it("shows badge, count and pinned count", () => {
     wrap(<ListCard category="movies" list={model} {...handlers()} />);
     expect(screen.getByText("Draft")).toBeInTheDocument();

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- captured template props */
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { act, render, screen } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { I18nextProvider } from "react-i18next";
 import { englishI18n } from "../../test/englishI18n";
 
@@ -37,5 +37,15 @@ describe("Favorites category view", () => {
     expect(props.topPicks.map((p: { id: string }) => p.id)).toEqual(["c1"]);
     expect(props.newList.kind).toBe("dialog");
     expect(typeof props.newList.create).toBe("function");
+  });
+
+  it("opens a newly created list on the shared list page route, like every other category (UAT A)", async () => {
+    const { default: Favorites } = await import("../Favorites");
+    render(<I18nextProvider i18n={englishI18n}><MemoryRouter initialEntries={["/recommendations/places"]}><Routes>
+      <Route path="/recommendations/places" element={<Favorites />} />
+      <Route path="/recommendations/places/:listId" element={<div data-testid="shared-list-page" />} />
+    </Routes></MemoryRouter></I18nextProvider>);
+    act(() => { captured[captured.length - 1].newList.onCreated("new-list"); });
+    expect(screen.getByTestId("shared-list-page")).toBeInTheDocument();
   });
 });

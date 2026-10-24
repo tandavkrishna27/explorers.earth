@@ -58,7 +58,8 @@ function DayCard({day, index, days, startDate, addBox, onDropNew, readOnly, ...a
  };
  const item = (it: GuideDayItem) => {
   position += 1;
-  const at = position;
+  // Headed groups are shown in time-of-day order; moves and drops still address the stored position.
+  const at = headed ? day.items.indexOf(it) : position;
   return <ItemRow key={it.localId} item={it} index={at} day={day} days={days} startDate={startDate} onDrop={dropAt(at)} number={headed ? undefined : at + 1} readOnly={readOnly} {...a} />;
  };
  return (

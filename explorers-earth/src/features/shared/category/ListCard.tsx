@@ -114,7 +114,8 @@ export default function ListCard({ category, list, busy, dragging, over, picked,
           <img key={src} src={src} alt="" loading="lazy" className={`${coverClass} rounded-[5px] object-cover bg-gradient-to-br from-slate-700 to-slate-900`} />
         ))}</div>
       ) : (
-        <div className="flex h-12 items-center justify-center rounded-lg border border-dashed border-white/10 text-[11px] text-gray-400">{t("dashboard.wp3a.card.noItems")}</div>
+        // The empty state follows itemCount (the same source as the count line); items without covers get a blank strip.
+        <div className="flex h-12 items-center justify-center rounded-lg border border-dashed border-white/10 text-[11px] text-gray-400">{empty ? t("dashboard.wp3a.card.noItems") : null}</div>
       )}
       <div className="flex items-center gap-2 text-[11px] text-gray-400">
         <span>{t(`dashboard.wp3a.itemCount.${category}`, { count: list.itemCount })}</span>

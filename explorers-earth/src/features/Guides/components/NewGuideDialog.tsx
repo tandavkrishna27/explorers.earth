@@ -1,4 +1,5 @@
 import {useState} from 'react';
+import {createPortal} from 'react-dom';
 import {useNavigate, useLocation} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
 import {createTripGuide} from '../api/guideCreation';
@@ -35,8 +36,9 @@ function NewGuideForm({onOpenChange, defaultTitle = ''}: Omit<Props, 'open'>) {
    setError(t('dashboard.wp9.createFailed', {defaultValue: "Couldn't create the guide. Try again."}));
   } finally {setSaving(false);}
  };
- return (
-  <div role="dialog" aria-modal="true" aria-labelledby="new-guide-title" className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 md:items-center"
+ // Portalled to <body>: a transformed page ancestor would otherwise pin this "fixed" overlay off-centre.
+ return createPortal(
+  <div role="dialog" aria-modal="true" aria-labelledby="new-guide-title" className="dashboard-theme fixed inset-0 z-[60] flex items-end justify-center bg-dashboard-overlay md:items-center"
    onKeyDown={(e) => {if (e.key === 'Escape') onOpenChange(false);}}>
    <form className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-dashboard bg-dashboard-modal p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-dashboard md:rounded-2xl [&_input:not([type=radio])]:border-dashboard [&_input:not([type=radio])]:bg-transparent [&_input]:text-dashboard" onSubmit={(e) => {e.preventDefault(); if (valid && !saving) void submit();}}>
     <h2 id="new-guide-title" className="text-lg font-semibold">{t('dashboard.wp9.newGuide', {defaultValue: 'New guide'})}</h2>
@@ -71,6 +73,7 @@ function NewGuideForm({onOpenChange, defaultTitle = ''}: Omit<Props, 'open'>) {
       {saving ? '…' : t('dashboard.wp9.createGuide', {defaultValue: 'Create guide'})}</button>
     </div>
    </form>
-  </div>
+  </div>,
+  document.body,
  );
 }
