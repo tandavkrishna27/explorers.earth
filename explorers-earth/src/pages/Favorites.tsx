@@ -26,7 +26,7 @@ import SwitchButton from "../components/ui/SwitchButton";
 import useAuthStore from "../store/store";
 import { useCityStore } from "../store/useCityStore";
 import { IMAGE_CONFIG } from "../config";
-import { Navigate, useLocation, useSearchParams } from "react-router-dom";
+import { Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { PLACE_LIST_PARAM, placeListPath } from "../features/Favorites/placeListRoute";
 import { CategoryVisibilityModal } from "../components/CategoryVisibilityModal";
 import SEO from "../components/SEO";
@@ -442,23 +442,9 @@ const FavoritesHome = memo(() => {
     if (cover.coverImportFailed) toast.error(t("dashboard.recommendations.toastMessages.listCoverImportFailed"));
     return created;
   };
-  // Open directly into the new list's detail view (BUG-3 parity with Movies), on the
-  // Recommendations tab where the add-place affordance lives.
-  const openCreatedList = async (id: string) => {
-    const refreshed = (await refetchCities()) as { data?: { recommendationLists?: selectedCity[] } } | undefined;
-    const created = refreshed?.data?.recommendationLists?.find((list) => list.documentId === id);
-    setSelectedCity(created ?? ({ documentId: id } as selectedCity));
-    // The refresh is asynchronous: until the owner read carries the new list, the selection is a stub.
-    pendingCreatedList.current = created ? null : id;
-    setActiveTab(t("dashboard.recommendations.recommendationsTab"));
-    setStep(2);
-  };
-  const pendingCreatedList = useRef<string | null>(null);
-  useEffect(() => {
-    const pending = pendingCreatedList.current;
-    const created = pending ? cities?.recommendationLists?.find((list: any) => list.documentId === pending) : undefined;
-    if (created) { pendingCreatedList.current = null; setSelectedCity(created as unknown as selectedCity); }
-  }, [cities, setSelectedCity]);
+  // Like every other category, a new list opens on the list page route (not the legacy step-2 view).
+  const navigate = useNavigate();
+  const openCreatedList = (id: string) => navigate(`/recommendations/places/${id}`, { state: { justCreatedList: true } });
   const placeCards = useMemo(() => [...((cities?.recommendationLists as any[]) ?? [])]
     .sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0))
     .map((city: any) => ({ id: city.documentId, title: city.List_Name ?? "", status: city.Visibility ? ("public" as const) : ("draft" as const),
@@ -874,7 +860,7 @@ const FavoritesHome = memo(() => {
               onOpenList={(id) => { const city = filteredCities.find((c: any) => c.documentId === id); if (city) { setSelectedCity(city as unknown as selectedCity); setStep(2); } }}
               onRetry={() => { void refetchCities(); }}
               onChanged={() => { void refetchCities(); archivedPlaces.reload(); }}
-              newList={{ kind: "dialog", username: canonicalAccount.data?.handle ?? "", onCreated: (id) => { void openCreatedList(id); }, create: placesCreate }}
+              newList={{ kind: "dialog", username: canonicalAccount.data?.handle ?? "", onCreated: openCreatedList, create: placesCreate }}
             />
           )}
         </div>

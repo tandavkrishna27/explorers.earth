@@ -33,14 +33,14 @@ export default function ListPage({ adapter, onMount }: Props) {
 
   if (!list && adapter.error) {
     return (
-      <DashboardPageContainer className="grid gap-3 py-4"><div role="alert" className="grid gap-3">
+      <DashboardPageContainer className="grid gap-3 py-4 text-dashboard"><div role="alert" className="grid gap-3">
         <p>{t("dashboard.wp3b.listLoadFailed", "This list didn't load.")}</p>
         <button type="button" onClick={adapter.retry} className="justify-self-start rounded-xl bg-blue-400 px-4 py-2 text-white">{t("dashboard.wp3b.retry", "Try again")}</button>
       </div></DashboardPageContainer>
     );
   }
   return (
-    <DashboardPageContainer className="grid gap-3 pb-24">
+    <DashboardPageContainer className="grid gap-3 pb-24 text-dashboard">
       <button type="button" onClick={back} className="justify-self-start text-[10px] uppercase tracking-[.08em] text-gray-400">
         ‹ {t("dashboard.wp3b.backTo", "Back to {{category}}", { category: adapter.categoryLabel }).replace("{{category}}", adapter.categoryLabel)}
       </button>

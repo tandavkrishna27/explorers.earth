@@ -66,7 +66,7 @@ export default function GuideEditorPage() {
  const owner = useGuidesOwner(guideId, true, {keepWhileRefreshing: true});
  if (owner.loading && !owner.observation) return <div aria-busy="true" className="mx-auto max-w-5xl space-y-4 p-4">{[0, 1].map((i) => <div key={i} className="h-40 animate-pulse rounded-xl bg-gray-100" />)}</div>;
  if (owner.error || !owner.observation || !owner.guide) return (
-  <div className="mx-auto max-w-6xl px-4"><BackToOrigin />
+  <div className="mx-auto max-w-6xl px-4 text-dashboard"><BackToOrigin />
    <div role="alert" className="py-6">{t('dashboard.wp9.loadFailed', {defaultValue: "Couldn't load this guide."})}{' '}
     <button type="button" onClick={owner.refresh} className="underline">{t('dashboard.wp9.retry', {defaultValue: 'Retry'})}</button></div></div>);
  return <Editor key={guideId} initial={owner.observation} guide={owner.guide as unknown as GuideRow}
@@ -116,7 +116,7 @@ function Editor({initial, guide, list, refresh}: {initial: GuideObservation; gui
   }
  };
  return (
-  <div className="mx-auto max-w-6xl px-4 pb-28">
+  <div className="mx-auto max-w-6xl px-4 pb-28 text-dashboard">
    <BackToOrigin />
    {sample.isSample && <div className="mt-2"><SampleListBanner part="badge" collection={guide} listId={collectionId} /></div>}
    <header className="mt-2 flex items-start gap-3">
@@ -156,7 +156,7 @@ function Editor({initial, guide, list, refresh}: {initial: GuideObservation; gui
        <p className="rounded-lg border border-dashed p-4 text-sm text-gray-600">
         {t('dashboard.wp9.sectionSoon', {defaultValue: 'This section opens in the guide details editor for now.'})}</p>
       )}
-      {!readOnly && <button type="button" onClick={() => void plan.addDay()} className="mt-4 hidden min-h-[44px] rounded-lg border border-dashed px-4 text-sm md:inline-block">
+      {!readOnly && <button type="button" onClick={() => void plan.addDay()} className="mt-4 hidden min-h-[44px] rounded-lg border border-dashed border-dashboard-border px-4 text-sm text-dashboard md:inline-block">
        {t('dashboard.wp9.addDay', {defaultValue: '+ Add day'})}</button>}
       {/* LNK-08: read-only on Plan; Attach, Detach and roles live in Manage. */}
       <LinkedListsUnderItems collectionId={collectionId} originLabel={guide.Title} readOnly />
