@@ -152,6 +152,23 @@ describePg("list link commands (LNK-02, LNK-04, OWN-13)", () => {
     expect((await pool.query("SELECT count(*)::int n FROM collection_list_links WHERE host_collection_id=$1", [mine.id])).rows[0].n).toBe(0);
   });
 
+  it("refuses to link a sample list from either end, or create-and-attach under one, with 422 and writes nothing (WP11)", async () => {
+    const owner = await account(); const sample = await list(owner, "books"), ordinary = await list(owner, "apps");
+    await pool.query("UPDATE collections SET is_sample=true WHERE id=$1", [sample.id]);
+    const links = async () => (await pool.query("SELECT count(*)::int n FROM collection_list_links WHERE account_id=$1", [owner])).rows[0].n;
+    for (const [host, linked] of [[sample, ordinary], [ordinary, sample]]) {
+      await expect(repository.writeListLink(owner, {hostCollectionId: host.id, expectedHostRevision: await categoryRevision(owner, host.category),
+        linkedCollectionId: linked.id, expectedLinkedRevision: await categoryRevision(owner, linked.category), role: null} as never, key()))
+        .rejects.toMatchObject({status: 422, code: "SAMPLE_LINK_REFUSED"});
+    }
+    const slug = `sample-child-${key()}`;
+    await expect(repository.createCollection(owner, {category: "products", title: "Child", slug,
+      attachTo: {hostCollectionId: sample.id, expectedHostRevision: await categoryRevision(owner, "books"), role: null}} as never, key()))
+      .rejects.toMatchObject({status: 422, code: "SAMPLE_LINK_REFUSED"});
+    expect(await links()).toBe(0);
+    expect((await pool.query("SELECT count(*)::int n FROM collections WHERE account_id=$1 AND slug=$2", [owner, slug])).rows[0].n).toBe(0);
+  });
+
   it("refuses a stale host revision with 409", async () => {
     const owner = await account(); const s = await list(owner, "books"), t = await list(owner, "apps");
     await expect(repository.writeListLink(owner, {hostCollectionId: s.id, expectedHostRevision: 9999, linkedCollectionId: t.id,
@@ -258,8 +275,10 @@ describePg("public link projection (LNK-07)", () => {
     const host = await list(owner, "places");
     const shown = await list(owner, "products"), draft = await list(owner, "people"), sample = await list(owner, "books"), onward = await list(owner, "apps");
     await publish(owner, host.id); await publish(owner, shown.id); await publish(owner, onward.id);
-    await pool.query("UPDATE collections SET is_sample=true WHERE id=$1", [sample.id]); // samples are always private drafts (0071 CHECK)
     for (const t of [shown, draft, sample]) await attachVia(owner, host, t);
+    // Flagged after linking: the service refuses to link a sample, but the public rule must
+    // hide one even if a row exists in storage. Samples are always private drafts (0071 CHECK).
+    await pool.query("UPDATE collections SET is_sample=true WHERE id=$1", [sample.id]);
     await attachVia(owner, shown, onward);
     const db = await pool.connect();
     try {

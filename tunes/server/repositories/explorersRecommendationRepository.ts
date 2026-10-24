@@ -39,6 +39,10 @@ export class RecommendationFailure extends Error {
 const SAMPLE_CONSTRAINTS:ReadonlySet<string>=new Set(['collections_sample_never_public','recommendations_sample_never_published']);
 export const SAMPLE_PUBLISH_REFUSED_CODE='SAMPLE_PUBLISH_REFUSED';
 const sampleRefusal=()=>new RecommendationFailure(422,SAMPLE_PUBLISH_REFUSAL,SAMPLE_PUBLISH_REFUSED_CODE);
+// WP10 x WP11. A sample is a read-only example until it is made yours, so it never takes part
+// in a link from either end. Storage (S3's insertListLink) does not know about samples.
+export const SAMPLE_LINK_REFUSED_CODE='SAMPLE_LINK_REFUSED';
+const sampleLinkRefusal=()=>new RecommendationFailure(422,"Samples can't be linked",SAMPLE_LINK_REFUSED_CODE);
 const hash=(value:string)=>createHash('sha256').update(value).digest();
 // Hash normalized domain inputs, independent of transport JSON object insertion order.
 function canonical(value:unknown):string {
@@ -289,8 +293,10 @@ export class ExplorersRecommendationRepository {
       // whole create back. The command wrapper already holds both category locks.
       let host:{id:string;category:string}|undefined;
       if(input.attachTo){
-        host=(await db.query('SELECT id,category FROM collections WHERE account_id=$1 AND id=$2 AND archived_at IS NULL',[accountId,input.attachTo.hostCollectionId])).rows[0];
-        if(!host)throw new RecommendationFailure(404,'Resource unavailable');
+        const found=(await db.query('SELECT id,category,is_sample FROM collections WHERE account_id=$1 AND id=$2 AND archived_at IS NULL',[accountId,input.attachTo.hostCollectionId])).rows[0];
+        if(!found)throw new RecommendationFailure(404,'Resource unavailable');
+        if(found.is_sample||input.isSample)throw sampleLinkRefusal();
+        host={id:found.id,category:found.category};
         await lockContentCategories(db,accountId,[input.category,host.category]);
         await this.assertCategoryRevision(db,accountId,host.category,input.attachTo.expectedHostRevision);
       }
@@ -541,9 +547,10 @@ export class ExplorersRecommendationRepository {
   }
   /** Reads both lists' categories, then takes the category locks in sorted order. A missing or foreign list is a 404, never a hint that it exists. */
   private async observeLinkPair(db:PoolClient,accountId:string,hostId:string,linkedId:string){
-    const rows=(await db.query('SELECT id,category FROM collections WHERE account_id=$1 AND id=ANY($2::uuid[])',[accountId,[hostId,linkedId]])).rows as {id:string;category:string}[];
+    const rows=(await db.query('SELECT id,category,is_sample FROM collections WHERE account_id=$1 AND id=ANY($2::uuid[])',[accountId,[hostId,linkedId]])).rows as {id:string;category:string;is_sample:boolean}[];
     const host=rows.find(r=>r.id===hostId),linked=rows.find(r=>r.id===linkedId);
     if(!host||!linked)throw new RecommendationFailure(404,'Resource unavailable');
+    if(host.is_sample||linked.is_sample)throw sampleLinkRefusal();
     await lockContentCategories(db,accountId,[host.category,linked.category]);
     return [host,linked] as const;
   }
