@@ -3,6 +3,7 @@ import { canonicalAccountFixture } from '../../src/test/canonicalAccountFixture'
 import * as contract from '../../../tunes/shared/explorersOwnerContentContract';
 import { emptyMovieDetails } from '../../../tunes/shared/explorersMovieContract';
 import { emptyPlaceContext, emptyPlaceDetails } from '../../../tunes/shared/explorersPlaceContract';
+import { guideAggregateDtoSchema, guideEmptySectionBlocks } from '../../../tunes/shared/explorersGuideContract';
 
 /**
  * WP11 screenshot dataset (opt-in). Layered on the category-navigation fixture: these routes are
@@ -11,9 +12,10 @@ import { emptyPlaceContext, emptyPlaceDetails } from '../../../tunes/shared/expl
  * first-visit SAMPLE lists (isSample:true) with items and sample Top Picks pins, plus the sample
  * commands (make-it-mine, purge). Screens only - no assertions about the server live here.
  */
-type Category = 'movies' | 'places';
+type Category = 'movies' | 'places' | 'guides';
 type Item = { id: string; title: string; year?: string; director?: string; address?: string; lat?: number; lng?: number };
-type SampleList = { id: string; category: Category; title: string; slug: string; isSample: boolean; revision: number; items: Item[] };
+/** A guide's days: each day is a list of note texts (the sample guide carries no saved list items). */
+type SampleList = { id: string; category: Category; title: string; slug: string; isSample: boolean; revision: number; items: Item[]; days?: string[][] };
 
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const account = () => canonicalAccountFixture().id;
@@ -31,9 +33,13 @@ export function sampleDataset() {
     { id: uuid(201), category: 'places', title: 'A weekend in Bengaluru', slug: 'sample-weekend-bengaluru', isSample: true, revision: 1, items: [
       place(1, 'Cubbon Park', 'Kasturba Road, Bengaluru', 12.9763, 77.5929), place(2, 'Vidyarthi Bhavan', 'Gandhi Bazaar, Basavanagudi, Bengaluru', 12.9452, 77.5713),
       place(3, 'Lalbagh Botanical Garden', 'Mavalli, Bengaluru', 12.9507, 77.5848), place(4, 'Church Street', 'Shanthala Nagar, Bengaluru', 12.9752, 77.6046)] },
+    { id: uuid(301), category: 'guides', title: '3 days in Goa', slug: 'sample-3-days-in-goa', isSample: true, revision: 1, items: [], days: [
+      ['Fort Aguada at sunrise', 'Lunch at a beach shack in Candolim', 'Sunset at Chapora Fort'],
+      ['Walk the Latin Quarter, Fontainhas', 'Basilica of Bom Jesus, Old Goa', 'Dinner in Panaji'],
+      ['Spice plantation in Ponda', 'Palolem beach in the evening']] },
   ];
-  // Sample Top Picks pins, one per sample list, in this order.
-  const pins = new Map<Category, string[]>([['movies', [uuid(1001), uuid(1005)]], ['places', [uuid(2001)]]]);
+  // Sample Top Picks pins, one per sample list, in this order. Guides pins only public lists, so none.
+  const pins = new Map<Category, string[]>([['movies', [uuid(1001), uuid(1005)]], ['places', [uuid(2001)]], ['guides', []]]);
   return { lists, pins, writes: [] as { method: string; path: string }[], errors: [] as string[] };
 }
 export type SampleDataset = ReturnType<typeof sampleDataset>;
@@ -76,6 +82,14 @@ export async function installSampleRoutes(context: BrowserContext, origin: strin
     version: 'explorers-owner-content/v2', snapshot: String(revision), snapshotToken: snapshotToken(category),
     expiresAt, items, nextCursor: null, ...extra,
   });
+  // The sample guide's aggregate: one guide-section-blocks/v2 day per entry, each a list of notes.
+  const guideAggregate = (list: SampleList) => guideAggregateDtoSchema.parse({ collectionId: list.id, revision, coverMediaId: null,
+    details: { guideType: null, multiCity: false, numberOfDays: list.days?.length ?? 0, estimatedBudget: null, budgetCurrency: null, budgetType: null,
+      budgetTier: null, startDate: null, bestTimeToVisit: [], categories: [], tags: [], tipsNotes: null, place: { name: 'Goa', address: 'Goa, India', placeId: null, rating: null, ratingsCount: null, lat: 15.2993, lng: 74.124 }, locationEntityId: null },
+    sections: (list.days ?? []).map((notes, displayOrder) => ({ id: uuid(3100 + displayOrder), collectionId: list.id, title: '', description: null, displayOrder,
+      blocks: { ...guideEmptySectionBlocks, items: notes.map((text, n) => ({ kind: 'note', localId: `d${displayOrder}-n${n}`, timeLabel: null, text })) },
+      archived: false, createdAt: new Date(0).toISOString(), updatedAt: new Date(0).toISOString() })),
+    sectionCount: list.days?.length ?? 0, nextCursor: null });
   const json = (body: unknown, status = 200) => ({ status, contentType: 'application/json', body: JSON.stringify(body) });
 
   await context.route(url => url.origin === origin && url.pathname.startsWith(base + '/'), async route => {
@@ -102,6 +116,11 @@ export async function installSampleRoutes(context: BrowserContext, origin: strin
       return route.fulfill(json({ collection: core }));
     }
     if (method !== 'GET') return route.fallback();
+    const guideRead = /^\/collections\/([0-9a-f-]{36})\/guide$/.exec(path);
+    if (guideRead) {
+      const list = findList(guideRead[1]); if (!list || list.category !== 'guides') return route.fallback();
+      return route.fulfill(json({ guide: guideAggregate(list) }));
+    }
     const editableCollection = /^\/collections\/([0-9a-f-]{36})\/editable$/.exec(path);
     if (editableCollection) {
       const list = findList(editableCollection[1]); if (!list) return route.fallback();
@@ -113,10 +132,10 @@ export async function installSampleRoutes(context: BrowserContext, origin: strin
       const entry = findItem(editableItem[1]); if (!entry) return route.fallback();
       return route.fulfill(json({ recommendation: editableRecommendation(entry.list, entry.item) }));
     }
-    const categoryPath = /^\/categories\/(movies|places)\/(content-snapshot|content-snapshot\/validate|memberships|top-picks)$/.exec(path);
+    const categoryPath = /^\/categories\/(movies|places|guides)\/(content-snapshot|content-snapshot\/validate|memberships|top-picks)$/.exec(path);
     const queryCategory = ['/collections', '/recommendations'].includes(path) ? url.searchParams.get('category') : null;
     const category = (categoryPath?.[1] ?? queryCategory) as Category | null;
-    if (category !== 'movies' && category !== 'places') return route.fallback();
+    if (category !== 'movies' && category !== 'places' && category !== 'guides') return route.fallback();
     const stream = categoryPath?.[2] ?? path.slice(1);
     if (stream.startsWith('content-snapshot')) return route.fulfill(json(contract.ownerSnapshotSchema.parse({
       version: 'explorers-owner-content/v2', snapshotToken: snapshotToken(category), revision: String(revision), expiresAt, pinRevision: 1 })));

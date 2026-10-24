@@ -10,6 +10,7 @@ const out = resolve(process.cwd(), '../docs/superpowers/screenshots/wp11');
 mkdirSync(out, { recursive: true });
 const movies = '00000000-0000-4000-8000-000000000101';
 const places = '00000000-0000-4000-8000-000000000201';
+const guide = '00000000-0000-4000-8000-000000000301';
 
 async function open(browser: Parameters<Parameters<typeof test>[1]>[0]['browser'], baseURL: string, width: number) {
   const state = fixtureState();
@@ -103,6 +104,27 @@ for (const width of [1440, 375]) {
       // Places can't pin a sample, so the hero previews the sample's first place.
       await expect(page.getByText(/From the sample list/)).toBeVisible();
       await shot(page, '08-places-category-samples', width);
+    } finally { if (data.errors.length) console.log(data.errors); await closeFixture(handle); }
+  });
+
+  test(`guides sample screens at ${width}px`, async ({ browser, baseURL }) => {
+    const { handle, data } = await open(browser, baseURL!, width);
+    const { page } = handle;
+    try {
+      await page.goto('/recommendations/guides');
+      const card = page.getByTestId('list-card').filter({ hasText: '3 days in Goa' });
+      await expect(card).toBeVisible();
+      await expect(card.getByText('Sample', { exact: true })).toBeVisible();
+      await shot(page, '09-guides-category-samples', width);
+
+      await page.goto(`/recommendations/guides/${guide}`);
+      await expect(page.getByText('A sample to show how a list works.', { exact: false })).toBeVisible();
+      await expect(page.getByRole('heading', { level: 1, name: '3 days in Goa' })).toBeVisible();
+      // Mocks v3: no Add, day/item menus or My lists on a sample guide; reorder stays.
+      await expect(page.getByRole('button', { name: /Add/ })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: /^Actions for/ })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: /^Reorder / }).first()).toBeVisible();
+      await shot(page, '10-guides-sample-detail', width);
     } finally { if (data.errors.length) console.log(data.errors); await closeFixture(handle); }
   });
 }

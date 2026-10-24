@@ -37,6 +37,8 @@ type Props = {
   listTitle?: string;
   /** "3 places": the item count for the Make it mine sheet. */
   itemsLabel?: string;
+  /** Mocks v3 put the badge row above the title and the bar below it: render one part each. */
+  part?: "all" | "badge" | "bar";
 };
 
 /**
@@ -44,17 +46,17 @@ type Props = {
  * Delete sample) for a list or guide page. Renders nothing for an ordinary collection, so a page
  * can mount it unconditionally under its title.
  */
-export function SampleListBanner({ collection, listId, listTitle, itemsLabel, onChanged, remove, onDeleted }: Props) {
+export function SampleListBanner({ collection, listId, listTitle, itemsLabel, onChanged, remove, onDeleted, part = "all" }: Props) {
   const { t } = useTranslation();
   const commands = useSampleCommands(listId, onChanged);
   if (!readIsSample(collection)) return null;
   return (
     <div className="grid gap-2">
-      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400">
+      {part !== "bar" && <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400">
         <SampleBadge />
         <span>{t("samples.onlyYouCantPublish", "Only you can see this · can't be published")}</span>
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-yellow-400/30 bg-yellow-400/[.06] p-3">
+      </div>}
+      {part !== "badge" && <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-yellow-400/30 bg-yellow-400/[.06] p-3">
         <p className="m-0 min-w-0 flex-[1_1_16rem] text-sm text-gray-200">{t("samples.bar", "A sample to show how a list works. Keep it, delete it, or make it yours to edit and publish.")}</p>
         <SampleActions listTitle={listTitle} itemsLabel={itemsLabel}
           onMakeMine={async (name) => {
@@ -65,7 +67,7 @@ export function SampleListBanner({ collection, listId, listTitle, itemsLabel, on
             try { await (remove ?? commands.remove)(); toast.success(t("samples.deletedToast", "Sample deleted")); onDeleted?.(); }
             catch (error) { toast.error((error as Error).message); throw error; }
           }} />
-      </div>
+      </div>}
     </div>
   );
 }

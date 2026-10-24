@@ -21,16 +21,18 @@ export type DayListActions = {
 };
 export type NewItemRef = {recommendationId: string; collectionId: string | null};
 type Props = DayListActions & {days: PlanDay[]; startDate: string | null; addBox?: (sectionId: string) => React.ReactNode;
+ /** WP11: a sample guide keeps reorder but shows no day/item menus or Add until it is made yours. */
+ readOnly?: boolean;
  /** A saved item dragged in from My lists; the page maps it to addItem(sectionId, {kind:'listItem', timeLabel:null, ref}, toIndex). */
  onDropNew?: (sectionId: string, toIndex: number, ref: NewItemRef) => void};
 
 const menuPanel = 'absolute right-0 z-30 rounded-lg border border-white/10 bg-slate-800 p-1 text-white shadow-lg';
 
-export default function DayList({days, startDate, addBox, onDropNew, ...a}: Props) {
- return <div className="space-y-6">{days.map((day, index) => <DayCard key={day.id} day={day} index={index} days={days} startDate={startDate} addBox={addBox} onDropNew={onDropNew} {...a} />)}</div>;
+export default function DayList({days, startDate, addBox, onDropNew, readOnly, ...a}: Props) {
+ return <div className="space-y-6">{days.map((day, index) => <DayCard key={day.id} day={day} index={index} days={days} startDate={startDate} addBox={addBox} onDropNew={onDropNew} readOnly={readOnly} {...a} />)}</div>;
 }
 
-function DayCard({day, index, days, startDate, addBox, onDropNew, ...a}: DayListActions & {day: PlanDay; index: number; days: PlanDay[]; startDate: string | null; addBox?: Props['addBox']; onDropNew?: Props['onDropNew']}) {
+function DayCard({day, index, days, startDate, addBox, onDropNew, readOnly, ...a}: DayListActions & {day: PlanDay; index: number; days: PlanDay[]; startDate: string | null; addBox?: Props['addBox']; onDropNew?: Props['onDropNew']; readOnly?: boolean}) {
  const {t, i18n} = useTranslation();
  const [menu, setMenu] = useState(false);
  const name = dayChipLabel(index, startDate, i18n.language);
@@ -57,7 +59,7 @@ function DayCard({day, index, days, startDate, addBox, onDropNew, ...a}: DayList
  const item = (it: GuideDayItem) => {
   position += 1;
   const at = position;
-  return <ItemRow key={it.localId} item={it} index={at} day={day} days={days} startDate={startDate} onDrop={dropAt(at)} number={headed ? undefined : at + 1} {...a} />;
+  return <ItemRow key={it.localId} item={it} index={at} day={day} days={days} startDate={startDate} onDrop={dropAt(at)} number={headed ? undefined : at + 1} readOnly={readOnly} {...a} />;
  };
  return (
   <section id={`guide-day-${day.id}`} aria-label={name} className="rounded-xl border border-white/10 bg-white/5 p-4 text-white"
@@ -66,7 +68,7 @@ function DayCard({day, index, days, startDate, addBox, onDropNew, ...a}: DayList
     <span aria-hidden className="cursor-grab text-gray-400">⠿</span>
     <h3 className="font-semibold">{name}</h3>
     {day.title && <span className="truncate text-gray-400" title={day.title}>{day.title}</span>}
-    <span className="relative ml-auto">
+    {!readOnly && <span className="relative ml-auto">
      <button type="button" aria-haspopup="menu" aria-expanded={menu} aria-label={t('dashboard.wp9.dayOptions', {defaultValue: '{{day}} options', day: name})}
       onClick={() => setMenu((v) => !v)} className="min-h-[44px] min-w-[44px] rounded text-gray-300 hover:bg-white/10">⋯</button>
      {menu && (
@@ -80,7 +82,7 @@ function DayCard({day, index, days, startDate, addBox, onDropNew, ...a}: DayList
        <MenuItem disabled={days.length <= 1} onClick={() => a.onDeleteDay(day.id)}>{t('dashboard.wp9.deleteDay', {defaultValue: 'Delete day'})}</MenuItem>
       </div>
      )}
-    </span>
+    </span>}
    </header>
    {groups.map((group, g) => (
     <div key={g}>
@@ -88,16 +90,16 @@ function DayCard({day, index, days, startDate, addBox, onDropNew, ...a}: DayList
      <ol className="space-y-1">{group.items.map(item)}</ol>
     </div>
    ))}
-   {addBox?.(day.id) ?? (
+   {!readOnly && (addBox?.(day.id) ?? (
     <button type="button" onClick={() => a.onOpenAdd(day.id)} className="mt-3 hidden min-h-[44px] w-full rounded-lg border border-dashed border-white/20 text-sm text-gray-300 hover:bg-white/10 md:block">
      {t('dashboard.wp9.addToDay', {defaultValue: '+ Add to {{day}}', day: name})}
     </button>
-   )}
+   ))}
   </section>
  );
 }
 
-function ItemRow({item, index, day, days, startDate, onDrop, number, ...a}: DayListActions & {item: GuideDayItem; index: number; day: PlanDay; days: PlanDay[]; startDate: string | null; onDrop: (e: React.DragEvent) => void; number?: number}) {
+function ItemRow({item, index, day, days, startDate, onDrop, number, readOnly, ...a}: DayListActions & {item: GuideDayItem; index: number; day: PlanDay; days: PlanDay[]; startDate: string | null; onDrop: (e: React.DragEvent) => void; number?: number; readOnly?: boolean}) {
  const {t, i18n} = useTranslation();
  const [menu, setMenu] = useState<'closed' | 'main' | 'days'>('closed');
  const [held, setHeld] = useState<number | null>(null);
@@ -118,7 +120,7 @@ function ItemRow({item, index, day, days, startDate, onDrop, number, ...a}: DayL
    <span className="min-w-0 flex-1 truncate" title={title}>{title}</span>
    <TimeLabelChip value={item.timeLabel} onChange={(label) => a.onSetTimeLabel(day.id, item.localId, label)} />
    <span className="hidden rounded bg-white/10 px-2 py-0.5 text-xs text-gray-300 sm:inline">{itemSourceText(item)}</span>
-   <span className="relative">
+   {!readOnly && <span className="relative">
     <button type="button" aria-haspopup="menu" aria-label={t('dashboard.wp9.itemActions', {defaultValue: 'Actions for {{title}}', title})}
      onClick={() => setMenu((m) => (m === 'closed' ? 'main' : 'closed'))} className="min-h-[44px] min-w-[44px] rounded text-gray-300 hover:bg-white/10">⋯</button>
     {menu === 'main' && (
@@ -138,7 +140,7 @@ function ItemRow({item, index, day, days, startDate, onDrop, number, ...a}: DayL
       ))}
      </div>
     )}
-   </span>
+   </span>}
   </li>
  );
 }
