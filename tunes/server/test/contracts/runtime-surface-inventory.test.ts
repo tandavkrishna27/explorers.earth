@@ -40,13 +40,15 @@ describe("runtime route/event/job inventory", () => {
     // 198 = 197 + the IGDB game cover import (POST /api/explorers/v1/media/game-cover, GMS-X01).
     // 202 = 198 + restore and permanent delete of a list, each with its fail-closed method boundary (WP3B, LP-08).
     // 204 = 202 + WP6 places nearby (GET /api/explorers/v1/places/nearby and its ALL guard)
-    // 224 = 204 + the ten guide day and day-item commands, each with its fail-closed method boundary (WP9, GD-24..30).
-    expect(inventory.routes).toHaveLength(224);
+    // 210 = 204 + WP8 link preview POST, its image import POST and the app search GET, each with its fail-closed method boundary.
+    // 230 = 210 + the ten guide day and day-item commands, each with its fail-closed method boundary (WP9, GD-24..30).
+    expect(inventory.routes).toHaveLength(230);
     expect(inventory.events).toHaveLength(15);
     // 38 = 37 + the Google profile photo fetch deadline (googleAvatarFetch.ts).
     // 39 = 38 + the place photo fetch deadline (tunes/server/services/placePhotoFetch.ts).
     // 40 = 39 + the Open Library request spacing in the Book catalog (bookCatalog.ts).
-    expect(inventory.jobs).toHaveLength(40);
+    // 41 = 40 + the link preview whole-operation deadline (linkPreviewFetch.ts, WP8).
+    expect(inventory.jobs).toHaveLength(41);
     expect(inventory.jobs).toContainEqual(expect.objectContaining({kind:'setTimeout',source:'tunes/server/application/appEnrichmentLocalScheduler.ts',lifecycle:'scheduled-callback'}));
     expect(inventory.jobs).toContainEqual(expect.objectContaining({kind:'setTimeout',source:'tunes/server/services/appEnrichmentFetch.ts',lifecycle:'scheduled-callback'}));
     expect(inventory.routes.filter(route => route.path === '/api/explorers/v1/profiles/:username/recommendations/people/sectors/:sectorSlug')).toEqual([
@@ -91,13 +93,14 @@ describe("runtime route/event/job inventory", () => {
     ]));
     // Taxonomy adds the eleventh fallback outside recommendation routes. The Places
     // pin-storage routes used to add six more ALL guards (twelfth through seventeenth);
+    // WP8 adds three (link-preview, link-preview/image, apps): 16 -> 19.
     // P5-8a removed them with explorersPlacePinsRoutes.ts, so 22 -> 16.
     // Pin the count so every new surface receives an explicit method-boundary review.
     // One of them is P1's canonical retired-surface boundary,
     // tunes/server/routes/canonicalRetiredSurfaceRoutes.ts, which answers 410 on every
     // method for a retired path and calls next() for everything else.
     expect(inventory.routes.filter((route) => route.method === "ALL"
-      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(17); // 17 = 16 + WP6 places nearby
+      && route.source !== "tunes/server/routes/explorersRecommendationRoutes.ts")).toHaveLength(20); // 20 = 16 + WP6 places nearby + WP8 link preview, image import, app search
     // Decision D2. GET reports the address and must not write; POST performs it, which is
     // also what RFC 8058 one-click unsubscribe sends. Both are public: the authority is
     // the purpose-bound HMAC in the token, not the caller.

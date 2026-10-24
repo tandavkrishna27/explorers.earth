@@ -6,7 +6,7 @@ import { expect, it } from "vitest";
 // pushes the Key/Value row past the card on narrow screens.
 it("lets specification Key/Value inputs shrink inside the card", () => {
   const source = readFileSync(resolve(__dirname, "../AddProductPage.tsx"), "utf8");
-  const inputs = source.split("\n").filter(line => /aria-label=\{`Specification (key|value)/.test(line));
+  const inputs = source.split("\n").filter(line => /aria-label=\{`Key fact (name|value)/.test(line));
   expect(inputs).toHaveLength(2);
   for (const line of inputs) expect(line).toContain("min-w-0 flex-1");
 });

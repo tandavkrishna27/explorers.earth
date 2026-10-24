@@ -1,0 +1,28 @@
+{
+  "resultCount": 2,
+  "results": [
+    {
+      "kind": "software",
+      "trackName": "Notion: Notes, Tasks, AI",
+      "sellerName": "Notion Labs, Inc",
+      "artistName": "Notion Labs, Incorporated",
+      "trackViewUrl": "https://apps.apple.com/in/app/notion-notes-tasks-ai/id1232780281?uo=4",
+      "artworkUrl512": "https://is1-ssl.mzstatic.com/image/thumb/Purple/v4/notion/AppIcon/512x512bb.jpg",
+      "price": 0,
+      "formattedPrice": "Free",
+      "genres": ["Productivity", "Business"],
+      "screenshotUrls": ["https://is2-ssl.mzstatic.com/image/thumb/PurpleSource/v4/notion/1.png/392x696bb.png"]
+    },
+    {
+      "kind": "software",
+      "trackName": "Notion Calendar",
+      "artistName": "Notion Labs, Incorporated",
+      "trackViewUrl": "https://apps.apple.com/in/app/notion-calendar/id1607562761?uo=4",
+      "artworkUrl512": "https://is3-ssl.mzstatic.com/image/thumb/Purple/v4/calendar/AppIcon/512x512bb.jpg",
+      "price": 0,
+      "formattedPrice": "Free",
+      "genres": ["Productivity"],
+      "screenshotUrls": []
+    }
+  ]
+}

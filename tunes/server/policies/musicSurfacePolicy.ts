@@ -176,6 +176,10 @@ export function decisionForRoute(route: Pick<RuntimeRouteSurface, "method" | "pa
   if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/movies')return 'explorers-owner';
   if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/games')return 'explorers-owner';
   if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/taxonomy')return 'explorers-owner';
+  // WP8. Owner-initiated link preview (URL in the POST body only, trusted origin), its
+  // owned image copy, and the Apple app search read. Every other method stays tombstoned.
+  if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='POST'&&['/api/explorers/v1/catalog/link-preview','/api/explorers/v1/catalog/link-preview/image'].includes(route.path))return 'explorers-owner';
+  if(route.source==='tunes/server/routes/explorersCatalogRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/catalog/apps')return 'explorers-owner';
   if(route.source==='tunes/server/routes/explorersPlacesRoutes.ts'&&route.method==='GET'&&route.path==='/api/explorers/v1/places/nearby')return 'explorers-owner';
   if (route.source === 'tunes/server/routes/explorersAppEnrichmentRoutes.ts'
       && [

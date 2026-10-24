@@ -34,6 +34,7 @@ export function productViewModel(detail:Readonly<EditableOwnerRecommendation>,me
   // No implicit USD: an unknown currency is reported as unknown.
   currency:recorded.currencyCode,
   buy_url:recorded.buyUrl,
+  affiliate_disclosed:recorded.affiliateDisclosed,
   logo_url:facts.logoUrl,
   description:facts.description,
   // The legacy type models an absent map and an absent list as null, not as empties.

@@ -3401,5 +3401,42 @@
     "urlRule": "Enter a web address starting with http:// or https://. Ports (like :8443) and usernames or passwords in the address are not allowed.",
     "checkField": "Please check the {{field}} field.",
     "generic": "Please check the highlighted fields and try again."
+  },
+  "linkPreview": {
+    "reading": "Reading the link",
+    "failed": "Couldn't read that link, fill in manually"
+  },
+  "products": {
+    "form": {
+      "whereToBuy": "Where to buy",
+      "filledFromLink": "Filled from link",
+      "usePhoto": "Use this photo",
+      "keyFacts": "Key facts",
+      "addKeyFact": "+ Add key fact",
+      "keyFactsLimit": "Up to 8 key facts.",
+      "affiliate": "This is an affiliate link"
+    }
+  },
+  "apps": {
+    "form": {
+      "search": "Search the App Store",
+      "filledFromLink": "Filled from link",
+      "useIcon": "Use this icon",
+      "otherLinks": "Other platform links",
+      "addOtherLink": "+ Add another platform link"
+    }
+  },
+  "people": {
+    "form": {
+      "profileLink": "Profile link",
+      "platform": "Platform",
+      "filledFromLink": "Filled from link",
+      "socialLinks": "Other social links",
+      "addSocialLink": "+ Add social link",
+      "linkNoRoom": "Only one link per platform plus one other link.",
+      "chooseSector": "Choose a sector",
+      "skills": "Skills",
+      "skillsHint": "Type a skill and press Enter"
+    }
   }
 }

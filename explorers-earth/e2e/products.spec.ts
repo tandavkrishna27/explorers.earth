@@ -1,240 +1,76 @@
-import { test, expect } from '@playwright/test';
-import { setupMockAuthentication } from './setup/auth';
-import { denyHostedEgress } from './setup/deny-hosted-egress';
+import { expect, test } from '@playwright/test';
+import { bookFixtureId } from './setup/books-owner-content';
+import { closeFixture, fixtureState, openFixture } from './setup/category-navigation';
+import { canonicalAccountFixture } from '../src/test/canonicalAccountFixture';
+import { productEntityDtoSchema } from '../../tunes/shared/explorersProductContract';
+import { recommendationCoreDtoSchema } from '../../tunes/shared/explorersContract';
 
-test.beforeEach(async ({ context, page }) => {
-  await denyHostedEgress(page);
-  await setupMockAuthentication(context);
-  let recommendationCreated = false;
+// WP8 Task 8-11 (DS-03..06, DS-14). Replaces the Strapi-era "Flow 5", which drove the retired
+// /api/products/scrape-link step. This runs on the contained owner fixture (native owner reads)
+// and stubs only the link preview and the two save commands it exercises.
 
-  await page.route('**/graphql', async route => {
-    const payload = route.request().postDataJSON();
+const LINK = 'https://shop.example/p';
+const preview = {
+  url: LINK, title: 'Trail Shoe | Shop', description: 'Light trail shoe', imageUrl: null, siteName: 'Shop',
+  product: { name: 'Trail Shoe', brand: 'Acme', price: null, currencyCode: null }, person: null,
+};
 
-    if (payload?.query?.includes('CheckOnboardingStatus') || payload?.query?.includes('MyAccount') || payload?.query?.includes('UsersPermissionsUser') || payload?.query?.includes('usersPermissionsUser')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            usersPermissionsUser: {
-              id: 'fixture-user',
-              documentId: 'fixture-user',
-              username: 'testuser',
-              email: 'test@example.test',
-              provider: 'local',
-              confirmed: true,
-              blocked: false,
-              createdAt: '2026-01-01T00:00:00.000Z',
-              updatedAt: '2026-01-01T00:00:00.000Z',
-              accounts: [
-                {
-                  documentId: 'acc-123',
-                  username: 'testuser',
-                  Account_Name: 'Test Account',
-                  Account_Type: 'business',
-                  mobile_number: '1234567890',
-                  profile_picture: null,
-                  public_movie: 'No',
-                  public_books: 'No',
-                  public_games: 'No',
-                  public_music: 'No',
-                  public_apps: 'No',
-                  public_products: 'No',
-                  public_people: 'No',
-                  public_guides: 'No',
-                  public_recommendations: 'No',
-                  public_profile: 'Yes',
-                  pinned_nav_tabs: [],
-                  auto_pinning: false,
-                  localtunes_integrated: false
-                }
-              ]
-            }
-          }
-        })
-      });
-    } else if (payload?.query?.includes('createProductList')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            createProductList: {
-              documentId: 'product-list-123',
-              List_Name: 'Tech Gear',
-              list_description: null,
-              slug: 'tech-gear',
-              Visibility: false,
-              visibility: false,
-              cover_image: null,
-              top_products_heading: null,
-              display_order: 0,
-              account: { documentId: 'acc-123', username: 'testuser' },
-            }
-          }
-        })
-      });
-    } else if (payload?.query?.includes('createRecommendedProduct')) {
-      recommendationCreated = true;
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            createRecommendedProduct: {
-              documentId: 'product-rec-456',
-              title: 'Mock Product Name',
-              display_order: 0,
-              is_pinned: false,
-            }
-          }
-        })
-      });
-    } else if (payload?.query?.includes('PRODUCT_LISTS_BY_ACCOUNT') || payload?.query?.includes('ProductLists')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            productLists: [
-              {
-                documentId: 'product-list-123',
-                List_Name: 'Tech Gear',
-                list_description: null,
-                slug: 'tech-gear',
-                Visibility: false,
-                visibility: false,
-                cover_image: null,
-                top_products_heading: null,
-                display_order: 0,
-                account: { documentId: 'acc-123', username: 'testuser' },
-                recommended_products: []
-              }
-            ]
-          }
-        })
-      });
-    } else if (payload?.query?.includes('PRODUCTS_BY_LIST') || payload?.query?.includes('ProductsByList')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            productLists: [
-              {
-                documentId: 'product-list-123',
-                List_Name: 'Tech Gear',
-                list_description: null,
-                slug: 'tech-gear',
-                Visibility: false,
-                visibility: false,
-                cover_image: null,
-                top_products_heading: null,
-                display_order: 0,
-                account: { documentId: 'acc-123', username: 'testuser' },
-                recommended_products: recommendationCreated ? [
-                  {
-                    documentId: 'product-rec-456',
-                    product_url: 'https://example.com/item',
-                    title: 'Mock Product Name',
-                    brand: 'Mock Brand',
-                    price: 9.99,
-                    currency: 'USD',
-                    buy_url: 'https://example.com/item/buy',
-                    logo_url: 'https://example.com/logo.png',
-                    description: 'Product Bio',
-                    specifications: '{}',
-                    user_recommendation_note: 'Great quality product!',
-                    user_rating: 8,
-                    is_pinned: false,
-                    pin_order: null,
-                    display_order: 0,
-                    images: '[]',
-                    product_category: null
-                  }
-                ] : []
-              }
-            ]
-          }
-        })
-      });
-    } else if (payload?.query?.includes('productCategories')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: { productCategories: [] } }),
-      });
-    } else {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: {} })
-      });
+test('Products: paste a link, prefill, price defaults to the region currency, save one link with disclosure', async ({ browser, baseURL }) => {
+  const state = fixtureState();
+  const template = state.lists.productLists[0];
+  state.lists.productLists = [{ ...template, documentId: 'products-0', List_Name: 'Running gear', Title: 'Running gear', slug: 'running-gear', Visibility: false, visibility: false }];
+  const handle = await openFixture(browser, baseURL!, state, { owner: true });
+  // The page picks its starting currency from the browser region; en-IN means INR.
+  await handle.context.addInitScript(() => {
+    Object.defineProperty(navigator, 'language', { get: () => 'en-IN' });
+    Object.defineProperty(navigator, 'languages', { get: () => ['en-IN', 'en'] });
+  });
+  const writes: { path: string; body: any }[] = [];
+  const collectionId = bookFixtureId('collection', 'products-0');
+  const entityId = '7b0e8a52-4c1d-4f7e-9a51-0d6c2f1e3a11';
+  await handle.page.route('**/catalog/link-preview', async (route) => {
+    const body = route.request().postDataJSON();
+    writes.push({ path: 'link-preview', body });
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ preview }) });
+  });
+  await handle.page.route('**/api/explorers/v1/**', async (route) => {
+    const request = route.request(), path = new URL(request.url()).pathname;
+    if (request.method() === 'POST' && path === '/api/explorers/v1/entities/resolve') {
+      const body = request.postDataJSON(); writes.push({ path, body });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ entity: productEntityDtoSchema.parse({
+        id: entityId, kind: 'product', title: body.details.title, origin: 'manual',
+        details: { productUrl: body.details.productUrl, brand: body.details.brand ?? null, logoUrl: null, description: body.details.description ?? null, specifications: body.details.specifications ?? [], imageUrls: [] } }) }) });
     }
+    if (request.method() === 'POST' && path === '/api/explorers/v1/recommendations') {
+      const body = request.postDataJSON(); writes.push({ path, body });
+      return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ recommendation: recommendationCoreDtoSchema.parse({
+        id: '7b0e8a52-4c1d-4f7e-9a51-0d6c2f1e3a12', accountId: canonicalAccountFixture().id, entityId, category: 'products',
+        userRating: null, publicationState: 'draft', revision: 1, mediaIds: [] }) }) });
+    }
+    return route.fallback();
   });
+  try {
+    const { page } = handle;
+    await page.goto(`/recommendations/products/${collectionId}/add`, { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('heading', { name: 'Add Product' })).toBeVisible();
+    await expect(page.getByLabel('Logo URL')).toHaveCount(0);
+    await expect(page.getByLabel('Currency')).toHaveValue('INR');
 
-  // Mock Scraper Endpoint
-  await page.route('**/api/products/scrape-link', async route => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        title: 'Mock Product Name',
-        description: 'Product Bio',
-        price: 9.99,
-        currency: 'USD',
-        images: []
-      })
-    });
-  });
-});
+    const link = page.getByLabel('Where to buy');
+    await link.fill(LINK);
+    await link.blur();
+    await expect(page.getByLabel('Title')).toHaveValue('Trail Shoe');
+    await expect(page.getByLabel('Brand')).toHaveValue('Acme');
+    await expect(page.getByText('Filled from link').first()).toBeVisible();
+    expect(writes.find((w) => w.path === 'link-preview')?.body).toEqual({ url: LINK });
 
-test('Flow 5: Products List and Scraper E2E', async ({ page }) => {
-  const consoleErrors: string[] = [];
-  page.on('console', message => {
-    if (message.type() === 'error') consoleErrors.push(message.text());
-  });
-  await page.goto('/recommendations/products');
+    await page.getByLabel('Price').fill('4999');
+    await page.getByRole('checkbox', { name: 'This is an affiliate link' }).check();
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
 
-  const addListBtn = page.locator('button:has-text("New List")').first();
-  await expect(addListBtn).toBeVisible();
-  await addListBtn.click();
-
-  const nameInput = page.locator('input[name="List_Name"]');
-  await nameInput.fill('Tech Gear');
-
-  const submitBtn = page.locator('button[type="submit"]:has-text("Create List")');
-  await submitBtn.click();
-
-  await page.goto('/recommendations/products/product-list-123');
-
-  const addProductBtn = page.locator('button:has-text("Add Product")');
-  await expect(addProductBtn).toBeVisible();
-  await addProductBtn.click();
-
-  await expect(page).toHaveURL(/\/recommendations\/products\/product-list-123\/add/);
-
-  const urlInput = page.locator('input[placeholder*="amazon.com"]');
-  await urlInput.fill('https://amazon.com/dp/B08N5WRWNW');
-
-  const fetchBtn = page.locator('button:has-text("Fetch")');
-  await fetchBtn.click();
-
-  // Review fields
-  const titleInput = page.locator('input[placeholder="Figma"]'); // Wait, let's see why placeholder is Figma. Ah, or input[value="Mock Product Name"]
-  // Better target: label Title and the following input
-  const reviewTitleInput = page.locator('input[placeholder="Keychron K2"]').first(); // Wait! In AddProductPage.tsx, let's check its placeholder.
-  // We can just assert that fetchBtn completed and title was filled
-  const noteEditor = page.locator('.ql-editor');
-  await expect(noteEditor).toBeVisible();
-  await noteEditor.fill('Highly recommended mechanical keyboard.');
-
-  const saveBtn = page.locator('button:has-text("Add to List")');
-  await saveBtn.click();
-
-  await expect(page).toHaveURL(/\/recommendations\/products\/product-list-123/);
-  await expect(page.getByRole('heading', { name: 'Publish this list?' })).toBeVisible();
-  await page.getByRole('button', { name: 'Keep Draft' }).click();
-  await expect(page.getByRole('heading', { name: 'Publish this list?' })).toBeHidden();
-  expect(consoleErrors).toEqual([]);
+    await expect.poll(() => writes.some((w) => w.path === '/api/explorers/v1/recommendations')).toBe(true);
+    expect(writes.find((w) => w.path === '/api/explorers/v1/entities/resolve')?.body.details).toMatchObject({ title: 'Trail Shoe', productUrl: LINK, brand: 'Acme', logoUrl: null });
+    expect(writes.find((w) => w.path === '/api/explorers/v1/recommendations')?.body.productOffer)
+      .toEqual({ price: '4999', currencyCode: 'INR', buyUrl: LINK, affiliateDisclosed: true });
+  } finally { await closeFixture(handle); }
 });
