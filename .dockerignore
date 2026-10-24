@@ -679,6 +679,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Guides/GuideEditor/dayItems.ts
 !explorers-earth/src/features/Guides/GuideEditor/googlePlaceSearch.ts
 !explorers-earth/src/features/Guides/GuideEditor/guideListAdapter.ts
+!explorers-earth/src/features/Guides/GuideEditor/myListsLoad.ts
 !explorers-earth/src/features/Guides/GuideEditor/myListsSearch.ts
 !explorers-earth/src/features/Guides/GuideEditor/useGuidePlan.ts
 !explorers-earth/src/features/Guides/GuidesPage.tsx
