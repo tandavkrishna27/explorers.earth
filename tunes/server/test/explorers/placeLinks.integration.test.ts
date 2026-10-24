@@ -246,7 +246,7 @@ describePg("Places link storage against PostgreSQL", () => {
     const owner = await account(), parent = await list(owner, "places");
     const ordinaryInput = {category: "products" as const, title: "Ordinary", slug: `ordinary-${randomUUID()}`};
     const ordinaryKey = key(), ordinary = await repository.createCollection(owner, ordinaryInput, ordinaryKey);
-    expect(ordinary).toEqual({id: expect.any(String), accountId: owner, ...ordinaryInput, visibility: "private", publicationState: "draft", revision: 1, description: null, heading: null, coverMediaId: null});
+    expect(ordinary).toEqual({id: expect.any(String), accountId: owner, ...ordinaryInput, visibility: "private", publicationState: "draft", revision: 1, description: null, heading: null, coverMediaId: null, isSample: false});
     const afterOrdinary = await guardedCreateState([owner]);
     expect(await repository.createCollection(owner, ordinaryInput, ordinaryKey)).toEqual(ordinary);
     expect(await guardedCreateState([owner])).toEqual(afterOrdinary);
