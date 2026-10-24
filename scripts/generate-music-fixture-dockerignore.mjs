@@ -46,6 +46,8 @@ const sharedContractEntryPoints = [
   "tunes/shared/explorersGameOwnerContract.ts",
   // P5-2. usernameValidation imports the one reserved-handle list the server also reads.
   "tunes/shared/explorersReservedHandles.ts",
+  // WP9. The guide editor (GuideEditorPage, LinkedListsBlock) imports the list link contract.
+  "tunes/shared/explorersListLinkContract.ts",
 ];
 
 // Breadth-first over relative `from "./x"` specifiers inside tunes/shared, so the

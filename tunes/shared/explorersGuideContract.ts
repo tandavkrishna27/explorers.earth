@@ -468,6 +468,24 @@ export const reorderGuideSectionsSchema=at.extend({sectionIds:z.array(z.string()
 
 export const attachGuideCoverSchema=at.extend({mediaId:z.string().uuid()}).strict();
 
+// GD-24..30. One command per user action, each one API call the plugin can reuse (DIR-07).
+const dayIndex=z.number().int().nonnegative().max(GUIDE_SECTION_LIMIT-1);
+const itemIndex=z.number().int().nonnegative().max(GUIDE_DAY_ITEM_LIMIT-1);
+const inputLabel=guideTimeLabelSchema.nullable().default(null);
+export const addGuideDaySchema=at.extend({at:dayIndex.optional(),title:text(200).default('')}).strict();
+export const moveGuideDaySchema=at.extend({toIndex:dayIndex}).strict();
+export const guideDayItemInputSchema=z.discriminatedUnion('kind',[
+ z.object({kind:z.literal('place'),timeLabel:inputLabel,place:guideDayPlaceSchema}).strict(),
+ z.object({kind:z.literal('listItem'),timeLabel:inputLabel,ref:z.object({recommendationId:z.string().uuid(),collectionId:z.string().uuid().nullable().default(null)}).strict()}).strict(),
+ z.object({kind:z.literal('note'),timeLabel:inputLabel,text:filled(2000)}).strict(),
+]);
+export const addGuideDayItemSchema=at.extend({at:itemIndex.optional(),item:guideDayItemInputSchema}).strict();
+export const moveGuideDayItemSchema=at.extend({toSectionId:z.string().uuid(),toIndex:itemIndex}).strict();
+export const setGuideTimeLabelSchema=at.extend({timeLabel:guideTimeLabelSchema.nullable()}).strict();
+export const setGuideNoteTextSchema=at.extend({text:filled(2000)}).strict();
+export const guideItemLocalIdSchema=filled(100);
+export type GuideDayItemInput=z.input<typeof guideDayItemInputSchema>;
+
 export type GuideSectionBlocks=z.infer<typeof guideSectionBlocksSchema>;
 export type GuideDayPlace=z.infer<typeof guideDayPlaceSchema>;
 export type GuideActivityPhoto=z.infer<typeof guideActivityPhotoSchema>;

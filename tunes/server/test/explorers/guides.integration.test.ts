@@ -9,6 +9,8 @@ import {
 } from "../../repositories/guideRepository";
 import {guideEmptySectionBlocks, type GuideCollectionDetails, type GuideSectionBlocks} from "../../../shared/explorersGuideContract";
 import {publicGuidesProjection} from "../../publicProfile/publicGuidesProjection";
+import {GuideService} from "../../application/guides";
+import type {Actor} from "../../application/actor";
 
 /**
  * Ticket 5.3. The guide aggregate against a real PostgreSQL 15.
@@ -72,6 +74,30 @@ async function tx<T>(run: (client: pg.PoolClient) => Promise<T>): Promise<T> {
   }
 }
 
+let service: GuideService;
+const ctx = () => ({requestId: randomUUID(), idempotencyKey: randomUUID()});
+
+/** An owner actor for the service layer: membership plus security state, OAuth so no session row is needed. */
+async function actorFor(accountId: string): Promise<Actor> {
+  const userId = `u-${randomUUID()}`;
+  await pool.query("INSERT INTO auth_user(id,name,email,email_verified) VALUES($1,'Owner',$2,true)", [userId, `${userId}@example.invalid`]);
+  await pool.query("INSERT INTO user_security_state(user_id) VALUES($1)", [userId]);
+  await pool.query("INSERT INTO account_memberships(account_id,user_id,role) VALUES($1,$2,'owner')", [accountId, userId]);
+  return {userId, accountId, role: "owner",
+    credential: {kind: "oauth", grantId: randomUUID(), scopes: ["collections:read", "collections:write"]}};
+}
+
+/** A list of the category holding one recommendation titled `title`. */
+async function recommendationIn(accountId: string, category: "places" | "books", title: string) {
+  const list = await repository.createCollection(accountId, {category, title: `${category} list`, slug: `${category}-${randomUUID()}`}, key());
+  const entity = category === "places"
+    ? await repository.resolvePlaceEntity(accountId, {kind: "manual", category: "places", details: {title}}, key())
+    : await repository.resolveManualEntity(accountId, {category: "books" as never, details: {title}}, key());
+  const created = await repository.createRecommendation(accountId, {category, entityId: entity.id, collectionId: list.id,
+    expectedCollectionRevision: list.revision}, key());
+  return {collectionId: list.id, recommendationId: created.id};
+}
+
 async function readyMedia(accountId: string, salt: string, purpose = "guide") {
   return (await pool.query(`INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,content_sha256,ready_at)
     VALUES($1,$3,'ready','image/jpeg',2048,$2,now()) RETURNING id`,
@@ -107,6 +133,7 @@ describePg("C6 guide aggregate", () => {
     pool = new pg.Pool({connectionString: target.toString(), max: 4});
     await migrateMusicDatabase(pool);
     repository = new ExplorersRecommendationRepository(pool);
+    service = new GuideService(pool);
   }, 120_000);
 
   afterAll(async () => {
@@ -606,5 +633,77 @@ describePg("C6 guide aggregate", () => {
     expect(await countGuideSections(pool, collection.id, accountId)).toBe(0);
     expect(await readGuideDetails(pool, collection.id, accountId)).toBeNull();
     expect((await pool.query("SELECT 1 FROM media_assets WHERE id=$1", [media])).rowCount).toBe(1);
+  });
+
+  describe("day commands (GD-24..30)", () => {
+    async function trip(days: number) {
+      const accountId = await account();
+      const created = await guide(accountId);
+      const actor = await actorFor(accountId);
+      let g = await service.getAggregate(actor, created.id);
+      for (let i = 0; i < days; i++) g = await service.addDay(actor, created.id, {revision: g.revision}, ctx());
+      return {accountId, actor, id: created.id, g};
+    }
+    const note = (text: string) => ({kind: "note" as const, text});
+
+    it("keeps numberOfDays equal to the day count on add, duplicate and delete", async () => {
+      const t = await trip(2);
+      expect(t.g.details.numberOfDays).toBe(2);
+      let g = await service.duplicateDay(t.actor, t.id, t.g.sections[0].id, {revision: t.g.revision}, ctx());
+      expect(g.details.numberOfDays).toBe(3);
+      g = await service.deleteDay(t.actor, t.id, g.sections[2].id, {revision: g.revision}, ctx());
+      expect(g.details.numberOfDays).toBe(2);
+    });
+
+    it("refuses to delete the last day", async () => {
+      const t = await trip(1);
+      await expect(service.deleteDay(t.actor, t.id, t.g.sections[0].id, {revision: t.g.revision}, ctx())).rejects.toMatchObject({status: 422});
+    });
+
+    it("moves an item across days atomically and keeps order dense", async () => {
+      const t = await trip(2);
+      let g = await service.addDayItem(t.actor, t.id, t.g.sections[0].id, {revision: t.g.revision, item: note("a")}, ctx());
+      g = await service.addDayItem(t.actor, t.id, g.sections[0].id, {revision: g.revision, item: note("b")}, ctx());
+      g = await service.addDayItem(t.actor, t.id, g.sections[1].id, {revision: g.revision, item: note("c")}, ctx());
+      const b = g.sections[0].blocks.items[1].localId;
+      g = await service.moveDayItem(t.actor, t.id, g.sections[0].id, b, {revision: g.revision, toSectionId: g.sections[1].id, toIndex: 0}, ctx());
+      expect(g.sections[0].blocks.items.map((i) => i.kind === "note" && i.text)).toEqual(["a"]);
+      expect(g.sections[1].blocks.items.map((i) => i.kind === "note" && i.text)).toEqual(["b", "c"]);
+    });
+
+    it("a move at a stale revision changes nothing", async () => {
+      const t = await trip(2);
+      const g = await service.addDayItem(t.actor, t.id, t.g.sections[0].id, {revision: t.g.revision, item: note("a")}, ctx());
+      const id = g.sections[0].blocks.items[0].localId;
+      await expect(service.moveDayItem(t.actor, t.id, g.sections[0].id, id, {revision: t.g.revision, toSectionId: g.sections[1].id, toIndex: 0}, ctx()))
+        .rejects.toMatchObject({status: 409});
+      const after = await service.getAggregate(t.actor, t.id);
+      expect(after.sections[0].blocks.items).toHaveLength(1);
+    });
+
+    it("labels, clears, reorders days and never touches a source list item on remove", async () => {
+      const t = await trip(2);
+      const rec = await recommendationIn(t.accountId, "places", "Thalassa");   // helper: creates a places list + recommendation, returns {collectionId, recommendationId}
+      let g = await service.addDayItem(t.actor, t.id, t.g.sections[0].id,
+        {revision: t.g.revision, item: {kind: "listItem", ref: {recommendationId: rec.recommendationId}}}, ctx());
+      const item = g.sections[0].blocks.items[0];
+      expect(item.kind === "listItem" && item.snapshot.title).toBe("Thalassa");
+      g = await service.setTimeLabel(t.actor, t.id, g.sections[0].id, item.localId, {revision: g.revision, timeLabel: "19:30"}, ctx());
+      expect(g.sections[0].blocks.items[0].timeLabel).toBe("19:30");
+      const first = g.sections[0].id;
+      g = await service.moveDay(t.actor, t.id, first, {revision: g.revision, toIndex: 1}, ctx());
+      expect(g.sections[1].id).toBe(first);
+      g = await service.removeDayItem(t.actor, t.id, first, item.localId, {revision: g.revision}, ctx());
+      expect((await pool.query("SELECT archived_at FROM recommendations WHERE id=$1", [rec.recommendationId])).rows[0].archived_at).toBeNull();
+      g = await service.clearDay(t.actor, t.id, first, {revision: g.revision}, ctx());
+      expect(g.sections[1].blocks.items).toEqual([]);
+    });
+
+    it("refuses another account's recommendation as a list item", async () => {
+      const t = await trip(1);
+      const other = await recommendationIn(await account(), "books", "Not yours");
+      await expect(service.addDayItem(t.actor, t.id, t.g.sections[0].id,
+        {revision: t.g.revision, item: {kind: "listItem", ref: {recommendationId: other.recommendationId}}}, ctx())).rejects.toMatchObject({status: 404});
+    });
   });
 });

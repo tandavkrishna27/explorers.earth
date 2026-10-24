@@ -41,7 +41,8 @@ describe("runtime route/event/job inventory", () => {
     // 202 = 198 + restore and permanent delete of a list, each with its fail-closed method boundary (WP3B, LP-08).
     // 204 = 202 + WP6 places nearby (GET /api/explorers/v1/places/nearby and its ALL guard)
     // 210 = 204 + WP8 link preview POST, its image import POST and the app search GET, each with its fail-closed method boundary.
-    expect(inventory.routes).toHaveLength(210);
+    // 230 = 210 + the ten guide day and day-item commands, each with its fail-closed method boundary (WP9, GD-24..30).
+    expect(inventory.routes).toHaveLength(230);
     expect(inventory.events).toHaveLength(15);
     // 38 = 37 + the Google profile photo fetch deadline (googleAvatarFetch.ts).
     // 39 = 38 + the place photo fetch deadline (tunes/server/services/placePhotoFetch.ts).
@@ -167,6 +168,17 @@ describe("runtime route/event/job inventory", () => {
       ['PATCH','/api/explorers/v1/collections/:id/guide/sections/order'],
       ['PATCH','/api/explorers/v1/collections/:id/guide/sections/:sectionId'],
       ['DELETE','/api/explorers/v1/collections/:id/guide/sections/:sectionId'],
+      // WP9 (GD-24..30). Day and day-item commands.
+      ['POST','/api/explorers/v1/collections/:id/guide/days'],
+      ['PATCH','/api/explorers/v1/collections/:id/guide/days/:sectionId/position'],
+      ['POST','/api/explorers/v1/collections/:id/guide/days/:sectionId/duplicate'],
+      ['POST','/api/explorers/v1/collections/:id/guide/days/:sectionId/clear'],
+      ['DELETE','/api/explorers/v1/collections/:id/guide/days/:sectionId'],
+      ['POST','/api/explorers/v1/collections/:id/guide/days/:sectionId/items'],
+      ['PATCH','/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/position'],
+      ['PUT','/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/time-label'],
+      ['PUT','/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/note'],
+      ['DELETE','/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId'],
       ['PUT','/api/explorers/v1/collections/:id/guide/cover'],
     ];
     const methodBoundaries=['/api/explorers/v1/entities/resolve','/api/explorers/v1/collections','/api/explorers/v1/content-summary',
@@ -180,7 +192,17 @@ describe("runtime route/event/job inventory", () => {
       '/api/explorers/v1/categories/:category/top-picks','/api/explorers/v1/categories/:category/top-picks/order','/api/explorers/v1/categories/:category/lists/order','/api/explorers/v1/recommendations/:id/entity','/api/explorers/v1/recommendations/:id/book-covers','/api/explorers/v1/recommendations/:id/movie-media/import',
       '/api/explorers/v1/collections/:id/guide','/api/explorers/v1/collections/:id/guide/sections',
       '/api/explorers/v1/collections/:id/guide/sections/order','/api/explorers/v1/collections/:id/guide/sections/:sectionId',
-      '/api/explorers/v1/collections/:id/guide/cover'];
+      '/api/explorers/v1/collections/:id/guide/cover',
+      '/api/explorers/v1/collections/:id/guide/days',
+      '/api/explorers/v1/collections/:id/guide/days/:sectionId',
+      '/api/explorers/v1/collections/:id/guide/days/:sectionId/position',
+      '/api/explorers/v1/collections/:id/guide/days/:sectionId/duplicate',
+      '/api/explorers/v1/collections/:id/guide/days/:sectionId/clear',
+      '/api/explorers/v1/collections/:id/guide/days/:sectionId/items',
+      '/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId',
+      '/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/position',
+      '/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/time-label',
+      '/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/note'];
     expect(routes).toHaveLength(ownerCommands.length+methodBoundaries.length);
     for(const [method,path] of ownerCommands) expect(routes).toContainEqual(expect.objectContaining({
       method,path,classification:'canonical-explorers-owner',ownerSource:'verified-google-session+active-initial-account-binding',
