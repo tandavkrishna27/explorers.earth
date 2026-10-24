@@ -21,6 +21,19 @@ const options = (overrides: Partial<PublicPagedOptions> = {}): PublicPagedOption
 });
 
 describe("usePublicPagedResource", () => {
+  it("reports loading on the render that enables it, so pages never signal ready before the read starts (OWN-08)", async () => {
+    const seen: { enabled: boolean; loading: boolean; data: unknown }[] = [];
+    const { result, rerender } = renderHook(({ enabled }) => {
+      const state = usePublicPagedResource(options({ enabled }));
+      seen.push({ enabled, loading: state.loading, data: state.data });
+      return state;
+    }, { initialProps: { enabled: false } });
+    expect(result.current.loading).toBe(false);
+    rerender({ enabled: true });
+    expect(seen.filter(s => s.enabled && !s.loading && s.data === undefined)).toEqual([]);
+    await waitFor(() => expect(result.current.data?.appLists).toHaveLength(12));
+  });
+
   it("honors a validated 24-row size and rejects an oversized response", async () => {
     const { result } = renderHook(() => usePublicPagedResource(options({
       pageSize: 24, readFirst: async () => page(0, 24), readNext: async () => page(24, 25),

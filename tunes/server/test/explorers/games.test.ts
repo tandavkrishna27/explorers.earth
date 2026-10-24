@@ -33,7 +33,7 @@ describe('Games manual native boundaries',()=>{
  });
  it('projects actual manual origin and ready owned uploads in canonical order',async()=>{
   const query=vi.fn().mockResolvedValueOnce({rows:[{origin:'manual',kind:'game'}]}).mockResolvedValueOnce({rows:[{media_id:mediaId,asset_id:mediaId,status:'ready',purpose:'recommendation',account_id:id,asset_account_id:id,display_order:0}]});
-  expect(await readManualGamePresentation({query} as any,id,id)).toEqual({...presentation,details:{releaseYear:null,platforms:[],genres:[]}});
+  expect(await readManualGamePresentation({query} as any,id,id)).toEqual({...presentation,details:{releaseYear:null,platforms:[],genres:[],developer:null}});
   expect(query.mock.calls[0][1]).toEqual([id,id]);expect(query.mock.calls[1][0]).toContain('ORDER BY rm.display_order,m.id');
  });
  it('requires matching manual presentation with exact uploaded gallery and first cover',()=>{

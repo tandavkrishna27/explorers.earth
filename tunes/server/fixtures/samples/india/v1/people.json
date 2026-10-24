@@ -1,0 +1,12 @@
+{"set":"india","version":"v1","category":"people","lists":[
+ {"key":"in-people-builders","title":"Indian builders","description":"People who built things millions use.","topPicks":true,"items":[
+  {"note":"Read about how Aadhaar and UPI's foundations came together.","rating":9,"details":{"title":"Nandan Nilekani","headline":"Co-founder of Infosys","primaryPlatform":"website","socialUrls":{"website":"https://en.wikipedia.org/wiki/Nandan_Nilekani"},"skillsTags":["Technology","Public infrastructure"]}},
+  {"note":"Built a biotech company from a garage.","rating":9,"details":{"title":"Kiran Mazumdar-Shaw","headline":"Founder of Biocon","primaryPlatform":"website","socialUrls":{"website":"https://en.wikipedia.org/wiki/Kiran_Mazumdar-Shaw"},"skillsTags":["Biotechnology"]}},
+  {"note":"A lesson in building a brand online.","rating":8,"details":{"title":"Falguni Nayar","headline":"Founder of Nykaa","primaryPlatform":"website","socialUrls":{"website":"https://en.wikipedia.org/wiki/Falguni_Nayar"},"skillsTags":["Retail","Entrepreneurship"]}},
+  {"note":"The man behind India's space missions of the 1960s.","rating":10,"details":{"title":"Vikram Sarabhai","headline":"Founder of the Indian space programme","primaryPlatform":"website","socialUrls":{"website":"https://en.wikipedia.org/wiki/Vikram_Sarabhai"},"skillsTags":["Science"]}}]},
+ {"key":"in-people-sport","title":"Sport icons","description":"Athletes worth reading about.","topPicks":false,"items":[
+  {"note":"Twenty-four years at the top.","rating":10,"details":{"title":"Sachin Tendulkar","headline":"Cricketer","primaryPlatform":"website","socialUrls":{"website":"https://en.wikipedia.org/wiki/Sachin_Tendulkar"},"skillsTags":["Cricket"]}},
+  {"note":"Six world titles and an Olympic medal.","rating":9,"details":{"title":"Mary Kom","headline":"Boxer","primaryPlatform":"website","socialUrls":{"website":"https://en.wikipedia.org/wiki/Mary_Kom"},"skillsTags":["Boxing"]}},
+  {"note":"Olympic gold in javelin.","rating":9,"details":{"title":"Neeraj Chopra","headline":"Javelin thrower","primaryPlatform":"website","socialUrls":{"website":"https://en.wikipedia.org/wiki/Neeraj_Chopra"},"skillsTags":["Athletics"]}},
+  {"note":"Two Olympic medals in badminton.","rating":9,"details":{"title":"P. V. Sindhu","headline":"Badminton player","primaryPlatform":"website","socialUrls":{"website":"https://en.wikipedia.org/wiki/P._V._Sindhu"},"skillsTags":["Badminton"]}}]}
+]}

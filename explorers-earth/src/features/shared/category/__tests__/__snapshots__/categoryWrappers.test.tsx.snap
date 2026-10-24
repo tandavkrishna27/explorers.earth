@@ -1,0 +1,264 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`category wrappers render the shared template > apps 1`] = `
+{
+  "archivedLists": [],
+  "category": "apps",
+  "categoryVisibility": "hidden",
+  "lists": [
+    {
+      "covers": [],
+      "id": "a1",
+      "itemCount": 1,
+      "pinnedCount": 1,
+      "status": "public",
+      "title": "Focus toolkit",
+    },
+  ],
+  "newList": Any<Object>,
+  "onCategoryVisibility": Any<Function>,
+  "onChanged": Any<Function>,
+  "onOpenList": Any<Function>,
+  "onRetry": Any<Function>,
+  "pinCandidates": [
+    {
+      "id": "x1",
+      "imageUrl": null,
+      "listId": "a1",
+      "listTitle": "Focus toolkit",
+      "pinnable": true,
+      "pinned": true,
+      "subtitle": null,
+      "title": "Forest",
+    },
+  ],
+  "status": {
+    "error": null,
+    "loading": false,
+    "refreshing": false,
+  },
+  "topPicks": [
+    {
+      "id": "x1",
+      "imageUrl": null,
+      "listId": "a1",
+      "listTitle": "Focus toolkit",
+      "pinnable": true,
+      "pinned": true,
+      "subtitle": null,
+      "title": "Forest",
+    },
+  ],
+  "visibilityBusy": false,
+}
+`;
+
+exports[`category wrappers render the shared template > books 1`] = `
+{
+  "archivedLists": [],
+  "category": "books",
+  "categoryVisibility": "hidden",
+  "lists": [
+    {
+      "covers": [],
+      "id": "b1",
+      "itemCount": 1,
+      "pinnedCount": 0,
+      "status": "draft",
+      "title": "Read in a weekend",
+    },
+  ],
+  "newList": Any<Object>,
+  "onCategoryVisibility": Any<Function>,
+  "onChanged": Any<Function>,
+  "onOpenList": Any<Function>,
+  "onRetry": Any<Function>,
+  "pinCandidates": [
+    {
+      "id": "k1",
+      "imageUrl": null,
+      "listId": "b1",
+      "listTitle": "Read in a weekend",
+      "pinnable": true,
+      "pinned": false,
+      "subtitle": null,
+      "title": "Siddhartha",
+    },
+  ],
+  "status": {
+    "error": null,
+    "loading": false,
+    "refreshing": false,
+  },
+  "topPicks": [],
+  "visibilityBusy": false,
+}
+`;
+
+exports[`category wrappers render the shared template > games 1`] = `
+{
+  "archivedLists": [],
+  "category": "games",
+  "categoryVisibility": "hidden",
+  "lists": [
+    {
+      "covers": [],
+      "id": "g1",
+      "itemCount": 0,
+      "pinnedCount": 0,
+      "status": "draft",
+      "title": "Couch co-op",
+    },
+  ],
+  "newList": Any<Object>,
+  "onCategoryVisibility": Any<Function>,
+  "onChanged": Any<Function>,
+  "onOpenList": Any<Function>,
+  "onRetry": Any<Function>,
+  "pinCandidates": [],
+  "status": {
+    "error": null,
+    "loading": false,
+    "refreshing": false,
+  },
+  "topPicks": [],
+  "visibilityBusy": false,
+}
+`;
+
+exports[`category wrappers render the shared template > movies 1`] = `
+{
+  "archivedLists": [
+    {
+      "covers": [],
+      "id": "movies-old",
+      "itemCount": 0,
+      "pinnedCount": 0,
+      "status": "draft",
+      "title": "Old",
+    },
+  ],
+  "category": "movies",
+  "categoryVisibility": "public",
+  "lists": [
+    {
+      "covers": [
+        "https://image.tmdb.org/t/p/w185/c.jpg",
+      ],
+      "id": "l1",
+      "itemCount": 1,
+      "pinnedCount": 1,
+      "status": "public",
+      "title": "Comfort movies",
+    },
+  ],
+  "newList": Any<Object>,
+  "onCategoryVisibility": Any<Function>,
+  "onChanged": Any<Function>,
+  "onOpenList": Any<Function>,
+  "onRetry": Any<Function>,
+  "pinCandidates": [
+    {
+      "id": "m1",
+      "imageUrl": "https://image.tmdb.org/t/p/w342/c.jpg",
+      "listId": "l1",
+      "listTitle": "Comfort movies",
+      "pinnable": true,
+      "pinned": true,
+      "subtitle": null,
+      "title": "Chef",
+    },
+  ],
+  "status": {
+    "error": null,
+    "loading": false,
+    "refreshing": false,
+  },
+  "topPicks": [
+    {
+      "id": "m1",
+      "imageUrl": "https://image.tmdb.org/t/p/w342/c.jpg",
+      "listId": "l1",
+      "listTitle": "Comfort movies",
+      "pinnable": true,
+      "pinned": true,
+      "subtitle": null,
+      "title": "Chef",
+    },
+  ],
+  "visibilityBusy": false,
+}
+`;
+
+exports[`category wrappers render the shared template > people 1`] = `
+{
+  "archivedLists": [],
+  "category": "people",
+  "categoryVisibility": "hidden",
+  "lists": [
+    {
+      "covers": [],
+      "id": "q1",
+      "itemCount": 1,
+      "pinnedCount": 0,
+      "status": "draft",
+      "title": "Design voices",
+    },
+  ],
+  "newList": Any<Object>,
+  "onCategoryVisibility": Any<Function>,
+  "onChanged": Any<Function>,
+  "onOpenList": Any<Function>,
+  "onRetry": Any<Function>,
+  "pinCandidates": [
+    {
+      "id": "y1",
+      "imageUrl": null,
+      "listId": "q1",
+      "listTitle": "Design voices",
+      "pinnable": true,
+      "pinned": false,
+      "subtitle": null,
+      "title": "A type designer",
+    },
+  ],
+  "status": {
+    "error": null,
+    "loading": false,
+    "refreshing": false,
+  },
+  "topPicks": [],
+  "visibilityBusy": false,
+}
+`;
+
+exports[`category wrappers render the shared template > products 1`] = `
+{
+  "archivedLists": [],
+  "category": "products",
+  "categoryVisibility": "hidden",
+  "lists": [
+    {
+      "covers": [],
+      "id": "p1",
+      "itemCount": 0,
+      "pinnedCount": 0,
+      "status": "draft",
+      "title": "Desk setup",
+    },
+  ],
+  "newList": Any<Object>,
+  "onCategoryVisibility": Any<Function>,
+  "onChanged": Any<Function>,
+  "onOpenList": Any<Function>,
+  "onRetry": Any<Function>,
+  "pinCandidates": [],
+  "status": {
+    "error": null,
+    "loading": false,
+    "refreshing": false,
+  },
+  "topPicks": [],
+  "visibilityBusy": false,
+}
+`;

@@ -73,3 +73,21 @@ export function normalizeSocialProfileUrl(raw?: string | null): string | undefin
   const profile = SOCIAL_PROFILE.exec(value);
   return profile ? `https://${profile[1]}` : undefined;
 }
+
+/**
+ * The "Recommended by" link on a place (OWN-11): a social handle or profile becomes its
+ * full URL, any other absolute http(s) link is kept as typed, and anything else is
+ * undefined so the form can refuse it before the contract does.
+ */
+export function normalizeRecommendationLink(raw?: string | null): string | undefined {
+  const value = raw?.trim();
+  if (!value) return undefined;
+  const social = normalizeSocialProfileUrl(value);
+  if (social) return social;
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}

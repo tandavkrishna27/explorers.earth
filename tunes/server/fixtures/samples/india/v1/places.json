@@ -1,0 +1,14 @@
+{"set":"india","version":"v1","category":"places","lists":[
+ {"key":"in-places-mumbai-classics","title":"Mumbai classics","description":"Old favourites in South Mumbai for a first day in the city.","topPicks":false,"items":[
+  {"note":"Go early, sit by the window, order the berry pulao at lunch.","rating":9,"googlePlaceId":null,"details":{"title":"Britannia & Co. Restaurant","formattedAddress":"Wakefield House, Ballard Estate, Fort, Mumbai","latitude":18.9346,"longitude":72.8401}},
+  {"note":"Bun maska and chai, the Irani cafe way.","rating":8,"googlePlaceId":null,"details":{"title":"Kyani & Co.","formattedAddress":"Jer Mahal Estate, Dhobi Talao, Marine Lines, Mumbai","latitude":18.9447,"longitude":72.8288}},
+  {"note":"Best at sunrise before the crowds.","rating":8,"googlePlaceId":null,"details":{"title":"Gateway of India","formattedAddress":"Apollo Bandar, Colaba, Mumbai","latitude":18.922,"longitude":72.8347}},
+  {"note":"A long walk at dusk along the Queen's Necklace.","rating":9,"googlePlaceId":null,"details":{"title":"Marine Drive","formattedAddress":"Marine Drive, Mumbai","latitude":18.9432,"longitude":72.8236}},
+  {"note":"Give it half a day; the sculpture gallery is the highlight.","rating":8,"googlePlaceId":null,"details":{"title":"Chhatrapati Shivaji Maharaj Vastu Sangrahalaya","formattedAddress":"Kala Ghoda, Fort, Mumbai","latitude":18.9269,"longitude":72.8326}}]},
+ {"key":"in-places-delhi-heritage","title":"Delhi heritage walk","description":"Monuments worth a slow morning each.","topPicks":true,"items":[
+  {"note":"Calmer than the Taj and just as beautiful.","rating":10,"googlePlaceId":null,"details":{"title":"Humayun's Tomb","formattedAddress":"Mathura Road, Nizamuddin, New Delhi","latitude":28.5933,"longitude":77.2507}},
+  {"note":"Go late afternoon for the light on the sandstone.","rating":9,"googlePlaceId":null,"details":{"title":"Qutub Minar","formattedAddress":"Mehrauli, New Delhi","latitude":28.5245,"longitude":77.1855}},
+  {"note":"Morning walk, then breakfast nearby.","rating":8,"googlePlaceId":null,"details":{"title":"Lodhi Garden","formattedAddress":"Lodhi Road, New Delhi","latitude":28.5931,"longitude":77.2197}},
+  {"note":"Combine with the lanes of Chandni Chowk.","rating":8,"googlePlaceId":null,"details":{"title":"Red Fort","formattedAddress":"Netaji Subhash Marg, Chandni Chowk, New Delhi","latitude":28.6562,"longitude":77.241}},
+  {"note":"Climb the minaret for the view over Old Delhi.","rating":8,"googlePlaceId":null,"details":{"title":"Jama Masjid","formattedAddress":"Meena Bazaar, Jama Masjid, Delhi","latitude":28.6507,"longitude":77.2334}}]}
+]}

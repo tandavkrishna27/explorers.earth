@@ -35,7 +35,7 @@ export function fixture(){
    return reply({recommendation:{...c,categoryRevision:String(revision),note:null,entity:{id:id(999),kind:'movie',title:`Movie ${n}`},displayOverrides:{},displayTitle:`Movie ${n}`}});
   }
   const recommendations=Array.from({length:43},(_,n)=>child(n));
-  const all=stream==='collections'?Array.from({length:14},(_,n)=>({id:n===0?list:id(500+n),accountId:account,category:'movies',title:`List ${n}`,slug:`list-${n}`,visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null,archived:false,displayOrder:n})):
+  const all=stream==='collections'?Array.from({length:14},(_,n)=>({id:n===0?list:id(500+n),accountId:account,category:'movies',title:`List ${n}`,slug:`list-${n}`,visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null,isSample:false,archived:false,displayOrder:n})):
    stream==='recommendations'?recommendations:stream==='memberships'?recommendations.map((r,n)=>({recommendationId:r.id,collectionId:list,collectionRevision:1,displayOrder:n,collectionArchived:false,recommendationArchived:false})):stream==='top-picks'?pins:[];
   const offset=u.searchParams.has('cursor')?24:0;
   return reply({version:'explorers-owner-content/v2',snapshotToken:'fixture',snapshot:String(revision),expiresAt,items:all.slice(offset,offset+24),nextCursor:offset+24<all.length?stream+'-page2':null,...(stream==='top-picks'?{pinRevision}:{})});

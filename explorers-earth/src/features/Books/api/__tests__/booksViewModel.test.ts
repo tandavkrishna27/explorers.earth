@@ -12,7 +12,7 @@ describe('canonical Books presentation', () => {
     expect(book.isbn_10).toBe('123456789X');expect(book.Media[0].url).toBe('/api/explorers/v1/media/snapshot/content');
   });
   it('requires both collection publication and visibility', () => {
-    const collection={id:'list',title:'List',description:null,heading:null,slug:'list',accountId:'account',displayOrder:0,visibility:'public',publicationState:'draft',coverMediaId:null};
+    const collection={id:'list',title:'List',description:null,heading:null,slug:'list',accountId:'account',displayOrder:0,visibility:'public',publicationState:'draft',coverMediaId:null,isSample:false};
     expect(collectionViewModel(collection as never,[]).visibility).toBe(false);
     expect(collectionViewModel({...collection,publicationState:'published'} as never,[]).visibility).toBe(true);
   });

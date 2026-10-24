@@ -1,0 +1,11 @@
+{"set":"global","version":"v1","category":"apps","lists":[
+ {"key":"gl-apps-travel","title":"Travel helpers","description":"What is on my phone before every trip.","topPicks":true,"items":[
+  {"note":"Download offline maps before you land.","rating":9,"details":{"title":"Google Maps","appUrl":"https://maps.google.com","developer":"Google","description":"Maps, transit and places.","platforms":["Android","iOS","Web"]}},
+  {"note":"The best transit directions in big cities.","rating":9,"details":{"title":"Citymapper","appUrl":"https://citymapper.com","developer":"Citymapper","description":"Public transport directions.","platforms":["Android","iOS"]}},
+  {"note":"Quick currency maths at the market.","rating":8,"details":{"title":"XE Currency","appUrl":"https://www.xe.com","developer":"XE","description":"Live exchange rates.","platforms":["Android","iOS","Web"]}},
+  {"note":"Menus and signs, translated through the camera.","rating":9,"details":{"title":"Google Translate","appUrl":"https://translate.google.com","developer":"Google","description":"Text, voice and camera translation.","platforms":["Android","iOS","Web"]}}]},
+ {"key":"gl-apps-focus","title":"Stay focused","description":"Tools that help me get things done.","topPicks":false,"items":[
+  {"note":"Notes, plans and docs in one place.","rating":9,"details":{"title":"Notion","appUrl":"https://www.notion.so","developer":"Notion Labs","description":"Notes, docs and project planning.","platforms":["Android","iOS","Web"]}},
+  {"note":"A simple to-do list I actually keep.","rating":8,"details":{"title":"Todoist","appUrl":"https://todoist.com","developer":"Doist","description":"To-do lists and reminders.","platforms":["Android","iOS","Web"]}},
+  {"note":"Grow a tree while you stay off the phone.","rating":8,"details":{"title":"Forest","appUrl":"https://www.forestapp.cc","developer":"Seekrtech","description":"Focus timer that plants trees.","platforms":["Android","iOS"]}}]}
+]}

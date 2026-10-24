@@ -18,7 +18,7 @@ const detail=(over:Record<string,unknown>={})=>({id:id(1),entityId:id(1),categor
 const membership=(over:Record<string,unknown>={})=>({recommendationId:id(1),collectionId:id(2),displayOrder:0,...over} as never);
 const snapshot={version:1,name:'Bengaluru',address:'Bengaluru, Karnataka, India',providerPlaceId:'ChIJ_city',latitude:12.9715987,longitude:77.5945627};
 const collection=(over:Record<string,unknown>={})=>({id:id(2),accountId:id(3),category:'places',title:'Bengaluru',description:'My personal guide',
- slug:'bengaluru',visibility:'public',publicationState:'published',displayOrder:0,heading:'Top picks',coverMediaId:id(9),revision:1,archived:false,
+ slug:'bengaluru',visibility:'public',publicationState:'published',displayOrder:0,heading:'Top picks',coverMediaId:id(9),isSample:false,revision:1,archived:false,
  categoryRevision:'1',placeLocation:{locationEntityId:id(4),locationSnapshot:snapshot,instagramMediaUrl:'https://example.com/reel'},...over} as never);
 
 it('preserves canonical taxonomy metadata and unavailable selection without invented labels',()=>{
@@ -181,5 +181,15 @@ it('leaves archived and unhydrated lists out of the owner view instead of failin
  expect(view.lists).toHaveLength(1);
  const gone=collection({id:id(6)}) as never;
  expect(()=>placesViewModel.complete({category:'places',collections:[live,gone],memberships:[],recommendations:[]} as never,new Map([[id(2),{detail:live} as never]]),new Map())).toThrow();
- expect(placesViewModel.complete({category:'places',collections:[live,gone],memberships:[],recommendations:[]} as never,new Map([[id(2),{detail:live} as never]]),new Map(),'',new Set([id(6)])).lists).toHaveLength(1);
+ expect(placesViewModel.complete({category:'places',collections:[live,gone],memberships:[],recommendations:[]} as never,new Map([[id(2),{detail:live} as never]]),new Map(),'',new Set([id(6)])).lists).toHaveLength(2);
+});
+
+// OWN-19. A list whose detail read failed used to vanish from the owner view without a
+// word, so the owner believed it was deleted. It now stays, flagged, with no places.
+it('keeps a list whose detail read failed, as an error row',()=>{
+ const live=collection(),failed=collection({id:id(6),title:'Mysuru',slug:'mysuru',visibility:'public',publicationState:'published'}) as never;
+ const view=placesViewModel.complete({category:'places',collections:[live,failed],memberships:[{recommendationId:id(1),collectionId:id(6),displayOrder:0}],recommendations:[]} as never,new Map([[id(2),{detail:live} as never]]),new Map(),'owner',new Set([id(6)]));
+ expect(view.lists.map(list=>list.documentId)).toEqual([id(2),id(6)]);
+ expect(view.lists[0].loadError).toBeUndefined();
+ expect(view.lists[1]).toMatchObject({documentId:id(6),List_Name:'Mysuru',slug:'mysuru',Visibility:true,loadError:true,recommended_places:[],account:{documentId:id(3),username:'owner'}});
 });

@@ -1,7 +1,6 @@
 
 
 import ListItemOrder from "../../../components/reorder/ListItemOrder";
-import { notePreviewText } from "../../../utils/notePreviewText";
 import {
   FC,
   memo,
@@ -16,8 +15,6 @@ import { useTranslation } from "react-i18next";
 import Button from "../../../components/ui/Button";
 import { AddIcon } from "../../../assets/icons/AddIcon";
 import { toast } from "sonner";
-import { usePeopleOwner } from "../../People/hooks/usePeopleOwner";
-import { useProductsOwner } from "../../Products/hooks/useProductsOwner";
 import { useNavigate, useLocation } from "react-router-dom";
 import DeleteIcon from "../../../assets/icons/DeleteIcon";
 import Modal from "../../../components/ui/Modal";
@@ -37,15 +34,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useMenuItems } from "../hooks/useMenuItems";
 // ⭐ Walkthrough Hook
 import { useRecommendationsWalkthrough } from "../../../hooks/useRecommendationsWalkthrough";
-import AddPlaceOverlay from "./AddPlaceOverlay";
 import { IMAGE_CONFIG } from "../../../config";
-import { ChevronDown, Users, ShoppingBag } from "lucide-react";
-import ProductDetailModal from "../../Products/components/public/ProductDetailModal";
-import PersonDetailModal from "../../People/components/public/PersonDetailModal";
-import { deduplicatePeople, buildImageUrl, PlatformIcon } from "../../People";
-import { deduplicateProducts } from "../../Products/utils/productHelpers";
-import { useFormatMoney } from "../../../lib/money";
+import { ChevronDown } from "lucide-react";
+import { buildImageUrl } from "../../People";
 import { keyboardActivation } from "../../../utils/keyboardActivation";
+import { LinkedListsUnderItems, ManageLinkedLists } from "../../shared/list/OwnerListLinks";
 
 // ⭐ TS declaration for window.__walkthrough
 declare global {
@@ -181,7 +174,6 @@ interface RecommendationsProps {
 
 const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
   const { t } = useTranslation();
-  const formatMoney = useFormatMoney();
   const { selectedCity, setSelectedCity } = useCityStore();
   const navigate = useNavigate();
   const { isProfileComplete, isRecommendationsComplete } = useSetupStore();
@@ -197,10 +189,6 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
     documentId: null,
     type: null,
   });
-  // local state for inline product detail view
-  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
-  // local state for inline person detail view
-  const [selectedPerson, setSelectedPerson] = useState<any | null>(null);
   // local state for handling delete recommended Place
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   // Ticket 5.1. Places, and the list publication flag, come from the native owner API.
@@ -217,12 +205,11 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
   const [topPlacesKey, setTopPlacesKey] = useState<number>(0);
   // local state for Instagram import modal
   // local state for Add Place overlay
-  const [showAddPlaceOverlay, setShowAddPlaceOverlay] = useState<boolean>(false);
+  // WP6: adding a place opens the full add page (the old overlay was retired).
+  const openAddPlace = () => { if (selectedCity?.documentId) navigate(`/recommendations/places/${selectedCity.documentId}/add`); };
   // dropdown for the split Add button
   const [showAddDropdown, setShowAddDropdown] = useState<boolean>(false);
   const addDropdownRef = useRef<HTMLDivElement>(null);
-  // active tab: places | people | products
-  const [activeTab, setActiveTab] = useState<"places" | "people" | "products">("places");
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -253,41 +240,6 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
     [owner.data, selectedCity?.documentId]
   );
   const ownerPlaces = useMemo(() => ownerList?.recommended_places ?? [], [ownerList]);
-  // Ticket 5.2. The lists linked to this location come from the owner reads: the location
-  // says which ids are linked, and each category's own read supplies those lists. Copying
-  // their contents into the location's read would make two sources for one list.
-  const peopleOwner = usePeopleOwner(undefined, Boolean(selectedCity?.documentId));
-  const productsOwner = useProductsOwner(undefined, Boolean(selectedCity?.documentId));
-  const linkedPersonLists: any[] = useMemo(() => {
-    const ids = new Set(ownerList?.linked_person_list_ids ?? []);
-    return (peopleOwner.data?.personLists ?? []).filter((list) => ids.has(list.documentId));
-  }, [peopleOwner.data, ownerList]);
-  const linkedProductLists: any[] = useMemo(() => {
-    const ids = new Set(ownerList?.linked_product_list_ids ?? []);
-    return (productsOwner.data?.productLists ?? []).filter((list) => ids.has(list.documentId));
-  }, [productsOwner.data, ownerList]);
-
-  // Flatten all linked people and products
-  const linkedPeople = useMemo(() => {
-    const raw = linkedPersonLists.flatMap((l: any) =>
-      (l.recommended_people || []).map((p: any) => ({
-        ...p,
-        _listName: l.List_Name,
-        _listId: l.documentId,
-      }))
-    );
-    return deduplicatePeople(raw);
-  }, [linkedPersonLists]);
-  const linkedProducts = useMemo(() => {
-    const raw = linkedProductLists.flatMap((l: any) =>
-      (l.recommended_products || []).map((p: any) => ({
-        ...p,
-        _listName: l.List_Name,
-        _listId: l.documentId,
-      }))
-    );
-    return deduplicateProducts(raw);
-  }, [linkedProductLists]);
   const [revealed, setRevealed] = useState<number>(10);
   const placesData = useMemo(() => ({ recommendedPlaces: ownerPlaces.slice(0, revealed) }), [ownerPlaces, revealed]);
   const allPlacesData = useMemo(() => ({ recommendationList: { recommended_places: ownerPlaces } }), [ownerPlaces]);
@@ -384,19 +336,16 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
     }
   }, [stepIndex, run, advanceToNextStepRef]);
 
-  // Auto-open AddPlaceOverlay for Walkthrough Step 2 (Suggestions)
+  // Open the add-place page for Walkthrough Step 2 (Suggestions)
   useEffect(() => {
-    const handleOpen = () => setShowAddPlaceOverlay(true);
-    const handleClose = () => setShowAddPlaceOverlay(false);
+    const handleOpen = () => openAddPlace();
 
     window.addEventListener('openWalkthroughModal', handleOpen);
-    window.addEventListener('closeWalkthroughModal', handleClose);
 
     return () => {
       window.removeEventListener('openWalkthroughModal', handleOpen);
-      window.removeEventListener('closeWalkthroughModal', handleClose);
     };
-  }, []);
+  }, [selectedCity?.documentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ⭐ Expose walkthrough control globally for other components
 
@@ -640,7 +589,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
             {/* Main button + chevron */}
             <div className="flex w-full rounded-xl overflow-hidden shadow-lg shadow-blue-900/30">
               <button
-                onClick={() => setShowAddPlaceOverlay(true)}
+                onClick={openAddPlace}
                 className="flex-1 bg-dashboard-accent hover:opacity-90 text-sm text-white font-bold py-3 flex items-center justify-center gap-2 transition-all cursor-pointer"
                 data-walkthrough="add-place"
               >
@@ -670,7 +619,7 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
                   className="absolute top-[calc(100%+6px)] left-0 right-0 bg-dashboard-sidebar border border-dashboard-border rounded-xl shadow-2xl z-50 overflow-hidden"
                 >
                   <button
-                    onClick={() => { setShowAddDropdown(false); setShowAddPlaceOverlay(true); }}
+                    onClick={() => { setShowAddDropdown(false); openAddPlace(); }}
                     className="w-full flex items-center gap-3 px-4 py-3 text-sm text-dashboard hover:bg-dashboard-muted transition-colors text-left border-b border-white/5"
                   >
                     <div className="w-7 h-7 rounded-lg bg-blue-500/15 flex items-center justify-center flex-shrink-0">
@@ -681,30 +630,6 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
                     <div>
                       <p className="font-semibold">Add Place</p>
                       <p className="text-xs text-dashboard-muted">Restaurant, hotel, or attraction</p>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => { setShowAddDropdown(false); navigate(`/recommendations/places/${selectedCity?.documentId}/add-people`); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-dashboard hover:bg-dashboard-muted transition-colors text-left border-b border-white/5"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-violet-500/15 flex items-center justify-center flex-shrink-0">
-                      <Users size={14} className="text-violet-400" />
-                    </div>
-                    <div>
-                      <p className="font-semibold">Add People</p>
-                      <p className="text-xs text-dashboard-muted">Local creators, founders, artists</p>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => { setShowAddDropdown(false); navigate(`/recommendations/places/${selectedCity?.documentId}/add-products`); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-dashboard hover:bg-dashboard-muted transition-colors text-left"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-orange-500/15 flex items-center justify-center flex-shrink-0">
-                      <ShoppingBag size={14} className="text-orange-400" />
-                    </div>
-                    <div>
-                      <p className="font-semibold">Add Products</p>
-                      <p className="text-xs text-dashboard-muted">Gear, essentials, recommendations</p>
                     </div>
                   </button>
                 </motion.div>
@@ -752,8 +677,8 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
         )}
       </AnimatePresence>
 
-      {/* My Recommendations Header + Tab Switcher */}
-      {(allFilteredPlaces?.length > 0 || linkedPeople.length > 0 || linkedProducts.length > 0) && (
+      {/* My Recommendations Header */}
+      {allFilteredPlaces?.length > 0 && (
         <div className="mt-8 mb-4">
           <div className="flex items-center gap-3 mb-4">
             <div>
@@ -762,44 +687,18 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
               </h3>
             </div>
           </div>
-
-          {/* Tab Switcher */}
-          <div className="flex gap-1 p-1 bg-dashboard-muted rounded-xl w-fit">
-            {([
-              { key: "places", label: "Places", count: allFilteredPlaces?.length || 0 },
-              { key: "people", label: "People", count: linkedPeople.length },
-              { key: "products", label: "Products", count: linkedProducts.length },
-            ] as const).map(({ key, label, count }) => (
-              <button
-                key={key}
-                onClick={() => setActiveTab(key)}
-                className={`relative px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 ${
-                  activeTab === key
-                    ? "bg-dashboard-accent text-white shadow-lg shadow-blue-900/30"
-                    : "text-dashboard-muted hover:text-dashboard"
-                }`}
-              >
-                {label}
-                {count > 0 && (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                    activeTab === key ? "bg-white/20" : "bg-white/10"
-                  }`}>{count}</span>
-                )}
-              </button>
-            ))}
-          </div>
         </div>
       )}
 
-      {activeTab === "places" && accountId && selectedCity?.documentId && (
+      {accountId && selectedCity?.documentId && (
         <div role="status" className="text-sm text-white/70">
           {!currentCatalog ? "Loading categories…" : currentCatalog.error ? <>
             Categories could not be loaded. <button type="button" onClick={() => setCatalogRetry(value => value + 1)}>Retry loading categories</button>
           </> : currentCatalog.catalog?.state === "UNCONFIGURED" ? "Category catalog is not configured." : !categories.length ? "No categories are configured." : null}
         </div>
       )}
-      {/* Categories filters only visible on Places tab */}
-      {activeTab === "places" && categories && categories.length >= 1 && (
+      {/* Category filters */}
+      {categories && categories.length >= 1 && (
         <div className="overflow-x-auto whitespace-nowrap py-4 scrollbar-hide">
           <div className="flex gap-3">
             <Button
@@ -823,166 +722,6 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
         </div>
       )}
 
-      {/* ── People Tab ── */}
-      {activeTab === "people" && (
-        <div className="mb-20 md:mb-0">
-          {!linkedPersonLists.some((list: any) => list.recommended_people && list.recommended_people.length > 0) ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-violet-900/20 border border-violet-800/30 flex items-center justify-center mb-4">
-                <Users size={28} className="text-violet-500/60" />
-              </div>
-              <h3 className="text-base font-semibold text-dashboard mb-1">No people linked yet</h3>
-              <p className="text-sm text-dashboard-muted mb-4">Click the chevron on the Add button and select "Add People"</p>
-              <button
-                onClick={() => navigate(`/recommendations/places/${selectedCity?.documentId}/add-people`)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600/30 hover:bg-violet-600/50 text-sm text-violet-300 font-medium transition-colors cursor-pointer"
-              >
-                <Users size={14} /> Add People
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-8">
-              {linkedPersonLists.map((list: any) => {
-                const people = deduplicatePeople(list.recommended_people ?? []);
-                if (people.length === 0) return null;
-
-                return (
-                  <div key={list.documentId} className="px-1">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h4 className="text-sm font-bold text-white">{list.List_Name}</h4>
-                        {list.list_description && (
-                          <p className="text-xs text-dashboard-muted mt-0.5 line-clamp-1">{notePreviewText(list.list_description)}</p>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => navigate(`/recommendations/people/${list.documentId}`)}
-                        className="text-xs text-violet-400 hover:text-violet-300 font-semibold transition-colors whitespace-nowrap cursor-pointer"
-                      >
-                        View all →
-                      </button>
-                    </div>
-
-                    <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-                      {people.map((person: any) => {
-                        const avatarSrc = person.avatar_url || person.avatar_path || person.media_details?.thumbnail?.url || person.media_details?.imageDetails?.[0]?.url || null;
-                        return (
-                          <button
-                            key={person.documentId}
-                            onClick={() => setSelectedPerson(person)}
-                            className="flex-shrink-0 w-[110px] flex flex-col items-center gap-2 text-center group cursor-pointer bg-transparent border-0 outline-none p-0"
-                          >
-                            <div className="relative w-20 h-20 rounded-full overflow-hidden bg-white/5 ring-2 ring-white/10 group-hover:ring-violet-500/50 transition-all shadow-lg group-hover:scale-105 duration-200">
-                              {avatarSrc ? (
-                                <img src={buildImageUrl(avatarSrc)} alt={person.name} className="w-full h-full object-cover" loading="lazy" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-violet-950/40">
-                                  <Users size={24} className="text-violet-400/40" />
-                                </div>
-                              )}
-                              {person.platform && (
-                                <div className="absolute bottom-1 right-1 p-1 bg-black/60 rounded-full border border-white/10 flex items-center justify-center shadow-md z-10">
-                                  <PlatformIcon platform={person.platform} size={10} />
-                                </div>
-                              )}
-                            </div>
-                            <div className="w-full">
-                              <p className="text-xs font-semibold text-white line-clamp-1">{person.name}</p>
-                              {person.handle && (
-                                <p className="text-[10px] text-white/40 truncate">@{person.handle}</p>
-                              )}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Products Tab ── */}
-      {activeTab === "products" && (
-        <div className="mb-20 md:mb-0">
-          {!linkedProductLists.some((list: any) => list.recommended_products && list.recommended_products.length > 0) ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-orange-900/20 border border-orange-800/30 flex items-center justify-center mb-4">
-                <ShoppingBag size={28} className="text-orange-500/60" />
-              </div>
-              <h3 className="text-base font-semibold text-dashboard mb-1">No products linked yet</h3>
-              <p className="text-sm text-dashboard-muted mb-4">Click the chevron on the Add button and select "Add Products"</p>
-              <button
-                onClick={() => navigate(`/recommendations/places/${selectedCity?.documentId}/add-products`)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-600/30 hover:bg-orange-600/50 text-sm text-orange-300 font-medium transition-colors cursor-pointer"
-              >
-                <ShoppingBag size={14} /> Add Products
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-8">
-              {linkedProductLists.map((list: any) => {
-                const products = deduplicateProducts(list.recommended_products ?? []);
-                if (products.length === 0) return null;
-
-                return (
-                  <div key={list.documentId} className="px-1">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h4 className="text-sm font-bold text-white">{list.List_Name}</h4>
-                        {list.list_description && (
-                          <p className="text-xs text-dashboard-muted mt-0.5 line-clamp-1">{notePreviewText(list.list_description)}</p>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => navigate(`/recommendations/products/${list.documentId}`)}
-                        className="text-xs text-orange-400 hover:text-orange-300 font-semibold transition-colors whitespace-nowrap cursor-pointer"
-                      >
-                        View all →
-                      </button>
-                    </div>
-
-                    <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
-                      {products.map((product: any) => (
-                        <button
-                          key={product.documentId}
-                          onClick={() => setSelectedProduct(product)}
-                          className="flex-shrink-0 w-[140px] rounded-2xl bg-white/[0.04] border border-white/[0.07] hover:border-orange-500/40 hover:bg-white/[0.07] p-3 text-left transition-all cursor-pointer outline-none"
-                        >
-                          <div className="w-full h-24 rounded-xl overflow-hidden bg-white/5 mb-2 shadow-md">
-                            {product.logo_url ? (
-                              <img src={buildImageUrl(product.logo_url)} alt={product.title} className="w-full h-full object-cover" loading="lazy" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <ShoppingBag size={20} className="text-white/20" />
-                              </div>
-                            )}
-                          </div>
-                          <p className="text-xs font-semibold text-white line-clamp-2 leading-tight mb-1.5">{product.title}</p>
-                          {product.brand && (
-                            <p className="text-[10px] text-white/40 truncate mb-1">{product.brand}</p>
-                          )}
-                          {product.price != null && (
-                            <p className="text-xs font-bold text-orange-400">
-                              {formatMoney(product.price, product.currency)}
-                            </p>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Places Tab ── */}
-      {activeTab === "places" && (
-      <>
       {/* The order set here is the order of this list on its public page. */}
       {selectedCity?.documentId && (
         <div className="mt-2">
@@ -1092,8 +831,6 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
           </>
         ) : null}
       </div>
-      </>
-      )}
 
       {/* Empty State - Show only when no recommendations */}
       {!loading && !allFilteredPlaces?.length && placesData?.recommendedPlaces && (
@@ -1106,6 +843,16 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
               {t("dashboard.recommendations.emptyState.subtitle")}
             </p>
           </div>
+        </div>
+      )}
+
+      {/* WP10 (LNK-03/04). After the places (and after the empty state on an empty list).
+          The Manage panel stays on this page, not in the Manage tab: the sealed place-links
+          lane drives Attach/Detach here without switching tabs. */}
+      {selectedCity?.documentId && (
+        <div className="mb-20 grid gap-4 md:mb-0">
+          <LinkedListsUnderItems collectionId={selectedCity.documentId} />
+          <ManageLinkedLists collectionId={selectedCity.documentId} />
         </div>
       )}
 
@@ -1127,20 +874,6 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
           />
         )}
       </div>
-
-      {/* Product Detail Modal */}
-      <ProductDetailModal
-        open={!!selectedProduct}
-        product={selectedProduct}
-        onClose={() => setSelectedProduct(null)}
-      />
-
-      {/* Person Detail Modal */}
-      <PersonDetailModal
-        open={!!selectedPerson}
-        person={selectedPerson}
-        onClose={() => setSelectedPerson(null)}
-      />
 
       {showDeleteModal && (
         <Modal
@@ -1174,16 +907,6 @@ const Recommendations: FC<RecommendationsProps> = memo(({ refetchCities }) => {
           </div>
         </Modal>
       )}
-
-      {/* Add Place Overlay */}
-      <AddPlaceOverlay
-        isOpen={showAddPlaceOverlay}
-        onClose={() => setShowAddPlaceOverlay(false)}
-        existingRecommendations={allPlacesData?.recommendationList?.recommended_places || []}
-        selectedLocationCoords={selectedCityCoordinates}
-        onPlaceAdded={handlePlaceAdded}
-        topPlacesKey={topPlacesKey}
-      />
     </div>
   );
 });

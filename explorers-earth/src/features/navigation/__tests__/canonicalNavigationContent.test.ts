@@ -3,7 +3,7 @@ import useAuthStore from '../../../store/store';
 import { createCategoryNavigationApi } from '../categoryNavigationApi';
 const accountId='11111111-1111-4111-8111-111111111111';
 const scope={userDocumentId:'auth-owner',accountDocumentId:accountId,generation:1};
-const collection=(category:string,n=1,extra={})=>({id:`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`,accountId,category,title:'List',slug:`list-${n}`,visibility:'public',publicationState:'published',revision:1,description:null,heading:null,coverMediaId:null,archived:false,displayOrder:n,...extra});
+const collection=(category:string,n=1,extra={})=>({id:`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`,accountId,category,title:'List',slug:`list-${n}`,visibility:'public',publicationState:'published',revision:1,description:null,heading:null,coverMediaId:null,isSample:false,archived:false,displayOrder:n,...extra});
 const page=(items:unknown[],nextCursor:string|null=null)=>new Response(JSON.stringify({version:'explorers-owner-content/v2',snapshot:'1',snapshotToken:'opaque',expiresAt:Date.now()+600000,items,nextCursor}),{headers:{'Content-Type':'application/json'}});
 beforeEach(()=>useAuthStore.setState({generation:10,accountId,isAuthenticated:true,user:{id:'auth-owner'} as never}));
 afterEach(()=>{vi.unstubAllGlobals();vi.restoreAllMocks();});

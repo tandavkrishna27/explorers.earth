@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, bigint, boolean, timestamp, jsonb, integer, smallint, primaryKey, uniqueIndex, index, customType, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, bigint, boolean, timestamp, jsonb, integer, smallint, primaryKey, uniqueIndex, index, customType, numeric, date } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { auth_user } from "./authSchema";
 
@@ -142,13 +142,14 @@ export const collections=pgTable('collections',{
   title:text('title').notNull(),description:text('description'),descriptionRich:jsonb('description_rich'),slug:text('slug').notNull(),
   visibility:text('visibility').notNull().default('private'),publicationState:text('publication_state').notNull().default('draft'),
   displayOrder:integer('display_order').notNull(),pinOrder:integer('pin_order'),heading:text('heading'),
-  revision:bigint('revision',{mode:'number'}).notNull().default(1),archivedAt:timestamp('archived_at',{withTimezone:true}),...contentTimes(),
+  revision:bigint('revision',{mode:'number'}).notNull().default(1),archivedAt:timestamp('archived_at',{withTimezone:true}),
+  isSample:boolean('is_sample').notNull().default(false),...contentTimes(),
 },t=>[index('collections_owner_order_idx').on(t.accountId,t.category,t.displayOrder,t.id)]);
 export const recommendations=pgTable('recommendations',{
   id:uuid('id').primaryKey().defaultRandom(),accountId:uuid('account_id').notNull(),entityId:uuid('entity_id').notNull(),
   category:text('category').notNull(),note:jsonb('note'),userRating:smallint('user_rating'),
   publicationState:text('publication_state').notNull().default('draft'),revision:bigint('revision',{mode:'number'}).notNull().default(1),
-  archivedAt:timestamp('archived_at',{withTimezone:true}),...contentTimes(),
+  archivedAt:timestamp('archived_at',{withTimezone:true}),isSample:boolean('is_sample').notNull().default(false),...contentTimes(),
 },t=>[index('recommendations_owner_id_idx').on(t.accountId,t.category,t.id)]);
 // 0033 owns the composite account FK, schema-version/object CHECKs and triggers.
 export const recommendationDisplayOverrides=pgTable('recommendation_display_overrides',{
@@ -245,6 +246,20 @@ export const collectionLocationLinks=pgTable('collection_location_links',{
  locationCategory:text('location_category').notNull().default('places'),
  createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
 },t=>[index('collection_location_links_location_idx').on(t.accountId,t.locationCollectionId,t.childCategory)]);
+// 0070 owns the pair uniqueness (LEAST/GREATEST expression index), the self-link CHECK and the composite ownership FKs.
+export const collectionListLinks=pgTable('collection_list_links',{
+ id:uuid('id').primaryKey().defaultRandom(),accountId:uuid('account_id').notNull(),
+ hostCollectionId:uuid('host_collection_id').notNull(),hostCategory:text('host_category').notNull(),
+ linkedCollectionId:uuid('linked_collection_id').notNull(),linkedCategory:text('linked_category').notNull(),
+ role:text('role'),displayOrder:integer('display_order').notNull(),
+ createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
+},t=>[index('collection_list_links_host_idx').on(t.accountId,t.hostCollectionId,t.displayOrder),index('collection_list_links_linked_idx').on(t.accountId,t.linkedCollectionId)]);
+// 0071: permanent seeding receipts (no DELETE grant); collection_id is SET NULL when the sample list is deleted.
+export const sampleSeedingReceipts=pgTable('sample_seeding_receipts',{
+ accountId:uuid('account_id').notNull(),sampleKey:text('sample_key').notNull(),category:text('category').notNull(),
+ fixtureSet:text('fixture_set').notNull(),fixtureVersion:text('fixture_version').notNull(),collectionId:uuid('collection_id'),
+ seededAt:timestamp('seeded_at',{withTimezone:true}).notNull().defaultNow(),claimedAt:timestamp('claimed_at',{withTimezone:true}),
+},t=>[primaryKey({columns:[t.accountId,t.sampleKey]}),index('sample_seeding_receipts_collection_idx').on(t.collectionId)]);
 export const placeCollectionDetails=pgTable('place_collection_details',{
  collectionId:uuid('collection_id').primaryKey(),accountId:uuid('account_id').notNull(),category:text('category').notNull().default('places'),
  locationEntityId:uuid('location_entity_id').references(()=>entities.id,{onDelete:'restrict'}),
@@ -266,6 +281,7 @@ export const guideCollectionDetails=pgTable('guide_collection_details',{
  collectionId:uuid('collection_id').primaryKey(),accountId:uuid('account_id').notNull(),category:text('category').notNull().default('guides'),
  guideType:text('guide_type'),multiCity:boolean('multi_city').notNull().default(false),numberOfDays:integer('number_of_days'),
  estimatedBudget:numeric('estimated_budget',{precision:14,scale:3}),budgetCurrency:text('budget_currency'),budgetType:text('budget_type'),budgetTier:text('budget_tier'),
+ startDate:date('start_date',{mode:'string'}),
  bestTimeToVisit:jsonb('best_time_to_visit').notNull().default(sql`'[]'::jsonb`),categories:jsonb('categories').notNull().default(sql`'[]'::jsonb`),
  tags:jsonb('tags').notNull().default(sql`'[]'::jsonb`),tipsNotes:jsonb('tips_notes'),
  placeSnapshot:jsonb('place_snapshot').notNull().default(sql`'{}'::jsonb`),

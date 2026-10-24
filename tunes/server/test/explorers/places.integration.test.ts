@@ -180,10 +180,15 @@ describePg("Places storage against PostgreSQL", () => {
     // Declaring 'person' over a place entity violates the deferred kind invariant.
     await expect(withClient(client => writePlaceContext(client, recommendationId, accountId,
       {...emptyPlaceContext(), recommendationType: "person"}))).rejects.toThrow();
-    // A person entity inside a Places list is the supported case.
+    // WP6: people belong in the People category, so a new person write is refused even
+    // over a person entity...
     const person = await place("person", "Recommended Person");
     await expect(withClient(client => writePlaceContext(client, person.recommendationId, person.accountId,
-      {...emptyPlaceContext(), recommendationType: "person", personProfileUrl: "https://example.com/them", personAddress: "Lisbon"}))).resolves.toBeUndefined();
+      {...emptyPlaceContext(), recommendationType: "person", personProfileUrl: "https://example.com/them", personAddress: "Lisbon"})))
+      .rejects.toMatchObject({status: 422, message: "Recommend people in the People category"});
+    // ...while an existing person row stays readable.
+    await pool.query(`INSERT INTO place_recommendation_context(recommendation_id,account_id,recommendation_type,source_of_recommendation,contact_visibility,person_profile_url,person_address)
+      VALUES($1,$2,'person','self','private','https://example.com/them','Lisbon')`, [person.recommendationId, person.accountId]);
     const stored = await readPlaceContext(pool, person.recommendationId, person.accountId);
     expect(stored).toMatchObject({recommendationType: "person", personAddress: "Lisbon"});
   });

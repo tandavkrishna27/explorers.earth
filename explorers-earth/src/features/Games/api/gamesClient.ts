@@ -4,7 +4,7 @@ import type {RichNote} from '../../../../../tunes/shared/explorersRichNoteContra
 import {gameDetailsSchema} from '../../../../../tunes/shared/explorersGameContract';
 import useAuthStore from '../../../store/store';
 export type CompleteGamesOwnerContent=CompleteMyCategoryContent&{readonly category:'games'};
-export type ManualGameDraft={title:string;note:RichNote|null;userRating:number|null;mediaIds:string[];releaseYear?:number|null;platforms?:string[];genres?:string[]};
+export type ManualGameDraft={title:string;note:RichNote|null;userRating:number|null;mediaIds:string[];releaseYear?:number|null;platforms?:string[];genres?:string[];developer?:string|null;curatedTermId?:string|null};
 export type ManualGameIntent=Readonly<{entityKey:string;recommendationKey:string;parent:CollectionObservation;draft:Readonly<ManualGameDraft>}>;
 export type GameMembershipIntent=Readonly<{parent:CollectionObservation;item:RecommendationObservation;attached:boolean;commandKey:string}>;
 const intents=new WeakMap<object,{accountId:string|null;generation:number;route:string}>();
@@ -32,15 +32,17 @@ export const GamesClient={
  async observeRecommendation(id:string,signal?:AbortSignal){const value=await explorersApiClient.getMyEditableRecommendation(id,signal);recommendation(value);return value;},
  prepareManualIntent(parent:CollectionObservation,draft:ManualGameDraft):ManualGameIntent{
   collection(parent);const title=resolveManualEntitySchema.parse({kind:'manual',category:'games',details:{title:draft.title}}).details.title;
-  const normalized=createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict().parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft'});
-  const details=gameDetailsSchema.parse({releaseYear:draft.releaseYear??null,platforms:draft.platforms??[],genres:draft.genres??[]});
-  const intent=freeze({entityKey:key(),recommendationKey:key(),parent,draft:{title,note:normalized.note,userRating:normalized.userRating,mediaIds:[...normalized.mediaIds],...details}});
+  const normalized=createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict().parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft',...(draft.curatedTermId!==undefined?{curatedTermId:draft.curatedTermId}:{})});
+  const details=gameDetailsSchema.parse({releaseYear:draft.releaseYear??null,platforms:draft.platforms??[],genres:draft.genres??[],developer:draft.developer?.trim()||null});
+  const intent=freeze({entityKey:key(),recommendationKey:key(),parent,draft:{title,note:normalized.note,userRating:normalized.userRating,mediaIds:[...normalized.mediaIds],...details,...(normalized.curatedTermId!==undefined?{curatedTermId:normalized.curatedTermId}:{})}});
   const state=useAuthStore.getState();intents.set(intent,{accountId:state.accountId,generation:state.generation,route:route()});return intent;
  },
  async createManual(intent:ManualGameIntent,signal?:AbortSignal){const scope=intents.get(intent);if(!scope)fail();current(scope,signal);collection(intent.parent);
-  const entity=await explorersApiClient.resolveManualGame({title:intent.draft.title,releaseYear:intent.draft.releaseYear??null,platforms:[...(intent.draft.platforms??[])],genres:[...(intent.draft.genres??[])]},intent.entityKey,signal);
+  // The manual-game schema accepts developer (gameDetailsSchema); the client signature predates it.
+  const details={title:intent.draft.title,releaseYear:intent.draft.releaseYear??null,platforms:[...(intent.draft.platforms??[])],genres:[...(intent.draft.genres??[])],...(intent.draft.developer?{developer:intent.draft.developer}:{})};
+  const entity=await explorersApiClient.resolveManualGame(details,intent.entityKey,signal);
   current(scope,signal);collection(intent.parent);
-  const result=await explorersApiClient.createMyRecommendation(intent.parent,{entityId:entity.id,note:intent.draft.note,userRating:intent.draft.userRating,mediaIds:[...intent.draft.mediaIds],publicationState:'draft'},intent.recommendationKey,signal);
+  const result=await explorersApiClient.createMyRecommendation(intent.parent,{entityId:entity.id,note:intent.draft.note,userRating:intent.draft.userRating,mediaIds:[...intent.draft.mediaIds],publicationState:'draft',...(intent.draft.curatedTermId!==undefined?{curatedTermId:intent.draft.curatedTermId}:{})},intent.recommendationKey,signal);
   current(scope,signal);return result;
  },
  createCollection(input:{title:string;slug:string;description?:string|null},commandKey:string,signal?:AbortSignal){return explorersApiClient.createMyCollection({...input,category:'games',visibility:'private',publicationState:'draft'},commandKey,signal);},

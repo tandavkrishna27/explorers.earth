@@ -116,6 +116,13 @@
 /* Poppins included in consolidated import above */
 
 :root {
+  /* Phone bottom nav (components/Navbar.tsx) incl. safe area; Navbar overwrites it with the measured value. */
+  --bottom-nav-height: calc(64px + env(safe-area-inset-bottom, 0px));
+  /* Fixed dashboard header (components/Header.tsx): its top edge and height. The phone
+     scroll container clears both plus a gap, so page rows never start under the header. */
+  --dashboard-header-top: calc(0.5rem + env(safe-area-inset-top, 0px));
+  --dashboard-header-height: 64px;
+  --dashboard-header-clearance: calc(var(--dashboard-header-top) + var(--dashboard-header-height) + 0.5rem);
   --dash-bg: #fffcf6;
   --dash-sidebar-bg: #ffffff;
   --dash-accent: #3B82F6;
@@ -852,7 +859,7 @@ body {
 /* Hide dashboard header on scroll (used in DashboardLayout) */
 .dashboard-header {
   position: fixed !important;
-  top: 0.5rem;
+  top: var(--dashboard-header-top);
   right: 0.5rem;
   z-index: 100;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
@@ -869,6 +876,11 @@ body.hide-dashboard-header .dashboard-header {
 body.hide-dashboard-header .dashboard-content > div.overflow-auto {
   padding-top: 0 !important;
   transition: padding-top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Phone dashboard scroll container (layouts/ResponsiveLayout.tsx). */
+.dashboard-mobile-content {
+  padding-top: var(--dashboard-header-clearance);
 }
 
 /* Responsive Sticky Top for page-level headers that need to offset the global header */

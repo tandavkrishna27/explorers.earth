@@ -129,6 +129,16 @@ export const GuidesClient = {
   return intent;
  },
 
+ async run(intent: {collectionId: string; revision: number; commandKey: string},
+  call: (id: string, revision: number, key: string, signal?: AbortSignal) => Promise<unknown>, signal?: AbortSignal) {
+  const scope = intents.get(intent);
+  if (!scope) fail();
+  currentIntent(scope, signal);
+  const result = await call(intent.collectionId, intent.revision, intent.commandKey, signal);
+  currentIntent(scope, signal);
+  return brand(intent.collectionId, result as unknown as GuideAggregateDto);
+ },
+
  async writeDetails(intent: {collectionId: string; revision: number; commandKey: string}, details: GuideCollectionDetails, signal?: AbortSignal) {
   const scope = intents.get(intent);
   if (!scope) fail();

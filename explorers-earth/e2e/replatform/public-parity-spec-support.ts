@@ -151,7 +151,7 @@ export async function removeGuidePhoto(scope: Scope, context: BrowserContext, li
     const current = guideAggregateDtoSchema.parse((await scope.read(context, `/collections/${listId}/guide`)).body.guide), section = current.sections.find(row => row.id === sectionId);
     expect(section).toBeDefined();
     const blocks = structuredClone(section!.blocks);
-    for (const activity of [...blocks.timeline.morning, ...blocks.timeline.afternoon, ...blocks.timeline.evening])
+    for (const activity of blocks.items.flatMap(item => item.kind === 'place' ? [item.place] : []))
         activity.photos = activity.photos.filter(photo => photo.mediaId !== mediaId);
     const data = writeGuideSectionSchema.parse({ revision: current.revision, title: section!.title, description: section!.description, blocks });
     return scope.client.trackProducer(async () => consume(await context.request.patch(`${BASE}/collections/${listId}/guide/sections/${sectionId}`, { headers: { Origin: scope.manifest.origin, 'Idempotency-Key': randomUUID() }, data }), 200));

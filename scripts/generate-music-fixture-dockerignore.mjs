@@ -26,6 +26,7 @@ const sharedContractEntryPoints = [
   "tunes/shared/explorersRichNoteContract.ts",
   "tunes/shared/explorersBookContract.ts",
   "tunes/shared/explorersBookCoverContract.ts",
+  "tunes/shared/explorersLinkPreviewContract.ts",
   "tunes/shared/explorersMovieContract.ts",
   "tunes/shared/explorersMovieMediaContract.ts",
   "tunes/shared/explorersAppContract.ts",
@@ -34,7 +35,10 @@ const sharedContractEntryPoints = [
   "tunes/shared/explorersPersonContract.ts",
   "tunes/shared/explorersPublicPeopleSectorContract.ts",
   "tunes/shared/explorersPlaceContract.ts",
-  "tunes/shared/explorersPlaceLinkContract.ts",
+  // WP10. explorersApiClient imports the list link contract (it replaced the Places-only one).
+  "tunes/shared/explorersListLinkContract.ts",
+  // WP6. The Places add flow reads the nearby response contract.
+  "tunes/shared/explorersPlacesNearbyContract.ts",
   // Ticket 5.3. explorersApiClient is in this context and imports the guide contract, so
   // the contract has to travel with it or the image's frontend build cannot resolve it.
   "tunes/shared/explorersGuideContract.ts",
@@ -43,6 +47,8 @@ const sharedContractEntryPoints = [
   "tunes/shared/explorersGameOwnerContract.ts",
   // P5-2. usernameValidation imports the one reserved-handle list the server also reads.
   "tunes/shared/explorersReservedHandles.ts",
+  // WP9. The guide editor (GuideEditorPage, LinkedListsBlock) imports the list link contract.
+  "tunes/shared/explorersListLinkContract.ts",
 ];
 
 // Breadth-first over relative `from "./x"` specifiers inside tunes/shared, so the

@@ -182,8 +182,32 @@ it('native spec catches only to capture synchronously and rethrows the exact ori
 // over a ~126KB source. Measured idle: 3959ms for this test, 581ms for the completion-race one
 // -- the first sat ~20% under the default, which is why it timed out under 171-file parallel
 // load rather than failing an assertion. The bound is latency only; every assertion is unchanged.
+// Ratified business amendment (GD-23, guide blocks v2): a day's places are now blocks.items and
+// its budget blocks.budget.entries, and the public projection's Timeline/Budget are the legacy
+// slot views of them. These are the ONLY literals reverted, each with its exact count, so every
+// prior fingerprint and mutant below still binds the unchanged business AST.
+const DAY_ITEM_AMENDMENTS:[string,string,number][]=[
+ ['guideAggregateDtoSchema,legacyBudgetFromEntries,legacyTimelineFromItems,writeGuideDetailsSchema','guideAggregateDtoSchema,writeGuideDetailsSchema',1],
+ ["blocks.items.flatMap(i=>i.kind==='place'?[i.place]:[]).at(-1)!",'blocks.timeline.evening.at(-1)!',1],
+ ["section.blocks.items.flatMap(i=>i.kind==='place'?[i.place]:[]),...section.blocks.activities",'section.blocks.timeline.morning,...section.blocks.timeline.afternoon,...section.blocks.timeline.evening,...section.blocks.activities',1],
+ ["blocks.items.flatMap(i=>i.kind==='place'?[i.place]:[])[0]",'blocks.timeline.morning[0]',6],
+ ['blocks.budget.entries[0]','blocks.budget.morning[0]',2],
+ ["blocks.items.push({kind:'place',localId,timeLabel:'evening',place:entry});",'blocks.timeline.evening.push(entry);',1],
+ ['blocks.budget.entries.push({localId,placeId:entry.placeId','blocks.budget.evening.push({localId,placeId:entry.placeId',1],
+ ["route=blocks.items.flatMap(item=>item.kind==='place'?[item.place]:[]);",'route=[...blocks.timeline.morning,...blocks.timeline.afternoon,...blocks.timeline.evening];',1],
+ ['Timeline:legacyTimelineFromItems(blocks.items),','Timeline:blocks.timeline,',1],
+ ['Budget:legacyBudgetFromEntries(blocks.budget.entries,blocks.items),','Budget:blocks.budget,',1],
+];
+const DAY_ITEMS_SOURCE_FINGERPRINT='6189d79270e9eff00ebaa239a3f7a25d70cc6727cfd99706b5f8a460fa88fee7';
+function dayItemPrior(actual:string):string{
+ let text=actual;
+ for(const [amended,prior,count] of DAY_ITEM_AMENDMENTS){expect(text.split(amended)).toHaveLength(count+1);text=text.split(amended).join(prior);}
+ return text;
+}
 it('retains the exact prior native business AST and rejects altered waits assertions or rethrows',()=>{
- const actualSource=readFileSync(new URL('../../../../explorers-earth/e2e/replatform/guides.spec.ts',import.meta.url),'utf8');
+ const amendedSource=readFileSync(new URL('../../../../explorers-earth/e2e/replatform/guides.spec.ts',import.meta.url),'utf8');
+ expect(fingerprint(amendedSource)).toBe(DAY_ITEMS_SOURCE_FINGERPRINT);
+ const actualSource=dayItemPrior(amendedSource);
  const amendedClick="if(await button.isVisible()&&await button.isEnabled()){try{await button.click({timeout:15000});}catch(error){if(nativeTypes.isProxy(error)||!nativeTypes.isNativeError(error)||Object.getPrototypeOf(error)!==guidesNativeTimeoutPrototype)throw error;let completedAndAbsent=false;try{completedAndAbsent=await complete()&&await page.getByRole('button',{name:`Load more ${label}`,exact:true}).count()===0;}catch{}if(!completedAndAbsent)throw error;}}",priorClick='if(await button.isVisible()&&await button.isEnabled())await button.click();';
  expect(actualSource.split(amendedClick)).toHaveLength(2);expect(actualSource.split('import {test,expect,errors,type APIRequestContext')).toHaveLength(2);
  // Ratified business amendment: revert only the finite native click completion
@@ -238,7 +262,7 @@ it('only exact case4 producer scope retains bounded original read-oracle diagnos
 it('actual pinned TSX loader serializes both observers across fresh documents for all four scopes',()=>{const sourceURL=new URL('../../../../explorers-earth/e2e/replatform/guides-owner-read-oracle.ts',import.meta.url).href,loader=new URL('../../../node_modules/tsx/dist/loader.mjs',import.meta.url).href,cwd=fileURLToPath(new URL('../../../',import.meta.url)),program=`import vm from 'node:vm';const m=await import(${JSON.stringify(sourceURL)});let helpers=false,executed=true,match=true,proof=true,evaluated=true,documents=0;for(const options of [{origin:'http://127.0.0.1:55001',selectedGuideId:'20000000-0000-4000-8000-000000000001'},{origin:'http://127.0.0.1:55001',selectedGuideId:'20000000-0000-4000-8000-000000000001',scope:'selected-guide'},{origin:'http://127.0.0.1:55001',scope:'public-detail',publicPath:'/api/explorers/v1/profiles/native-guide-reader/recommendations/guides/selected-native-guide'},{origin:'http://127.0.0.1:55001',scope:'public-category',publicPath:'/api/explorers/v1/profiles/native-guide-reader/recommendations/guides'}]){let callback,params,context,evaluateRan=false,evaluateExecuted=false;const page={async addInitScript(fn,value){callback=fn;params=value;},on(){},off(){},async evaluate(fn,value){evaluateRan=true;helpers ||= /__name|__defProp/.test(fn.toString());const returned=JSON.parse(JSON.stringify(vm.runInContext('('+fn.toString()+')('+JSON.stringify(value)+')',context)));evaluateExecuted=true;return returned;}};await m.installGuidesOwnerFetchObserver(page,options);helpers ||= /__name|__defProp/.test(callback.toString());for(let reload=0;reload<2;reload++){documents++;evaluateRan=false;evaluateExecuted=false;const original=Promise.resolve({}),calls=[];context=vm.createContext({fetch:function(...args){calls.push({receiver:this,args});return original;},AbortSignal,URL,Map,WeakMap,Object,Reflect,location:{origin:options.origin}});const controller=new AbortController(),url=options.origin+(options.publicPath??'/api/explorers/v1/collections/'+options.selectedGuideId+'/guide'),receiver={},args=[url,{signal:controller.signal}];try{vm.runInContext('('+callback.toString()+')('+JSON.stringify(params)+')',context);match &&= Reflect.apply(context.fetch,receiver,args)===original&&calls[0].receiver===receiver&&calls[0].args[0]===args[0]&&calls[0].args[1]===args[1];controller.abort();const evidence=context.__guidesOriginalFetchSignalProofV1.read([{url,ordinal:0}]);proof &&= evidence.length===1&&evidence[0].found&&evidence[0].group===1&&evidence[0].aborted;try{await m.createGuidesOwnerReadTracker(page,options).reads();}catch{}evaluated &&= evaluateRan&&evaluateExecuted;}catch{executed=false;match=false;proof=false;evaluated=false;}}}process.stdout.write(JSON.stringify({helpers,executed,match,proof,evaluated,documents}));`;const result=execFileSync(process.execPath,['--import',loader,'--input-type=module','-e',program],{cwd,encoding:'utf8',windowsHide:true,timeout:10000});expect(JSON.parse(result)).toEqual({helpers:false,executed:true,match:true,proof:true,evaluated:true,documents:8});});
 
 it('binds the explicit completion-race business amendment and rejects its harmful mutations',()=>{
- const actualSource=readFileSync(new URL('../../../../explorers-earth/e2e/replatform/guides.spec.ts',import.meta.url),'utf8');
+ const actualSource=dayItemPrior(readFileSync(new URL('../../../../explorers-earth/e2e/replatform/guides.spec.ts',import.meta.url),'utf8'));
  const current='92cc691359cadc8915f401f3a5935c73305ab73ab2a9292110c73b53749a8d62';const headerAmendments=[["expect(h['cache-control']).toBe('public, no-cache');","expect(h['cache-control']).toBe('public, max-age=300, must-revalidate');"],["publicAttachment?'public, no-cache':'no-store'","publicAttachment?'public, max-age=300, must-revalidate':'no-store'"]];for(const [amended] of headerAmendments)expect(actualSource.split(amended)).toHaveLength(2);
  // The public-media Cache-Control amendment ('public, no-cache') is the only difference from the previously pinned digest.
  expect(fingerprint(headerAmendments.reduce((text,[amended,prior])=>text.replace(amended,prior),actualSource))).toBe(current);expect(fingerprint(actualSource)).toBe('e8f2a16ccb4faee8f6b1b0277751de3b10e04e3fc5b90180a173e5a33b3b6876');// MECHANISM PARTITION, pinned. A mutant is caught either because the projection REFUSES to

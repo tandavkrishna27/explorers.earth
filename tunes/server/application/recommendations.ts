@@ -8,7 +8,8 @@ import { authorizeOperation } from './authorization';
 import { ExplorersRecommendationRepository, RecommendationFailure } from '../repositories/explorersRecommendationRepository';
 import { normalizeRichNote } from './richNote';
 import {replaceRecommendationEntitySchema} from '../../shared/explorersBookContract';
-import {attachLocationLinkSchema,detachLocationLinkSchema} from '../../shared/explorersPlaceLinkContract';
+import {attachListLinkSchema,detachListLinkSchema,setListLinkRoleSchema,listLinkCommandResultSchema} from '../../shared/explorersListLinkContract';
+import {makeSampleMineSchema} from '../../shared/explorersSampleContract';
 import {gameMembershipCommandSchema,gameMembershipResultSchema} from '../../shared/explorersGameOwnerContract';
 
 export function parseContent<T>(schema:z.ZodType<T,any,any>,input:unknown):T {
@@ -21,6 +22,9 @@ export function parseContent<T>(schema:z.ZodType<T,any,any>,input:unknown):T {
   }
   return parsed.data;
 }
+// LP-08. Lives beside the service, not in shared/: the SPA sends a plain object. The slug
+// rule is the collection DTO's own, so a restore accepts exactly what a rename does.
+const restoreCollectionSchema=contentRevisionSchema.extend({slug:collectionCoreDtoSchema.shape.slug.optional()}).strict();
 /** Shared application boundary for HTTP and future trusted adapters. */
 export class RecommendationService {
   private readonly repository:ExplorersRecommendationRepository;
@@ -47,17 +51,32 @@ export class RecommendationService {
     });
   }
   /**
-   * Ticket 5.2. Links a Products or People list to one of the owner's location lists, or
-   * unlinks it. Addressed by the child, because the child is what has at most one parent.
+   * WP10 (LNK-01..08). Attach is addressed by the host list; detach and role by the link id.
+   * contentIdSchema does not lowercase and S3's repository compares ids exactly, so both ids
+   * are lowercased here before they reach storage.
    */
-  async locationLink(actor:Actor,childCollectionId:string,input:unknown,context:RequestContext,attached:boolean){
+  async attachListLink(actor:Actor,hostCollectionId:string,input:unknown,context:RequestContext){
     return this.authorized(actor,'collections:write',async()=>{
-      parseContent(contentIdSchema,childCollectionId);
-      const command=attached
-        ? parseContent(attachLocationLinkSchema,{...(input as object),childCollectionId})
-        : parseContent(detachLocationLinkSchema,{...(input as object),childCollectionId});
-      const result=await this.repository.writeLocationMembership(actor.accountId,command,this.key(context),attached);
-      return collectionCoreDtoSchema.parse(result.collection);
+      parseContent(contentIdSchema,hostCollectionId);
+      const body=(input??{}) as {linkedCollectionId?:unknown};
+      const command=parseContent(attachListLinkSchema,{...(input as object),hostCollectionId:hostCollectionId.toLowerCase(),
+        ...(typeof body.linkedCollectionId==='string'?{linkedCollectionId:body.linkedCollectionId.toLowerCase()}:{})});
+      return listLinkCommandResultSchema.parse(await this.repository.writeListLink(actor.accountId,command,this.key(context)));
+    });
+  }
+  /** The :id is the list whose page sent the command (host or linked side); the link id alone selects the row. */
+  async detachListLink(actor:Actor,collectionId:string,linkId:string,input:unknown,context:RequestContext){
+    return this.authorized(actor,'collections:write',async()=>{
+      parseContent(contentIdSchema,collectionId);
+      const command=parseContent(detachListLinkSchema,{...(input as object),linkId:linkId.toLowerCase()});
+      return listLinkCommandResultSchema.parse(await this.repository.removeListLink(actor.accountId,command,this.key(context),collectionId.toLowerCase()));
+    });
+  }
+  async setListLinkRole(actor:Actor,collectionId:string,linkId:string,input:unknown,context:RequestContext){
+    return this.authorized(actor,'collections:write',async()=>{
+      parseContent(contentIdSchema,collectionId);
+      const command=parseContent(setListLinkRoleSchema,{...(input as object),linkId:linkId.toLowerCase()});
+      return listLinkCommandResultSchema.parse(await this.repository.setListLinkRole(actor.accountId,command,this.key(context),collectionId.toLowerCase()));
     });
   }
   async setCategoryTopPicks(actor:Actor,category:string,input:unknown,context:RequestContext) {
@@ -72,11 +91,14 @@ export class RecommendationService {
   }
   async createCollection(actor:Actor,input:unknown,context:RequestContext) {
     return this.authorized(actor,'collections:write',async()=>{
-      const command=parseContent(createCollectionSchema,input);
+      const parsed=parseContent(createCollectionSchema,input);
+      // WP10. Lowercased before the receipt and storage, as attachListLink does, so a
+      // mixed-case replay of the same create is the same request.
+      const command=parsed.attachTo?{...parsed,attachTo:{...parsed.attachTo,hostCollectionId:parsed.attachTo.hostCollectionId.toLowerCase()}}:parsed;
       const result=createCollectionResultSchema.parse(await this.repository.createCollection(actor.accountId,command,this.key(context)));
-      if(result.accountId!==actor.accountId||result.category!==command.category||result.revision!==1||result.id.toLowerCase()===command.parentLocationCollectionId?.toLowerCase()||
-        (command.parentLocationCollectionId===undefined?result.parentLocation!==undefined:
-          result.parentLocation?.id.toLowerCase()!==command.parentLocationCollectionId.toLowerCase()||result.parentLocation.revision!==command.parentExpectedRevision!+1))throw new RecommendationFailure(422,'Invalid create result');
+      if(result.accountId!==actor.accountId||result.category!==command.category||result.revision!==1||
+        (command.attachTo===undefined?result.attachedTo!==undefined:
+          result.attachedTo?.hostCollectionId.toLowerCase()!==command.attachTo.hostCollectionId.toLowerCase()))throw new RecommendationFailure(422,'Invalid create result');
       return result;
     });
   }
@@ -119,6 +141,25 @@ export class RecommendationService {
     return this.authorized(actor,'collections:write',async()=>{
       parseContent(contentIdSchema,id);const parsed=parseContent(contentRevisionSchema,input);
       return this.repository.archiveCollection(actor.accountId,id,parsed.expectedRevision,this.key(context));
+    });
+  }
+  /** SMP-04 Make it mine. Body {expectedRevision}; the list id comes from the route. */
+  async makeCollectionMine(actor:Actor,id:string,input:unknown,context:RequestContext) {
+    return this.authorized(actor,'collections:write',async()=>{
+      const parsed=parseContent(makeSampleMineSchema,{...(input&&typeof input==='object'&&!Array.isArray(input)?input:{}),collectionId:id});
+      return collectionCoreDtoSchema.parse(await this.repository.makeCollectionMine(actor.accountId,parsed.collectionId,parsed.expectedRevision,this.key(context)));
+    });
+  }
+  async restoreCollection(actor:Actor,id:string,input:unknown,context:RequestContext) {
+    return this.authorized(actor,'collections:write',async()=>{
+      parseContent(contentIdSchema,id);const parsed=parseContent(restoreCollectionSchema,input);
+      return collectionCoreDtoSchema.parse(await this.repository.restoreCollection(actor.accountId,id,parsed.expectedRevision,parsed.slug,this.key(context)));
+    });
+  }
+  async purgeCollection(actor:Actor,id:string,input:unknown,context:RequestContext) {
+    return this.authorized(actor,'collections:write',async()=>{
+      parseContent(contentIdSchema,id);const parsed=parseContent(contentRevisionSchema,input);
+      return this.repository.purgeCollection(actor.accountId,id,parsed.expectedRevision,this.key(context));
     });
   }
   async archiveRecommendation(actor:Actor,id:string,input:unknown,context:RequestContext) {

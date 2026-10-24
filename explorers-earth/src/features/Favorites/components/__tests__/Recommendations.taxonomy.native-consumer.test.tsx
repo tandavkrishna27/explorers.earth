@@ -25,7 +25,6 @@ vi.mock("../../../../store/useSetupStore", () => ({
 
 // Heavy children are not under test here.
 vi.mock("../TopPlacesByCategory", () => ({ default: () => null }));
-vi.mock("../AddPlaceOverlay", () => ({ default: () => null }));
 vi.mock("../InstagramPostImport", () => ({ default: () => null }));
 vi.mock("../../../PublicHome/components/PlaceDetails/PlaceOverview", () => ({ default: () => null }));
 vi.mock("../../../Products/components/public/ProductDetailModal", () => ({ default: () => null }));
@@ -40,8 +39,8 @@ import {emptyPlaceContext,emptyPlaceDetails} from '../../../../../../tunes/share
 const id=(n:number)=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
 const term=(n:number,label=`Synthetic root ${n}`)=>({id:id(n),category:'places',slug:`root-${n}`,parentId:null,position:n,label,resolvedLocale:'fr'});
 const catalog=(items:unknown[],nextCursor:string|null=null)=>({version:'explorers-taxonomy-catalog/v1',category:'places',state:'CONFIGURED',catalogVersion:3,requestedLocale:null,defaultLocale:'fr',items,nextCursor});
-const coreList={id:id(100),accountId:id(90),category:'places',title:'Synthetic location',slug:'synthetic-location',visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null,archived:false,displayOrder:0};
-const list={...coreList,categoryRevision:'1',pinOrder:null,placeLocation:{locationEntityId:null,locationSnapshot:null,instagramMediaUrl:null},linkedChildren:[]};
+const coreList={id:id(100),accountId:id(90),category:'places',title:'Synthetic location',slug:'synthetic-location',visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null,isSample:false,archived:false,displayOrder:0};
+const list={...coreList,categoryRevision:'1',pinOrder:null,placeLocation:{locationEntityId:null,locationSnapshot:null,instagramMediaUrl:null},linkedLists:[]};
 const coreRow=(n:number)=>({id:id(100+n),accountId:id(90),entityId:id(200+n),category:'places',userRating:null,publicationState:'draft',revision:1,mediaIds:[],archived:false,pin:null});
 const row=(n:number,root=25,unavailable=false)=>({...coreRow(n),categoryRevision:'1',note:null,entity:{id:id(200+n),kind:'place',title:`Synthetic place ${n}`,origin:'manual',providerPlaceId:null,details:emptyPlaceDetails()},displayOverrides:{},displayTitle:`Synthetic place ${n}`,effectivePlaceDetails:emptyPlaceDetails(),placeContext:emptyPlaceContext(),placePhotos:{photoMediaIds:[]},placesTaxonomy:{catalogState:'CONFIGURED',catalogVersion:3,defaultLocale:'fr',category:{id:id(root),slug:`root-${root}`,label:unavailable?null:`Old root ${root}`,unavailable},subcategory:null,selectionUnavailable:unavailable}});
 let rows=[row(1),row(2,1),row(3,99,true)];

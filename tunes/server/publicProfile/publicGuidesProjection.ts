@@ -1,6 +1,7 @@
 import type {Pool, PoolClient} from 'pg';
+import {listSlugPredicate} from '../application/collectionSlug';
 import {publicProfileCursorStart} from './publicProfileContract';
-import {GUIDE_BUDGET_TIER_LABELS, GUIDE_SECTION_BLOCK_VERSION, GUIDE_TYPE_LABELS, guideSectionBlocksSchema} from '../../shared/explorersGuideContract';
+import {GUIDE_BUDGET_TIER_LABELS, GUIDE_SECTION_BLOCK_VERSION, GUIDE_TYPE_LABELS, guideSectionBlocksSchema, legacyBudgetFromEntries, legacyTimelineFromItems} from '../../shared/explorersGuideContract';
 
 /**
  * Ticket 5.3. The public Guides read.
@@ -55,11 +56,11 @@ function projectSection(row: any) {
   // 0-based in storage, 1-based in the UI, resolved in exactly one place.
   Sequence: row.display_order + 1,
   Description: row.description,
-  Timeline: data.timeline,
+  Timeline: legacyTimelineFromItems(data.items),
   Transport: data.transport,
   Stay: data.stay,
   Recommendation_Activity: data.activities,
-  Budget: data.budget,
+  Budget: legacyBudgetFromEntries(data.budget.entries, data.items),
   Map_Details: data.mapDetails,
   Packing_List: data.packingList.items,
   Pre_Tasks: data.preTasks.items,
@@ -142,7 +143,7 @@ export async function publicGuidesProjection(pool: Pool, username: string, limit
   observed = await scope(db, username);
   if (!observed) {await db.query('COMMIT'); return undefined;}
   const rows = (await db.query(`SELECT ${GUIDE_COLUMNS} ${GUIDE_JOIN}
-   WHERE a.id=$1 AND c.category='guides' AND ${gate} AND ${guideGate} AND ($2::text IS NULL OR c.slug=$2)
+   WHERE a.id=$1 AND c.category='guides' AND ${gate} AND ${guideGate} AND ($2::text IS NULL OR ${listSlugPredicate('c','$2')})
    ORDER BY c.pin_order NULLS LAST,c.display_order,c.id LIMIT $3 OFFSET $4`,
    [observed.id, slug ?? null, slug ? 1 : limit + 1, slug ? 0 : offset])).rows;
   if (slug && !rows.length) {await db.query('COMMIT'); return undefined;}

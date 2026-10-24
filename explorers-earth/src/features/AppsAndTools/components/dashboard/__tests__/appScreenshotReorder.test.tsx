@@ -54,7 +54,7 @@ describe('app screenshot order', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Move Screenshot 3 up' }));
     fireEvent.click(screen.getByRole('button', { name: 'Move Screenshot 1 down' }));
     expect(mediaIds()).toEqual(['m3', 'm1', 'm2']);
-    fireEvent.click(screen.getByRole('button', { name: 'Save app' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(AppsClient.updateRecommendation).toHaveBeenCalledTimes(1));
     const patch = vi.mocked(AppsClient.updateRecommendation).mock.calls[0][1] as { appScreenshots: { screenshotMediaIds: string[] } };
     expect(patch.appScreenshots.screenshotMediaIds).toEqual(['m3', 'm1', 'm2']);
@@ -73,7 +73,7 @@ describe('app screenshot order', () => {
     await waitFor(() => expect(screen.getAllByAltText('App screenshot')).toHaveLength(2));
     fireEvent.click(screen.getByRole('button', { name: 'Move Screenshot 2 up' }));
     expect(mediaIds()).toEqual(['u2', 'u1']);
-    fireEvent.click(screen.getByRole('button', { name: 'Save app' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(AppsClient.createManual).toHaveBeenCalled());
     expect((vi.mocked(AppsClient.prepareManualIntent).mock.calls[0][1] as { screenshotMediaIds: string[] }).screenshotMediaIds).toEqual(['u2', 'u1']);
   });

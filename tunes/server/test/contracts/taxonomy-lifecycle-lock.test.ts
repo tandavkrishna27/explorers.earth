@@ -23,7 +23,7 @@ it('source only: DELETE retains catalog serialization before taxonomy parent loc
  expect(source).toContain('BEFORE INSERT OR UPDATE OR DELETE ON public.recommendation_taxonomy');
  expect(source.indexOf('PERFORM public.lock_explorers_taxonomy_catalog(target_category)')).toBeLessThan(source.indexOf("IF TG_OP<>'DELETE' THEN"));
 });
-it('mocked maintenance: finalization locks people then places before account, category and purge locks', async () => {
+it('mocked maintenance: finalization locks people, places, then the four flat catalogs (0067) before account, category and purge locks', async () => {
  const statements: string[] = [];
  const query = async (sql: string) => {
   statements.push(sql);
@@ -42,13 +42,15 @@ it('mocked maintenance: finalization locks people then places before account, ca
  expect(await runAccountLifecycleMaintenance(pool, storage)).toBe(1);
  const begin = statements.indexOf('BEGIN');
  expect(begin).toBeGreaterThan(-1);
- expect(statements.slice(begin + 1, begin + 3)).toEqual([
+ expect(statements.slice(begin + 1, begin + 7)).toEqual([
   "SELECT lock_explorers_taxonomy_catalog('people')", "SELECT lock_explorers_taxonomy_catalog('places')",
+  "SELECT lock_explorers_taxonomy_catalog('apps')", "SELECT lock_explorers_taxonomy_catalog('books')",
+  "SELECT lock_explorers_taxonomy_catalog('games')", "SELECT lock_explorers_taxonomy_catalog('products')",
  ]);
- expect(statements[begin + 3]).toContain('FOR UPDATE OF a');
+ expect(statements[begin + 7]).toContain('FOR UPDATE OF a');
  const category = statements.findIndex(sql => sql.includes('pg_advisory_xact_lock'));
  const guardedPurge = statements.indexOf('SELECT purge_explorers_account_content($1,$2)');
- expect(category).toBeGreaterThan(begin + 3);
+ expect(category).toBeGreaterThan(begin + 7);
  expect(guardedPurge).toBeGreaterThan(category);
  expect(statements).toContain('COMMIT');
  expect(statements).not.toContain('ROLLBACK');

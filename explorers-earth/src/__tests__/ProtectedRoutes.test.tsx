@@ -13,4 +13,14 @@ describe('ProtectedRoutes Topology Definition', () => {
     expect(fileContent).toContain('path="recommendations/music" element={<Navigate to="/recommendations" replace />}');
     expect(fileContent).toContain('path="guides" element={<Navigate to="/recommendations/guides" replace />}');
   });
+
+  it('keeps an addressable list, add and edit route for each of the six native categories', () => {
+    const fileContent = fs.readFileSync(path.resolve(__dirname, '../routes/ProtectedRoutes.tsx'), 'utf8');
+    for (const [category, id] of [['movies', 'movieId'], ['books', 'bookId'], ['games', 'gameId'], ['apps', 'appId'], ['products', 'productId'], ['people', 'personId']]) {
+      expect(fileContent).toContain(`path="recommendations/${category}/:listId"`);
+      expect(fileContent).toContain(`path="recommendations/${category}/:listId/add"`);
+      expect(fileContent).toContain(`path="recommendations/${category}/:listId/edit/:${id}"`);
+    }
+    expect(fileContent).toContain('path="recommendations/guides/:guideId"');
+  });
 });

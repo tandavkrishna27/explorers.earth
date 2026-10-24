@@ -37,7 +37,6 @@ const E2E_REFERENCED = [
   { module: "src/features/AppsAndTools/api/query.ts", document: "PUBLIC_APP_DATA", consumer: "e2e/public-shell-continuity.spec.ts" },
   { module: "src/features/Games/api/query.ts", document: "GAME_LISTS_BY_ACCOUNT", consumer: "e2e/games.spec.ts" },
   { module: "src/features/Movies/api/query.ts", document: "MOVIE_LISTS_BY_ACCOUNT", consumer: "e2e/movies.spec.ts" },
-  { module: "src/features/Products/api/query.ts", document: "PRODUCT_LISTS_BY_ACCOUNT", consumer: "e2e/products.spec.ts" },
 ] as const;
 
 /**
@@ -57,7 +56,9 @@ const E2E_REFERENCED = [
  * only reinforces.
  *
  * Nothing is left to assert about that document, so there is no empty table to guard. The
- * four `E2E_REFERENCED` pairs and the four `SCANNER_REQUIRED` operations below are unchanged,
+ * `PRODUCT_LISTS_BY_ACCOUNT` followed the same rule in WP8 (2026-10-23): `e2e/products.spec.ts`
+ * moved to the native contained fixture and stopped naming it, so the document and its entry
+ * were deleted together. The remaining `E2E_REFERENCED` pairs and the four `SCANNER_REQUIRED` operations below are unchanged,
  * and the path-existence vacuity guard that caught the silent `apps.spec.ts` move still
  * covers every remaining consumer.
  */

@@ -17,6 +17,17 @@ export type PlacesOwnerContent={
  observation:CompletePlacesOwnerContent;view:Readonly<PlacesOwnerView>;
  lists:ReadonlyMap<string,CollectionObservation>;details:ReadonlyMap<string,RecommendationObservation>;
 };
+// OWN-19. One list read that 404s or fails server-side is retried once; if it still fails
+// the list is reported unavailable and shown as an error row, not dropped or fatal.
+const LIST_RETRY_DELAY_MS=300;
+const listReadUnavailable=(error:unknown)=>error instanceof ExplorersApiError&&(error.status===404||error.status>=500);
+async function observeListOnce(id:string,signal:AbortSignal,checkTerminal:()=>void):Promise<CollectionObservation>{
+ try{return await PlacesClient.observeCollection(id,signal);}catch(error){
+  if(!listReadUnavailable(error))throw error;
+  await new Promise(resolve=>setTimeout(resolve,LIST_RETRY_DELAY_MS));checkTerminal();
+  return PlacesClient.observeCollection(id,signal);
+ }
+}
 /** Concurrent readers on one page share one read (see shareOwnerRead). */
 export function readPlacesOwnerContent(signal?:AbortSignal):Promise<PlacesOwnerContent>{return shareOwnerRead('places',signal,shared=>readPlacesOwnerContentOnce(shared));}
 async function readPlacesOwnerContentOnce(signal?:AbortSignal):Promise<PlacesOwnerContent>{
@@ -35,7 +46,7 @@ async function readPlacesOwnerContentOnce(signal?:AbortSignal):Promise<PlacesOwn
  const activeLists=first.collections.filter(row=>!row.archived);
  await Promise.all([
   ...Array.from({length:Math.min(4,first.recommendations.length)},async()=>{try{while(index<first.recommendations.length){checkTerminal();assertCurrent();const row=first.recommendations[index++],detail=await PlacesClient.observeRecommendation(row.id,controller.signal);checkTerminal();assertCurrent();if(detail.detail.revision!==row.revision||detail.detail.categoryRevision!==first.revision)throw new ExplorersApiError(409,'CONFLICT','Places changed while loading');budget(detail.detail);details.set(row.id,detail);}}catch(error){fail(error);}}),
-  ...Array.from({length:Math.min(4,activeLists.length)},async()=>{try{while(listIndex<activeLists.length){checkTerminal();assertCurrent();const row=activeLists[listIndex++];let detail:CollectionObservation;try{detail=await PlacesClient.observeCollection(row.id,controller.signal);}catch(error){if(error instanceof ExplorersApiError&&error.status===404){unavailable.add(row.id);continue;}throw error;}checkTerminal();assertCurrent();if(detail.detail.revision!==row.revision||detail.detail.categoryRevision!==first.revision)throw new ExplorersApiError(409,'CONFLICT','Places lists changed while loading');budget(detail.detail);lists.set(row.id,detail);}}catch(error){fail(error);}}),
+  ...Array.from({length:Math.min(4,activeLists.length)},async()=>{try{while(listIndex<activeLists.length){checkTerminal();assertCurrent();const row=activeLists[listIndex++];let detail:CollectionObservation;try{detail=await observeListOnce(row.id,controller.signal,checkTerminal);}catch(error){if(listReadUnavailable(error)){unavailable.add(row.id);continue;}throw error;}checkTerminal();assertCurrent();if(detail.detail.revision!==row.revision||detail.detail.categoryRevision!==first.revision)throw new ExplorersApiError(409,'CONFLICT','Places lists changed while loading');budget(detail.detail);lists.set(row.id,detail);}}catch(error){fail(error);}}),
  ]);
  checkTerminal();const final=await PlacesClient.readCompleteOwner(controller.signal);checkTerminal();assertCurrent();if(first.revision!==final.revision||first.pinRevision!==final.pinRevision)throw new ExplorersApiError(409,'CONFLICT','Places changed while loading');
  recordViewedContent(final,details.values());

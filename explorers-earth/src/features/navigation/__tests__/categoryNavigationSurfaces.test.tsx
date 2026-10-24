@@ -37,7 +37,7 @@ function movieObservation(title?: string): CompleteMyCategoryContent {
   return { complete: true, category: 'movies', status: 'active', accountId: current.accountId!, generation: current.generation,
     revision: '1', snapshotToken: 'native-navigation-fixture', expiresAt: Date.now() + 60_000, pinRevision: 0,
     collections: title ? [{ id: 'list-1', accountId: current.accountId!, category: 'movies', title, description: null,
-      heading: null, slug: 'list', visibility: 'public', publicationState: 'published', coverMediaId: null,
+      heading: null, slug: 'list', visibility: 'public', publicationState: 'published', coverMediaId: null,isSample:false,
       displayOrder: 0, revision: 1, archived: false }] : [], recommendations: [], memberships: [], topPicks: [] };
 }
 
@@ -92,6 +92,14 @@ function canonicalWrite(category?: string, isPublic?: boolean, pins = ['public_p
   })) } };
 }
 
+// The shared category template's publish pill (WP3A) replaced the per-page desktop and mobile switches.
+const categoryPill = () => screen.getByRole('button', { name: /^Visibility: (Public|Hidden)$/ });
+const findCategoryPill = () => screen.findByRole('button', { name: /^Visibility: (Public|Hidden)$/ });
+async function chooseCategoryVisibility(label: 'Public' | 'Hidden') {
+  fireEvent.click(await findCategoryPill());
+  const option = screen.getAllByRole('menuitemradio').find(node => node.textContent?.includes(label));
+  fireEvent.click(option!);
+}
 const headers = [
   ['public_movie', MoviesHome], ['public_games', GamesHome], ['public_apps', AppsHome],
   ['public_products', ProductsHome], ['public_people', PeopleHome], ['public_guides', GuidesPage], ['public_recommendations', Favorites],
@@ -132,17 +140,17 @@ describe('ordinary category headers use verified navigation', () => {
     vi.mocked(explorersApiClient.updateMyCollection).mockImplementation(async (observed, patch) => ({ ...(observed as { detail: Record<string, unknown> }).detail, ...patch }) as never);
     vi.mocked(explorersApiClient.getCompleteMyCategoryTopPicks).mockResolvedValue(movieObservation()); await i18n.use(initReactI18next).init({ lng: 'en', resources: { en: { translation: english } } }); });
   afterEach(() => { cleanup(); useAuthStore.getState().logout(); vi.unstubAllGlobals(); vi.clearAllMocks(); });
-  it.each(headers)('%s Off removes only the target saved pin and desktop/mobile share confirmed state', async (category, Component) => {
+  it.each(headers)('%s Off removes only the target saved pin and the publish pill shows the confirmed state', async (category, Component) => {
     const h = surfaceHarness(<Component />, { lists: listFixture, initial: { pinned_nav_tabs: ['public_profile', category, bystander(category)] } }); await h.ready();
-    const switches = await screen.findAllByRole('checkbox');
-    expect(switches[0]).toBeChecked(); fireEvent.click(switches[0]);
+    expect(await findCategoryPill()).toHaveTextContent('Public');
+    await chooseCategoryVisibility('Hidden');
     await waitFor(() => expect(h.writes).toHaveLength(1));
     expect(h.writes[0].variables).toEqual(canonicalWrite(category, false));
-    await waitFor(() => expect(screen.getAllByRole('checkbox')[0]).not.toBeChecked());
+    await waitFor(() => expect(categoryPill()).toHaveTextContent('Hidden'));
   });
   it.each(headers)('%s On only publishes after a fresh content check', async (category, Component) => {
     const h = surfaceHarness(<Component />, { lists: listFixture, initial: { [category]: 'No', pinned_nav_tabs: ['public_profile', bystander(category)] } }); await h.ready();
-    fireEvent.click((await screen.findAllByRole('checkbox'))[0]);
+    await chooseCategoryVisibility('Public');
     await waitFor(() => expect(h.writes).toHaveLength(1));
     expect(h.writes[0].variables).toEqual(canonicalWrite(category, true));
   });
@@ -267,24 +275,27 @@ describe('ordinary category headers use verified navigation', () => {
   });
   it.each(headers)('%s uses the verified selected account, not incomplete accounts[0]', async (_category, Component) => {
     const h = surfaceHarness(<Component />, { incompleteFirst: true, lists: listFixture }); await h.ready();
-    expect((await screen.findAllByRole('checkbox'))[0]).toBeChecked();
+    expect(await findCategoryPill()).toHaveTextContent('Public');
   });
-  it.each(headers)('%s disables both header controls while a verified save is pending', async (category, Component) => {
+  it.each(headers)('%s disables the publish pill while a verified save is pending', async (category, Component) => {
     const h = surfaceHarness(<Component />, { lists: listFixture }); await h.ready();
     let release!: () => void; h.pauseMutation(new Promise(resolve => { release = resolve; }));
-    fireEvent.click(h.container.querySelector('button.border-l')!);
-    const controls = await screen.findAllByRole('checkbox'); fireEvent.click(controls[0]);
-    await waitFor(() => expect(controls[0]).toBeDisabled()); expect(controls[1]).toBeDisabled();
-    expect(controls[0]).toBeChecked();
+    await chooseCategoryVisibility('Hidden');
+    // WP2's pill stays focusable while disabled (aria-disabled), so prove it is inert:
+    // it announces disabled and a click cannot open the menu to start a second save.
+    await waitFor(() => expect(categoryPill()).toHaveAttribute('aria-disabled', 'true'));
+    expect(categoryPill()).toHaveTextContent('Public');
+    fireEvent.click(categoryPill());
+    expect(categoryPill()).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryAllByRole('menuitemradio')).toHaveLength(0);
     await act(async () => { release(); }); await waitFor(() => expect(h.navigation.busy).toBe(false));
     expect(h.saved[category]).toBe('No');
   });
-  it.each(headers)('%s mobile visibility explicitly turns Off and On without restoring its pin', async (category, Component) => {
+  it.each(headers)('%s visibility explicitly turns Off and On without restoring its pin', async (category, Component) => {
     const h = surfaceHarness(<Component />, { lists: listFixture, initial: { pinned_nav_tabs: ['public_profile', category, bystander(category)] } }); await h.ready();
-    fireEvent.click(h.container.querySelector('button.border-l')!);
-    fireEvent.click(screen.getAllByRole('checkbox')[1]); await waitFor(() => expect(h.navigation.busy).toBe(false));
-    await waitFor(() => expect(screen.getAllByRole('checkbox')[1]).not.toBeChecked());
-    fireEvent.click(screen.getAllByRole('checkbox')[1]); await waitFor(() => expect(screen.getAllByRole('checkbox')[1]).toBeChecked());
+    await chooseCategoryVisibility('Hidden'); await waitFor(() => expect(h.navigation.busy).toBe(false));
+    await waitFor(() => expect(categoryPill()).toHaveTextContent('Hidden'));
+    await chooseCategoryVisibility('Public'); await waitFor(() => expect(categoryPill()).toHaveTextContent('Public'));
     expect(h.writes.map(r => r.variables)).toEqual([
       canonicalWrite(category, false),
       canonicalWrite(category, true, undefined, 2),
@@ -301,7 +312,7 @@ describe('ordinary category headers use verified navigation', () => {
     await waitFor(() => expect(explorersApiClient.getCompleteMyCategoryTopPicks).toHaveBeenCalledTimes(2));
     vi.mocked(explorersApiClient.getCompleteMyCategoryTopPicks).mockRejectedValue(new Error('Native lists unavailable'));
     act(() => invalidateMovies());
-    expect(await screen.findByRole('alert')).toHaveTextContent('Movies could not be loaded');
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Your lists couldn.t be loaded/);
     expect(h.writes).toEqual([]);
     expect(h.navigation.snapshot?.visibility.public_movie).toBe('Yes');
     expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_movie', 'public_books']);
@@ -313,7 +324,7 @@ describe('ordinary category headers use verified navigation', () => {
     await waitFor(() => expect(explorersApiClient.getCompleteMyCategoryContent).toHaveBeenCalledTimes(2));
     vi.mocked(explorersApiClient.getCompleteMyCategoryContent).mockRejectedValue(new Error('Native lists unavailable'));
     act(() => invalidatePeople());
-    expect(await screen.findByRole('alert')).toHaveTextContent('People could not be loaded');
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Your lists couldn.t be loaded/);
     expect(h.writes).toEqual([]);
     expect(h.navigation.snapshot?.visibility.public_people).toBe('Yes');
     expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_people', 'public_books']);
@@ -325,7 +336,7 @@ describe('ordinary category headers use verified navigation', () => {
     await waitFor(() => expect(explorersApiClient.getCompleteMyCategoryContent).toHaveBeenCalledTimes(2));
     vi.mocked(explorersApiClient.getCompleteMyCategoryContent).mockRejectedValue(new Error('Native lists unavailable'));
     act(() => invalidateProducts());
-    expect(await screen.findByRole('alert')).toHaveTextContent('Products could not be loaded');
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Your lists couldn.t be loaded/);
     expect(h.writes).toEqual([]);
     expect(h.navigation.snapshot?.visibility.public_products).toBe('Yes');
     expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_products', 'public_books']);
@@ -337,7 +348,7 @@ describe('ordinary category headers use verified navigation', () => {
     await waitFor(() => expect(explorersApiClient.getCompleteMyCategoryContent).toHaveBeenCalledTimes(2));
     vi.mocked(explorersApiClient.getCompleteMyCategoryContent).mockRejectedValue(new Error('Native lists unavailable'));
     act(() => invalidateApps());
-    expect(await screen.findByRole('alert')).toHaveTextContent('Apps could not be loaded');
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Your lists couldn.t be loaded/);
     expect(h.writes).toEqual([]);
     expect(h.navigation.snapshot?.visibility.public_apps).toBe('Yes');
     expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_apps', 'public_books']);
@@ -348,18 +359,18 @@ describe('ordinary category headers use verified navigation', () => {
     await waitFor(() => expect(explorersApiClient.getCompleteMyCategoryContent).toHaveBeenCalledTimes(2));
     vi.mocked(explorersApiClient.getCompleteMyCategoryContent).mockRejectedValue(new Error('Native lists unavailable'));
     act(() => invalidateGames());
-    expect(await screen.findByRole('alert')).toHaveTextContent('Games could not be loaded');
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Your lists couldn.t be loaded/);
     expect(h.writes).toEqual([]);
     expect(h.navigation.snapshot?.visibility.public_games).toBe('Yes');
     expect(h.navigation.snapshot?.savedPins).toEqual(['public_profile', 'public_games', 'public_books']);
   });
   it.each([
     ['public_recommendations', Favorites, 'justCreatedList'], ['public_apps', AppsHome, 'justCreatedList'],
-  ] as const)('%s existing creation prompt captures publication origin', async (category, Component, stateKey) => {
+  ] as const)('%s no longer asks to publish the category right after a list is created (NL-02)', async (category, Component, stateKey) => {
     const h = surfaceHarness(<Component />, { initial: { [category]: 'No' }, lists: listFixture, route: { pathname: '/', state: { [stateKey]: true } } }); await h.ready();
-    const confirm = await screen.findByRole('button', { name: 'Yes, Make Public' }); expect(confirm).toBeEnabled(); fireEvent.click(confirm);
-    await waitFor(() => expect(h.writes).toHaveLength(1));
-    expect(h.writes[0].variables).toEqual(canonicalWrite(category, true, ['public_profile', 'public_books']));
+    expect(await findCategoryPill()).toHaveTextContent('Hidden');
+    expect(screen.queryByRole('button', { name: 'Yes, Make Public' })).toBeNull();
+    expect(h.writes).toEqual([]);
   });
   // UAT GDE-07: the category prompt belongs to PUBLISHING a guide into a hidden category,
   // not to creating one (a new guide is still a draft).
@@ -375,10 +386,8 @@ describe('ordinary category headers use verified navigation', () => {
   it('Guides Top Picks counter and copy state the same limit as the pin rule', async () => {
     const h = surfaceHarness(<GuidesPage />, { initial: { public_guides: 'Yes' } }); await h.ready();
     // Previously "0/<number of guides>" beside copy that said "up to 5".
-    const open = await screen.findByRole('button', { name: /Manage Top Picks \(0\/5\)/ });
-    fireEvent.click(open);
-    expect(await screen.findByText(/Pin up to 5 guides as Top Picks/)).toBeInTheDocument();
-    expect(screen.getByText('Pinned (0 of 5)')).toBeInTheDocument();
+    fireEvent.click((await screen.findAllByRole('button', { name: /Manage Top Picks/ }))[0]);
+    expect(await screen.findByRole('dialog', { name: 'Manage Top Picks' })).toHaveTextContent('0 of 5 pinned');
   });
   describe('publishing a guide while the Guides category is hidden', () => {
     const draft = { ...guideFixture, Visibility: false };
@@ -424,21 +433,6 @@ describe('ordinary category headers use verified navigation', () => {
       const confirm = screen.getByRole('button', { name: 'Yes, Make Public' }); expect(confirm).toBeDisabled(); fireEvent.click(confirm); expect(h.writes).toEqual([]);
     });
   });
-  it.each([
-    ['public_recommendations', Favorites, 'justCreatedList', 'UsersPermissionsUser'],
-    ['public_apps', AppsHome, 'justCreatedList', 'MyAccountForApps'],
-  ] as const)('%s creation prompt uses verified origin even while the legacy account query is pending', async (category, Component, stateKey, query) => {
-    const h = surfaceHarness(<Component />, { initial: { [category]: 'No' }, route: { pathname: '/', state: { [stateKey]: true } }, respond: name => name === query ? new Promise(() => {}) : undefined }); await h.ready();
-    expect(await screen.findByRole('button', { name: 'Yes, Make Public' })).toBeEnabled(); expect(h.writes).toEqual([]);
-  });
-  it.each([
-    ['public_recommendations', Favorites, 'justCreatedList'], ['public_apps', AppsHome, 'justCreatedList'],
-  ].flatMap(([category, Component, stateKey]) => ['switch', 'switch-back', 'logout-login'].map(transition => ({ category: category as string, Component: Component as React.ComponentType, stateKey: stateKey as string, transition }))))('$category open prompt never rebinds after $transition', async ({ category, Component, stateKey, transition }) => {
-    const h = surfaceHarness(<Component />, { initial: { [category]: 'No' }, lists: listFixture, route: { pathname: '/', state: { [stateKey]: true } } }); await h.ready();
-    await screen.findByRole('button', { name: 'Yes, Make Public' });
-    await act(async () => { if (transition === 'logout-login') useAuthStore.getState().logout(); else loginSurface('u2'); if (transition !== 'switch') loginSurface(); }); await h.ready();
-    const confirm = screen.getByRole('button', { name: 'Yes, Make Public' }); expect(confirm).toBeDisabled(); fireEvent.click(confirm); expect(h.writes).toEqual([]);
-  });
   it('GuideHeader Draft changes only the guide, never category visibility or saved pins', async () => {
     vi.mocked(explorersApiClient.updateMyCollection).mockResolvedValue({ ...guideFixture, visibility: 'private' } as never);
     const h = surfaceHarness(
@@ -460,10 +454,10 @@ describe('ordinary category headers use verified navigation', () => {
     vi.mocked(explorersApiClient.getMyEditableCollection).mockResolvedValue(observed);
     vi.mocked(explorersApiClient.archiveMyCollection).mockResolvedValue({ ...observed.detail, archived: true });
     const h = surfaceHarness(<Routes><Route path="/list/:listId" element={<MovieListView />} /><Route path="*" element={<div>Returned to lists</div>} /></Routes>, { route: '/list/list-1', initial: { pinned_nav_tabs: ['public_profile', 'public_movie', 'public_books'] } }); await h.ready();
-    fireEvent.click(await screen.findByRole('button', { name: /^manage$/i }));
-    fireEvent.click(screen.getByRole('button', { name: /^Archive list$/i }));
+    fireEvent.click(await screen.findByRole('tab', { name: /^manage$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Archive list$/i }));
     expect(explorersApiClient.archiveMyCollection).not.toHaveBeenCalled();
-    fireEvent.click(screen.getAllByRole('button', { name: /^Archive list$/i }).at(-1)!);
+    fireEvent.click(await screen.findByRole('button', { name: /^Archive$/ }));
     await screen.findByText('Returned to lists');
     expect(explorersApiClient.getMyEditableCollection).toHaveBeenCalledWith('list-1');
     expect(explorersApiClient.archiveMyCollection).toHaveBeenCalledExactlyOnceWith(observed, expect.any(String));

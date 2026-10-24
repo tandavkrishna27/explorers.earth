@@ -1,0 +1,296 @@
+{
+  "version": "explorers-taxonomy-import/v1",
+  "catalogVersion": 1,
+  "category": "books",
+  "defaultLocale": "en",
+  "terms": [
+    {
+      "id": "afd206ac-b932-592d-9556-7b6b6dbbadc5",
+      "category": "books",
+      "slug": "literary-fiction",
+      "parentId": null,
+      "position": 0,
+      "active": true,
+      "labels": {
+        "en": "Literary Fiction"
+      }
+    },
+    {
+      "id": "a195cbfc-0e37-5bb2-a0cc-3d532b82e387",
+      "category": "books",
+      "slug": "mystery-thriller",
+      "parentId": null,
+      "position": 1,
+      "active": true,
+      "labels": {
+        "en": "Mystery & Thriller"
+      }
+    },
+    {
+      "id": "f32d31dc-56d7-5290-b072-e6fceaad95bc",
+      "category": "books",
+      "slug": "science-fiction",
+      "parentId": null,
+      "position": 2,
+      "active": true,
+      "labels": {
+        "en": "Science Fiction"
+      }
+    },
+    {
+      "id": "c4c03591-3144-521d-9b9c-e97cacf23ddd",
+      "category": "books",
+      "slug": "fantasy",
+      "parentId": null,
+      "position": 3,
+      "active": true,
+      "labels": {
+        "en": "Fantasy"
+      }
+    },
+    {
+      "id": "0115d81c-3d7f-5f43-b90b-f3d73d9cdf49",
+      "category": "books",
+      "slug": "romance",
+      "parentId": null,
+      "position": 4,
+      "active": true,
+      "labels": {
+        "en": "Romance"
+      }
+    },
+    {
+      "id": "57a60694-d4e8-5090-af2f-a9db318305f2",
+      "category": "books",
+      "slug": "horror",
+      "parentId": null,
+      "position": 5,
+      "active": true,
+      "labels": {
+        "en": "Horror"
+      }
+    },
+    {
+      "id": "571cd474-9db4-55a9-a9a3-08abe068d3f5",
+      "category": "books",
+      "slug": "historical-fiction",
+      "parentId": null,
+      "position": 6,
+      "active": true,
+      "labels": {
+        "en": "Historical Fiction"
+      }
+    },
+    {
+      "id": "851bb8f1-14d7-5ca3-81f8-6150a451b474",
+      "category": "books",
+      "slug": "young-adult",
+      "parentId": null,
+      "position": 7,
+      "active": true,
+      "labels": {
+        "en": "Young Adult"
+      }
+    },
+    {
+      "id": "eb04cf00-ba62-52f4-a3d9-03dbc4ead9f3",
+      "category": "books",
+      "slug": "childrens",
+      "parentId": null,
+      "position": 8,
+      "active": true,
+      "labels": {
+        "en": "Children's"
+      }
+    },
+    {
+      "id": "dbf999f8-49de-5fcf-a80f-4d8678b67513",
+      "category": "books",
+      "slug": "comics-graphic-novels",
+      "parentId": null,
+      "position": 9,
+      "active": true,
+      "labels": {
+        "en": "Comics & Graphic Novels"
+      }
+    },
+    {
+      "id": "9e8e20d8-ad3a-5749-997a-19ce2a95b1f0",
+      "category": "books",
+      "slug": "poetry",
+      "parentId": null,
+      "position": 10,
+      "active": true,
+      "labels": {
+        "en": "Poetry"
+      }
+    },
+    {
+      "id": "53261a98-9a8b-56be-bacb-fb962d795abf",
+      "category": "books",
+      "slug": "classics",
+      "parentId": null,
+      "position": 11,
+      "active": true,
+      "labels": {
+        "en": "Classics"
+      }
+    },
+    {
+      "id": "09a008a1-4f23-5603-8c37-078694646a21",
+      "category": "books",
+      "slug": "biography-memoir",
+      "parentId": null,
+      "position": 12,
+      "active": true,
+      "labels": {
+        "en": "Biography & Memoir"
+      }
+    },
+    {
+      "id": "23eecba9-7a47-591f-999d-6b11fb1d1375",
+      "category": "books",
+      "slug": "history",
+      "parentId": null,
+      "position": 13,
+      "active": true,
+      "labels": {
+        "en": "History"
+      }
+    },
+    {
+      "id": "fe8f96ba-609c-5320-82d8-6906af143756",
+      "category": "books",
+      "slug": "science-nature",
+      "parentId": null,
+      "position": 14,
+      "active": true,
+      "labels": {
+        "en": "Science & Nature"
+      }
+    },
+    {
+      "id": "6f9512f8-500d-57d7-8ac0-d87c91c6739a",
+      "category": "books",
+      "slug": "technology",
+      "parentId": null,
+      "position": 15,
+      "active": true,
+      "labels": {
+        "en": "Technology"
+      }
+    },
+    {
+      "id": "82494f5e-ac09-58b0-8d7b-27bbacdce7cf",
+      "category": "books",
+      "slug": "business-economics",
+      "parentId": null,
+      "position": 16,
+      "active": true,
+      "labels": {
+        "en": "Business & Economics"
+      }
+    },
+    {
+      "id": "ca2e5e27-26be-566a-a56d-3510b40bfe8a",
+      "category": "books",
+      "slug": "self-help",
+      "parentId": null,
+      "position": 17,
+      "active": true,
+      "labels": {
+        "en": "Self-Help"
+      }
+    },
+    {
+      "id": "8142b077-1bd2-5117-8673-19fa0bce2c9c",
+      "category": "books",
+      "slug": "psychology",
+      "parentId": null,
+      "position": 18,
+      "active": true,
+      "labels": {
+        "en": "Psychology"
+      }
+    },
+    {
+      "id": "690e833e-8334-530f-9c90-1b2d11c00df0",
+      "category": "books",
+      "slug": "philosophy",
+      "parentId": null,
+      "position": 19,
+      "active": true,
+      "labels": {
+        "en": "Philosophy"
+      }
+    },
+    {
+      "id": "d86530b5-ebc4-5a56-93c0-c0306ab46375",
+      "category": "books",
+      "slug": "religion-spirituality",
+      "parentId": null,
+      "position": 20,
+      "active": true,
+      "labels": {
+        "en": "Religion & Spirituality"
+      }
+    },
+    {
+      "id": "3515d78a-34d7-597c-9f6e-fa0930a3e0c8",
+      "category": "books",
+      "slug": "politics-society",
+      "parentId": null,
+      "position": 21,
+      "active": true,
+      "labels": {
+        "en": "Politics & Society"
+      }
+    },
+    {
+      "id": "e222b7a2-e211-5576-99bf-3eee91fd543f",
+      "category": "books",
+      "slug": "travel",
+      "parentId": null,
+      "position": 22,
+      "active": true,
+      "labels": {
+        "en": "Travel"
+      }
+    },
+    {
+      "id": "5618a57a-8866-5144-9637-7390230f2bbc",
+      "category": "books",
+      "slug": "food-cooking",
+      "parentId": null,
+      "position": 23,
+      "active": true,
+      "labels": {
+        "en": "Food & Cooking"
+      }
+    },
+    {
+      "id": "e935ea07-9c27-5787-a2d8-a5a3ad7e47d2",
+      "category": "books",
+      "slug": "health-fitness",
+      "parentId": null,
+      "position": 24,
+      "active": true,
+      "labels": {
+        "en": "Health & Fitness"
+      }
+    },
+    {
+      "id": "00aef9bc-4c83-584e-a1e4-6cfd56c9674a",
+      "category": "books",
+      "slug": "art-design",
+      "parentId": null,
+      "position": 25,
+      "active": true,
+      "labels": {
+        "en": "Art & Design"
+      }
+    }
+  ],
+  "sourceMappings": [],
+  "legacySlugMappings": []
+}

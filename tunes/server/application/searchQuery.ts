@@ -9,7 +9,8 @@ export class SearchFailure extends Error {
 const cursorSchema=z.object({v:z.literal(1),binding:z.string(),account:z.string().uuid().nullable(),revision:z.string().nullable(),snapshotToken:z.string().max(4096).optional(),issued:z.number().int(),expires:z.number().int(),created:z.string().regex(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}Z$/),id:z.string().uuid()}).strict();
 export type SearchCursor=z.infer<typeof cursorSchema>;
 export const publicAccountGate="a.status='active' AND a.onboarding_status='complete' AND a.public_profile AND s.is_public";
-export const publicCollectionGate="c.archived_at IS NULL AND c.visibility='public' AND c.publication_state='published'";
+// WP11: NOT c.is_sample is belt-and-braces; S3's CHECK already keeps samples private drafts.
+export const publicCollectionGate="c.archived_at IS NULL AND c.visibility='public' AND c.publication_state='published' AND NOT c.is_sample";
 const bytes='octet_length(to_json(e.title)::text)+coalesce(octet_length(o.display_values::text),0)';
 // CASE, rather than predicate evaluation order, prevents invalid or oversized
 // presentation from entering the text search function. Present null stays null.

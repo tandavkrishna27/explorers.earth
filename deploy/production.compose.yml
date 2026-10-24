@@ -20,7 +20,7 @@ name: explorers-canonical
 # migration chain this image bundles (EXPECTED_MUSIC_MIGRATION_ID in
 # tunes/shared/music-migration-contract.ts): the gate refuses any other value, and
 # production-compose.test.ts fails until the two agree.
-x-migration-marker: &migration-marker 0064_explorers_game_details
+x-migration-marker: &migration-marker 0071_explorers_samples
 
 x-logging: &logging
   driver: json-file
@@ -115,6 +115,8 @@ services:
       # Optional: Games search (IGDB). Blank keeps Games manual-only.
       IGDB_CLIENT_ID: ${IGDB_CLIENT_ID:-}
       IGDB_CLIENT_SECRET: ${IGDB_CLIENT_SECRET:-}
+      # Optional: Places nearby lookup (Google Places basic tier). Blank = OpenStreetMap only.
+      GOOGLE_PLACES_API_KEY: ${GOOGLE_PLACES_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy

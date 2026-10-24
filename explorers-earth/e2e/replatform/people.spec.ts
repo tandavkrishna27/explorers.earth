@@ -1,4 +1,4 @@
-import { test, expect, type APIResponse } from '@playwright/test';
+import { test, expect, type APIResponse, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import {z} from 'zod/v3';
 import {apiErrorSchema} from '../../../tunes/shared/explorersContract';
@@ -8,6 +8,8 @@ import {PUBLIC_PARITY_QUALIFICATION_POLICY,type PeopleSectorHttpOperation} from 
 function renderedPeopleNoteText(html:string){const template=document.createElement('template');template.innerHTML=html;return (template.content.textContent??'').replace(/\s+/g,' ').trim();}
 function ownerNotFoundEvidence(body:unknown){const {error}=apiErrorSchema.parse(body);z.string().uuid().parse(error.requestId);expect(error.code).toBe('NOT_FOUND');expect(error.message).toBe('Resource unavailable');return {code:error.code,message:error.message};}
 async function peopleSectorHttp(scope:Scope,operation:PeopleSectorHttpOperation,request:()=>Promise<APIResponse>,expectedStatus:number){return scope.client.trackProducer(async()=>{let actualStatus:number|undefined;try{const reply=await request();actualStatus=reply.status();return await consume(reply,expectedStatus);}catch(error){try{scope.client.capturePeopleSectorFailure(error,operation,actualStatus);}catch{/* Passive status capture preserves the original failure. */}throw error;}});}
+// The rebuilt add/edit page saves from the sticky action bar.
+function peopleSave(page: Page) { return page.getByRole('toolbar', { name: 'Item actions', exact: true }).getByRole('button', { name: 'Save', exact: true }); }
 const client = qualificationClient();
 for (const [index, title] of PEOPLE_CASES.entries())
     test(title, async ({ browser }, info) => runOwnedCase(client, browser, info, async (scope) => {
@@ -21,8 +23,16 @@ for (const [index, title] of PEOPLE_CASES.entries())
                 const collection = await browserAcknowledgement(scope, page, '/collections', 'POST', 201, () => page.getByRole('button', { name: 'Create List', exact: true }).click());
                 const id = collection.collection.id;
                 await scope.client.trackProducer(() => page.goto(`/recommendations/people/${id}/add`));
+                // The rebuilt form has no rating, follower count or platform controls; the platform comes only from a profile link.
+                await expect(page.getByRole('slider', { name: 'Your rating', exact: true })).toHaveCount(0);
+                await expect(page.getByLabel('Followers')).toHaveCount(0);
+                await expect(page.locator('[data-detected-platform]')).toHaveCount(0);
                 await page.getByLabel('Full Name', { exact: true }).fill('Native manual qualification person');
-                const saved = await browserAcknowledgement(scope, page, '/recommendations', 'POST', 201, () => page.getByRole('button', { name: 'Save person', exact: true }).click());
+                // Sector is required only when the catalog offers one; this case asserts nothing about it, so pick the first when offered.
+                await expect(page.getByRole('status').filter({ hasText: 'Loading sectors' })).toHaveCount(0);
+                const sectors = page.getByLabel('Sector', { exact: true }).locator('option:not([value=""]):not([disabled])');
+                if (await sectors.count() > 0) await page.getByLabel('Sector', { exact: true }).selectOption(await sectors.first().getAttribute('value'));
+                const saved = await browserAcknowledgement(scope, page, '/recommendations', 'POST', 201, () => peopleSave(page).click());
                 const recommendation = saved.recommendation;
                 const initial: any = await editable(scope, owner, 'recommendations', recommendation.id);
                 expect(initial.userRating).toBeNull();
@@ -34,7 +44,7 @@ for (const [index, title] of PEOPLE_CASES.entries())
                 await scope.client.trackProducer(() => page.goto(`/recommendations/people/${id}/edit/${recommendation.id}`));
                 await page.getByLabel('Headline / Role', { exact: true }).fill('Explicit owner presentation');
                 await page.locator('.ql-editor[contenteditable="true"]').fill('Native qualification note');
-                await browserAcknowledgement(scope, page, `/recommendations/${recommendation.id}`, 'PATCH', 200, () => page.getByRole('button', { name: 'Save person', exact: true }).click());
+                await browserAcknowledgement(scope, page, `/recommendations/${recommendation.id}`, 'PATCH', 200, () => peopleSave(page).click());
                 await scope.client.trackProducer(() => page.reload());
                 const final: any = await editable(scope, owner, 'recommendations', recommendation.id);
                 expect(final.effectivePersonDetails.headline).toBe('Explicit owner presentation');
@@ -79,7 +89,7 @@ for (const [index, title] of PEOPLE_CASES.entries())
                 await scope.client.trackProducer(() => page.goto(`/recommendations/people/${list.id}/edit/${first.id}`));
                 await page.getByLabel('Headline / Role', { exact: true }).fill('Unsaved stale draft');
                 await patch(scope, owner, 'recommendations', first.id, { displayOverrides: { headline: 'Newer canonical presentation' } });
-                await page.getByRole('button', { name: 'Save person', exact: true }).click();
+                await peopleSave(page).click();
                 await expect(page.getByRole('alert')).toBeVisible();
                 await expect(page.getByLabel('Headline / Role', { exact: true })).toHaveValue('Unsaved stale draft');
                 expect((await editable(scope, owner, 'recommendations', first.id) as any).effectivePersonDetails.headline).toBe('Newer canonical presentation');

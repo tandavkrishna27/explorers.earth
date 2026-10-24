@@ -9,7 +9,7 @@ const id=(n:number)=>`00000000-0000-4000-8000-00000000000${n}`;
 const facts={productUrl:'https://example.com/widget',brand:'Acme',logoUrl:null,description:null,specifications:{},imageUrls:[]};
 const offer={price:'19.90',currencyCode:'USD',buyUrl:null};
 const detail=(over:Record<string,unknown>={})=>({id:id(1),entityId:id(1),category:'products',entity:{kind:'product'},displayTitle:'Widget',userRating:null,note:null,effectiveProductDetails:facts,productOffer:offer,...over} as never);
-const collection={id:id(2),accountId:id(3),title:'Gear',description:null,slug:'gear',visibility:'public',publicationState:'published',displayOrder:0,heading:'Top products',coverMediaId:null} as never;
+const collection={id:id(2),accountId:id(3),title:'Gear',description:null,slug:'gear',visibility:'public',publicationState:'published',displayOrder:0,heading:'Top products',coverMediaId:null,isSample:false} as never;
 
 it('stamps every row with its own list and treats draft or private as not visible',()=>{
  const list=collectionViewModel({...(collection as object),publicationState:'draft'} as never,[{documentId:id(1)} as never]);

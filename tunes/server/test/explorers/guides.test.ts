@@ -23,6 +23,13 @@ const place = (overrides: Record<string, unknown> = {}) => ({
 });
 
 const blocks = (overrides: Partial<GuideSectionBlocks> = {}): unknown => ({ ...guideEmptySectionBlocks, ...overrides });
+/** v2 day items in the old slot order, each labelled with its slot. */
+type Placed = ReturnType<typeof place>;
+const slots = (morning: Placed[], afternoon: Placed[] = [], evening: Placed[] = []) => [
+  ...morning.map((p) => ({ kind: "place" as const, localId: p.localId as string, timeLabel: "morning" as const, place: p })),
+  ...afternoon.map((p) => ({ kind: "place" as const, localId: p.localId as string, timeLabel: "afternoon" as const, place: p })),
+  ...evening.map((p) => ({ kind: "place" as const, localId: p.localId as string, timeLabel: "evening" as const, place: p })),
+];
 
 describe("guide day place", () => {
   it("keeps geometry nested, because that is the shape every Guides map reads", () => {
@@ -67,11 +74,11 @@ describe("guide day place", () => {
 describe("guide section blocks", () => {
   it("round-trips every block with non-ASCII rich text unchanged", () => {
     const full = blocks({
-      timeline: { morning: [place()], afternoon: [place({ localId: "a1", name: "ചായക്കട — tea stall" })], evening: [] },
+      items: slots([place()], [place({ localId: "a1", name: "ചായക്കട — tea stall" })]),
       transport: { segments: [{ fromLocalId: "m1", toLocalId: "a1", mode: "auto", distanceKm: 3.4, estimatedMinutes: 12 }] },
       stay: { accommodations: [place({ localId: "s1", name: "Brunton Boatyard" })] },
       activities: { activities: [place({ localId: "v1", name: "Kathakali — കഥകളി" })] },
-      budget: { morning: [{ localId: "m1", placeId: "ChIJN1t_tDeuEmsRUsoyG83frY4", name: "Kashi Art Cafe", priceLevel: 2, priceRange: null, customBudget: null, budgetAmount: "450.00", budgetCurrency: "INR" }], afternoon: [], evening: [] },
+      budget: { entries: [{ localId: "m1", placeId: "ChIJN1t_tDeuEmsRUsoyG83frY4", name: "Kashi Art Cafe", priceLevel: 2, priceRange: null, customBudget: null, budgetAmount: "450.00", budgetCurrency: "INR" }] },
       mapDetails: { center: { lat: 9.9658, lng: 76.2421 }, zoom: 14 },
       packingList: { items: [{ localId: "p1", label: "Mosquito repellent", done: false }] },
       preTasks: { items: [{ localId: "t1", label: "Book the backwater ferry", done: true }] },
@@ -85,7 +92,7 @@ describe("guide section blocks", () => {
 
   it("refuses a transport segment that routes to an entry the section does not contain", () => {
     const orphaned = blocks({
-      timeline: { morning: [place()], afternoon: [], evening: [] },
+      items: slots([place()]),
       transport: { segments: [{ fromLocalId: "m1", toLocalId: "gone", mode: "walk", distanceKm: 1, estimatedMinutes: 10 }] },
     });
     const result = guideSectionBlocksSchema.safeParse(orphaned);
@@ -95,29 +102,30 @@ describe("guide section blocks", () => {
 
   it("refuses a budget entry for an entry the section does not contain", () => {
     const result = guideSectionBlocksSchema.safeParse(blocks({
-      timeline: { morning: [place()], afternoon: [], evening: [] },
-      budget: { morning: [{ localId: "ghost", placeId: "ChIJ1", name: "Nowhere", priceLevel: null, priceRange: null, customBudget: null, budgetAmount: null, budgetCurrency: null }], afternoon: [], evening: [] },
+      items: slots([place()]),
+      budget: { entries: [{ localId: "ghost", placeId: "ChIJ1", name: "Nowhere", priceLevel: null, priceRange: null, customBudget: null, budgetAmount: null, budgetCurrency: null }] },
     }));
     expect(result.success).toBe(false);
   });
 
   it("accepts a segment between two entries in different parts of the day", () => {
     expect(guideSectionBlocksSchema.safeParse(blocks({
-      timeline: { morning: [place()], afternoon: [], evening: [place({ localId: "e1" })] },
+      items: slots([place()], [], [place({ localId: "e1" })]),
       transport: { segments: [{ fromLocalId: "m1", toLocalId: "e1", mode: "taxi", distanceKm: 8, estimatedMinutes: 25 }] },
     })).success).toBe(true);
   });
 
   it("refuses a segment that starts and ends at the same entry", () => {
     expect(guideSectionBlocksSchema.safeParse(blocks({
-      timeline: { morning: [place()], afternoon: [], evening: [] },
+      items: slots([place()]),
       transport: { segments: [{ fromLocalId: "m1", toLocalId: "m1", mode: "walk", distanceKm: 0, estimatedMinutes: 0 }] },
     })).success).toBe(false);
   });
 
   it("pins the block version, so a future schema is refused rather than half-read", () => {
     expect(guideSectionBlocksSchema.parse(blocks()).version).toBe(GUIDE_SECTION_BLOCK_VERSION);
-    expect(guideSectionBlocksSchema.safeParse({ ...guideEmptySectionBlocks, version: "guide-section-blocks/v2" }).success).toBe(false);
+    expect(guideSectionBlocksSchema.safeParse({ ...guideEmptySectionBlocks, version: "guide-section-blocks/v3" }).success).toBe(false);
+    expect(guideSectionBlocksSchema.safeParse({ ...guideEmptySectionBlocks, version: "guide-section-blocks/v1" }).success).toBe(false);
     expect(guideSectionBlocksSchema.safeParse({ ...guideEmptySectionBlocks, version: undefined }).success).toBe(false);
   });
 
@@ -132,12 +140,13 @@ describe("guide section blocks", () => {
 
   it("bounds a section's size, matching the database's own limit", () => {
     const many = Array.from({ length: 40 }, (_unused, index) => place({ localId: "m" + index, tips: "x".repeat(4000) }));
-    expect(guideSectionBlocksSchema.safeParse(blocks({ timeline: { morning: many, afternoon: many, evening: many } })).success).toBe(false);
+    expect(guideSectionBlocksSchema.safeParse(blocks({ items: slots(many, many.map((p) => ({ ...p, localId: "a" + p.localId })), many.map((p) => ({ ...p, localId: "e" + p.localId }))) })).success).toBe(false);
   });
 
   it("offers an empty section that is empty arrays, never missing keys", () => {
     const parsed = guideSectionBlocksSchema.parse(guideEmptySectionBlocks);
-    expect(parsed.timeline).toEqual({ morning: [], afternoon: [], evening: [] });
+    expect(parsed.items).toEqual([]);
+    expect(parsed.budget).toEqual({ entries: [] });
     expect(parsed.transport.segments).toEqual([]);
     expect(parsed.mapDetails).toBeNull();
   });
@@ -250,9 +259,11 @@ describe("guide writes", () => {
     for (const revision of [0, -1, 1.5]) expect(writeGuideSectionSchema.safeParse({ ...write, revision }).success).toBe(false);
   });
 
-  it("refuses a blank section title rather than storing whitespace", () => {
+  // Day titles are optional since GD-23 ("Day N" is the position), so a blank title is stored
+  // as an empty one - never as whitespace, which 0069's title CHECK also refuses.
+  it("stores a blank section title as empty rather than storing whitespace", () => {
     const write = { revision: 1, description: null, blocks: guideEmptySectionBlocks };
-    expect(writeGuideSectionSchema.safeParse({ ...write, title: "   " }).success).toBe(false);
+    expect(writeGuideSectionSchema.parse({ ...write, title: "   " }).title).toBe("");
     expect(writeGuideSectionSchema.parse({ ...write, title: "  Day one  " }).title).toBe("Day one");
   });
 

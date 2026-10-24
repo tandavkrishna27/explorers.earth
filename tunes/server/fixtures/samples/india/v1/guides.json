@@ -1,0 +1,12 @@
+{"set":"india","version":"v1","category":"guides","guide":{"key":"in-guide-3-days-goa","title":"3 days in Goa","description":"Forts, churches and beaches, north to south.","guideType":"itinerary","numberOfDays":3,"days":[
+ {"day":1,"items":[
+  {"kind":"place","localId":"goa-d1-fort-aguada","timeLabel":"morning","tips":"Start early for the sea view from the lighthouse.","googlePlaceId":null,"details":{"title":"Fort Aguada","formattedAddress":"Candolim, Goa","latitude":15.4925,"longitude":73.7737}},
+  {"kind":"note","localId":"goa-d1-note","timeLabel":"afternoon","text":"Rest through the hottest hours; rent a scooter for the evening."},
+  {"kind":"place","localId":"goa-d1-calangute","timeLabel":"evening","tips":"Sunset and dinner by the water.","googlePlaceId":null,"details":{"title":"Calangute Beach","formattedAddress":"Calangute, Goa","latitude":15.5439,"longitude":73.7553}}]},
+ {"day":2,"items":[
+  {"kind":"place","localId":"goa-d2-bom-jesus","timeLabel":"morning","tips":"Old Goa's baroque church.","googlePlaceId":null,"details":{"title":"Basilica of Bom Jesus","formattedAddress":"Old Goa, Goa","latitude":15.5009,"longitude":73.9116}},
+  {"kind":"place","localId":"goa-d2-fontainhas","timeLabel":"afternoon","tips":"Walk the coloured Latin Quarter lanes.","googlePlaceId":null,"details":{"title":"Fontainhas","formattedAddress":"Fontainhas, Panaji, Goa","latitude":15.4977,"longitude":73.8318}}]},
+ {"day":3,"items":[
+  {"kind":"place","localId":"goa-d3-dudhsagar","timeLabel":"07:00","tips":"A full day trip; go in the monsoon if you can.","googlePlaceId":null,"details":{"title":"Dudhsagar Falls","formattedAddress":"Sonaulim, Goa","latitude":15.3144,"longitude":74.3143}},
+  {"kind":"place","localId":"goa-d3-palolem","timeLabel":"evening","tips":"The calm southern beach to end the trip.","googlePlaceId":null,"details":{"title":"Palolem Beach","formattedAddress":"Canacona, Goa","latitude":15.01,"longitude":74.0232}}]}
+]}}

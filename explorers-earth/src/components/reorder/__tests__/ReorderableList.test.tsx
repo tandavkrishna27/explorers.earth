@@ -123,3 +123,32 @@ describe('ReorderableFileStrip', () => {
     expect(onChange.mock.calls[1][0].map((file: File) => file.name)).toEqual(['b.png', 'a.png']);
   });
 });
+
+describe('ReorderableList controls="keyboard"', () => {
+  it('keyboard mode shows only the grip and moves with Space + arrows', () => {
+    const onReorder = vi.fn();
+    render(<ReorderableList controls="keyboard" items={['a', 'b', 'c']} getKey={(x) => x} getLabel={(x) => x} onReorder={onReorder} renderItem={(x) => <span>{x}</span>} ariaLabel="Items" />);
+    expect(screen.queryByRole('button', { name: /Move a up/ })).toBeNull();
+    const grip = screen.getByRole('button', { name: 'Drag a to reorder' });
+    fireEvent.keyDown(grip, { key: ' ' });
+    expect(grip).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.keyDown(grip, { key: 'ArrowDown' });
+    fireEvent.keyDown(grip, { key: ' ' });
+    expect(onReorder).toHaveBeenLastCalledWith(['b', 'a', 'c']);
+  });
+
+  it('Escape cancels a keyboard move', () => {
+    const onReorder = vi.fn();
+    render(<ReorderableList controls="keyboard" items={['a', 'b']} getKey={(x) => x} getLabel={(x) => x} onReorder={onReorder} renderItem={(x) => <span>{x}</span>} ariaLabel="Items" />);
+    const grip = screen.getByRole('button', { name: 'Drag a to reorder' });
+    fireEvent.keyDown(grip, { key: ' ' }); fireEvent.keyDown(grip, { key: 'ArrowDown' }); fireEvent.keyDown(grip, { key: 'Escape' });
+    expect(onReorder).not.toHaveBeenCalled();
+    expect(screen.getAllByRole('listitem')[0]).toHaveTextContent('a');
+  });
+
+  it('default mode is unchanged (arrows rendered)', () => {
+    render(<ReorderableList items={['a', 'b']} getKey={(x) => x} getLabel={(x) => x} onReorder={vi.fn()} renderItem={(x) => <span>{x}</span>} ariaLabel="Items" />);
+    expect(screen.getByRole('button', { name: 'Move a down' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Drag a to reorder' })).not.toHaveAttribute('aria-pressed');
+  });
+});

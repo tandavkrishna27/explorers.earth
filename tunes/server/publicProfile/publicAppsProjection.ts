@@ -1,4 +1,5 @@
 import type {Pool,PoolClient} from 'pg';
+import {listSlugPredicate} from '../application/collectionSlug';
 import {readAppEntity,readAppScreenshotMediaIds,effectiveAppDetails} from '../repositories/appCatalogRepository';
 import {displayOverridesReadSchema} from '../../shared/explorersContract';
 import {normalizeRichNote} from '../application/richNote';
@@ -40,7 +41,10 @@ async function richApp(db:PoolClient,row:any){
  return {documentId:row.id,app_url:facts.appUrl,
  title:(Object.hasOwn(overrides,'title')?overrides.title:entity.title)??'Untitled app',
  description:facts.description,logo_url:facts.logoUrl,developer:facts.developer,
- platforms:facts.platforms.length?facts.platforms:null,price_tier:facts.priceTier,download_url:facts.downloadUrl,
+ platforms:facts.platforms.length?facts.platforms:null,price_tier:facts.priceTier,
+ // 0068 moved the download link into otherLinks; the public field keeps showing it.
+ download_url:facts.downloadUrl??facts.otherLinks.find(link=>link.label==='Download')?.url??null,
+ other_links:facts.otherLinks.length?facts.otherLinks.map(link=>({label:link.label,url:link.url})):null,
  user_recommendation_note:normalizeRichNote(row.note)?.html??'',user_rating:row.user_rating,
  is_pinned:row.pin_order!==null,pin_order:row.pin_order,display_order:row.display_order,
  screenshots:screenshots.length?screenshots.map(id=>`/api/explorers/v1/media/${id}/content`):null,
@@ -70,7 +74,7 @@ export async function publicAppsProjection(pool:Pool,username:string,limit:numbe
   const rows=(await db.query(`SELECT c.id,c.title,c.description,c.slug,c.heading,c.display_order,cm.media_id AS cover_media_id FROM collections c
    JOIN creator_accounts a ON a.id=c.account_id JOIN account_category_settings s ON s.account_id=a.id AND s.category=c.category
    LEFT JOIN collection_media cm ON cm.collection_id=c.id AND cm.account_id=c.account_id AND cm.slot='cover' AND EXISTS(SELECT 1 FROM media_assets m WHERE m.id=cm.media_id AND m.account_id=cm.account_id AND m.status='ready')
-   WHERE a.id=$1 AND c.category='apps' AND ${gate} AND ${listGate} AND ($2::text IS NULL OR c.slug=$2)
+   WHERE a.id=$1 AND c.category='apps' AND ${gate} AND ${listGate} AND ($2::text IS NULL OR ${listSlugPredicate('c','$2')})
    ORDER BY c.display_order,c.id LIMIT $3 OFFSET $4`,[observed.id,slug??null,slug?1:limit+1,slug?0:offset])).rows;
   if(slug&&!rows.length){await db.query('COMMIT');return undefined;}
   const lists=[];

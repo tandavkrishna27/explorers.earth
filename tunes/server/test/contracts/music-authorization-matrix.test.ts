@@ -34,6 +34,8 @@ describe("generated full Music authorization matrix", () => {
       expect.objectContaining({ method: "GET", path: "/api/explorers/v1/catalog/movie-genres", decision: "explorers-owner" }),
       expect.objectContaining({ method: "GET", path: "/api/explorers/v1/catalog/games", decision: "explorers-owner" }),
       expect.objectContaining({ method: "ALL", path: "/api/explorers/v1/catalog/games", decision: "tombstone" }),
+      expect.objectContaining({ method: "GET", path: "/api/explorers/v1/places/nearby", decision: "explorers-owner" }),
+      expect.objectContaining({ method: "ALL", path: "/api/explorers/v1/places/nearby", decision: "tombstone" }),
       expect.objectContaining({ method: "POST", path: "/api/explorers/v1/collections/:id/memberships/:recommendationId", decision: "explorers-owner" }),
       expect.objectContaining({ method: "DELETE", path: "/api/explorers/v1/collections/:id/memberships/:recommendationId", decision: "explorers-owner" }),
       expect.objectContaining({ method: "ALL", path: "/api/explorers/v1/collections/:id/memberships/:recommendationId", decision: "tombstone" }),
