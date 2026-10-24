@@ -9,6 +9,7 @@ import type { RecommendedGame } from "../../../Games/types";
 import { explorersApiClient } from "../../../../lib/explorersApiClient";
 import { reorderListItems } from "../../../../lib/reorderListItems";
 import { buildListPublicUrl } from "../../../../utils/listShareUrls";
+import { readIsSample } from "../../samples/readIsSample";
 import type { ListPageAdapter } from "../listPageAdapter";
 
 const MAX_TOP_PICKS = 15;
@@ -34,6 +35,7 @@ export function useGamesListAdapter(listId: string): ListPageAdapter {
         status: rawList.Visibility ? ("public" as const) : ("draft" as const),
         itemCount: games.length,
         publicUrl: buildListPublicUrl(rawList.account?.username ?? user?.username, "games", rawList.slug),
+        ...(readIsSample(rawList) ? { isSample: true } : {}),
       }
     : null;
 

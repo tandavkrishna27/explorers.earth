@@ -13,7 +13,7 @@ type Draft={title:string;slug:string;description?:string|null;parentLocationColl
 type Result={id:string;parentLocation?:{id:string;revision:number}};
 type Commands=ReturnType<typeof usePeopleCommands>&{retryLinkedCreate:(input:Draft)=>Promise<Result>;cancelLinkedCreate:()=>void;getLinkedCreateStatus:(input:Draft)=>'idle'|'pending'|'uncertain'|'conflict'|'blocked'};
 const draft=():Draft=>({title:'Child',slug:'child',description:'Notes',parentLocationCollectionId:parent});
-const core=(kind=category,id=child,revision=1)=>({id,accountId:account,category:kind,title:'Child',slug:'child',description:'Notes',heading:null,coverMediaId:null,visibility:'private',publicationState:'draft',revision});
+const core=(kind=category,id=child,revision=1)=>({id,accountId:account,category:kind,title:'Child',slug:'child',description:'Notes',heading:null,coverMediaId:null,isSample:false,visibility:'private',publicationState:'draft',revision});
 const receipt=(revision=4,id=parent)=>({collection:{...core(),parentLocation:{id,revision:revision+1}}});
 const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status});
 const refusal=(status=409)=>reply({error:{code:status===422?'INVALID_INPUT':status===403?'FORBIDDEN':status===404?'NOT_FOUND':'CONFLICT',message:'Refused',requestId:other}},status);

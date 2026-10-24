@@ -2,7 +2,7 @@ import {useTranslation} from 'react-i18next';
 import {dayChipLabel} from './dayItems';
 
 export type StripDay = {id: string; items: readonly unknown[]};
-type Props = {days: StripDay[]; startDate: string | null; selectedId: string; onSelect: (id: string) => void; onAddDay: () => void;
+type Props = {days: StripDay[]; startDate: string | null; selectedId: string; onSelect: (id: string) => void; /** Omitted for a sample guide (WP11): no "+ Day" chip. */ onAddDay?: () => void;
  onDropItem: (fromSectionId: string, localId: string, toSectionId: string, fromIndex: number) => void};
 export const DRAG_TYPE = 'application/x-guide-item';
 
@@ -24,9 +24,9 @@ export default function DayStrip({days, startDate, selectedId, onSelect, onAddDa
      {dayChipLabel(index, startDate, i18n.language)}
     </button>
    ))}
-   <button type="button" onClick={onAddDay} className="min-h-[44px] shrink-0 rounded-full border border-dashed border-white/20 px-4 text-sm text-gray-300 hover:bg-white/10">
+   {onAddDay && <button type="button" onClick={onAddDay} className="min-h-[44px] shrink-0 rounded-full border border-dashed border-white/20 px-4 text-sm text-gray-300 hover:bg-white/10">
     {t('dashboard.wp9.addDayChip', {defaultValue: '+ Day'})}
-   </button>
+   </button>}
   </div>
  );
 }

@@ -8,6 +8,7 @@ import { notePreviewText } from "../../../../utils/notePreviewText";
 import { buildListPublicUrl } from "../../../../utils/listShareUrls";
 import PlacesManageExtras from "../../../Favorites/components/PlacesManageExtras";
 import type { ListPageAdapter } from "../listPageAdapter";
+import { readIsSample } from "../../samples/readIsSample";
 
 const stripHtml = (html: string) => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 
@@ -30,6 +31,7 @@ export function usePlacesListAdapter(listId: string): ListPageAdapter {
         status: rawList.Visibility ? ("public" as const) : ("draft" as const),
         itemCount: places.length,
         publicUrl: buildListPublicUrl(rawList.account?.username ?? user?.username, "places", rawList.slug),
+        ...(readIsSample(rawList) ? { isSample: true } : {}),
       }
     : null;
 

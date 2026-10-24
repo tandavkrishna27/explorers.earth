@@ -7,6 +7,9 @@ import type { Pool, PoolClient } from 'pg';
 import type { CollectionCoreDto, RecommendationCoreDto, TopPickCategory, CategoryTopPicksInput, CategoryTopPicksResult,DisplayOverrides,ReorderCategoryListsInput,CategoryListsOrderResult } from '../../shared/explorersContract';
 import {createCollectionResultSchema,type CreateCollectionResult} from '../../shared/explorersContract';
 import { lockContentCategories } from '../db/explorers-content-lock';
+import { SAMPLE_PUBLISH_REFUSAL } from '../../shared/explorersSampleContract';
+// Cycle with sampleRepository (it imports RecommendationFailure); both sides use the other only at call time.
+import { claimSample } from './sampleRepository';
 import type { RichNote } from '../../shared/explorersRichNoteContract';
 import {emptyBookDetails,bookDisplayFieldsSchema,bookEntityDetailsSchema,type BookCandidate,type BookEntityDetails,type BookRecommendationContext} from '../../shared/explorersBookContract';
 import {insertBookDetails,readBookEntity,writeBookContext} from './bookCatalogRepository';
@@ -30,8 +33,12 @@ const MEMBERSHIP_CATEGORIES:ReadonlySet<string>=new Set(['games','apps','product
 export type CollectionRecord = CollectionCoreDto;
 export type RecommendationRecord = RecommendationCoreDto;
 export class RecommendationFailure extends Error {
-  constructor(readonly status:404|409|413|422, message:string) {super(message);}
+  // code: optional machine-readable error code for the transport (e.g. SAMPLE_PUBLISH_REFUSED).
+  constructor(readonly status:404|409|413|422, message:string, readonly code?:string) {super(message);}
 }
+const SAMPLE_CONSTRAINTS:ReadonlySet<string>=new Set(['collections_sample_never_public','recommendations_sample_never_published']);
+export const SAMPLE_PUBLISH_REFUSED_CODE='SAMPLE_PUBLISH_REFUSED';
+const sampleRefusal=()=>new RecommendationFailure(422,SAMPLE_PUBLISH_REFUSAL,SAMPLE_PUBLISH_REFUSED_CODE);
 const hash=(value:string)=>createHash('sha256').update(value).digest();
 // Hash normalized domain inputs, independent of transport JSON object insertion order.
 function canonical(value:unknown):string {
@@ -40,7 +47,7 @@ function canonical(value:unknown):string {
   return `{${Object.entries(value).filter(([,v])=>v!==undefined).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>`${JSON.stringify(k)}:${canonical(v)}`).join(',')}}`;
 }
 const collectionDto=(r:any):CollectionRecord=>({id:r.id,accountId:r.account_id,category:r.category,title:r.title,slug:r.slug,
-  visibility:r.visibility,publicationState:r.publication_state,revision:Number(r.revision),description:r.description,heading:r.heading,coverMediaId:r.cover_media_id??null});
+  visibility:r.visibility,publicationState:r.publication_state,revision:Number(r.revision),description:r.description,heading:r.heading,coverMediaId:r.cover_media_id??null,isSample:r.is_sample===true});
 const recommendationDto=(r:any):RecommendationRecord=>({id:r.id,accountId:r.account_id,entityId:r.entity_id,category:r.category,userRating:r.user_rating,publicationState:r.publication_state,revision:Number(r.revision),mediaIds:r.media_ids??[]});
 
 /** Internal persistence seam: application authorization and typed transport validation precede calls. */
@@ -64,7 +71,13 @@ export class ExplorersRecommendationRepository {
   private async transaction<T>(work:(db:PoolClient)=>Promise<T>):Promise<T> {
     const db=await this.pool.connect();
     try {await db.query('BEGIN');const result=await work(db);await db.query('COMMIT');return result;}
-    catch(e) {await db.query('ROLLBACK');throw e;} finally {db.release();}
+    catch(e) {
+      await db.query('ROLLBACK');
+      // S3/0071 CHECKs are the storage backstop for sample publish refusal (SMP-03).
+      const failure=e as {code?:string;constraint?:string};
+      if(failure.code==='23514'&&SAMPLE_CONSTRAINTS.has(failure.constraint??''))throw sampleRefusal();
+      throw e;
+    } finally {db.release();}
   }
   private async command<T>(accountId:string,operation:string,input:unknown,key:string,work:(db:PoolClient)=>Promise<T>):Promise<T> {
     if(!/^[A-Za-z0-9._~-]{8,200}$/.test(key)) throw new RecommendationFailure(422,'Idempotency key required');
@@ -261,12 +274,14 @@ export class ExplorersRecommendationRepository {
       return inserted.rows[0] as {id:string;kind:CatalogKind;title:string};
     });
   }
-  async createCollection(accountId:string,input:{category:ContentCategory;title:string;slug:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails;parentLocationCollectionId?:string;parentExpectedRevision?:number},key:string):Promise<CreateCollectionResult> {
+  async createCollection(accountId:string,input:{category:ContentCategory;title:string;slug:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails;parentLocationCollectionId?:string;parentExpectedRevision?:number;isSample?:true},key:string):Promise<CreateCollectionResult> {
     const linked=input.parentLocationCollectionId!==undefined;
     if(linked!==(input.parentExpectedRevision!==undefined))throw new RecommendationFailure(422,'Parent identity and revision are required together');
     if(linked&&(!Number.isSafeInteger(input.parentExpectedRevision)||(input.parentExpectedRevision??0)<1))throw new RecommendationFailure(422,'Invalid revision');
     if(linked&&!linkableChildCategorySchema.safeParse(input.category).success)throw new RecommendationFailure(422,'Only Products and People lists link to a location');
     const normalized={...input,visibility:input.visibility??'private',publicationState:input.publicationState??'draft'};
+    // Internal seeder flag only; the HTTP create schema is strict and has no isSample.
+    if(input.isSample&&(normalized.visibility!=='private'||normalized.publicationState!=='draft'))throw sampleRefusal();
     return this.command(accountId,'createCollection',normalized,key,async db=>{
       const parent=linked?await this.lockCollection(db,accountId,input.parentLocationCollectionId!,input.parentExpectedRevision!):undefined;
       if(parent&&parent.category!=='places')throw new RecommendationFailure(422,'A location list is required');
@@ -276,9 +291,9 @@ export class ExplorersRecommendationRepository {
         WHERE r.account_id=$1 AND r.category=$2 AND r.old_slug=$3 AND c.archived_at IS NULL`,[accountId,input.category,input.slug]);
       if(redirected.rowCount)throw new RecommendationFailure(409,'Content conflicts with an existing resource');
       await db.query('DELETE FROM collection_slug_redirects WHERE account_id=$1 AND category=$2 AND old_slug=$3',[accountId,input.category,input.slug]);
-      const result=await db.query(`INSERT INTO collections(account_id,category,title,slug,visibility,publication_state,display_order)
-        SELECT $1,$2,$3,$4,$5,$6,coalesce(max(display_order)+1,0) FROM collections WHERE account_id=$1 AND category=$2 RETURNING *`,
-        [accountId,input.category,input.title,input.slug,normalized.visibility,normalized.publicationState]);
+      const result=await db.query(`INSERT INTO collections(account_id,category,title,slug,visibility,publication_state,display_order,is_sample)
+        SELECT $1,$2,$3,$4,$5,$6,coalesce(max(display_order)+1,0),$7 FROM collections WHERE account_id=$1 AND category=$2 RETURNING *`,
+        [accountId,input.category,input.title,input.slug,normalized.visibility,normalized.publicationState,input.isSample===true]);
       await db.query('UPDATE collections SET description=$2,heading=$3 WHERE id=$1',[result.rows[0].id,input.description??null,input.heading??null]);
       await this.replaceCover(db,accountId,result.rows[0].id,input.coverMediaId??null);
       if(input.category!=='places'&&input.placeLocation!==undefined)throw new RecommendationFailure(422,'Category context mismatch');
@@ -308,13 +323,14 @@ export class ExplorersRecommendationRepository {
     if(Number(result.rows[0].revision)!==revision) throw new RecommendationFailure(409,'Stale collection revision');
     return result.rows[0];
   }
-  async createRecommendation(accountId:string,input:{category:Exclude<ContentCategory,'guides'>;entityId:string;collectionId:string;expectedCollectionRevision:number;userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null;displayOverrides?:DisplayOverrides;bookContext?:BookRecommendationContext;movieContext?:MovieContext;movieTermIds?:string[];appScreenshots?:AppScreenshots;productOffer?:ProductOffer;placeContext?:PlaceRecommendationContext;placePhotos?:PlacePhotos}&TaxonomyAssignmentInput,key:string):Promise<RecommendationRecord> {
+  async createRecommendation(accountId:string,input:{category:Exclude<ContentCategory,'guides'>;entityId:string;collectionId:string;expectedCollectionRevision:number;userRating?:number|null;publicationState?:'draft'|'published';mediaIds?:string[];note?:RichNote|null;displayOverrides?:DisplayOverrides;bookContext?:BookRecommendationContext;movieContext?:MovieContext;movieTermIds?:string[];appScreenshots?:AppScreenshots;productOffer?:ProductOffer;placeContext?:PlaceRecommendationContext;placePhotos?:PlacePhotos;isSample?:true}&TaxonomyAssignmentInput,key:string):Promise<RecommendationRecord> {
     return this.command(accountId,'createRecommendation',input,key,async db=>{
       if(input.category!=='places'&&input.placesTaxonomy!==undefined||input.category!=='people'&&input.peopleSectorTermId!==undefined||!isFlatCuratedCategory(input.category)&&input.curatedTermId!==undefined)throw new RecommendationFailure(422,'Category taxonomy mismatch');
       const list=await this.lockCollection(db,accountId,input.collectionId,input.expectedCollectionRevision);
       if(list.category!==input.category) throw new RecommendationFailure(422,'Collection category mismatch');
-      const result=await db.query(`INSERT INTO recommendations(account_id,entity_id,category,user_rating,publication_state,note)
-        VALUES($1,$2,$3,$4,$5,$6::jsonb) RETURNING *`,[accountId,input.entityId,input.category,input.userRating??null,input.publicationState??'draft',input.note==null?null:JSON.stringify(input.note)]);
+      if(list.is_sample&&(input.publicationState??'draft')!=='draft')throw sampleRefusal();
+      const result=await db.query(`INSERT INTO recommendations(account_id,entity_id,category,user_rating,publication_state,note,is_sample)
+        VALUES($1,$2,$3,$4,$5,$6::jsonb,$7) RETURNING *`,[accountId,input.entityId,input.category,input.userRating??null,input.publicationState??'draft',input.note==null?null:JSON.stringify(input.note),input.isSample===true]);
       await db.query(`INSERT INTO collection_items(collection_id,recommendation_id,account_id,category,display_order)
         SELECT $1,$2,$3,$4,coalesce(max(display_order)+1,0) FROM collection_items WHERE collection_id=$1`,
         [input.collectionId,result.rows[0].id,accountId,input.category]);
@@ -393,6 +409,20 @@ export class ExplorersRecommendationRepository {
       if(removed.rowCount) await db.query('UPDATE account_category_pin_state SET revision=revision+1 WHERE account_id=$1 AND category=(SELECT category FROM collections WHERE id=$2)',[accountId,id]);
       await db.query('UPDATE collections SET archived_at=now(),revision=revision+1,updated_at=now() WHERE id=$1',[id]);
       return {id,archived:true};
+    });
+  }
+  /**
+   * SMP-04. Converts a sample in place via S3's claimSample (clears is_sample on the list and its
+   * items, sets the receipt's claimed_at; 404 when not a sample of this account), then bumps the
+   * revision. Nothing is copied; it stays a private draft. A repeat with the same key replays;
+   * a fresh key on a claimed list is 409 (stale revision) or 404 (no longer a sample).
+   */
+  async makeCollectionMine(accountId:string,id:string,expectedRevision:number,key:string):Promise<CollectionRecord> {
+    return this.command(accountId,'makeCollectionMine',{id,expectedRevision},key,async db=>{
+      await this.lockCollection(db,accountId,id,expectedRevision);
+      await claimSample(db,accountId,id);
+      const result=await db.query('UPDATE collections SET revision=revision+1,updated_at=now() WHERE id=$1 AND account_id=$2 RETURNING *',[id,accountId]);
+      return this.collectionRecord(db,result.rows[0]);
     });
   }
   // LP-08. Restore brings an archived list back under its slug, or a new one when the old
@@ -505,6 +535,8 @@ export class ExplorersRecommendationRepository {
   async updateCollection(accountId:string,id:string,expectedRevision:number,input:{title?:string;slug?:string;visibility?:'public'|'private';publicationState?:'draft'|'published';description?:string|null;heading?:string|null;coverMediaId?:string|null;placeLocation?:PlaceCollectionDetails;displayOrder?:number;pinOrder?:number|null},key:string):Promise<CollectionRecord> {
     return this.command(accountId,'updateCollection',{id,expectedRevision,input},key,async db=>{
       const locked=await this.lockCollection(db,accountId,id,expectedRevision);
+      if(locked.is_sample&&((input.visibility??locked.visibility)!=='private'||(input.publicationState??locked.publication_state)!=='draft'||(input.pinOrder!==undefined&&input.pinOrder!==null)))
+        throw sampleRefusal();
       if(locked.category!=='places'&&input.placeLocation!==undefined)throw new RecommendationFailure(422,'Category context mismatch');
       // LP-09. Renaming keeps the old URL working: the old slug becomes a redirect to this
       // list. Taking a slug that is another live list's redirect is a conflict; taking a
@@ -555,6 +587,7 @@ export class ExplorersRecommendationRepository {
       throw new RecommendationFailure(422,'Invalid rating');
     return this.command(accountId,'updateRecommendation',{id,expectedRevision,input},key,async db=>{
       const locked=await this.lockRecommendation(db,accountId,id,expectedRevision);
+      if(locked.is_sample&&input.publicationState!==undefined&&input.publicationState!=='draft')throw sampleRefusal();
       // DS-02: People are not rated. A stored rating stays readable; a new one is refused.
       if(locked.category==='people'&&input.userRating!==undefined&&input.userRating!==null)throw new RecommendationFailure(422,'People are not rated');
       if(locked.category!=='books'&&input.bookContext!==undefined||locked.category!=='movies'&&(input.movieContext!==undefined||input.movieTermIds!==undefined)||locked.category!=='apps'&&input.appScreenshots!==undefined||locked.category!=='products'&&input.productOffer!==undefined||locked.category!=='places'&&(input.placeContext!==undefined||input.placePhotos!==undefined))throw new RecommendationFailure(422,'Category context mismatch');

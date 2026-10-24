@@ -86,7 +86,9 @@ export const ownerCollectionPageSchema=z.object({version:z.literal('explorers-ow
 export const ownerRecommendationPageSchema=ownerCollectionPageSchema.extend({items:z.array(ownerRecommendationDtoSchema).max(100),placePins:z.object({collectionId:contentIdSchema,collectionRevision:z.number().int().positive().safe(),categoryContentRevision:revision,eligibleItemCount:z.number().int().nonnegative().safe(),eligiblePinCount:z.number().int().nonnegative().safe()}).strict().optional()}).strict();
 export const ownerMembershipPageSchema=ownerCollectionPageSchema.extend({items:z.array(ownerMembershipDtoSchema).max(100)}).strict();
 export const ownerTopPicksRequestSchema=z.object({category:topPickCategorySchema,limit,cursor:token.optional(),snapshotToken:token.optional()}).strict();
-export const ownerTopPickDtoSchema=z.object({recommendationId:contentIdSchema,collectionId:contentIdSchema,position:z.number().int().nonnegative()}).strict();
+export const ownerTopPickDtoSchema=z.object({recommendationId:contentIdSchema,collectionId:contentIdSchema,position:z.number().int().nonnegative(),
+ // WP11. True when the pin comes from a first-visit sample list.
+ isSample:z.boolean().optional()}).strict();
 export const ownerTopPickPageSchema=ownerCollectionPageSchema.extend({pinRevision:z.number().int().positive().safe().nullable(),items:z.array(ownerTopPickDtoSchema).max(100)}).strict();
 export type OwnerTopPicksRequest=z.input<typeof ownerTopPicksRequestSchema>;
 export type OwnerCollectionsRequest=z.input<typeof ownerCollectionsRequestSchema>;

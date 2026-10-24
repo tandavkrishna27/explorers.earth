@@ -7,6 +7,7 @@ import type { RecommendedMovie } from "../../../Movies/types";
 import { explorersApiClient } from "../../../../lib/explorersApiClient";
 import { reorderListItems } from "../../../../lib/reorderListItems";
 import { buildListPublicUrl } from "../../../../utils/listShareUrls";
+import { readIsSample } from "../../samples/readIsSample";
 import type { ListPageAdapter } from "../listPageAdapter";
 
 const MAX_PINS = 15;
@@ -39,6 +40,7 @@ export function useMoviesListAdapter(listId: string, observer?: MoviesOwnerObser
         status: list.Visibility ? "public" : "draft",
         itemCount: movies.length,
         publicUrl: buildListPublicUrl(list.account?.username, "movies", list.slug),
+        ...(readIsSample(list) ? { isSample: true } : {}),
       }
       : null,
     items: movies.map((movie) => ({

@@ -2666,5 +2666,28 @@
       "title": "取消账户删除"
     },
     "scheduledForDeletion": "你的账户计划于 {{date}} 删除。请使用 Google 继续以取消删除。"
+  },
+  "samples": {
+    "badge": "Sample",
+    "makeMine": "Make it mine",
+    "nowYours": "Now yours",
+    "deleteSample": "Delete sample",
+    "deleteTitle": "Delete this sample?",
+    "deleteBody": "It won't come back.",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "open": "Open",
+    "cannotPublish": "Samples can't be published. Make it mine to edit and publish it.",
+    "cannotShare": "Samples can't be shared. Make it yours to publish and share it.",
+    "onlyYou": "Only you can see this",
+    "onlyYouCantPublish": "Only you can see this · can't be published",
+    "bar": "A sample to show how a list works. Keep it, delete it, or make it yours to edit and publish.",
+    "madeMineToast": "It's yours now: a draft you can edit and publish",
+    "deletedToast": "Sample deleted",
+    "failed": "That didn't work. Try again.",
+    "makeMineTitle": "Make \"{{name}}\" yours?",
+    "makeMineBody": "It becomes a normal draft list with its {{items}}. You can rename, edit, reorder and publish it. Your other samples stay until you delete them.",
+    "listName": "List name",
+    "fromSampleList": "From the sample list \"{{list}}\""
   }
 }

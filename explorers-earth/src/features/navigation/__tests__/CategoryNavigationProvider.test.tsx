@@ -32,7 +32,7 @@ function harness(options: { consumer?: boolean; initial?: object; failReads?: bo
   vi.stubGlobal('fetch',vi.fn(async(url:string)=>{
     if(failContent)throw new Error('Unavailable owner content');
     const category=new URL(url,'http://localhost').searchParams.get('category')!;
-    return new Response(JSON.stringify({version:'explorers-owner-content/v2',snapshot:'1',snapshotToken:'opaque',expiresAt:Date.now()+600000,nextCursor:null,items:[{id:'00000000-0000-4000-8000-000000000001',accountId:useAuthStore.getState().accountId,category,title:'Native list',slug:'native-list',visibility:'public',publicationState:'published',revision:1,description:null,heading:null,coverMediaId:null,archived:false,displayOrder:0}]}),{headers:{'Content-Type':'application/json'}});
+    return new Response(JSON.stringify({version:'explorers-owner-content/v2',snapshot:'1',snapshotToken:'opaque',expiresAt:Date.now()+600000,nextCursor:null,items:[{id:'00000000-0000-4000-8000-000000000001',accountId:useAuthStore.getState().accountId,category,title:'Native list',slug:'native-list',visibility:'public',publicationState:'published',revision:1,description:null,heading:null,coverMediaId:null,isSample:false,archived:false,displayOrder:0}]}),{headers:{'Content-Type':'application/json'}});
   }));
   vi.spyOn(explorersApiClient, 'getMyProfile').mockImplementation(async () => {
     requests.push({ name: 'GetMyProfile', variables: {} });

@@ -242,6 +242,8 @@ explorers-earth/src/features/shared/category/*
 explorers-earth/src/features/shared/list/*
 !explorers-earth/src/features/shared/lists/
 explorers-earth/src/features/shared/lists/*
+!explorers-earth/src/features/shared/samples/
+explorers-earth/src/features/shared/samples/*
 !explorers-earth/src/features/shared/topPicks/
 explorers-earth/src/features/shared/topPicks/*
 !explorers-earth/src/features/Analytics/components/charts/
@@ -1008,6 +1010,11 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/shared/list/listPageAdapter.ts
 !explorers-earth/src/features/shared/list/slugRules.ts
 !explorers-earth/src/features/shared/lists/NewListDialog.tsx
+!explorers-earth/src/features/shared/samples/SampleActions.tsx
+!explorers-earth/src/features/shared/samples/SampleBadge.tsx
+!explorers-earth/src/features/shared/samples/SampleListBanner.tsx
+!explorers-earth/src/features/shared/samples/readIsSample.ts
+!explorers-earth/src/features/shared/samples/useSampleCommands.ts
 !explorers-earth/src/features/shared/topPicks/TopPicksHero.tsx
 !explorers-earth/src/features/shared/topPicks/TopPicksManager.tsx
 !explorers-earth/src/features/shared/topPicks/topPicksWrites.ts

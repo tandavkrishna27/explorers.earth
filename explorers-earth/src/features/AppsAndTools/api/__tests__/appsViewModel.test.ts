@@ -11,7 +11,7 @@ const shot=id(7);
 const details={appUrl:'https://example.com/app',developer:'Dev',logoUrl:null,description:'A tool',downloadUrl:null,priceTier:'Free',platforms:['iOS','Web']};
 const detail=(over:Record<string,unknown>={})=>({id:id(1),entityId:id(1),category:'apps',entity:{kind:'app'},displayTitle:'Tool',userRating:4,note:null,effectiveAppDetails:details,appScreenshots:{screenshotMediaIds:[shot]},...over} as never);
 const membership=(over:Record<string,unknown>={})=>({recommendationId:id(1),collectionId:id(2),displayOrder:0,...over} as never);
-const collection={id:id(2),accountId:id(3),title:'Daily drivers',description:null,slug:'daily',visibility:'public',publicationState:'published',displayOrder:0,heading:'Top apps',coverMediaId:null} as never;
+const collection={id:id(2),accountId:id(3),title:'Daily drivers',description:null,slug:'daily',visibility:'public',publicationState:'published',displayOrder:0,heading:'Top apps',coverMediaId:null,isSample:false} as never;
 
 it('serves screenshots as owned media routes and never an owner-typed address',()=>{
  const row=appViewModel(detail(),membership(),{recommendationId:id(1),collectionId:id(2),position:0});

@@ -137,8 +137,8 @@ export class PublicContentService {
         JOIN creator_accounts a ON a.id=r.account_id JOIN account_category_settings s ON s.account_id=a.id AND s.category=r.category
         JOIN entities e ON e.id=r.entity_id ${overrideJoin} WHERE a.handle_key=$1 AND r.category=$2 AND ${listSlugPredicate('c','$3')} AND r.id=$4
         AND a.status='active' AND a.onboarding_status='complete' AND a.public_profile AND s.is_public
-        AND c.archived_at IS NULL AND c.visibility='public' AND c.publication_state='published'
-        AND r.archived_at IS NULL AND r.publication_state='published'`;
+        AND c.archived_at IS NULL AND c.visibility='public' AND c.publication_state='published' AND NOT c.is_sample
+        AND r.archived_at IS NULL AND r.publication_state='published' AND NOT r.is_sample`;
       const values=[input.username,input.category,input.slug,input.id];
       const size=(await db.query(`SELECT coalesce(octet_length(r.note::text),0) AS bytes,${titleBytes} AS title_bytes ${eligible}`,values)).rows[0];
       if(!size){await db.query('COMMIT');return undefined;}
@@ -165,7 +165,7 @@ export class PublicContentService {
       let revision:string|null=null,rows:any[],placePins:PublicContentPage<never>['placePins'];
       if(input.slug!==undefined) {
         const collection=(await db.query(`SELECT c.id,c.revision::text FROM collections c WHERE c.account_id=$1 AND c.category=$2 AND ${listSlugPredicate('c','$3')}
-          AND c.archived_at IS NULL AND c.visibility='public' AND c.publication_state='published'`,[account.id,input.category,input.slug])).rows[0];
+          AND c.archived_at IS NULL AND c.visibility='public' AND c.publication_state='published' AND NOT c.is_sample`,[account.id,input.category,input.slug])).rows[0];
         if(!collection) {await db.query('COMMIT');return undefined;}
         const categoryState=(await db.query("SELECT coalesce((SELECT revision::text FROM account_category_content_state WHERE account_id=$1 AND category=$2),'0') revision",[account.id,input.category])).rows[0];
         revision=`${collection.revision}:${categoryState.revision}`;if(cursor&&cursor.revision!==revision) throw new PublicContentFailure(409);
@@ -177,21 +177,21 @@ export class PublicContentService {
           rows=(await db.query(`SELECT r.id,r.entity_id,${boundedTitle},e.kind,r.user_rating,${position} AS display_order,${bucket} AS pin_bucket FROM collection_items ci
             JOIN recommendations r ON r.id=ci.recommendation_id AND r.account_id=ci.account_id AND r.category=ci.category
             JOIN entities e ON e.id=r.entity_id ${overrideJoin} ${placePinJoin('ci')}
-            WHERE ci.collection_id=$1 AND ci.account_id=$2 AND ci.category=$3 AND r.archived_at IS NULL AND r.publication_state='published' AND ${publicPlaceSuppressionGate}
+            WHERE ci.collection_id=$1 AND ci.account_id=$2 AND ci.category=$3 AND r.archived_at IS NULL AND r.publication_state='published' AND NOT r.is_sample AND ${publicPlaceSuppressionGate}
             AND ($4::integer IS NULL OR (${bucket},${position},r.id)>($4,$5::bigint,$6::uuid)) ORDER BY ${bucket},${position},r.id LIMIT $7`,
             [collection.id,account.id,input.category,cursor?.pinBucket??null,cursor?.order??null,cursor?.id??null,input.limit+1])).rows;
         }else{
           rows=(await db.query(`SELECT r.id,${boundedTitle},e.kind,r.user_rating,ci.display_order FROM collection_items ci
             JOIN recommendations r ON r.id=ci.recommendation_id AND r.account_id=ci.account_id AND r.category=ci.category
             JOIN entities e ON e.id=r.entity_id ${overrideJoin}
-            WHERE ci.collection_id=$1 AND ci.account_id=$2 AND ci.category=$3 AND r.archived_at IS NULL AND r.publication_state='published'
+            WHERE ci.collection_id=$1 AND ci.account_id=$2 AND ci.category=$3 AND r.archived_at IS NULL AND r.publication_state='published' AND NOT r.is_sample
             AND ($4::integer IS NULL OR (ci.display_order,r.id)>($4,$5::uuid)) ORDER BY ci.display_order,r.id LIMIT $6`,
             [collection.id,account.id,input.category,cursor?.order??null,cursor?.id??null,input.limit+1])).rows;
         }
       } else {
         if(cursor&&cursor.revision!==null) throw new PublicContentFailure(400);
         rows=(await db.query(`SELECT id,title,slug,description,heading,display_order FROM collections WHERE account_id=$1 AND category=$2
-          AND archived_at IS NULL AND visibility='public' AND publication_state='published'
+          AND archived_at IS NULL AND visibility='public' AND publication_state='published' AND NOT is_sample
           AND ($3::integer IS NULL OR (display_order,id)>($3,$4::uuid)) ORDER BY display_order,id LIMIT $5`,
           [account.id,input.category,cursor?.order??null,cursor?.id??null,input.limit+1])).rows;
       }

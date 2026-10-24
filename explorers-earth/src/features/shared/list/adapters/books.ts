@@ -8,6 +8,7 @@ import { explorersApiClient } from "../../../../lib/explorersApiClient";
 import { reorderListItems } from "../../../../lib/reorderListItems";
 import { buildListPublicUrl } from "../../../../utils/listShareUrls";
 import useAuthStore from "../../../../store/store";
+import { readIsSample } from "../../samples/readIsSample";
 import type { ListPageAdapter } from "../listPageAdapter";
 
 const MAX_PINS = 15;
@@ -41,6 +42,7 @@ export function useBooksListAdapter(listId: string): ListPageAdapter {
         status: rawList.visibility ? "public" : "draft",
         itemCount: books.length,
         publicUrl: buildListPublicUrl(username, "books", rawList.slug),
+        ...(readIsSample(rawList) ? { isSample: true } : {}),
       }
       : null,
     items: books.map((book) => {

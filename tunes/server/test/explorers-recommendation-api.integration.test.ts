@@ -46,7 +46,7 @@ it('guarded parent create HTTP strictly validates pairs and preserves ordinary c
   const a=await persona(),parent=await list(a,'places');
   const ordinaryInput={category:'products',title:'Ordinary',slug:`ordinary-${randomUUID()}`},key=randomUUID();
   const ordinary=await command(a,'post','/collections',ordinaryInput,key);expect(ordinary.status).toBe(201);
-  expect(ordinary.body).toEqual({collection:{id:expect.any(String),accountId:a.accountId,...ordinaryInput,visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null}});
+  expect(ordinary.body).toEqual({collection:{id:expect.any(String),accountId:a.accountId,...ordinaryInput,visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null,isSample:false}});
   const unchanged=await parentCreateHttpState([a.accountId]);
   expect((await command(a,'post','/collections',ordinaryInput,key)).body).toEqual(ordinary.body);
   expect(await parentCreateHttpState([a.accountId])).toEqual(unchanged);
@@ -63,7 +63,7 @@ it('guarded parent create HTTP links Products and People and gives equal foreign
     const observed=await parentCreateRevision(parent.id),before=await parentCreateHttpState([a.accountId,b.accountId]);
     const input={category,title:'Guarded HTTP child',slug:`guarded-${randomUUID()}`,parentLocationCollectionId:category==='products'?parent.id.toUpperCase():parent.id,parentExpectedRevision:observed},key=randomUUID();
     const saved=await command(a,'post','/collections',input,key);expect(saved.status).toBe(201);
-    expect(saved.body.collection).toEqual({id:expect.any(String),accountId:a.accountId,category,title:input.title,slug:input.slug,visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null,parentLocation:{id:parent.id,revision:observed+1}});
+    expect(saved.body.collection).toEqual({id:expect.any(String),accountId:a.accountId,category,title:input.title,slug:input.slug,visibility:'private',publicationState:'draft',revision:1,description:null,heading:null,coverMediaId:null,isSample:false,parentLocation:{id:parent.id,revision:observed+1}});
     expect(saved.body.collection.id).not.toBe(parent.id);expect(await parentCreateRevision(parent.id)).toBe(observed+1);
     const after=await parentCreateHttpState([a.accountId,b.accountId]);
     expect(after.collections).toHaveLength(before.collections.length+1);expect(after.links).toHaveLength(before.links.length+1);expect(after.receipts).toHaveLength(before.receipts.length+1);
