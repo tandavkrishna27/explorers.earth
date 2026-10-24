@@ -21,7 +21,7 @@ export function useListLinkState(collectionId: string | null | undefined) {
       // The parsed read always carries linkedLists; anything else (a partial stub of the
       // read) yields no linking UI rather than taking the host page down.
       if (!Array.isArray(detail.linkedLists) || !Number.isSafeInteger(Number(detail.categoryRevision))) return null;
-      return { id: detail.id, category: detail.category as ListLinkCategory, title: detail.title,
+      return { id: detail.id, category: detail.category as ListLinkCategory, title: detail.title, isSample: detail.isSample === true,
         categoryRevision: Number(detail.categoryRevision), linkedLists: detail.linkedLists as readonly LinkedListCard[] };
     },
   });
@@ -98,7 +98,7 @@ export function useAllMyLists(enabled = true) {
     enabled,
     queryFn: async ({ signal }) => {
       const pages = await Promise.all(CATEGORY_KEYS.map((key) => explorersApiClient.getAllMyCollections({ category: key, status: "active", limit: 100 }, signal)));
-      return pages.flatMap((page) => page.items.map((c) => ({ id: c.id, category: c.category as string, title: c.title })));
+      return pages.flatMap((page) => page.items.map((c) => ({ id: c.id, category: c.category as string, title: c.title, isSample: c.isSample === true })));
     },
   }).data ?? [];
 }

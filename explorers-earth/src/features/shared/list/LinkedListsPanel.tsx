@@ -6,21 +6,25 @@ import { roleSuggestions, roleMax } from "./linkRoles";
 
 export type LinkToast = { message: string; actionLabel?: string; onAction?: () => void; error?: boolean };
 type Links = Pick<ReturnType<typeof useListLinks>, "detach" | "setRole" | "busy">;
-type Props = { linkedLists: readonly LinkedListCard[]; links: Links; onToast: (toast: LinkToast) => void; onAttach: () => void; rolesEnabled?: boolean };
+type Props = { linkedLists: readonly LinkedListCard[]; links: Links; onToast: (toast: LinkToast) => void; onAttach: () => void; rolesEnabled?: boolean; sample?: boolean };
 
 const messageOf = (error: unknown, fallback: string) => (error instanceof Error && error.message ? error.message : fallback);
 
 /** WP10 (LNK-04, OWN-13). Linked lists in Manage: Attach, Detach with Undo, and roles (guides). */
-export function LinkedListsPanel({ linkedLists, links, onToast, onAttach, rolesEnabled }: Props) {
+export function LinkedListsPanel({ linkedLists, links, onToast, onAttach, rolesEnabled, sample }: Props) {
   const { t } = useTranslation();
   const headingId = useId();
+  const sampleNoteId = useId();
   const ordered = [...linkedLists].sort((a, b) => a.displayOrder - b.displayOrder);
   return (
     <section aria-labelledby={headingId} className="grid gap-3 rounded-2xl border border-dashboard-border bg-dashboard-sidebar p-4 text-dashboard">
       <div className="flex items-center justify-between gap-3">
         <h3 id={headingId} className="font-semibold text-dashboard">{t("dashboard.wp10.linkedLists", "Linked lists")}</h3>
-        <button type="button" onClick={onAttach} disabled={links.busy} className="min-h-11 rounded-xl border border-dashboard-border px-4 text-dashboard hover:bg-white/5 disabled:opacity-50">{t("dashboard.wp10.attach", "Attach")}</button>
+        <button type="button" onClick={onAttach} disabled={links.busy || sample} aria-describedby={sample ? sampleNoteId : undefined}
+          className="min-h-11 rounded-xl border border-dashboard-border px-4 text-dashboard hover:bg-white/5 disabled:opacity-50">{t("dashboard.wp10.attach", "Attach")}</button>
       </div>
+      {/* WP11: a sample is read-only until it is made yours; the server refuses links on it too. */}
+      {sample && <p id={sampleNoteId} className="text-sm text-dashboard-muted">{t("dashboard.wp10.sampleNoLinks", "Make this list yours to link other lists to it.")}</p>}
       {ordered.length === 0 && <p className="text-sm text-dashboard-muted">{t("dashboard.wp10.emptyManage", "Link another of your lists to show it under this one.")}</p>}
       {ordered.length > 0 && (
         <ul className="grid gap-2">

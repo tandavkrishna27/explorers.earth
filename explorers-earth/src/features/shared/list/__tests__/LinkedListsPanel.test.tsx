@@ -12,6 +12,16 @@ function links(overrides = {}) {
 }
 
 describe("LinkedListsPanel", () => {
+  it("cannot link from a sample list: Attach is disabled with a short note (WP11)", () => {
+    const onAttach = vi.fn();
+    render(<LinkedListsPanel linkedLists={[]} links={links() as never} onToast={vi.fn()} onAttach={onAttach} sample />);
+    const attach = screen.getByRole("button", { name: "Attach" });
+    expect(attach).toBeDisabled();
+    expect(attach).toHaveAccessibleDescription("Make this list yours to link other lists to it.");
+    fireEvent.click(attach);
+    expect(onAttach).not.toHaveBeenCalled();
+  });
+
   it("detaches and offers Undo in the toast (OWN-13)", async () => {
     const l = links(); const toast = vi.fn();
     render(<LinkedListsPanel linkedLists={[card]} links={l as never} onToast={toast} onAttach={() => undefined} />);

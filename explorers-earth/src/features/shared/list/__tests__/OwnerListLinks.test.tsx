@@ -17,7 +17,7 @@ const host = "11111111-1111-4111-8111-111111111111", created = "77777777-7777-47
 const card = { linkId: "a2222222-2222-4222-8222-222222222222", direction: "outgoing", role: null, displayOrder: 0,
   collection: { id: "22222222-2222-4222-8222-222222222222", category: "products", title: "Packing", slug: "packing", visibility: "private", publicationState: "draft", archived: false, coverMediaId: null } };
 const detail = { id: host, accountId: account, category: "movies", title: "Movie night", slug: "movie-night", visibility: "private", publicationState: "draft", revision: 4,
-  description: null, heading: null, coverMediaId: null, archived: false, displayOrder: 0, pinOrder: null, categoryRevision: "12", linkedLists: [card] };
+  description: null, heading: null, coverMediaId: null, isSample: false, archived: false, displayOrder: 0, pinOrder: null, categoryRevision: "12", linkedLists: [card] };
 
 function signIn() {
   const generation = useAuthStore.getState().beginVerification();
@@ -42,7 +42,7 @@ describe("OwnerListLinks mounting points", () => {
       }
       writes.push({ url: String(url), method, body: JSON.parse(String(init.body)) });
       return new Response(JSON.stringify({ collection: { id: created, accountId: account, category: "products", title: "Gear", slug: "gear", visibility: "private", publicationState: "draft",
-        revision: 1, description: null, heading: null, coverMediaId: null, attachedTo: { hostCollectionId: host, linkId: "a9999999-9999-4999-8999-999999999999", hostCategoryRevision: 13 } } }), { status: 201 });
+        revision: 1, description: null, heading: null, coverMediaId: null, isSample: false, attachedTo: { hostCollectionId: host, linkId: "a9999999-9999-4999-8999-999999999999", hostCategoryRevision: 13 } } }), { status: 201 });
     }));
   });
 

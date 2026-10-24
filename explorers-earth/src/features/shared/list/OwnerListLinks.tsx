@@ -77,7 +77,7 @@ function ManageLoaded({ state, rolesEnabled }: { state: LoadedState; rolesEnable
   };
   return (
     <>
-      <LinkedListsPanel linkedLists={state.linkedLists} links={links} onToast={showLinkToast} onAttach={() => setPickerOpen(true)} rolesEnabled={rolesEnabled} />
+      <LinkedListsPanel linkedLists={state.linkedLists} links={links} onToast={showLinkToast} onAttach={() => setPickerOpen(true)} rolesEnabled={rolesEnabled} sample={state.isSample} />
       <AttachListPicker open={pickerOpen} onOpenChange={setPickerOpen} lists={ownLists} isAttachable={links.isAttachable}
         onPick={(list) => void pick(list)} onCreateNew={(category) => { setPickerOpen(false); setCreating(category); }} />
       {creating && (

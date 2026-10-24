@@ -8,8 +8,8 @@ import type { CreateCollectionInput } from "../../../../tunes/shared/explorersCo
 // receipt must name that host.
 const account = "00000000-0000-4000-8000-000000000301", hostId = "00000000-0000-4000-8000-000000000302", childId = "00000000-0000-4000-8000-000000000303";
 const input = { category: "books", title: "Reads", slug: "reads", visibility: "private", publicationState: "draft" } as CreateCollectionInput;
-const core = { id: childId, accountId: account, category: "books", title: "Reads", slug: "reads", visibility: "private", publicationState: "draft", revision: 1, description: null, heading: null, coverMediaId: null };
-const host = { id: hostId, accountId: account, category: "guides", title: "Trip", slug: "trip", visibility: "private", publicationState: "draft", revision: 4, description: null, heading: null, coverMediaId: null,
+const core = { id: childId, accountId: account, category: "books", title: "Reads", slug: "reads", visibility: "private", publicationState: "draft", revision: 1, description: null, heading: null, coverMediaId: null, isSample: false };
+const host = { id: hostId, accountId: account, category: "guides", title: "Trip", slug: "trip", visibility: "private", publicationState: "draft", revision: 4, description: null, heading: null, coverMediaId: null, isSample: false,
   archived: false, displayOrder: 0, pinOrder: null, categoryRevision: "21", linkedLists: [] };
 const posts: unknown[] = [];
 let receipt: unknown;

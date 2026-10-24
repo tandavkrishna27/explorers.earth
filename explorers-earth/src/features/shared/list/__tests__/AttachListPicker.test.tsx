@@ -10,6 +10,13 @@ const lists = [self,
   { id: "33333333-3333-4333-8333-333333333333", category: "people", title: "Guides in Paris" }];
 
 describe("AttachListPicker (LNK-02, LNK-06)", () => {
+  it("never offers a sample list (WP11)", () => {
+    render(<AttachListPicker open lists={[...lists, { id: "44444444-4444-4444-8444-444444444444", category: "books", title: "Sample reads", isSample: true }]}
+      isAttachable={(l) => l.id !== self.id} onPick={vi.fn()} onCreateNew={vi.fn()} onOpenChange={vi.fn()} />);
+    expect(screen.getByRole("option", { name: /^Reads$/ })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /Sample reads/ })).toBeNull();
+  });
+
   it("lists only own attachable lists, grouped by category, never itself", () => {
     render(<AttachListPicker open lists={lists} isAttachable={(l) => l.id !== self.id && l.id !== lists[2].id} onPick={vi.fn()} onCreateNew={vi.fn()} onOpenChange={vi.fn()} />);
     expect(screen.queryByRole("option", { name: /^Paris$/ })).toBeNull();

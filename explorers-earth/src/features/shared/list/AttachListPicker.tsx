@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CATEGORY_KEYS, type CategoryKey } from "../category/categoryConfig";
 
-export type PickableList = { id: string; category: string; title: string };
+export type PickableList = { id: string; category: string; title: string; isSample?: boolean };
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -26,7 +26,8 @@ export function AttachListPicker({ open, onOpenChange, lists, isAttachable, onPi
   useEffect(() => { if (open) { setQuery(""); search.current?.focus(); } }, [open]);
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const visible = lists.filter((l) => isAttachable(l) && (!q || l.title.toLowerCase().includes(q)));
+    // WP11: a sample is never offered; the server refuses a link to one.
+    const visible = lists.filter((l) => !l.isSample && isAttachable(l) && (!q || l.title.toLowerCase().includes(q)));
     return ORDER.map((category) => ({ category, items: visible.filter((l) => l.category === category) })).filter((g) => g.items.length > 0);
   }, [lists, isAttachable, query]);
   if (!open) return null;
