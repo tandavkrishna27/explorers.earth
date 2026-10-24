@@ -22,6 +22,7 @@ import PlanChips, {type PlanSection} from './PlanChips';
 import LinkedListsBlock from './LinkedListsBlock';
 import {dayChipLabel} from './dayItems';
 import {guideListAdapter} from './guideListAdapter';
+import {useOriginBack} from '../../../lib/navigation/useOriginBack';
 
 type Tab = 'plan' | 'share' | 'manage';
 const WIDE = '(min-width: 768px)';
@@ -40,14 +41,34 @@ function useWide() {
 }
 type GuideRow = {documentId: string; Title: string; Description?: string; slug?: string; Visibility?: boolean; isSample?: boolean};
 
+/**
+ * The WP1 origin-back contract: return to where the guide was opened from (router state, then a
+ * safe ?redirectBack=), else the Guides page. Rendered on the load-failure state too, so a guide
+ * that cannot load is never a dead end.
+ */
+function BackToOrigin() {
+ const {t} = useTranslation();
+ const guidesLabel = t('dashboard.wp1.back.to', {name: t('dashboard.wp1.back.categories.guides')});
+ const back = useOriginBack({to: '/recommendations/guides', label: guidesLabel});
+ // A state origin carries its page name; an unlabelled origin is named only when it is the Guides page itself.
+ const label = back.source === 'state' && back.label ? t('dashboard.wp1.back.to', {name: back.label})
+  : back.source === 'fallback' || back.to.split(/[?#]/)[0] === '/recommendations/guides' ? guidesLabel
+  : t('dashboard.wp1.back.generic', {defaultValue: 'Back'});
+ return (
+  <button type="button" onClick={() => back.goBack()} className="mt-4 text-xs font-semibold tracking-wide text-gray-500">
+   <span aria-hidden="true">‹ </span>{label}</button>
+ );
+}
+
 export default function GuideEditorPage() {
  const {t} = useTranslation();
  const {guideId = ''} = useParams();
  const owner = useGuidesOwner(guideId, true, {keepWhileRefreshing: true});
  if (owner.loading && !owner.observation) return <div aria-busy="true" className="mx-auto max-w-5xl space-y-4 p-4">{[0, 1].map((i) => <div key={i} className="h-40 animate-pulse rounded-xl bg-gray-100" />)}</div>;
  if (owner.error || !owner.observation || !owner.guide) return (
-  <div role="alert" className="p-6">{t('dashboard.wp9.loadFailed', {defaultValue: "Couldn't load this guide."})}{' '}
-   <button type="button" onClick={owner.refresh} className="underline">{t('dashboard.wp9.retry', {defaultValue: 'Retry'})}</button></div>);
+  <div className="mx-auto max-w-6xl px-4"><BackToOrigin />
+   <div role="alert" className="py-6">{t('dashboard.wp9.loadFailed', {defaultValue: "Couldn't load this guide."})}{' '}
+    <button type="button" onClick={owner.refresh} className="underline">{t('dashboard.wp9.retry', {defaultValue: 'Retry'})}</button></div></div>);
  return <Editor key={guideId} initial={owner.observation} guide={owner.guide as unknown as GuideRow}
   list={owner.content?.lists.get(guideId)} refresh={owner.refresh} />;
 }
@@ -94,8 +115,7 @@ function Editor({initial, guide, list, refresh}: {initial: GuideObservation; gui
  };
  return (
   <div className="mx-auto max-w-6xl px-4 pb-28">
-   <button type="button" onClick={() => navigate((location.state as {from?: {pathname: string}} | null)?.from?.pathname ?? '/recommendations/guides')} className="mt-4 text-xs font-semibold tracking-wide text-gray-500">
-    ‹ {t('dashboard.wp9.back', {defaultValue: 'BACK TO GUIDES'})}</button>
+   <BackToOrigin />
    <header className="mt-2 flex items-start gap-3">
     <div className="min-w-0 flex-1">
      <h1 className="line-clamp-2 text-2xl font-semibold text-dashboard" title={guide.Title}>{guide.Title}</h1>
