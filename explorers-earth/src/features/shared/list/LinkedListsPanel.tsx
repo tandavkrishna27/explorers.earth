@@ -48,7 +48,8 @@ function Row({ card, links, onToast, rolesEnabled }: { card: LinkedListCard; lin
   const saveRole = (role: string | null) => { links.setRole(card, role).catch((error) => fail(error, t("dashboard.wp10.roleFailed", "Couldn't save the role"))); };
   return (
     <li className="flex flex-wrap items-center gap-2 rounded-xl border border-dashboard-border bg-dashboard-muted p-2 text-dashboard">
-      <span className="min-w-0 flex-1 break-words text-sm">
+      {/* basis-40: at 375 the role select and Detach wrap below the title instead of crushing it. */}
+      <span className="min-w-0 flex-1 basis-40 break-words text-sm">
         <span className="block text-xs uppercase tracking-wide text-dashboard-muted">{t(`dashboard.wp1.back.categories.${card.collection.category}`, card.collection.category)}</span>
         {title}
       </span>
