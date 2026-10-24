@@ -6,7 +6,7 @@ import {categoryPath, listPath} from '../../../lib/navigation/categoryRoutes';
 import TimeLabelChip from './TimeLabelChip';
 import {DRAG_TYPE} from './DayStrip';
 import {NEW_ITEM_DRAG_TYPE} from './MyListsPanel';
-import {dayChipLabel, groupByTimeLabel, itemSourceText, itemTitle} from './dayItems';
+import {dayChipLabel, groupByTimeLabel, itemSourceText, itemTitle, timeLabelText} from './dayItems';
 
 export type PlanDay = {id: string; title: string; items: GuideDayItem[]};
 type Origin = {fromIndex: number};
@@ -118,7 +118,9 @@ function ItemRow({item, index, day, days, startDate, onDrop, number, readOnly, .
     }}>⠿</button>
    {number !== undefined && <span aria-hidden="true" className="w-5 shrink-0 text-right text-sm tabular-nums text-gray-400">{number}.</span>}
    <span className="min-w-0 flex-1 truncate" title={title}>{title}</span>
-   <TimeLabelChip value={item.timeLabel} onChange={(label) => a.onSetTimeLabel(day.id, item.localId, label)} />
+   {readOnly
+    ? item.timeLabel !== null && <span className="text-xs text-gray-300">🕒 {timeLabelText(item.timeLabel)}</span>
+    : <TimeLabelChip value={item.timeLabel} onChange={(label) => a.onSetTimeLabel(day.id, item.localId, label)} />}
    <span className="hidden rounded bg-white/10 px-2 py-0.5 text-xs text-gray-300 sm:inline">{itemSourceText(item)}</span>
    {!readOnly && <span className="relative">
     <button type="button" aria-haspopup="menu" aria-label={t('dashboard.wp9.itemActions', {defaultValue: 'Actions for {{title}}', title})}

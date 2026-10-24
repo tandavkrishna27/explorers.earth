@@ -53,6 +53,8 @@ describe('a sample guide (WP11, mocks v3)', () => {
   expect(screen.queryByRole('button', {name: /options$/})).toBeNull();
   expect(screen.queryByRole('button', {name: /^Actions for/})).toBeNull();
   expect(screen.getAllByRole('button', {name: /^Reorder /}).length).toBe(4);
+  // The time chip is read-only too: no "+ time" control on a sample.
+  expect(screen.queryByRole('button', {name: /time/i})).toBeNull();
  });
 
  it('an ordinary guide keeps sharing, Add and menus and has no sample bar', () => {

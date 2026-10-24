@@ -89,6 +89,17 @@ export function withSampleFallbackPick(picks: TopPickModel[], lists: LegacyList[
   return picks;
 }
 
+/**
+ * WP11. Guides pins only public guides, so a sample guide can never be pinned. With no pins, the
+ * hero previews the first sample guide itself, read-only (pinned: false), badged Sample.
+ */
+export function withSampleFallbackListPick(picks: TopPickModel[], lists: LegacyList[], spec: { title: (list: LegacyList) => string; image: (list: LegacyList) => string | null }): TopPickModel[] {
+  if (picks.length > 0) return picks;
+  const sample = lists.find((list) => readIsSample(list));
+  return sample ? [{ id: sample.documentId, title: spec.title(sample), subtitle: null, imageUrl: spec.image(sample), listId: sample.documentId,
+    listTitle: spec.title(sample), pinned: false, pinnable: false, isSample: true }] : picks;
+}
+
 /** Places and Guides: the lists themselves are the picks. */
 export function toListTopPicks(lists: (LegacyList & { is_pinned?: boolean; pin_order?: number | null })[], spec: { title: (list: LegacyList) => string; image: (list: LegacyList) => string | null; isPublic: (list: LegacyList) => boolean }, pinnedOnly = true): TopPickModel[] {
   return lists

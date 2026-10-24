@@ -115,6 +115,8 @@ for (const width of [1440, 375]) {
       const card = page.getByTestId('list-card').filter({ hasText: '3 days in Goa' });
       await expect(card).toBeVisible();
       await expect(card.getByText('Sample', { exact: true })).toBeVisible();
+      // A sample guide can't be pinned, so the hero previews it read-only.
+      await expect(page.getByText('From the sample list "3 days in Goa"')).toBeVisible();
       await shot(page, '09-guides-category-samples', width);
 
       await page.goto(`/recommendations/guides/${guide}`);
@@ -123,6 +125,7 @@ for (const width of [1440, 375]) {
       // Mocks v3: no Add, day/item menus or My lists on a sample guide; reorder stays.
       await expect(page.getByRole('button', { name: /Add/ })).toHaveCount(0);
       await expect(page.getByRole('button', { name: /^Actions for/ })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: /time/ })).toHaveCount(0);
       await expect(page.getByRole('button', { name: /^Reorder / }).first()).toBeVisible();
       await shot(page, '10-guides-sample-detail', width);
     } finally { if (data.errors.length) console.log(data.errors); await closeFixture(handle); }

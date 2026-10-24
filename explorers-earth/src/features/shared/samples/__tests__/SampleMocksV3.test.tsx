@@ -20,7 +20,7 @@ import { sampleCommands } from "../useSampleCommands";
 import ListPage from "../../list/ListPage";
 import { adapterFixture } from "../../list/__tests__/adapterFixture";
 import TopPicksHero from "../../topPicks/TopPicksHero";
-import { withSampleFallbackPick } from "../../category/models";
+import { withSampleFallbackListPick, withSampleFallbackPick } from "../../category/models";
 
 const sampleView = { id: "list_1", title: "Indian fiction", description: null, slug: "indian-fiction", coverUrl: null,
   status: "draft" as const, itemCount: 3, publicUrl: "https://explorers.earth/u/books/indian-fiction", isSample: true };
@@ -109,5 +109,15 @@ describe("Top Picks for samples (mocks v3)", () => {
     const pinned = [{ id: "l9", title: "Pinned", subtitle: null, imageUrl: null, listId: "l9", listTitle: "Pinned", pinned: true, pinnable: true }];
     expect(withSampleFallbackPick(pinned, lists, spec)).toBe(pinned);
     expect(withSampleFallbackPick([], [lists[0]], spec)).toEqual([]);
+  });
+
+  it("Guides previews the first sample guide itself when nothing is pinned", () => {
+    const spec = { title: (g: Record<string, any>) => g.Title, image: () => null }; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const guides = [{ documentId: "g0", Title: "Mine" }, { documentId: "g1", Title: "3 days in Goa", isSample: true }];
+    expect(withSampleFallbackListPick([], guides, spec)).toEqual([{ id: "g1", title: "3 days in Goa", subtitle: null, imageUrl: null, listId: "g1",
+      listTitle: "3 days in Goa", pinned: false, pinnable: false, isSample: true }]);
+    const pinned = [{ id: "g9", title: "P", subtitle: null, imageUrl: null, listId: "g9", listTitle: "P", pinned: true, pinnable: true }];
+    expect(withSampleFallbackListPick(pinned, guides, spec)).toBe(pinned);
+    expect(withSampleFallbackListPick([], [guides[0]], spec)).toEqual([]);
   });
 });

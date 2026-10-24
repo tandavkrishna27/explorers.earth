@@ -1,6 +1,6 @@
 import CategoryPage from "../shared/category/CategoryPage";
 import { useArchivedLists } from "../shared/category/useArchivedLists";
-import { toListTopPicks } from "../shared/category/models";
+import { toListTopPicks, withSampleFallbackListPick } from "../shared/category/models";
 import { NavigationStatus } from "../navigation/NavigationStatus";
 import { useCategoryNavigation } from "../navigation/CategoryNavigationProvider";
 import React, { useState, useMemo, useEffect } from "react";
@@ -564,7 +564,7 @@ const GuidesPage: React.FC = () => {
         status={{ loading: isLoading, error: error ? (error instanceof Error ? error : new Error(String(error))) : null, refreshing: isLoading && allGuides.length > 0 }}
         lists={guideCards}
         archivedLists={archived.lists}
-        topPicks={toListTopPicks(allGuides as any[], guidePick)}
+        topPicks={withSampleFallbackListPick(toListTopPicks(allGuides as any[], guidePick), allGuides as any[], guidePick)}
         pinCandidates={toListTopPicks(allGuides as any[], guidePick, false)}
         categoryVisibility={categoryVisible ? "public" : "hidden"}
         visibilityBusy={navigation.busy || !navigation.authority}
