@@ -3,8 +3,10 @@ import { mergeConfig } from 'vite';
 import { containedConfig } from './category-navigation.vite.config';
 
 const port = Number(process.env.DASHBOARD_LAYOUT_PORT ?? 55179);
-// The category-navigation fixture, plus the Movies add route served by the shared add template.
+// The category-navigation fixture, plus two harness routes: the Movies add route served by the shared add
+// template, and the People list route served by the shared ListPage with populated rows.
 export default mergeConfig(containedConfig(port), {
   cacheDir: `node_modules/.vite-dashboard-layout-${port}`,
-  resolve: { alias: [{ find: /^\.\/components\/dashboard\/AddMoviePage$/, replacement: fileURLToPath(new URL('./setup/add-item-layout-harness.tsx', import.meta.url)) }] },
+  resolve: { alias: [{ find: /^\.\/components\/dashboard\/AddMoviePage$/, replacement: fileURLToPath(new URL('./setup/add-item-layout-harness.tsx', import.meta.url)) },
+    { find: /^\.\/components\/dashboard\/PersonListView$/, replacement: fileURLToPath(new URL('./setup/list-layout-harness.tsx', import.meta.url)) }] },
 });
