@@ -157,6 +157,8 @@ describe("owned image CI PostgreSQL wiring", () => {
       "server/test/load/music-load-http-postgres.integration.test.ts",
       "server/test/load/music-load-postgres.integration.test.ts",
       "server/test/migrations/music-runtime.integration.test.ts",
+      // + S3 migrations (0069-0071)
+      "server/test/migrations/s3-guides-links-samples.integration.test.ts",
       "server/test/movie-media-import.integration.test.ts",
       "server/test/movies-public-gateway.integration.test.ts",
       "server/test/music-e2e-identity-count-adapter.integration.test.ts",
@@ -170,8 +172,8 @@ describe("owned image CI PostgreSQL wiring", () => {
        */
       "server/test/user-leak.integration.test.ts",
     ]);
-    expect(selectors).toHaveLength(58); // 58 = 57 + places-nearby (WP6); 57 = 55 + curated-taxonomy + category-data-shape (S2); 55 = 54 + recommendation-media-batch (WP5); 54 = 51 + collection-slug + list-delete-analytics (0065/0066) + collection-manage (WP3B)
-    expect(new Set(selectors).size).toBe(58);
+    expect(selectors).toHaveLength(59); // 59 = 58 + S3 migrations (0069-0071); 58 = 57 + places-nearby (WP6); 57 = 55 + curated-taxonomy + category-data-shape (S2); 55 = 54 + recommendation-media-batch (WP5); 54 = 51 + collection-slug + list-delete-analytics (0065/0066) + collection-manage (WP3B)
+    expect(new Set(selectors).size).toBe(59);
   });
 
   /*

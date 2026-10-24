@@ -80,7 +80,7 @@ async function readyMedia(accountId: string, salt: string, purpose = "guide") {
 
 const details = (over: Partial<GuideCollectionDetails> = {}): GuideCollectionDetails => ({
   guideType: "itinerary", multiCity: true, numberOfDays: 5, estimatedBudget: "42000.50", budgetCurrency: "INR",
-  budgetType: "per-person", budgetTier: null, bestTimeToVisit: ["October"], categories: ["Backwaters"], tags: ["slow"],
+  budgetType: "per-person", budgetTier: null, startDate: null, bestTimeToVisit: ["October"], categories: ["Backwaters"], tags: ["slow"],
   tipsNotes: {blocks: [{text: "Carry cash — ഒരു കാര്യം"}]},
   place: {name: "Kochi", address: "Kerala, India", placeId: "ChIJ1", rating: 4.6, ratingsCount: 12044, lat: 9.9312, lng: 76.2673},
   locationEntityId: null, ...over,
@@ -95,7 +95,7 @@ const place = (localId: string, photos: string[] = []) => ({
 });
 
 const withMorning = (places: ReturnType<typeof place>[]): GuideSectionBlocks =>
-  ({...guideEmptySectionBlocks, timeline: {morning: places, afternoon: [], evening: []}});
+  ({...guideEmptySectionBlocks, items: places.map((p) => ({kind: "place" as const, localId: p.localId, timeLabel: "morning" as const, place: p}))});
 
 describePg("C6 guide aggregate", () => {
   beforeAll(async () => {
@@ -130,6 +130,27 @@ describePg("C6 guide aggregate", () => {
     const written = details({estimatedBudget: amount, budgetCurrency: code});
     await tx(async (client) => writeGuideDetails(client, collection.id, accountId, await categoryRevision(accountId), written));
     expect(await readGuideDetails(pool, collection.id, accountId)).toEqual(written);
+  });
+
+  it("stores v2 items and a start date, and keeps the photo registry equal to item photos", async () => {
+    const accountId = await account();
+    const created = await guide(accountId);
+    const photo = (await pool.query(`INSERT INTO media_assets(account_id,purpose,status,mime_type,byte_size,ready_at,content_sha256)
+      VALUES($1,'guide','ready','image/png',10,now(),decode(repeat('00',32),'hex')) RETURNING id`, [accountId])).rows[0].id;
+    const blocks: GuideSectionBlocks = {...guideEmptySectionBlocks, items: [{kind: "place", localId: "p1", timeLabel: "09:30", place: {
+      localId: "p1", placeId: "ChIJN1t_tDeuEmsRUsoyG83frY4", name: "Fort Aguada", formattedAddress: null, geometry: null, types: [],
+      tips: null, photos: [{mediaId: photo, fileName: null, width: null, height: null, aspectRatio: null}], priceLevel: null,
+      priceRange: null, customBudget: null, budgetAmount: null, budgetCurrency: null, source: "google", verified: true}},
+      {kind: "note", localId: "n1", timeLabel: null, text: "Sunset at the fort"}]};
+    const revision = await categoryRevision(accountId);
+    await tx((c) => createGuideSection(c, created.id, accountId, revision, {title: "", description: null, blocks}));
+    const page = await readGuideSectionPage(pool, created.id, accountId);
+    expect(page.sections[0].blocks.items.map((i) => i.localId)).toEqual(["p1", "n1"]);
+    expect((await pool.query("SELECT media_id FROM guide_section_photos WHERE section_id=$1", [page.sections[0].id])).rows).toEqual([{media_id: photo}]);
+    const details = {guideType: "itinerary", multiCity: false, numberOfDays: 1, estimatedBudget: null, budgetCurrency: null, budgetType: null,
+      budgetTier: null, startDate: "2026-12-12", bestTimeToVisit: [], categories: [], tags: [], tipsNotes: null, place: {}, locationEntityId: null} as GuideCollectionDetails;
+    await tx(async (c) => writeGuideDetails(c, created.id, accountId, await categoryRevision(accountId), details));
+    expect((await readGuideDetails(pool, created.id, accountId))?.startDate).toBe("2026-12-12");
   });
 
   it("stores the optional budget tier, keeps an unset tier null, and refuses an unknown one", async () => {
@@ -218,7 +239,7 @@ describePg("C6 guide aggregate", () => {
 
     const after = await readGuideSectionPage(pool, collection.id, accountId);
     expect(after.sections.find((section) => section.id === s2)).toEqual(untouched);
-    expect(after.sections.find((section) => section.id === s1)?.blocks.timeline.morning).toHaveLength(2);
+    expect(after.sections.find((section) => section.id === s1)?.blocks.items).toHaveLength(2);
   });
 
   it("registers section photos from the block JSON and refuses a desynchronised write", async () => {
@@ -349,7 +370,7 @@ describePg("C6 guide aggregate", () => {
     const section = await tx(async (client) => createGuideSection(client, collection.id, accountId, await categoryRevision(accountId), {title: "Day one", description: null, blocks: guideEmptySectionBlocks}));
     // The column CHECK refuses an unknown version outright, so the reader's own refusal is
     // belt and braces rather than the only gate. Assert the database half here.
-    await expect(pool.query("UPDATE guide_sections SET block_version='guide-section-blocks/v2' WHERE id=$1", [section]))
+    await expect(pool.query("UPDATE guide_sections SET block_version='guide-section-blocks/v3' WHERE id=$1", [section]))
       .rejects.toMatchObject({code: "23514"});
   });
 

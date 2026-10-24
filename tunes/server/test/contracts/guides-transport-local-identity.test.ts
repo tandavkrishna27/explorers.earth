@@ -38,8 +38,8 @@ it('actual transport memo resolves seeded local handles and retains provider IDs
 });
 it('actual transport memo distinguishes repeated visits to one provider and deduplicates only identical local pairs',()=>{
  const section=fixture(blocks=>{
-  const first=blocks.timeline.morning[0];
-  blocks.timeline.afternoon.push({...first,localId:'return-visit',name:'Return visit'});
+  const first=blocks.items[0];if(first.kind!=='place')throw new Error('Seed day starts with a place');
+  blocks.items.push({kind:'place',localId:'return-visit',timeLabel:'afternoon',place:{...first.place,localId:'return-visit',name:'Return visit'}});
   blocks.transport.segments.push({...blocks.transport.segments[0],toLocalId:'return-visit'});
   blocks.transport.segments.push({...blocks.transport.segments[0]});
  });

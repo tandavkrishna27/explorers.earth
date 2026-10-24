@@ -41,6 +41,7 @@ const expectedRuntimeTables = [
   "canonical_music_numeric_retirements",
   "category_recommendation_pins",
   "collection_items",
+  "collection_list_links",
   "collection_location_links",
   "collection_media",
   "collection_place_pins",
@@ -103,6 +104,7 @@ const expectedRuntimeTables = [
   "recommendation_place_photos",
   "recommendation_taxonomy",
   "recommendations",
+  "sample_seeding_receipts",
   "seo_settings",
   "session",
   "songs",
@@ -759,6 +761,9 @@ export async function provisionMusicRuntimeLogin(
     await client.query(`REVOKE ALL ON FUNCTION guard_book_entity_details(),guard_book_recommendation_context(),guard_recommendation_book_cover(),guard_app_entity_details(),guard_recommendation_app_screenshot(),guard_product_entity_details(),guard_person_entity_details(),guard_place_entity_details(),guard_place_context_kind(),guard_recommendation_place_photo(),guard_place_collection_details(),guard_guide_section_media(),guard_guide_location_entity() FROM ${capabilityRole}`);
     await client.query(`REVOKE UPDATE,TRUNCATE,REFERENCES,TRIGGER
       ON collection_location_links,guide_section_photos FROM ${capabilityRole}`);
+    // S3 (0071). A seeding receipt is permanent: a deleted receipt would let a sample seed twice.
+    await client.query(`REVOKE DELETE,TRUNCATE,REFERENCES,TRIGGER
+      ON sample_seeding_receipts FROM ${capabilityRole}`);
     // Decision D2. A suppression is a fact, not a field: no UPDATE, and no DELETE,
     // because un-suppressing an address is the one operation here that can cause mail
     // to reach somebody who asked for none. The GRANT ON ALL TABLES above re-grants
@@ -992,6 +997,8 @@ async function assertMusicRuntimeObjectPrivilegeMatrix(
       : row.object_name === "collection_location_links" || row.object_name === "guide_section_photos"
           || row.object_name === "place_pin_draft_chunks" || row.object_name === "place_pin_draft_items"
         ? [true, true, false, true]
+      : row.object_name === "sample_seeding_receipts"
+        ? [true, true, true, false]
       : ["music_publication_operation_archive","taxonomy_import_receipts","person_suppression_actions","places_collection_mutation_state","places_pin_validation_dirty","places_chunk_validation_dirty"].includes(row.object_name)
         ? [false, false, false, false]
       : row.object_name === "canonical_music_numeric_retirements"

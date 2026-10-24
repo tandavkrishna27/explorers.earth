@@ -1,7 +1,7 @@
 import {createHash, createHmac, randomBytes, randomUUID, timingSafeEqual} from 'node:crypto';
 import * as nativePath from 'node:path';
 import {z} from 'zod/v3';
-import {guideCollectionDetailsSchema, guideSectionBlocksSchema, guideActivityPhotoSchema, guideSectionDtoSchema, GUIDE_SECTION_LIMIT, GUIDE_SECTION_PAGE_LIMIT, type GuideDayPlace} from '../shared/explorersGuideContract';
+import {guideCollectionDetailsSchema, guideSectionBlocksSchema, guideActivityPhotoSchema, guideSectionDtoSchema, GUIDE_SECTION_LIMIT, GUIDE_SECTION_PAGE_LIMIT, GUIDE_SECTION_BLOCK_VERSION, type GuideDayPlace, type GuideSectionBlocks} from '../shared/explorersGuideContract';
 import {ownerCollectionDtoSchema} from '../shared/explorersOwnerContentContract';
 import type {Pool, PoolClient} from 'pg';
 import type {createCanonicalApp} from '../server/auth/canonicalApp';
@@ -41,16 +41,26 @@ function place(localId:string):GuideDayPlace {
     source:'manual',verified:false};
 }
 
+const dayItem=(p:GuideDayPlace,timeLabel:'morning'|'afternoon'|'evening')=>({kind:'place' as const,localId:p.localId,timeLabel,place:p});
+/** Every place in a v2 block that can carry photos: day items that are places, then stay and activities. */
+const blockPlaces=(b:GuideSectionBlocks):GuideDayPlace[]=>[...b.items.flatMap(i=>i.kind==='place'?[i.place]:[]),...b.stay.accommodations,...b.activities.activities];
+/**
+ * The place a photo binding names. 'timeline.morning' is the seed role's historical name for
+ * the day's place entries; in v2 those are the day items, so entryIndex counts place items.
+ */
+const boundPlace=(b:GuideSectionBlocks,binding:{block:string;entryIndex:number}):GuideDayPlace=>
+  binding.block==='timeline.morning'?b.items.flatMap(i=>i.kind==='place'?[i.place]:[])[binding.entryIndex]:b.stay.accommodations[binding.entryIndex];
+
 function blocks() {
   const morning=place('morning'), afternoon=place('afternoon'), evening=place('evening');
   const budget=(p:GuideDayPlace)=>({localId:p.localId,placeId:p.placeId,name:p.name,
     priceLevel:p.priceLevel,priceRange:p.priceRange,customBudget:p.customBudget,
     budgetAmount:p.budgetAmount,budgetCurrency:p.budgetCurrency});
-  return guideSectionBlocksSchema.parse({version:'guide-section-blocks/v1',
-    timeline:{morning:[morning],afternoon:[afternoon],evening:[evening]},
+  return guideSectionBlocksSchema.parse({version:GUIDE_SECTION_BLOCK_VERSION,
+    items:[dayItem(morning,'morning'),dayItem(afternoon,'afternoon'),dayItem(evening,'evening')],
     transport:{segments:[{fromLocalId:'morning',toLocalId:'afternoon',mode:'walk',distanceKm:1,estimatedMinutes:20}]},
     stay:{accommodations:[place('stay')]},activities:{activities:[place('activity')]},
-    budget:{morning:[budget(morning)],afternoon:[budget(afternoon)],evening:[budget(evening)]},
+    budget:{entries:[budget(morning),budget(afternoon),budget(evening)]},
     mapDetails:{center:{lat:0,lng:0},zoom:12},
     packingList:{items:[{localId:'water',label:'Water bottle',done:false}]},
     preTasks:{items:[{localId:'reserve',label:'Reserve room',done:true}]},tags:['दिन','café']});
@@ -247,17 +257,16 @@ export const guidesManifestSchema=z.object({expected:z.object({...manifestIdenti
       const asset=mediaByRole.get(binding.roleKey);if(!asset)continue;
       const photoResult=guideActivityPhotoSchema.safeParse({mediaId:asset.id,fileName:`${binding.roleKey}.png`,width:8,height:8,aspectRatio:'1:1'});
       if(!photoResult.success){
-        const [block,field]=binding.block.split('.');
-        for(const sharedIssue of photoResult.error.issues)ctx.addIssue({...sharedIssue,path:['manifest','sections',i,'blocks',block,field,binding.entryIndex,'photos',0,...sharedIssue.path]});
+        const entryPath=binding.block==='timeline.morning'?['items',binding.entryIndex,'place']:['stay','accommodations',binding.entryIndex];
+        for(const sharedIssue of photoResult.error.issues)ctx.addIssue({...sharedIssue,path:['manifest','sections',i,'blocks',...entryPath,'photos',0,...sharedIssue.path]});
         continue;
       }
       const photo=photoResult.data;
-      if(binding.block==='timeline.morning')expectedBlocks.timeline.morning[binding.entryIndex].photos=[photo];
-      else expectedBlocks.stay.accommodations[binding.entryIndex].photos=[photo];
+      boundPlace(expectedBlocks,binding).photos=[photo];
     }
     // Legal repetition of an identical photo does not create another attachment.
     const normalizedBlocks=structuredClone(actualBlocks);
-    const entries=[...normalizedBlocks.timeline.morning,...normalizedBlocks.timeline.afternoon,...normalizedBlocks.timeline.evening,...normalizedBlocks.stay.accommodations,...normalizedBlocks.activities.activities];
+    const entries=blockPlaces(normalizedBlocks);
     const ids=new Set<string>();
     for(const entry of entries){entry.photos=entry.photos.filter((photo,j,all)=>all.findIndex(p=>JSON.stringify(p)===JSON.stringify(photo))===j);for(const photo of entry.photos)ids.add(photo.mediaId);}
     equal(normalizedBlocks,expectedBlocks,['manifest','sections',i,'blocks']);
@@ -665,7 +674,7 @@ export async function startGuidesControl(options:ControlOptions,dependencies?:Co
       pinOrder:r.pin_order===null?null:controlInteger(r.pin_order),archivedAt:controlDate(r.archived_at),
       details:await step(deps.guideRepository.readGuideDetails(db,controlUuid.parse(r.id),controlUuid.parse(r.account_id)))}));
     const sections=rows.sections.map(r=>{
-      if(r.block_version!=='guide-section-blocks/v1')throw new Error('Unsupported blocks');
+      if(r.block_version!==GUIDE_SECTION_BLOCK_VERSION)throw new Error('Unsupported blocks');
       controlText().nullable().parse(r.description);
       return liveSectionSchema.parse({id:r.id,collectionId:r.collection_id,accountId:r.account_id,title:r.title,description:r.description,
         displayOrder:controlInteger(r.display_order),blocks:r.blocks,archivedAt:controlDate(r.archived_at),createdAt:controlDate(r.created_at),updatedAt:controlDate(r.updated_at)});
@@ -684,8 +693,7 @@ export async function startGuidesControl(options:ControlOptions,dependencies?:Co
     if(new Set(attachmentKeys).size!==attachmentKeys.length)throw new Error('Duplicate attachment');
     for(const s of sections){const g=guides.find(g=>g.id===s.collectionId);
       if(!g||g.accountId!==s.accountId)throw new Error('Dangling section');
-      const ids=new Set([...s.blocks.timeline.morning,...s.blocks.timeline.afternoon,...s.blocks.timeline.evening,
-        ...s.blocks.stay.accommodations,...s.blocks.activities.activities].flatMap(p=>p.photos.map(p=>p.mediaId)));
+      const ids=new Set(blockPlaces(s.blocks).flatMap(p=>p.photos.map(p=>p.mediaId)));
       const registered=attachments.filter(r=>r.slot==='section-photo'&&r.sectionId===s.id).map(r=>r.mediaId);
       if(ids.size!==registered.length||registered.some(id=>!ids.has(id)))throw new Error('Photo registry mismatch');}
     for(const a of attachments){const g=guides.find(g=>g.id===a.guideId),m=media.find(m=>m.id===a.mediaId);
@@ -774,13 +782,12 @@ export async function startGuidesControl(options:ControlOptions,dependencies?:Co
         const patched=structuredClone(seed.blocks);
         for(const binding of plan.photoBindings.filter(b=>b.sectionKey===seed.key)){const media=result.media.find(m=>m.key===binding.roleKey)!;
           const photo=guideActivityPhotoSchema.parse({mediaId:media.id,fileName:`${binding.roleKey}.png`,width:8,height:8,aspectRatio:'1:1'});
-          if(binding.block==='timeline.morning')patched.timeline.morning[binding.entryIndex].photos=[photo];
-          else patched.stay.accommodations[binding.entryIndex].photos=[photo];}
+          boundPlace(patched,binding).photos=[photo];}
         const id=await step(deps.guideRepository.createGuideSection(db,parent.id,parent.accountId,await revision(db,parent.accountId),
           {title:seed.title,description:seed.description,blocks:patched,position:seed.displayOrder}));
         const {guideKey,...properties}=seed;
         result.sections.push({...properties,blocks:patched,id:controlUuid.parse(id),collectionId:parent.id,accountId:parent.accountId});
-        const photoIds=new Set([...patched.timeline.morning,...patched.timeline.afternoon,...patched.timeline.evening,...patched.stay.accommodations,...patched.activities.activities].flatMap(p=>p.photos.map(p=>p.mediaId)));
+        const photoIds=new Set(blockPlaces(patched).flatMap(p=>p.photos.map(p=>p.mediaId)));
         for(const mediaId of photoIds)result.attachments.push({slot:'section-photo',guideId:parent.id,sectionId:id,accountId:parent.accountId,mediaId});}
       for(const role of ['old-cover','independent-cover']){const media=result.media.find(m=>m.key===role);if(!media)continue;
         const parent=result.guides.find(g=>g.key===(role==='old-cover'?'ownerA-guide-0':'ownerB-guide-0'))!;
