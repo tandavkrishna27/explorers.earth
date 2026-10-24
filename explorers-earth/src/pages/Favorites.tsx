@@ -8,10 +8,8 @@ import type { IntentAuthority } from "../features/navigation/categoryNavigationP
 import { useCategoryNavigation } from "../features/navigation/CategoryNavigationProvider";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import Recommendations from "../features/Favorites/components/Recommendations";
 import Button from "../components/ui/Button";
 import Modal from "../components/ui/Modal";
-import LinksAndQR from "../features/Favorites/components/LinksAndQR";
 import AddLocationModal from "../components/ui/AddLocationModal";
 import { toast } from "sonner";
 import { EarthLoader } from "../components/EarthLoader";
@@ -22,7 +20,6 @@ import { usePlacesOwner } from "../features/Favorites/hooks/usePlacesOwner";
 import { usePlacesCommands } from "../features/Favorites/api/placesCommands";
 import { useMenuItems } from "../features/Favorites/hooks/useMenuItems";
 import { KeyValuePair } from "../features/Favorites/formValues";
-import SwitchButton from "../components/ui/SwitchButton";
 import useAuthStore from "../store/store";
 import { useCityStore } from "../store/useCityStore";
 import { IMAGE_CONFIG } from "../config";
@@ -36,7 +33,6 @@ import Joyride from "react-joyride";
 import useSetupStore from "../store/useSetupStore";
 import { calculateIsRecommendationsComplete } from "../utils/setupStatusCalculations";
 import { useCanonicalAccount } from "../features/Profile/api/useCanonicalAccount";
-import { keyboardActivation } from "../utils/keyboardActivation";
 export interface Recommendation {
   title: string;
   image: string;
@@ -117,8 +113,6 @@ const FavoritesHome = memo(() => {
   const [activeTab, setActiveTab] = useState<string>(
     t("dashboard.recommendations.recommendationsTab")
   );
-  // Two-step flow states
-  const [step, setStep] = useState<1 | 2>(1);
   const [isManageModalOpen, setIsManageModalOpen] = useState<boolean>(false);
   const [visibilityPrompt, setVisibilityPrompt] = useState<{
     isOpen: boolean;
@@ -230,42 +224,6 @@ const FavoritesHome = memo(() => {
     if (origin && !navigation.busy) void navigation.request({ category: "public_recommendations", action: categoryVisible ? "unpublish" : "publish" }, origin);
   };
 
-  const handleCityVisibilityToggle = async () => {
-    if (!selectedCity?.documentId) return;
-    const currentValue = !!selectedCity.Visibility;
-    const nextValue = !currentValue;
-
-    const updateData: any = { Visibility: nextValue };
-    if (!nextValue && selectedCity.is_pinned) {
-      updateData.is_pinned = false;
-      updateData.pin_order = null;
-    }
-
-    try {
-      const response = await updateRecommendedList({
-        variables: {
-          documentId: selectedCity.documentId,
-          data: updateData,
-        },
-      });
-
-      if (response.data?.updateRecommendationList) {
-        const updatedData = response.data.updateRecommendationList;
-        setSelectedCity({
-          ...selectedCity,
-          Visibility: updatedData.Visibility,
-          is_pinned: updatedData.is_pinned,
-          pin_order: updatedData.pin_order,
-        });
-      }
-
-      await refetchCities();
-      toast.success(t(nextValue ? "dashboard.categoryPages.listNowPublic" : "dashboard.categoryPages.listNowDraft", { name: selectedCity.List_Name }));
-    } catch (error) {
-      console.error("Error updating list visibility:", error);
-      toast.error("Failed to update visibility");
-    }
-  };
 
   useEffect(() => {
     if (selectedCity?.documentId) {
@@ -500,12 +458,11 @@ const FavoritesHome = memo(() => {
   }, [filteredCities]);
 
   
-  // Auto-advance step if tour is running
+  // The tour starts on the first list's shared page; the legacy in-page detail view is retired.
   useEffect(() => {
-    if (location.state?.startTour && filteredCities.length > 0) {
-      setStep(2);
-    }
-  }, [location.state?.startTour, filteredCities]);
+    const first = filteredCities[0] as { documentId?: string } | undefined;
+    if (location.state?.startTour && first?.documentId) navigate(`/recommendations/places/${first.documentId}`, { state: { startTour: true } });
+  }, [location.state?.startTour, filteredCities, navigate]);
 
 
   // Track route changes for better modal detection - AFTER walkthrough hook initialization
@@ -571,10 +528,7 @@ const FavoritesHome = memo(() => {
 
   // Auto-advance after publish toggle - Step 3 to Step 4 (INSTANTANEOUS)
 
-  const handleConfirmDeleteModal = () => {
-    setShowConfirmDeleteModal(true);
-    setDeleteConfirmationText("");
-  };
+
 
   const handleModalPinToggle = async (city: any, nextPinnedValue: boolean) => {
     const docId = city.documentId;
@@ -638,19 +592,6 @@ const FavoritesHome = memo(() => {
     }
   };
 
-  // tabs with data
-  const tabs = {
-    [t("dashboard.recommendations.recommendationsTab")]: <Recommendations refetchCities={refetchCities} />,
-    [t("dashboard.recommendations.manageTab")]: (
-      <LinksAndQR
-        refetchCities={refetchCities}
-        setIsEditing={setIsEditing}
-        setShowConfirmDeleteModal={setShowConfirmDeleteModal}
-        setIsLocationModalOpen={setIsLocationModalOpen}
-        handleConfirmDeleteModal={handleConfirmDeleteModal}
-      />
-    ),
-  };
 
   const handleUpdateRecommendedList = async (
     values: KeyValuePair
@@ -771,78 +712,11 @@ const FavoritesHome = memo(() => {
       <div className="bg-dashboard-bg">
         <NavigationStatus navigation={navigation} />
         {/* The category branch brings its own DashboardPageContainer, so this wrapper adds no width or padding to it. */}
-        <div className={`bg-dashboard-bg min-h-screen ${((loading && !cities) || !accountById) || (step === 2 && placeCards.length > 0) ? "max-w-6xl mx-auto px-4 pt-0 md:pt-4 pb-4" : ""}`}>
+        <div className={`bg-dashboard-bg min-h-screen ${((loading && !cities) || !accountById) ? "max-w-6xl mx-auto px-4 pt-0 md:pt-4 pb-4" : ""}`}>
           {/* OWN-06. Only a cold load replaces the page; a refresh keeps the last read. */}
           {((loading && !cities) || !accountById) ? (
             <div className="flex items-center justify-center min-h-screen">
               <EarthLoader context="recommendations" size="default" />
-            </div>
-          ) : step === 2 && placeCards.length > 0 ? (
-            <div id="step-2-list-details" className="pt-2">
-              {/* Navigation Header */}
-              <div className="flex justify-between items-center mb-4 w-full">
-                <div className="flex flex-col items-start">
-                  <div
-                    {...keyboardActivation(() => setStep(1))}
-                    className="text-[10px] text-white/55 font-semibold cursor-pointer flex items-center gap-1 mb-1 hover:text-white transition-colors"
-                  >
-                    <svg className="w-1.5 h-1.5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.5" d="M15 19l-7-7 7-7" />
-                    </svg>
-                    Back
-                  </div>
-                  <span id="detail-city-name" className="text-lg font-black text-white leading-tight">
-                    {selectedCity?.List_Name}
-                  </span>
-                </div>
-                
-                {/* Published Toggle Switch */}
-                <div className="flex items-center gap-2" data-walkthrough="togglePublish">
-                  <span className={`text-[10px] font-semibold uppercase ${selectedCity?.Visibility ? "text-[#4ade80]" : "text-[#f87171]"}`}>
-                    {selectedCity?.Visibility ? t("dashboard.home.published") : t("dashboard.home.draft")}
-                  </span>
-                  <SwitchButton
-                    isChecked={selectedCity?.Visibility || false}
-                    onChange={handleCityVisibilityToggle}
-                    variant="green"
-                    disabled={!selectedCity?.recommended_places?.length}
-                  />
-                </div>
-              </div>
-
-              {/* Tab Switcher Pill */}
-              <div className="flex items-center bg-dashboard-muted border border-dashboard font-poppins rounded-[24px] mx-auto w-fit p-1 mb-4">
-                <button
-                  onClick={() => setActiveTab(t("dashboard.recommendations.recommendationsTab"))}
-                  className={`px-4 py-1.5 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
-                    activeTab === t("dashboard.recommendations.recommendationsTab")
-                      ? "bg-dashboard-accent text-[var(--dash-accent-text)] shadow-sm font-bold"
-                      : "bg-transparent text-dashboard-muted hover:text-dashboard"
-                  }`}
-                >
-                  Recommendations
-                </button>
-                <button
-                  onClick={() => setActiveTab(t("dashboard.recommendations.manageTab"))}
-                  className={`px-4 py-1.5 text-xs font-semibold transition-all duration-200 whitespace-nowrap rounded-[20px] ${
-                    activeTab === t("dashboard.recommendations.manageTab")
-                      ? "bg-dashboard-accent text-[var(--dash-accent-text)] shadow-sm font-bold"
-                      : "bg-transparent text-dashboard-muted hover:text-dashboard"
-                  }`}
-                  data-walkthrough="manage-tab"
-                >
-                  Manage
-                </button>
-              </div>
-
-              {/* Active Tab Content */}
-              <div>
-                {activeTab === t("dashboard.recommendations.recommendationsTab") ? (
-                  tabs[t("dashboard.recommendations.recommendationsTab")]
-                ) : (
-                  tabs[t("dashboard.recommendations.manageTab")]
-                )}
-              </div>
             </div>
           ) : (
             <CategoryPage
@@ -857,7 +731,7 @@ const FavoritesHome = memo(() => {
               onCategoryVisibility={() => handleVisibilityToggle()}
               // The list opens in place: location editing (name, point, cover) still lives on
               // this page's Manage view. The shared list page serves /recommendations/places/<id>.
-              onOpenList={(id) => { const city = filteredCities.find((c: any) => c.documentId === id); if (city) { setSelectedCity(city as unknown as selectedCity); setStep(2); } }}
+              onOpenList={(id) => navigate(`/recommendations/places/${id}`)}
               onRetry={() => { void refetchCities(); }}
               onChanged={() => { void refetchCities(); archivedPlaces.reload(); }}
               newList={{ kind: "dialog", username: canonicalAccount.data?.handle ?? "", onCreated: openCreatedList, create: placesCreate }}
