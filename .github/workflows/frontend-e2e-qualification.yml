@@ -47,7 +47,7 @@ jobs:
           - { lane: account-lifecycle, command: "npx playwright test --config=playwright.lifecycle.config.ts" }
           - { lane: profile-tabs, command: "npx playwright test --config=playwright.profile-tabs.config.ts" }
           - lane: general-pages
-            command: "npx playwright test --config=playwright.general-e2e.config.ts e2e/analytics.spec.ts e2e/books.spec.ts e2e/categories.spec.ts e2e/games.spec.ts e2e/guides.spec.ts e2e/locations.spec.ts e2e/marketing-pages.spec.ts e2e/movies.spec.ts e2e/people.spec.ts e2e/products.spec.ts"
+            command: "npx playwright test --config=playwright.general-e2e.config.ts e2e/analytics.spec.ts e2e/apps-add.spec.ts e2e/books.spec.ts e2e/categories.spec.ts e2e/games.spec.ts e2e/guides.spec.ts e2e/locations.spec.ts e2e/marketing-pages.spec.ts e2e/movies.spec.ts e2e/people.spec.ts e2e/products.spec.ts"
           - lane: remaining-contained-contracts
             command: "npx playwright test e2e/profile-editor-polish.spec.ts e2e/profile-presentation-visual.spec.ts e2e/profile-theme.spec.ts e2e/public-scroll.spec.ts e2e/reactivation-lifecycle.spec.ts --project=chromium-pr-safe --project=firefox-music-visual --project=webkit-music-visual --retries=0"
     steps:

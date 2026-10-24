@@ -27,6 +27,8 @@ export interface RecommendedApp {
   platforms: string[] | null;
   price_tier: "Free" | "Freemium" | "Paid" | "Subscription" | null;
   download_url: string | null;
+  /** WP8: store/web links beside app_url (at most four). Absent on rows read before 0068. */
+  other_links?: { label: string; url: string }[];
   user_recommendation_note: any; // Blocks JSON (Tiptap)
   user_rating: number | null;    // 1-10 integer
   is_pinned: boolean;

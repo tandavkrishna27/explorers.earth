@@ -185,7 +185,7 @@ async function signIn(page:Page,person:Manifest['personas']['ownerA']){
  const account=(await json(page.request,'/me')).account;expect(account.id===person.accountId&&account.id!==person.userId&&account.handle===person.handle&&account.onboardingStatus==='complete').toBe(true);
 }
 async function start(page:Page,info:TestInfo){
- const manifest=await control(page.request,'reset',info);await signIn(page,manifest.personas.ownerA);
+ const manifest=await control(page.request,'reset',info);await signIn(page,manifest.personas.ownerA);await refuseLinkPreview(page);
  await navigateApps(page,'/recommendations/apps');return manifest;
 }
 function visibleButton(page:Page,name:string|RegExp){return page.getByRole('button',{name,exact:typeof name==='string'}).and(page.locator('button:visible'));}
@@ -198,12 +198,22 @@ async function edit(page:Page,listId:string,id:string,title:string){
  await expect(page.getByRole('heading',{name:'Edit App',exact:true})).toBeVisible();
  await expect(page).toHaveURL(new RegExp(`/edit/${id}$`));
 }
+// The App URL field reads a pasted/blurred link through the owner link-preview route, which
+// fetches the third-party page. This lane admits no third-party egress, so the read is refused
+// here; the form treats a failed read as "fill it in yourself" and never blocks saving.
+async function refuseLinkPreview(page:Page){await page.route('**/catalog/link-preview**',route=>route.abort());}
+// New add flow is search-first (App Store). This lane types every field itself, so it leaves
+// the search for manual entry; the search itself is covered by the general-lane e2e/apps-add.spec.ts.
+async function manualEntry(page:Page){
+ await expect(page.getByPlaceholder('Search the App Store',{exact:true})).toBeVisible();await page.getByRole('button',{name:"Can't find it? Add manually",exact:true}).click();await expect(page.getByPlaceholder('Search the App Store',{exact:true})).toHaveCount(0);
+ await expect(page.getByLabel('Download URL',{exact:true})).toHaveCount(0);await expect(page.getByLabel('Logo URL',{exact:true})).toHaveCount(0);
+}
+function saveButton(page:Page){return page.getByRole('toolbar',{name:'Item actions',exact:true}).getByRole('button',{name:'Save',exact:true});}
 async function fillApp(page:Page,title:string,suffix:string){
- await page.getByLabel('App title',{exact:true}).fill(title);await page.getByLabel('App URL',{exact:true}).fill(`https://apps.example.invalid/app-${suffix}`);
- await page.getByLabel('Developer',{exact:true}).fill('Native Apps Developer');await page.getByLabel('Logo URL',{exact:true}).fill('');
- await page.getByLabel('Download URL',{exact:true}).fill(`https://apps.example.invalid/download-${suffix}`);await page.getByLabel('Description',{exact:true}).fill('Native typed description');
- await page.getByRole('button',{name:'Paid',exact:true}).click();await page.getByRole('button',{name:'Web',exact:true}).click();await page.getByRole('button',{name:'Linux',exact:true}).click();
- await page.getByLabel('Your rating',{exact:true}).selectOption('8');await page.locator('[contenteditable="true"]').fill('Native Apps thoughts');
+ await page.getByLabel('App title',{exact:true}).fill(title);await page.getByLabel('Developer',{exact:true}).fill('Native Apps Developer');
+ await page.getByLabel('App URL',{exact:true}).fill(`https://apps.example.invalid/app-${suffix}`);await page.getByLabel('Description',{exact:true}).fill('Native typed description');
+ await page.getByLabel('Price',{exact:true}).selectOption('Paid');await page.getByRole('button',{name:'Web',exact:true}).click();await page.getByRole('button',{name:'Linux',exact:true}).click();
+ await page.getByRole('slider',{name:'Your rating',exact:true}).getByRole('button',{name:'4 stars',exact:true}).click();await page.locator('[contenteditable="true"]').fill('Native Apps thoughts');
 }
 function acknowledgement(page:Page,path:string,method:string,body:(value:Record<string,unknown>)=>boolean){return page.waitForResponse(r=>new URL(r.url()).origin===origin&&new URL(r.url()).pathname===`${base}${path}`&&r.request().method()===method&&body(r.request().postDataJSON()));}
 async function browserBody(response:Response,expected:number){expect(response.status()).toBe(expected);const body=await response.json();expect(await response.finished()).toBeNull();return body;}
@@ -212,12 +222,13 @@ async function save(page:Page){
  const listId=uuid.parse(match[1]),id=match[3]?uuid.parse(match[3]):undefined;
  const title=await page.getByLabel('App title',{exact:true}).inputValue(),developer=await page.getByLabel('Developer',{exact:true}).inputValue();
  const response=acknowledgement(page,id?`/recommendations/${id}`:'/recommendations',id?'PATCH':'POST',body=>id?typeof body.expectedRevision==='number'&&!!body.displayOverrides&&(body.displayOverrides as Record<string,unknown>).title===title&&(body.displayOverrides as Record<string,unknown>).developer===developer:body.collectionId===listId&&body.category==='apps'&&body.publicationState==='draft'&&typeof body.expectedCollectionRevision==='number'&&typeof body.entityId==='string');
- await page.getByRole('button',{name:'Save app',exact:true}).click();const result=recommendationCoreDtoSchema.parse((await browserBody(await response,id?200:201)).recommendation);expect(result.category==='apps'&&(!id||result.id===id)).toBe(true);
+ await saveButton(page).click();const result=recommendationCoreDtoSchema.parse((await browserBody(await response,id?200:201)).recommendation);expect(result.category==='apps'&&(!id||result.id===id)).toBe(true);
  await expect(page).toHaveURL(`${origin}/recommendations/apps/${listId}`);await expect(page.getByRole('button',{name:'Add App',exact:true})).toBeVisible();return result.id;
 }
 async function invalidThenValid(page:Page,title:string,suffix:string){
- await expect(page.getByRole('button',{name:'Save app',exact:true})).toBeDisabled();await fillApp(page,title,suffix);await page.getByLabel('App URL',{exact:true}).fill('javascript:invalid');
- const route=page.url();await page.getByRole('button',{name:'Save app',exact:true}).click();await expect(page.getByRole('alert')).toBeVisible();await expect(page).toHaveURL(route);await expect(page.getByLabel('App title',{exact:true})).toHaveValue(title);await expect(page.getByLabel('App URL',{exact:true})).toHaveValue('javascript:invalid');await expect(page.getByLabel('Developer',{exact:true})).toHaveValue('Native Apps Developer');await expect(page.locator('[contenteditable="true"]')).toContainText('Native Apps thoughts');
+ await manualEntry(page);await expect(saveButton(page)).toBeDisabled();await fillApp(page,title,suffix);await page.getByLabel('App URL',{exact:true}).fill('javascript:invalid');
+ // An unsafe link is refused inline and Save stays off; nothing leaves the form and nothing is lost.
+ const route=page.url();await expect(page.getByRole('alert')).toBeVisible();await expect(saveButton(page)).toBeDisabled();await expect(page).toHaveURL(route);await expect(page.getByLabel('App title',{exact:true})).toHaveValue(title);await expect(page.getByLabel('App URL',{exact:true})).toHaveValue('javascript:invalid');await expect(page.getByLabel('Developer',{exact:true})).toHaveValue('Native Apps Developer');await expect(page.locator('[contenteditable="true"]')).toContainText('Native Apps thoughts');
  await page.getByLabel('App URL',{exact:true}).fill(`https://apps.example.invalid/app-${suffix}`);
 }
 async function createList(page:Page,title:string,slug:string){
@@ -277,7 +288,7 @@ async function expectEmptyCrudList(page:Page){
 test(titles[0],async({page},info)=>{
  const m=await start(page,info),owner=m.personas.ownerA.accountId;expect((await complete(page.request,owner)).collections).toHaveLength(0);
  const listId=await createList(page,'Native Apps CRUD','native-apps-crud');await navigateApps(page,`/recommendations/apps/${listId}`);await page.getByRole('button',{name:'Add App',exact:true}).click();await invalidThenValid(page,'Native Complete App','crud');const id=await save(page);await page.getByRole('button',{name:'Keep Draft',exact:true}).click();await expect(page.getByRole('button',{name:'Keep Draft',exact:true})).toHaveCount(0);
- const created=await recommendation(page.request,id);expect(created.effectiveAppDetails).toMatchObject({appUrl:'https://apps.example.invalid/app-crud',developer:'Native Apps Developer',logoUrl:null,downloadUrl:'https://apps.example.invalid/download-crud',description:'Native typed description',priceTier:'Paid',platforms:['Web','Linux']});expect(created.userRating).toBe(8);const persistedNote=richNoteSchema.parse(created.note);expect(await page.evaluate(renderedNoteText,persistedNote.html)).toBe('Native Apps thoughts');
+ const created=await recommendation(page.request,id);expect(created.effectiveAppDetails).toMatchObject({appUrl:'https://apps.example.invalid/app-crud',developer:'Native Apps Developer',logoUrl:null,downloadUrl:null,description:'Native typed description',priceTier:'Paid',platforms:['Web','Linux']});expect(created.userRating).toBe(8);const persistedNote=richNoteSchema.parse(created.note);expect(await page.evaluate(renderedNoteText,persistedNote.html)).toBe('Native Apps thoughts');
  await edit(page,listId,id,'Native Complete App');await expect(page.getByLabel('App URL',{exact:true})).toBeDisabled();await page.getByLabel('App title',{exact:true}).fill('Native Edited App');await page.getByLabel('Developer',{exact:true}).fill('Edited Developer');expect(await save(page)).toBe(id);await reloadApps(page);
  const edited=await recommendation(page.request,id);expect(edited.entityId).toBe(created.entityId);expect(edited.displayTitle).toBe('Native Edited App');expect(edited.effectiveAppDetails?.developer).toBe('Edited Developer');
  const row=appRow(page,'Native Edited App');await row.getByRole('button').last().click();page.once('dialog',async dialog=>{expect(dialog.message()).toBe('Delete "Native Edited App"?');await dialog.accept();});const detached=acknowledgement(page,`/collections/${listId}/memberships/${id}`,'DELETE',body=>typeof body.expectedCollectionRevision==='number'&&typeof body.expectedRecommendationRevision==='number');await row.getByRole('button',{name:'Delete',exact:true}).click();const detachBody=await browserBody(await detached,200);expect(detachBody.membership.attached===false&&detachBody.membership.collection.id===listId&&detachBody.membership.recommendation.id===id).toBe(true);await expect(row).toHaveCount(0);await reloadApps(page);
@@ -310,7 +321,7 @@ test(titles[1],async({page},info)=>{
   await page.route(patchUrl,hold);
   const responseDrain=page.waitForResponse(r=>r.url()===patchUrl&&r.request()===heldRequest,{timeout:15000}).then(async response=>{const body=await response.body();expect(body.length<=65536).toBe(true);expect(await response.finished()).toBeNull();return response;});void responseDrain.catch(()=>undefined);let primaryFailure:unknown;
   try{
-   await page.getByRole('button',{name:'Save app',exact:true}).click();await within(ready,15000);
+   await saveButton(page).click();await within(ready,15000);
    const current=await recommendation(page.request,target.id);await status(await command(page.request,'patch',`/recommendations/${target.id}`,{expectedRevision:current.revision,userRating:7}),200);release();expect((await responseDrain).status()).toBe(409);
    await expect(page.getByRole('alert')).toBeVisible();await expect(page.getByRole('img',{name:'App screenshot',exact:true})).toHaveCount(2);expect((await recommendation(page.request,target.id)).appScreenshots?.screenshotMediaIds).toEqual(detail.appScreenshots?.screenshotMediaIds);await bytes(page.request,shared.id,shared);
   }catch(error){primaryFailure=error;throw error;}finally{
@@ -334,8 +345,8 @@ test(titles[1],async({page},info)=>{
 test(titles[2],async({page},info)=>{
  const m=await start(page,info);expect(m.collections).toHaveLength(1);const list=m.collections[0],guest=await anonymous(page);
  try{
-  await navigateApps(page,`/recommendations/apps/${list.id}`);await page.getByRole('button',{name:'Add App',exact:true}).click();await fillApp(page,'Native Keep Draft App','draft');const draft=await save(page);await page.getByRole('button',{name:'Keep Draft',exact:true}).click();await expect(page.getByRole('button',{name:'Keep Draft',exact:true})).toHaveCount(0);expect((await collection(page.request,list.id)).visibility).toBe('private');expect((await recommendation(page.request,draft)).publicationState).toBe('draft');expect((await publicApps(guest.request,m.personas.ownerA.handle)).appLists.some(x=>x.documentId===list.id)).toBe(false);
-  await page.getByRole('button',{name:'Add App',exact:true}).click();await fillApp(page,'Native Publish App','publish');const published=await save(page);const listAck=acknowledgement(page,`/collections/${list.id}`,'PATCH',body=>body.visibility==='public'&&body.publicationState==='published'&&typeof body.expectedRevision==='number');await page.getByRole('button',{name:'Yes, Publish',exact:true}).click();expect((await browserBody(await listAck,200)).collection.id).toBe(list.id);await expect(page.getByRole('button',{name:'Yes, Publish',exact:true})).toHaveCount(0);await expect(page.getByRole('switch',{name:'Published',exact:true})).toBeVisible();await reloadApps(page);expect((await collection(page.request,list.id)).publicationState).toBe('published');expect((await recommendation(page.request,published)).publicationState).toBe('draft');
+  await navigateApps(page,`/recommendations/apps/${list.id}`);await page.getByRole('button',{name:'Add App',exact:true}).click();await manualEntry(page);await fillApp(page,'Native Keep Draft App','draft');const draft=await save(page);await page.getByRole('button',{name:'Keep Draft',exact:true}).click();await expect(page.getByRole('button',{name:'Keep Draft',exact:true})).toHaveCount(0);expect((await collection(page.request,list.id)).visibility).toBe('private');expect((await recommendation(page.request,draft)).publicationState).toBe('draft');expect((await publicApps(guest.request,m.personas.ownerA.handle)).appLists.some(x=>x.documentId===list.id)).toBe(false);
+  await page.getByRole('button',{name:'Add App',exact:true}).click();await manualEntry(page);await fillApp(page,'Native Publish App','publish');const published=await save(page);const listAck=acknowledgement(page,`/collections/${list.id}`,'PATCH',body=>body.visibility==='public'&&body.publicationState==='published'&&typeof body.expectedRevision==='number');await page.getByRole('button',{name:'Yes, Publish',exact:true}).click();expect((await browserBody(await listAck,200)).collection.id).toBe(list.id);await expect(page.getByRole('button',{name:'Yes, Publish',exact:true})).toHaveCount(0);await expect(page.getByRole('switch',{name:'Published',exact:true})).toBeVisible();await reloadApps(page);expect((await collection(page.request,list.id)).publicationState).toBe('published');expect((await recommendation(page.request,published)).publicationState).toBe('draft');
   const publishAck=acknowledgement(page,`/recommendations/${published}`,'PATCH',body=>body.publicationState==='published'&&typeof body.expectedRevision==='number');await page.getByRole('button',{name:'Publish Native Publish App',exact:true}).click();expect((await browserBody(await publishAck,200)).recommendation.id).toBe(published);await expect(page.getByRole('button',{name:'Keep Native Publish App as draft',exact:true})).toBeVisible();await reloadApps(page);expect((await recommendation(page.request,published)).publicationState).toBe('published');
   const projection=await publicApps(guest.request,m.personas.ownerA.handle);const rows=projection.appLists.find(x=>x.documentId===list.id)!.recommended_apps;expect(rows.map(x=>x.documentId)).toEqual([published]);await gallery(guest.page,m.personas.ownerA.handle,list,'Native Publish App','Native Apps Developer',[]);
   const withdrawAck=acknowledgement(page,`/collections/${list.id}`,'PATCH',body=>body.visibility==='private'&&body.publicationState==='draft'&&typeof body.expectedRevision==='number');await page.getByRole('switch',{name:'Published',exact:true}).click();expect((await browserBody(await withdrawAck,200)).collection.id).toBe(list.id);await expect(page.getByRole('switch',{name:'Draft',exact:true})).toBeVisible();await reloadApps(page);expect((await publicApps(guest.request,m.personas.ownerA.handle)).appLists.some(x=>x.documentId===list.id)).toBe(false);expect((await recommendation(page.request,published)).publicationState).toBe('published');

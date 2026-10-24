@@ -139,14 +139,6 @@ const PersonTopPicksHero = ({ people, onPersonClick, showManageButton = false, o
                   <span className="text-white/70">{activePerson.headline}</span>
                 </>
               )}
-              {activePerson.user_rating && (
-                <>
-                  <span className="text-white/30">·</span>
-                  <span className="flex items-center gap-1 text-yellow-400 font-bold">
-                    <Star size={14} fill="currentColor" /> {activePerson.user_rating}/10
-                  </span>
-                </>
-              )}
             </motion.div>
 
             {activePerson.bio && (

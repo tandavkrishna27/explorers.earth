@@ -21,7 +21,8 @@ describe("AddProductPage success navigation", () => {
     expect(source()).not.toContain("VITE_REST_API_URL");
   });
 
-  it("declares the amount input as decimal text", () => {
-    expect(source()).toContain('inputMode="decimal"');
+  it("takes the amount through the decimal-text price field", () => {
+    // CurrencyPriceInput declares inputMode="decimal"; the page must not bypass it.
+    expect(source()).toContain("<CurrencyPriceInput");
   });
 });

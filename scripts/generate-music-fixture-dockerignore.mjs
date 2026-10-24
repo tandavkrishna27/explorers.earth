@@ -26,6 +26,7 @@ const sharedContractEntryPoints = [
   "tunes/shared/explorersRichNoteContract.ts",
   "tunes/shared/explorersBookContract.ts",
   "tunes/shared/explorersBookCoverContract.ts",
+  "tunes/shared/explorersLinkPreviewContract.ts",
   "tunes/shared/explorersMovieContract.ts",
   "tunes/shared/explorersMovieMediaContract.ts",
   "tunes/shared/explorersAppContract.ts",
