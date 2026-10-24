@@ -19,11 +19,11 @@ function installedPlaywrightLabels(element:Element):ReadonlyArray<{normalized:st
  const labels=Function('module',source+'\nreturn getElementLabels;')({exports:{}}) as (cache:Map<Element,unknown>,element:Element)=>ReadonlyArray<{normalized:string}>;
  return labels(new Map(),element);
 }
-it('mounted native configured-empty Sector control has the exact installed Playwright label while retaining its sole No sector option',async()=>{
+it('mounted native configured-empty Sector control has the exact installed Playwright label while retaining its sole placeholder option',async()=>{
  useAuthStore.getState().login({id:'u1',documentId:'u1',username:'owner',email:'owner@example.invalid',blocked:false,token:'fixture'});useAuthStore.setState({accountId:'a1'});
  vi.mocked(PeopleClient.readSectorCatalog).mockResolvedValue({complete:true,category:'people',state:'CONFIGURED',catalogVersion:1,defaultLocale:'en',requestedLocale:null,items:[],nextCursor:null} as never);
  render(<MockedProvider><MemoryRouter initialEntries={['/people/list-1/add']}><Routes><Route path="/people/:listId/add" element={<AddPersonPage/>}/></Routes></MemoryRouter></MockedProvider>);
- const option=await screen.findByRole('option',{name:'No sector'}),select=option.closest('select');
+ const option=await screen.findByRole('option',{name:'Choose a sector'}),select=option.closest('select');
  if(!select)throw Error('Actual Sector select absent');
  expect(installedPlaywrightLabels(select).some(label=>label.normalized==='Sector')).toBe(true);
  expect(select.options).toHaveLength(1);expect(select.value).toBe('');expect(select.options[0].value).toBe('');

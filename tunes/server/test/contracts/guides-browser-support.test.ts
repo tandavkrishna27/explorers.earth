@@ -970,7 +970,7 @@ function resourceFixture(){
         blocks,block_version:GUIDE_SECTION_BLOCK_VERSION,archived_at:null,created_at:new Date(RESOURCE_TIME),updated_at:new Date(RESOURCE_TIME)};
       rowset('guide_sections').push(row);
       const ids=new Set([...dayPlaces(blocks),
-        ...blocks.stay.accommodations,...blocks.activities.activities].flatMap(p=>p.photos.map(photo=>photo.mediaId)));
+        ...blocks.stay.accommodations,...blocks.activities.activities].flatMap(p=>p.photos.map((photo:{mediaId:string})=>photo.mediaId)));
       for(const mediaId of ids)rowset('guide_section_photos').push({section_id:id,account_id:accountId,media_id:mediaId});
       bump(accountId);return id;
     },

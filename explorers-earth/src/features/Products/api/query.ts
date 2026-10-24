@@ -82,58 +82,6 @@ export function useProductsCommands() {
 
 
 // ─────────────────────────────────────────────────────────────
-// Query 1.1 — Product Lists by Account (Dashboard + Public)
-// ─────────────────────────────────────────────────────────────
-export const PRODUCT_LISTS_BY_ACCOUNT = gql`
-  query ProductListsByAccount($accountDocumentId: ID!) {
-    productLists(
-      filters: { account: { documentId: { eq: $accountDocumentId } } }
-      sort: ["display_order:asc"]
-      pagination: { limit: 100 }
-    ) {
-      documentId
-      List_Name
-      list_description
-      slug
-      Visibility
-      cover_image {
-        url
-        alternativeText
-      }
-      display_order
-      top_products_heading
-      recommended_products(sort: ["display_order:asc"], pagination: { limit: 200 }) {
-        documentId
-        product_url
-        title
-        brand
-        price
-        currency
-        buy_url
-        logo_url
-        description
-        specifications
-        is_pinned
-        display_order
-        images
-        user_recommendation_note
-        user_rating
-        pin_order
-        product_category {
-          documentId
-          name
-          slug
-        }
-      }
-      account {
-        documentId
-        username
-      }
-    }
-  }
-`;
-
-// ─────────────────────────────────────────────────────────────
 // Query 1.2 — Products by List (paginated, for list view)
 // ─────────────────────────────────────────────────────────────
 export const PRODUCTS_BY_LIST = gql`

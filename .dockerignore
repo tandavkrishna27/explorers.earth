@@ -158,6 +158,8 @@ explorers-earth/src/features/Guides/api/*
 explorers-earth/src/features/Guides/components/*
 !explorers-earth/src/features/Guides/context/
 explorers-earth/src/features/Guides/context/*
+!explorers-earth/src/features/Guides/GuideEditor/
+explorers-earth/src/features/Guides/GuideEditor/*
 !explorers-earth/src/features/Guides/hooks/
 explorers-earth/src/features/Guides/hooks/*
 !explorers-earth/src/features/Guides/pages/
@@ -192,6 +194,8 @@ explorers-earth/src/features/People/api/*
 explorers-earth/src/features/People/components/*
 !explorers-earth/src/features/People/hooks/
 explorers-earth/src/features/People/hooks/*
+!explorers-earth/src/features/People/lib/
+explorers-earth/src/features/People/lib/*
 !explorers-earth/src/features/People/types/
 explorers-earth/src/features/People/types/*
 !explorers-earth/src/features/People/utils/
@@ -434,6 +438,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/CategoryEmptyState.tsx
 !explorers-earth/src/components/CategoryVisibilityModal.tsx
 !explorers-earth/src/components/CircularPlacesModal.tsx
+!explorers-earth/src/components/CurrencyPriceInput.tsx
 !explorers-earth/src/components/DashboardLayout.tsx
 !explorers-earth/src/components/EarthLoader/BootSplash.tsx
 !explorers-earth/src/components/EarthLoader/EarthLoader.css
@@ -451,6 +456,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/components/LoadingSpinner.tsx
 !explorers-earth/src/components/Navbar.tsx
 !explorers-earth/src/components/OnboardingCheckError.tsx
+!explorers-earth/src/components/PasteLinkField.tsx
 !explorers-earth/src/components/ProfileSetupAccordion.tsx
 !explorers-earth/src/components/ProtectedRoute.tsx
 !explorers-earth/src/components/ProviderRatingChip.tsx
@@ -663,6 +669,21 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Games/index.ts
 !explorers-earth/src/features/Games/types/index.ts
 !explorers-earth/src/features/Games/utils/gameHelpers.ts
+!explorers-earth/src/features/Guides/GuideEditor/DayList.tsx
+!explorers-earth/src/features/Guides/GuideEditor/DayStrip.tsx
+!explorers-earth/src/features/Guides/GuideEditor/GooglePlaceResults.tsx
+!explorers-earth/src/features/Guides/GuideEditor/GuideEditorPage.tsx
+!explorers-earth/src/features/Guides/GuideEditor/LinkedListsBlock.tsx
+!explorers-earth/src/features/Guides/GuideEditor/MyListsPanel.tsx
+!explorers-earth/src/features/Guides/GuideEditor/PlanChips.tsx
+!explorers-earth/src/features/Guides/GuideEditor/SmartAddBox.tsx
+!explorers-earth/src/features/Guides/GuideEditor/TimeLabelChip.tsx
+!explorers-earth/src/features/Guides/GuideEditor/dayItems.ts
+!explorers-earth/src/features/Guides/GuideEditor/googlePlaceSearch.ts
+!explorers-earth/src/features/Guides/GuideEditor/guideListAdapter.ts
+!explorers-earth/src/features/Guides/GuideEditor/myListsLoad.ts
+!explorers-earth/src/features/Guides/GuideEditor/myListsSearch.ts
+!explorers-earth/src/features/Guides/GuideEditor/useGuidePlan.ts
 !explorers-earth/src/features/Guides/GuidesPage.tsx
 !explorers-earth/src/features/Guides/api/explorersAdapter.ts
 !explorers-earth/src/features/Guides/api/guideCreation.ts
@@ -673,10 +694,6 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Guides/components/ActivityCard.tsx
 !explorers-earth/src/features/Guides/components/ActivityPhotoOrder.tsx
 !explorers-earth/src/features/Guides/components/BudgetInputModal.tsx
-!explorers-earth/src/features/Guides/components/CreateGuidePage.tsx
-!explorers-earth/src/features/Guides/components/CreateGuideStep1.tsx
-!explorers-earth/src/features/Guides/components/CreateGuideStep2.tsx
-!explorers-earth/src/features/Guides/components/CreateGuideStep3.tsx
 !explorers-earth/src/features/Guides/components/GuideCard.tsx
 !explorers-earth/src/features/Guides/components/GuideDetails/BudgetTable.tsx
 !explorers-earth/src/features/Guides/components/GuideDetails/BudgetTimeline.tsx
@@ -703,6 +720,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/Guides/components/GuideDetails/TransportationTimeline.tsx
 !explorers-earth/src/features/Guides/components/GuideDetails/VisibilityToggle.tsx
 !explorers-earth/src/features/Guides/components/GuideSectionForm.tsx
+!explorers-earth/src/features/Guides/components/NewGuideDialog.tsx
 !explorers-earth/src/features/Guides/components/PlaceMoveButtons.tsx
 !explorers-earth/src/features/Guides/components/PlaceholderTab.tsx
 !explorers-earth/src/features/Guides/components/PublicGuideCard.tsx
@@ -826,6 +844,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/People/components/public/PublicPersonSector.tsx
 !explorers-earth/src/features/People/hooks/usePeopleOwner.ts
 !explorers-earth/src/features/People/index.ts
+!explorers-earth/src/features/People/lib/detectPlatform.ts
 !explorers-earth/src/features/People/types/index.ts
 !explorers-earth/src/features/People/utils/personHelpers.ts
 !explorers-earth/src/features/Products/api/explorersAdapter.ts
@@ -957,6 +976,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/features/shared/addItem/PickOnMapSheet.tsx
 !explorers-earth/src/features/shared/addItem/PickedItemCard.tsx
 !explorers-earth/src/features/shared/addItem/StickyActionBar.tsx
+!explorers-earth/src/features/shared/addItem/formStyles.ts
 !explorers-earth/src/features/shared/addItem/index.ts
 !explorers-earth/src/features/shared/addItem/nearbyCache.ts
 !explorers-earth/src/features/shared/addItem/parseCoordinates.ts
@@ -1074,6 +1094,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !explorers-earth/src/lib/currencyOptions.ts
 !explorers-earth/src/lib/explorerAccountSelection.ts
 !explorers-earth/src/lib/explorersApiClient.ts
+!explorers-earth/src/lib/linkPreviewClient.ts
 !explorers-earth/src/lib/money.ts
 !explorers-earth/src/lib/musicDevelopmentTransport.ts
 !explorers-earth/src/lib/navigation/BackToOrigin.tsx
@@ -1198,6 +1219,7 @@ explorers-earth/src/features/Guides/components/GuideDetails/SectionDetailModal/V
 !tunes/shared/explorersGameOwnerContract.ts
 !tunes/shared/explorersGuideContract.ts
 !tunes/shared/explorersLifecycleObservation.ts
+!tunes/shared/explorersLinkPreviewContract.ts
 !tunes/shared/explorersListLinkContract.ts
 !tunes/shared/explorersMovieContract.ts
 !tunes/shared/explorersMovieMediaContract.ts

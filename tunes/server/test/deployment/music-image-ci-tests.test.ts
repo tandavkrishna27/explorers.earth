@@ -143,6 +143,8 @@ describe("owned image CI PostgreSQL wiring", () => {
       // GMS-X01. 0064's game year/platforms/genres through resolve, owner and public read.
       "server/test/explorers/game-details.integration.test.ts",
       "server/test/explorers/guides.integration.test.ts",
+      // WP8. Owner-initiated link preview, image import and SSRF refusal through HTTP.
+      "server/test/explorers/link-preview.integration.test.ts",
       // R10. 0066 list delete keeps analytics; runtime DELETE on collections only.
       "server/test/explorers/list-delete-analytics.integration.test.ts",
       // WP10. List links between any two own lists (replaces placeLinks).
@@ -173,8 +175,8 @@ describe("owned image CI PostgreSQL wiring", () => {
        */
       "server/test/user-leak.integration.test.ts",
     ]);
-    expect(selectors).toHaveLength(59); // 59 = 57 + S3 migrations (0069-0071) + places-nearby (WP6); 57 = 55 + curated-taxonomy + category-data-shape (S2); 55 = 54 + recommendation-media-batch (WP5); 54 = 51 + collection-slug + list-delete-analytics (0065/0066) + collection-manage (WP3B)
-    expect(new Set(selectors).size).toBe(59);
+    expect(selectors).toHaveLength(60); // 60 = 59 + link-preview (WP8); 59 = 58 + S3 migrations (0069-0071); 58 = 57 + places-nearby (WP6); 57 = 55 + curated-taxonomy + category-data-shape (S2); 55 = 54 + recommendation-media-batch (WP5); 54 = 51 + collection-slug + list-delete-analytics (0065/0066) + collection-manage (WP3B)
+    expect(new Set(selectors).size).toBe(60);
   });
 
   /*

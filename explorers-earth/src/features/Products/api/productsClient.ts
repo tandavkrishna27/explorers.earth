@@ -13,6 +13,8 @@ export type ManualProductDraft={
  title:string;productUrl:string;brand:string|null;logoUrl:string|null;description:string|null;
  specifications:{key:string;value:string}[];imageUrls:string[];
  offer:ProductOffer;note:RichNote|null;userRating:number|null;mediaIds:string[];
+ /** WP7 curated category. Absent leaves the assignment alone; null clears it. */
+ curatedTermId?:string|null;
 };
 export type ManualProductIntent=Readonly<{entityKey:string;recommendationKey:string;parent:CollectionObservation;draft:Readonly<ManualProductDraft>}>;
 export type ProductMembershipIntent=Readonly<{parent:CollectionObservation;item:RecommendationObservation;attached:boolean;commandKey:string}>;
@@ -56,7 +58,7 @@ export const ProductsClient={
   // currency, and the currency constrains the amount's precision.
   const offer=productOfferWriteSchema.parse(draft.offer);
   const normalized=createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict()
-   .parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft',productOffer:offer});
+   .parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft',productOffer:offer,...(draft.curatedTermId===undefined?{}:{curatedTermId:draft.curatedTermId})});
   const intent=freeze({entityKey:key(),recommendationKey:key(),parent,draft:{
    ...draft,...details,offer,note:normalized.note,userRating:normalized.userRating,mediaIds:[...normalized.mediaIds],
   }});
@@ -67,7 +69,7 @@ export const ProductsClient={
   const {title,productUrl,brand,logoUrl,description,specifications,imageUrls}=intent.draft;
   const entity=await explorersApiClient.resolveProductEntity({kind:'manual',category:'products',details:{title,productUrl,brand,logoUrl,description,specifications:specifications.map(entry=>({key:entry.key,value:entry.value})),imageUrls:[...imageUrls]}},intent.entityKey,signal);
   current(scope,signal);collection(intent.parent);
-  const result=await explorersApiClient.createMyRecommendation(intent.parent,{entityId:entity.id,note:intent.draft.note,userRating:intent.draft.userRating,mediaIds:[...intent.draft.mediaIds],publicationState:'draft',productOffer:intent.draft.offer},intent.recommendationKey,signal);
+  const result=await explorersApiClient.createMyRecommendation(intent.parent,{entityId:entity.id,note:intent.draft.note,userRating:intent.draft.userRating,mediaIds:[...intent.draft.mediaIds],publicationState:'draft',productOffer:intent.draft.offer,...(intent.draft.curatedTermId===undefined?{}:{curatedTermId:intent.draft.curatedTermId})},intent.recommendationKey,signal);
   current(scope,signal);return result;
  },
  // Ticket 5.2. A list created from a location is linked in the same command, so a

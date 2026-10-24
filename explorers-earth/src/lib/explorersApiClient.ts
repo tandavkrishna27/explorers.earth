@@ -29,7 +29,8 @@ import {productEntityDtoSchema,resolveManualProductSchema} from '../../../tunes/
 import {personEntityDtoSchema,resolveManualPersonSchema} from '../../../tunes/shared/explorersPersonContract';
 import {placeEntityDtoSchema,resolveManualPlaceSchema} from '../../../tunes/shared/explorersPlaceContract';
 import {guideAggregateDtoSchema,attachGuideCoverSchema,createGuideSectionSchema,reorderGuideSectionsSchema,
- writeGuideDetailsSchema,writeGuideSectionSchema,guideRevisionSchema} from '../../../tunes/shared/explorersGuideContract';
+ writeGuideDetailsSchema,writeGuideSectionSchema,guideRevisionSchema,addGuideDaySchema,moveGuideDaySchema,addGuideDayItemSchema,
+ moveGuideDayItemSchema,setGuideTimeLabelSchema,setGuideNoteTextSchema,guideItemLocalIdSchema} from '../../../tunes/shared/explorersGuideContract';
 
 export type CompleteOwnerContent<T> = Readonly<{complete:true;items:readonly T[];snapshot:string;accountId:string;generation:number}>;
 const completedSets=new WeakSet<object>();
@@ -448,6 +449,8 @@ async function listLinkCommand(path:string,method:string,body:unknown,key:string
  const {id:_id,...result}=await contentCommand(path,method,body,key,'link',listLinkCommandEnvelope,signal);
  return result as ListLinkCommandResult;
 }
+const guideItemPath=(day:string,localId:string,suffix:string)=>
+ `/days/${encodeURIComponent(commandInput(contentIdSchema,day))}/items/${encodeURIComponent(commandInput(guideItemLocalIdSchema,localId))}${suffix}`;
 export const explorersApiClient = {
  getTaxonomyCatalogPage:taxonomyPage,
  getCompleteTaxonomyCatalog:completeTaxonomyCatalog,
@@ -512,6 +515,16 @@ export const explorersApiClient = {
   async attachMyGuideCover(collectionId:string,input:z.input<typeof attachGuideCoverSchema>,key:string,signal?:AbortSignal){
    return guideCommand(collectionId,'/cover','PUT',commandInput(attachGuideCoverSchema,input),key,signal);
   },
+  addMyGuideDay:async(id:string,input:z.input<typeof addGuideDaySchema>,key:string,signal?:AbortSignal)=>guideCommand(id,'/days','POST',commandInput(addGuideDaySchema,input),key,signal),
+  moveMyGuideDay:async(id:string,day:string,input:z.input<typeof moveGuideDaySchema>,key:string,signal?:AbortSignal)=>guideCommand(id,`/days/${encodeURIComponent(commandInput(contentIdSchema,day))}/position`,'PATCH',commandInput(moveGuideDaySchema,input),key,signal),
+  duplicateMyGuideDay:async(id:string,day:string,revision:number,key:string,signal?:AbortSignal)=>guideCommand(id,`/days/${encodeURIComponent(commandInput(contentIdSchema,day))}/duplicate`,'POST',commandInput(guideRevisionSchema,{revision}),key,signal),
+  clearMyGuideDay:async(id:string,day:string,revision:number,key:string,signal?:AbortSignal)=>guideCommand(id,`/days/${encodeURIComponent(commandInput(contentIdSchema,day))}/clear`,'POST',commandInput(guideRevisionSchema,{revision}),key,signal),
+  deleteMyGuideDay:async(id:string,day:string,revision:number,key:string,signal?:AbortSignal)=>guideCommand(id,`/days/${encodeURIComponent(commandInput(contentIdSchema,day))}`,'DELETE',commandInput(guideRevisionSchema,{revision}),key,signal),
+  addMyGuideDayItem:async(id:string,day:string,input:z.input<typeof addGuideDayItemSchema>,key:string,signal?:AbortSignal)=>guideCommand(id,`/days/${encodeURIComponent(commandInput(contentIdSchema,day))}/items`,'POST',commandInput(addGuideDayItemSchema,input),key,signal),
+  moveMyGuideDayItem:async(id:string,day:string,localId:string,input:z.input<typeof moveGuideDayItemSchema>,key:string,signal?:AbortSignal)=>guideCommand(id,guideItemPath(day,localId,'/position'),'PATCH',commandInput(moveGuideDayItemSchema,input),key,signal),
+  setMyGuideTimeLabel:async(id:string,day:string,localId:string,input:z.input<typeof setGuideTimeLabelSchema>,key:string,signal?:AbortSignal)=>guideCommand(id,guideItemPath(day,localId,'/time-label'),'PUT',commandInput(setGuideTimeLabelSchema,input),key,signal),
+  setMyGuideNoteText:async(id:string,day:string,localId:string,input:z.input<typeof setGuideNoteTextSchema>,key:string,signal?:AbortSignal)=>guideCommand(id,guideItemPath(day,localId,'/note'),'PUT',commandInput(setGuideNoteTextSchema,input),key,signal),
+  removeMyGuideDayItem:async(id:string,day:string,localId:string,revision:number,key:string,signal?:AbortSignal)=>guideCommand(id,guideItemPath(day,localId,''),'DELETE',commandInput(guideRevisionSchema,{revision}),key,signal),
   async resolvePlaceEntity(input:z.input<typeof resolveManualPlaceSchema>,key:string,signal?:AbortSignal){
    const body=commandInput(resolveManualPlaceSchema,input);
    const entity=await contentCommand('/entities/resolve','POST',body,key,'entity',placeEntityDtoSchema,signal);

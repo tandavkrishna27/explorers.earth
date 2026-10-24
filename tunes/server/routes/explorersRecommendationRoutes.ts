@@ -83,6 +83,30 @@ export function setupExplorersRecommendationRoutes(app:Express,pool:Pool,auth:Ex
   routes.patch('/api/explorers/v1/collections/:id/guide/sections/:sectionId',async(req,res)=>mutation((a,id,b,c)=>guides.setSection(a,id,String(req.params.sectionId??''),b,c),'guide')(req,res));
   routes.delete('/api/explorers/v1/collections/:id/guide/sections/:sectionId',async(req,res)=>mutation((a,id,b,c)=>guides.removeSection(a,id,String(req.params.sectionId??''),b,c),'guide')(req,res));
   routes.put('/api/explorers/v1/collections/:id/guide/cover',mutation((a,id,b,c)=>guides.setCover(a,id,b,c),'guide'));
+  // WP9 (GD-24..30). One route per user action. Literal sub-paths ('position', 'duplicate',
+  // 'clear', 'time-label', 'note') are registered before nothing that could swallow them:
+  // every day route has a fixed segment count.
+  const day=(req:Request)=>String(req.params.sectionId??''),item=(req:Request)=>String(req.params.localId??'');
+  routes.post('/api/explorers/v1/collections/:id/guide/days',mutation((a,id,b,c)=>guides.addDay(a,id,b,c),'guide',201));
+  routes.patch('/api/explorers/v1/collections/:id/guide/days/:sectionId/position',async(req,res)=>mutation((a,id,b,c)=>guides.moveDay(a,id,day(req),b,c),'guide')(req,res));
+  routes.post('/api/explorers/v1/collections/:id/guide/days/:sectionId/duplicate',async(req,res)=>mutation((a,id,b,c)=>guides.duplicateDay(a,id,day(req),b,c),'guide',201)(req,res));
+  routes.post('/api/explorers/v1/collections/:id/guide/days/:sectionId/clear',async(req,res)=>mutation((a,id,b,c)=>guides.clearDay(a,id,day(req),b,c),'guide')(req,res));
+  routes.delete('/api/explorers/v1/collections/:id/guide/days/:sectionId',async(req,res)=>mutation((a,id,b,c)=>guides.deleteDay(a,id,day(req),b,c),'guide')(req,res));
+  routes.post('/api/explorers/v1/collections/:id/guide/days/:sectionId/items',async(req,res)=>mutation((a,id,b,c)=>guides.addDayItem(a,id,day(req),b,c),'guide',201)(req,res));
+  routes.patch('/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/position',async(req,res)=>mutation((a,id,b,c)=>guides.moveDayItem(a,id,day(req),item(req),b,c),'guide')(req,res));
+  routes.put('/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/time-label',async(req,res)=>mutation((a,id,b,c)=>guides.setTimeLabel(a,id,day(req),item(req),b,c),'guide')(req,res));
+  routes.put('/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/note',async(req,res)=>mutation((a,id,b,c)=>guides.setNoteText(a,id,day(req),item(req),b,c),'guide')(req,res));
+  routes.delete('/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId',async(req,res)=>mutation((a,id,b,c)=>guides.removeDayItem(a,id,day(req),item(req),b,c),'guide')(req,res));
+  routes.all('/api/explorers/v1/collections/:id/guide/days',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/guide/days/:sectionId',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/guide/days/:sectionId/position',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/guide/days/:sectionId/duplicate',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/guide/days/:sectionId/clear',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/guide/days/:sectionId/items',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/position',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/time-label',unsupported);
+  routes.all('/api/explorers/v1/collections/:id/guide/days/:sectionId/items/:localId/note',unsupported);
   routes.all('/api/explorers/v1/collections/:id/guide',unsupported);
   routes.all('/api/explorers/v1/collections/:id/guide/sections/order',unsupported);
   routes.all('/api/explorers/v1/collections/:id/guide/sections',unsupported);
