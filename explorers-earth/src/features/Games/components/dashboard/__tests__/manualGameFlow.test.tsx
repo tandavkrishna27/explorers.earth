@@ -66,7 +66,7 @@ describe('native manual Games', () => {
   mount(); searchFor('celeste');
   fireEvent.click(await screen.findByRole('option', { name: /Celeste/ }));
   await waitFor(() => expect(GamesClient.importCover).toHaveBeenCalledWith('co3byy'));
-  expect(screen.getByLabelText('Release year')).toHaveValue(2018); expect(screen.getByLabelText('Platforms')).toHaveValue('PC (Microsoft Windows)'); expect(screen.getByLabelText('Genres')).toHaveValue('Platform');
+  expect(screen.getByLabelText('Release year')).toHaveValue(2018); expect(screen.getByRole('button', { name: 'PC (Microsoft Windows)' })).toHaveAttribute('aria-pressed', 'true'); expect(screen.getByRole('button', { name: 'PC' })).toHaveAttribute('aria-pressed', 'false'); expect(screen.getByLabelText('Genres')).toHaveValue('Platform');
   expect(await screen.findByAltText('Game snapshot')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   await screen.findByText('Saved list');
@@ -75,7 +75,7 @@ describe('native manual Games', () => {
  it('saves typed year, platforms and genres for a manual game, trimming blanks', async () => {
   vi.mocked(GamesClient.prepareManualIntent).mockReturnValue({} as never); vi.mocked(GamesClient.createManual).mockResolvedValue({ id: 'game-1' } as never);
   mount(); openManual(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Home-made' } });
-  fireEvent.change(screen.getByLabelText('Release year'), { target: { value: '1999' } }); fireEvent.change(screen.getByLabelText('Platforms'), { target: { value: ' PC ,, Amiga ' } }); fireEvent.change(screen.getByLabelText('Genres'), { target: { value: '' } });
+  fireEvent.change(screen.getByLabelText('Release year'), { target: { value: '1999' } }); fireEvent.click(screen.getByRole('button', { name: 'PC' })); fireEvent.change(screen.getByLabelText('Other platform'), { target: { value: ' Amiga ' } }); fireEvent.keyDown(screen.getByLabelText('Other platform'), { key: 'Enter' }); expect(screen.getByRole('button', { name: 'Amiga' })).toHaveAttribute('aria-pressed', 'true'); fireEvent.change(screen.getByLabelText('Genres'), { target: { value: '' } });
   fireEvent.click(screen.getByRole('button', { name: 'Save' })); await screen.findByText('Saved list');
   expect(GamesClient.prepareManualIntent).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ title: 'Home-made', releaseYear: 1999, platforms: ['PC', 'Amiga'], genres: [] }));
  });
@@ -83,6 +83,23 @@ describe('native manual Games', () => {
   vi.mocked(GamesClient.search).mockRejectedValue(new ExplorersApiError(503, 'PROVIDER_NOT_CONFIGURED', 'Game search is not available. Add the game manually.'));
   mount(); searchFor('zelda');
   expect(await screen.findByRole('status')).toHaveTextContent('Game search is not available yet. Add the game manually.');
+ });
+ it('offers platform chips in Add manually, with Switch toggling on and off', async () => {
+  mount(); openManual();
+  for (const platform of ['PC', 'PlayStation 5', 'Xbox Series X|S', 'Nintendo Switch']) expect(await screen.findByRole('button', { name: platform })).toHaveAttribute('aria-pressed', 'false');
+  expect(screen.queryByRole('textbox', { name: 'Platforms' })).toBeNull();
+  const chip = screen.getByRole('button', { name: 'Nintendo Switch' }); fireEvent.click(chip); expect(chip).toHaveAttribute('aria-pressed', 'true'); fireEvent.click(chip); expect(chip).toHaveAttribute('aria-pressed', 'false');
+ });
+ it('retries a search the API answers PROVIDER_BUSY instead of showing the failure (UAT: Hades + Enter)', async () => {
+  vi.mocked(GamesClient.search).mockRejectedValueOnce(new ExplorersApiError(429, 'PROVIDER_BUSY', 'Games provider is busy')).mockResolvedValue({ version: 'explorers-game-candidates/v1', nextCursor: null, items: [
+   { externalId: '113112', title: 'Hades', year: 2020, coverUrl: null, platforms: ['PC (Microsoft Windows)'], genres: ['Indie'], developer: 'Supergiant Games' }] } as never);
+  mount(); searchFor('hades');
+  expect(await screen.findByRole('option', { name: /Hades/ }, { timeout: 3000 })).toBeInTheDocument();
+  expect(screen.queryByText(/Search isn't working/)).toBeNull(); expect(GamesClient.search).toHaveBeenCalledTimes(2);
+ });
+ it('shows no leftover existing-game picker under the search box', () => {
+  mount();
+  expect(screen.queryByText(/Existing game/i)).toBeNull(); expect(screen.queryByRole('button', { name: /Add existing game/i })).toBeNull();
  });
  it('account replacement while parent observation is pending cannot create a game', async () => {
   const parent = deferred<never>(); vi.mocked(GamesClient.observeCollection).mockReturnValue(parent.promise); mount(); openManual(); fireEvent.change(await screen.findByLabelText('Game title'), { target: { value: 'Old owner draft' } }); fireEvent.click(screen.getByRole('button', { name: 'Save' }));

@@ -12,7 +12,6 @@ import useAuthStore from '../../../../store/store';
 import { ExplorersApiError, type RecommendationObservation } from '../../../../lib/explorersApiClient';
 import type { GameCandidate } from '../../../../../../tunes/shared/explorersGameContract';
 import { GamesClient, type ManualGameIntent } from '../../api/gamesClient';
-import { useGamesCommands } from '../../api/query';
 import { invalidateGames, useGamesOwner } from '../../hooks/useGamesOwner';
 import { richNoteFromEditor } from '../../../../../../tunes/shared/explorersRichNoteContract';
 import TiptapEditor from '../../../Favorites/components/TiptapEditor';
@@ -22,6 +21,25 @@ import { useTranslation } from "react-i18next";
 
 /** A comma-separated field as at most 12 trimmed, non-empty labels. */
 const labels = (value: string) => value.split(',').map(item => item.trim()).filter(Boolean).slice(0, 12);
+/** The platform chips every add offers; a picked hit's own platforms are shown beside them. */
+export const GAME_PLATFORMS = ['PC', 'PlayStation 5', 'PlayStation 4', 'Xbox Series X|S', 'Xbox One', 'Nintendo Switch', 'iOS', 'Android', 'macOS', 'Linux'];
+
+/**
+ * The API runs one Games search per account at a time, and a search the page aborted keeps
+ * that slot until its IGDB call settles. So the search after it (Enter after the debounced
+ * one, or more typing) is answered 429 PROVIDER_BUSY; wait briefly and ask again.
+ */
+export const BUSY_RETRY_MS = [400, 800, 1600];
+export async function searchWhileBusy<T>(run: () => Promise<T>, signal: AbortSignal): Promise<T> {
+ for (let attempt = 0; ; attempt++) {
+  try { return await run(); }
+  catch (failure) {
+   const busy = failure instanceof ExplorersApiError && failure.status === 429 && (failure.code === 'PROVIDER_BUSY' || failure.code === 'RATE_LIMITED');
+   if (!busy || attempt >= BUSY_RETRY_MS.length || signal.aborted) throw failure;
+   await new Promise<void>((resolve, reject) => { const timer = setTimeout(() => { signal.removeEventListener('abort', stop); resolve(); }, BUSY_RETRY_MS[attempt]); const stop = () => { clearTimeout(timer); reject(failure); }; signal.addEventListener('abort', stop, { once: true }); });
+  }
+ }
+}
 
 export default function AddGamePage() {
  const { listId, gameId } = useParams<{ listId: string; gameId?: string }>();
@@ -33,13 +51,14 @@ export default function AddGamePage() {
  const scope = JSON.stringify([generation, accountId, location.pathname, listId, gameId]);
  const currentScope = useRef(scope); currentScope.current = scope;
  const active = useRef(0), controller = useRef<AbortController>();
- const owner = useGamesOwner(undefined, true), commands = useGamesCommands();
- const [existingId, setExistingId] = useState('');
- const existingGames = [...new Map((owner.content?.view.lists.flatMap(list => list.recommended_games) ?? []).filter(game => !owner.content?.view.lists.find(list => list.documentId === listId)?.recommended_games.some(member => member.documentId === game.documentId)).map(game => [game.documentId, game])).values()];
- const attachExisting = async () => { const captured = scope; try { await commands.membership(existingId, listId!, true); if (valid(captured)) back.goBack(); } catch (failure) { if (valid(captured)) setError(friendlyErrorMessage(failure, 'Game could not be added')); } };
+ const owner = useGamesOwner(undefined, true);
  const [title, setTitle] = useState(''), [note, setNote] = useState(''), [rating, setRating] = useState<number | null>(null);
- // Year, platforms and genres (GMS-X01): filled from an IGDB hit or typed; lists are comma-separated.
- const [year, setYear] = useState(''), [platforms, setPlatforms] = useState(''), [genres, setGenres] = useState('');
+ // Year, platforms and genres (GMS-X01): filled from an IGDB hit or typed; platforms are chips, genres comma-separated.
+ const [year, setYear] = useState(''), [platforms, setPlatforms] = useState<string[]>([]), [genres, setGenres] = useState('');
+ const [otherPlatform, setOtherPlatform] = useState('');
+ const platformChips = [...GAME_PLATFORMS, ...platforms.filter(platform => !GAME_PLATFORMS.includes(platform))];
+ const togglePlatform = (platform: string) => setPlatforms(value => value.includes(platform) ? value.filter(item => item !== platform) : value.length < 12 ? [...value, platform] : value);
+ const addOtherPlatform = () => { const platform = otherPlatform.trim().slice(0, 100); if (platform && !platforms.includes(platform)) togglePlatform(platform); setOtherPlatform(''); };
  const [media, setMedia] = useState<{ id: string; url: string }[]>([]), [pending, setPending] = useState(0);
  const [saving, setSaving] = useState(false), [error, setError] = useState('');
  const addMode = useAddItemMode<GameCandidate>(), hits = useRef(new Map<string, GameCandidate>()), [providerOff, setProviderOff] = useState(false);
@@ -55,7 +74,7 @@ export default function AddGamePage() {
  const mounted = useRef(true), resetMode = addMode.reset;
  const pickSequence = useRef(0), pickedCover = useRef<string>(), pickFilled = useRef(false);
  useEffect(() => { mounted.current = true; return () => { mounted.current = false; controller.current?.abort(); active.current++; }; }, []);
- useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setTitle(''); setNote(''); setRating(null); setYear(''); setPlatforms(''); setGenres(''); setMedia([]); setPending(0); setSaving(false); setError(''); setExistingId(''); setDeveloper(''); setCategoryId(null); setCategoryTouched(false); setProviderOff(false); hits.current = new Map(); pickSequence.current++; pickFilled.current = false; pickedCover.current = undefined; resetMode(); }, [scope, resetMode]);
+ useEffect(() => { controller.current?.abort(); active.current++; initialized.current = ''; intent.current = undefined; updateKey.current = undefined; draftObservation.current = undefined; setTitle(''); setNote(''); setRating(null); setYear(''); setPlatforms([]); setOtherPlatform(''); setGenres(''); setMedia([]); setPending(0); setSaving(false); setError(''); setDeveloper(''); setCategoryId(null); setCategoryTouched(false); setProviderOff(false); hits.current = new Map(); pickSequence.current++; pickFilled.current = false; pickedCover.current = undefined; resetMode(); }, [scope, resetMode]);
  useEffect(() => {
   if (!gameId || !owner.content || initialized.current === scope) return;
   const game = owner.content.view.lists.find(list => list.documentId === listId)?.recommended_games.find(row => row.documentId === gameId);
@@ -82,7 +101,7 @@ export default function AddGamePage() {
   setSaving(true); setError('');
   try {
    const category = configured && (!gameId || categoryTouched) ? { curatedTermId: categoryId } : {};
-   const draft = { title, note: richNoteFromEditor(note), userRating: rating, mediaIds: media.map(item => item.id), ...category, ...(gameId ? {} : { releaseYear: year.trim() ? Number(year) : null, platforms: labels(platforms), genres: labels(genres), developer: developer.trim() || null }) }, signature = JSON.stringify(draft);
+   const draft = { title, note: richNoteFromEditor(note), userRating: rating, mediaIds: media.map(item => item.id), ...category, ...(gameId ? {} : { releaseYear: year.trim() ? Number(year) : null, platforms: platforms.slice(0, 12), genres: labels(genres), developer: developer.trim() || null }) }, signature = JSON.stringify(draft);
    assertCurrent(captured, operation);
    if (gameId) {
     const observed = owner.content?.details.get(gameId);
@@ -104,7 +123,7 @@ export default function AddGamePage() {
  // ItemSearch owns debounce, abort and Enter (UAT-02); hits are kept by id for the pick.
  const search = useCallback(async (text: string, signal: AbortSignal): Promise<ItemSearchResult[]> => {
   try {
-   const page = await GamesClient.search({ query: text, limit: 24 }, signal);
+   const page = await searchWhileBusy(() => GamesClient.search({ query: text, limit: 24 }, signal), signal);
    hits.current = new Map(page.items.map(item => [item.externalId, item])); setProviderOff(false);
    return page.items.map(item => ({ id: item.externalId, title: item.title, subtitle: [item.year, item.platforms.join(' · ')].filter(Boolean).join(' · ') || undefined, imageUrl: item.coverUrl }));
   } catch (failure) { if (failure instanceof ExplorersApiError && failure.code === 'PROVIDER_NOT_CONFIGURED') { setProviderOff(true); return []; } throw failure; }
@@ -120,13 +139,13 @@ export default function AddGamePage() {
  const clearPick = () => {
   pickSequence.current++; if (!pickFilled.current) return; pickFilled.current = false;
   const cover = pickedCover.current; pickedCover.current = undefined; if (cover) setMedia(value => value.filter(item => item.id !== cover));
-  setTitle(''); setYear(''); setPlatforms(''); setGenres(''); setDeveloper(''); setCategoryId(null); setCategoryTouched(false);
+  setTitle(''); setYear(''); setPlatforms([]); setGenres(''); setDeveloper(''); setCategoryId(null); setCategoryTouched(false);
  };
  const changePick = () => { clearPick(); addMode.change(); };
  const addManually = () => { clearPick(); addMode.goManual(); setTitle(value => value || addMode.query.trim()); };
  // The hit's cover is imported by the API (no hot-link) and becomes the first snapshot.
  const choose = async (candidate: GameCandidate) => {
-  const captured = scope, sequence = ++pickSequence.current; pickFilled.current = true; setTitle(candidate.title); setYear(candidate.year ? String(candidate.year) : ''); setPlatforms(candidate.platforms.join(', ')); setGenres(candidate.genres.join(', '));
+  const captured = scope, sequence = ++pickSequence.current; pickFilled.current = true; setTitle(candidate.title); setYear(candidate.year ? String(candidate.year) : ''); setPlatforms(candidate.platforms.slice(0, 12)); setGenres(candidate.genres.join(', '));
   const imageId = candidate.coverUrl?.match(/\/t_cover_big\/([A-Za-z0-9_-]+)\.jpg$/)?.[1];
   if (!imageId) return;
   setPending(value => value + 1);
@@ -148,7 +167,6 @@ export default function AddGamePage() {
  return <div className="min-h-screen text-dashboard"><AddItemPage title={gameId ? 'Edit Game' : 'Add Game'} backLabel={backText} onBack={() => back.goBack()} mode={mode} onBackToSearch={gameId ? undefined : addMode.backToSearch}
   bar={{ onCancel: () => back.goBack(), onSave: () => { void save(); }, saving: saving ? 'save' : null, canSave: !saving && pending === 0 && Boolean(title.trim()) && !(gameId && initialized.current !== scope) }}>
    {mode === 'search' && <ItemSearch query={addMode.query} onQueryChange={addMode.setQuery} search={search} onPick={pickHit} onAddManually={addManually} placeholder="Search for a game..." override={providerOffNotice} />}
-   {mode === 'search' && existingGames.length > 0 && <section><label>Existing game<select value={existingId} onChange={event => setExistingId(event.target.value)} disabled={commands.loading}><option value="">Select a game</option>{existingGames.map(game => <option key={game.documentId} value={game.documentId}>{game.title}</option>)}</select></label><button disabled={!existingId || commands.loading} onClick={attachExisting}>Add existing game to this list</button></section>}
    {mode === 'picked' && addMode.picked && <PickedItemCard title={addMode.picked.title} subtitle={[addMode.picked.year, addMode.picked.developer].filter(Boolean).join(' · ') || undefined} imageUrl={addMode.picked.coverUrl} onChange={changePick} />}
    {mode !== 'search' && <section className="rounded-2xl border border-dashboard-border bg-dashboard-sidebar p-5 space-y-5"><h2 className="font-semibold flex gap-2"><Gamepad2 size={18} />{gameId ? 'My Game' : 'Your game'}</h2>
     {owner.error && <p role="alert">{owner.error.message}</p>}
@@ -156,7 +174,12 @@ export default function AddGamePage() {
     {!gameId && <div className="grid gap-3 sm:grid-cols-3">
      <label className="block sm:col-span-3">Developer<input value={developer} onChange={event => setDeveloper(event.target.value)} maxLength={200} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
      <label className="block">Release year<input type="number" inputMode="numeric" min={1900} max={2100} value={year} onChange={event => setYear(event.target.value)} disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
-     <label className="block sm:col-span-2">Platforms<input value={platforms} onChange={event => setPlatforms(event.target.value)} placeholder="PC, Nintendo Switch" disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
+     <fieldset className="min-w-0 sm:col-span-3"><legend>Platforms</legend>
+      <div className="mt-2 flex flex-wrap gap-2">
+       {platformChips.map(platform => { const on = platforms.includes(platform); return <button key={platform} type="button" aria-pressed={on} disabled={saving} onClick={() => togglePlatform(platform)} className={`min-h-9 rounded-full border px-3 text-xs transition-colors ${on ? 'border-blue-500 bg-blue-500 text-white' : 'border-dashboard-border text-dashboard-muted hover:text-dashboard'}`}>{platform}</button>; })}
+      </div>
+      <div className="mt-2 flex gap-2"><input aria-label="Other platform" value={otherPlatform} onChange={event => setOtherPlatform(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addOtherPlatform(); } }} maxLength={100} placeholder="Other platform" disabled={saving || platforms.length >= 12} className="min-w-0 flex-1 bg-dashboard-muted rounded-xl p-3" /><button type="button" onClick={addOtherPlatform} disabled={saving || !otherPlatform.trim() || platforms.length >= 12} className="rounded-xl border border-dashboard-border px-4 text-sm">Add</button></div>
+     </fieldset>
      <label className="block sm:col-span-3">Genres<input value={genres} onChange={event => setGenres(event.target.value)} placeholder="Platform, Indie" disabled={saving} className="block w-full bg-dashboard-muted rounded-xl p-3" /></label>
     </div>}
     {configured && <TaxonomyCombobox terms={taxonomyTerms} levels={1} value={{ categoryId, subcategoryId: null }} onChange={value => { setCategoryId(value.categoryId); setCategoryTouched(true); }} labels={{ category: 'Category', subcategory: '' }} />}
