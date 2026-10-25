@@ -11,6 +11,21 @@ import { adapterFixture } from "./adapterFixture";
 const renderTab = (over = {}) => { const adapter = adapterFixture(over); render(<MemoryRouter><ManageTab adapter={adapter} /></MemoryRouter>); return adapter; };
 
 describe("ManageTab", () => {
+  it("prefills name and URL once the list arrives after first render, with no URL error until edited (UAT C)", () => {
+    const loading = adapterFixture({ list: null });
+    const loaded = adapterFixture();
+    const { rerender } = render(<MemoryRouter><ManageTab adapter={loading} /></MemoryRouter>);
+    rerender(<MemoryRouter><ManageTab adapter={loaded} /></MemoryRouter>);
+    expect(screen.getByLabelText("List name")).toHaveValue(loaded.list!.title);
+    expect(screen.getByLabelText("List URL")).toHaveValue(loaded.list!.slug);
+    expect(screen.getByLabelText("List URL")).toHaveAttribute("aria-invalid", "false");
+  });
+
+  it("labels the name field Guide name for a guide", () => {
+    renderTab({ category: "guides" });
+    expect(screen.getByLabelText("Guide name")).toBeInTheDocument();
+  });
+
   it("mounts Linked lists with roles for a guide only (LNK-08)", () => {
     renderTab({ category: "guides" });
     expect(manageLinked.mock.lastCall?.[0]).toMatchObject({ collectionId: "list_1", rolesEnabled: true });

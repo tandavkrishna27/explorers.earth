@@ -1715,6 +1715,16 @@
         "title": "New list",
         "name": "Name",
         "namePlaceholder": "e.g. Comfort movies",
+        "namePlaceholders": {
+          "places": "e.g. Goa weekend",
+          "movies": "e.g. Comfort movies",
+          "books": "e.g. Summer reads",
+          "games": "e.g. Couch co-op games",
+          "apps": "e.g. Productivity apps",
+          "products": "e.g. Desk setup",
+          "people": "e.g. Creators I follow",
+          "guides": "e.g. 3 days in Jaipur"
+        },
         "description": "Short description (optional)",
         "address": "Web address",
         "location": "Location",
@@ -3419,6 +3429,7 @@
       "books": "Read my favorites",
       "games": "Play my favorites",
       "places": "Travel like a local",
+      "guides": "Follow my travel guide",
       "profile": "Explore my picks"
     }
   },

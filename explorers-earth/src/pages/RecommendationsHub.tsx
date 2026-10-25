@@ -919,10 +919,11 @@ const RecommendationsHub = () => {
       />
       {/* Header Banner */}
       <div className="mb-6 md:mb-8">
-        <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white uppercase font-poppins">
+        {/* The dashboard header already shows the page title; keep the h1 for assistive tech only. */}
+        <h1 className="sr-only">
           {t("dashboard.categoryPages.hub.title")}
         </h1>
-        <p className="text-xs md:text-sm text-dashboard-muted leading-relaxed font-medium mt-1 max-w-3xl">
+        <p className="text-xs md:text-sm text-dashboard-muted leading-relaxed font-medium max-w-3xl">
           {t("dashboard.categoryPages.hub.subtitle")}
         </p>
       </div>

@@ -44,7 +44,7 @@ export function RestoreListButton({ listId, category, onRestored }: Props) {
   if (!needsSlug) {
     return (
       <div className="grid gap-1">
-        <button type="button" disabled={busy} onClick={() => void restore()} className="min-h-11 rounded-xl border border-white/10 px-3 disabled:opacity-50">{t("dashboard.wp3b.restore", "Restore")}</button>
+        <button type="button" disabled={busy} onClick={() => void restore()} className="min-h-11 rounded-xl border border-dashboard-border px-3 text-dashboard disabled:opacity-50">{t("dashboard.wp3b.restore", "Restore")}</button>
         {alert}
       </div>
     );
@@ -53,7 +53,7 @@ export function RestoreListButton({ listId, category, onRestored }: Props) {
   return (
     <div className="grid gap-1">
       <label className="grid gap-1 text-xs">{t("dashboard.wp3b.restoreNeedsUrl", "That URL is used by another list. Pick a new one:")}
-        <input value={slug} onChange={(e) => setSlug(e.target.value.trim())} aria-invalid={!!slugError} className="w-full rounded-lg border border-white/10 bg-[#0b0f15] px-2 py-1" /></label>
+        <input value={slug} onChange={(e) => setSlug(e.target.value.trim())} aria-invalid={!!slugError} className="w-full rounded-lg border border-white/10 bg-dashboard-muted px-2 py-1" /></label>
       {slugError && <p className="text-xs text-red-300">{slugError}</p>}
       <button type="button" disabled={busy || !!slugProblem(slug)} onClick={() => void restore(slug)} className="min-h-11 rounded-xl bg-blue-400 px-3 text-white disabled:opacity-50">{t("dashboard.wp3b.restore", "Restore")}</button>
       {alert}

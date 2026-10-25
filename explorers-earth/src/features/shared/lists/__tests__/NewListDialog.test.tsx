@@ -11,10 +11,10 @@ const toast = vi.hoisted(() => Object.assign(vi.fn(), { success: vi.fn(), error:
 vi.mock("sonner", () => ({ toast }));
 // The Google autocomplete is replaced by a button that "picks" Goa.
 vi.mock("../../../Profile/components/AddressInput", () => ({
-  default: (p: { setPlaces?: (place: unknown) => void; placeHolder?: string }) => (
-    <button type="button" onClick={() => p.setPlaces?.({ name: "Goa", place_id: "ChIJ_goa", formatted_address: "Goa, India",
+  default: (p: { setPlaces?: (place: unknown) => void; placeHolder?: string; label?: string }) => (
+    <>{p.label && <span>{p.label}</span>}<button type="button" onClick={() => p.setPlaces?.({ name: "Goa", place_id: "ChIJ_goa", formatted_address: "Goa, India",
       address_components: [{ long_name: "Goa", short_name: "GA", types: ["administrative_area_level_1"] }, { long_name: "Panaji", short_name: "Panaji", types: ["locality"] }],
-      types: [], geometry: { location: { lat: () => 15.4909, lng: () => 73.8278 } } })}>{p.placeHolder}</button>
+      types: [], geometry: { location: { lat: () => 15.4909, lng: () => 73.8278 } } })}>{p.placeHolder}</button></>
   ),
 }));
 import NewListDialog from "../NewListDialog";
@@ -23,6 +23,12 @@ const wrap = (ui: React.ReactElement) => render(<I18nextProvider i18n={englishI1
 beforeEach(() => { vi.clearAllMocks(); writes.createList.mockResolvedValue({ id: "new-id" }); });
 
 describe("NewListDialog", () => {
+  it("uses a category-appropriate name placeholder and one Location label for places (UAT A)", () => {
+    wrap(<NewListDialog open category="places" username="fixture" onClose={() => {}} onCreated={() => {}} />);
+    expect(screen.getAllByText("Location")).toHaveLength(1);
+    expect(screen.getByLabelText("Name")).toHaveAttribute("placeholder", "e.g. Goa weekend");
+  });
+
   it("creates with name, optional description and auto slug, then lands on the list", async () => {
     const onCreated = vi.fn();
     wrap(<NewListDialog open category="movies" username="fixture" onClose={() => {}} onCreated={onCreated} />);

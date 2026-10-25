@@ -92,24 +92,24 @@ export default function NewListDialog({ open, category, username, initialName = 
 
   const field = "w-full rounded-lg border border-dashboard-border bg-dashboard-muted px-4 py-3 text-sm text-dashboard placeholder-dashboard-muted focus:border-dashboard-accent focus:outline-none";
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm md:p-6" role="presentation" onClick={onClose}>
+    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-dashboard-overlay p-4 backdrop-blur-sm md:p-6" role="presentation" onClick={onClose}>
       <form role="dialog" aria-modal="true" aria-label={t("dashboard.wp3a.dialog.title")} onSubmit={submit} onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => { if (event.key === "Escape") onClose(); }}
         className="w-full max-w-2xl space-y-5 rounded-xl border border-dashboard-border bg-dashboard-sidebar p-6 shadow-2xl md:p-8">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-dashboard">{t("dashboard.wp3a.dialog.title")}</h2>
-          <button type="button" onClick={onClose} aria-label={t("dashboard.wp3a.dialog.cancel")} className="rounded-full bg-white/5 p-1.5 text-dashboard-muted">✕</button>
+          <button type="button" onClick={onClose} aria-label={t("dashboard.wp3a.dialog.cancel")} className="rounded-full bg-dashboard-muted p-1.5 text-dashboard-muted">✕</button>
         </div>
         {places && (
           <div className="grid gap-2">
             <span className="text-sm font-semibold text-dashboard">{t("dashboard.wp3a.dialog.location")}</span>
-            <AddressInput type="listName" label={t("dashboard.wp3a.dialog.location")} setPlaces={pickPlace} onChange={() => {}} placeHolder={t("dashboard.wp3a.dialog.locationPlaceholder")} />
+            <AddressInput type="listName" label="" setPlaces={pickPlace} onChange={() => {}} placeHolder={t("dashboard.wp3a.dialog.locationPlaceholder")} />
             {errors.location && <p role="alert" className="text-xs text-red-400">{errors.location}</p>}
           </div>
         )}
         <div className="grid gap-2">
           <label htmlFor="wp3a-name" className="text-sm font-semibold text-dashboard">{t("dashboard.wp3a.dialog.name")}</label>
-          <input id="wp3a-name" ref={firstField} value={name} maxLength={500} onChange={(event) => changeName(event.target.value)} placeholder={t("dashboard.wp3a.dialog.namePlaceholder")} className={field} />
+          <input id="wp3a-name" ref={firstField} value={name} maxLength={500} onChange={(event) => changeName(event.target.value)} placeholder={t(`dashboard.wp3a.dialog.namePlaceholders.${category}`, { defaultValue: t("dashboard.wp3a.dialog.namePlaceholder") })} className={field} />
           {errors.name && <p role="alert" className="text-xs text-red-400">{errors.name}</p>}
         </div>
         <div className="grid gap-2">
@@ -121,12 +121,12 @@ export default function NewListDialog({ open, category, username, initialName = 
           <div className="flex min-w-0 items-center gap-1 text-[11px] text-dashboard-muted">
             <span className="min-w-0 truncate">{getCurrentDomain()}/{username}/</span>
             <input id="wp3a-slug" value={slug} onChange={(event) => { setSlugEdited(true); setSlug(slugDraft(event.target.value)); }}
-              className="w-24 min-w-0 flex-1rounded-md border border-dashboard-border bg-dashboard-muted px-2 py-1 text-[12px] text-dashboard" />
+              className="w-24 min-w-0 flex-1 rounded-md border border-dashboard-border bg-dashboard-muted px-2 py-1 text-[12px] text-dashboard" />
           </div>
           {errors.slug && <p role="alert" className="text-xs text-red-400">{errors.slug}</p>}
         </div>
         <div className="flex justify-end gap-3 border-t border-dashboard-border pt-4">
-          <button type="button" onClick={onClose} className="rounded-xl border border-white/10 px-5 py-2.5 text-sm text-gray-200">{t("dashboard.wp3a.dialog.cancel")}</button>
+          <button type="button" onClick={onClose} className="rounded-xl border border-dashboard-border px-5 py-2.5 text-sm text-dashboard">{t("dashboard.wp3a.dialog.cancel")}</button>
           <button type="submit" disabled={saving} className="rounded-xl bg-[#60a5fa] px-5 py-2.5 text-sm font-medium text-white disabled:opacity-60">{t("dashboard.wp3a.dialog.create")}</button>
         </div>
       </form>

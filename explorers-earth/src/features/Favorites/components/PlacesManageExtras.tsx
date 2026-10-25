@@ -24,11 +24,11 @@ export default function PlacesManageExtras({ location, save }: Props) {
     finally { setBusy(false); }
   };
   return (
-    <section className="grid gap-2 rounded-2xl border border-white/10 bg-[#151a25] p-4">
+    <section className="grid gap-2 rounded-2xl border border-dashboard-border bg-dashboard-sidebar text-dashboard p-4">
       <label className="grid gap-1 text-xs">{t("dashboard.wp6.listSocialLink", "Social link for this list")}
-        <input className="w-full rounded-lg border border-white/10 bg-[#0b0f15] px-3 py-2 text-sm" value={link} placeholder="https://www.instagram.com/…" onChange={(e) => setLink(e.target.value)} /></label>
+        <input className="w-full rounded-lg border border-dashboard-border bg-dashboard-muted px-3 py-2 text-sm" value={link} placeholder="https://www.instagram.com/…" onChange={(e) => setLink(e.target.value)} /></label>
       {problem && <p role="alert" className="text-xs text-red-300">{problem}</p>}
-      <button type="button" disabled={busy || !changed} onClick={() => void submit()} className="justify-self-start min-h-11 rounded-xl border border-white/10 px-4 disabled:opacity-50">
+      <button type="button" disabled={busy || !changed} onClick={() => void submit()} className="justify-self-start min-h-11 rounded-xl border border-dashboard-border px-4 disabled:opacity-50">
         {t("dashboard.wp6.saveLink", "Save link")}</button>
     </section>
   );
