@@ -309,6 +309,7 @@ export async function importYouTubeMusicPlaylistToMain(
           title: item.title,
           artist: item.artist,
           thumbnailUrl: item.thumbnailUrl,
+          position: 0, // storage.addSong assigns the real queue position
         });
         addedCount++;
       } catch (error) {
