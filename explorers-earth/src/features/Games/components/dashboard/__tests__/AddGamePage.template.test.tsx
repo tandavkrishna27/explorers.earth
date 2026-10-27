@@ -72,7 +72,7 @@ describe('AddGamePage on the shared add template (WP7)', () => {
   fireEvent.click(screen.getAllByRole('button', { name: /add manually/i })[0]);
   expect(screen.getByLabelText('Developer')).toHaveValue('');
   expect(screen.getByLabelText('Release year')).toHaveValue(null);
-  expect(screen.getByLabelText('Platforms')).toHaveValue('');
+  expect(screen.queryAllByRole('button', { pressed: true })).toHaveLength(0);
   expect(screen.getByLabelText('Genres')).toHaveValue('');
   expect(screen.getByRole('combobox', { name: 'Category' })).toHaveValue('');
   expect(screen.queryAllByAltText('Game snapshot')).toHaveLength(0);
