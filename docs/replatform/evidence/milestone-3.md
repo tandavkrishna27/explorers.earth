@@ -90,3 +90,11 @@ The first drill of a real production backup, which closes the "production backup
 - Drill: `npm run platform:restore-drill` on the owner's machine from a clean checkout of `main` at `ed71ecaa`. Passed on the first attempt.
 - Result: **passed**, `recoveryMilliseconds` 12446; 86 media objects whose hashes all matched, 33 through the gated route; restricted-role attestation passed; the app booted on the restored database.
 - Receipt: `recovery-receipt.json`, SHA-256 `17f3ebecb480ae1dfea70d4f62e7a88910643263bb8d4b1c8f15fcf4d5aa8681`.
+
+## Production drill at 0071 (2026-10-27)
+
+- Backup: the refused UAT-fix deploy's own pre-deploy backup (run `c1eee66e`, reason `pre-deploy`, 2026-10-27T06:59Z), migration head `0071_explorers_samples`.
+- Why it was needed: the dashboard-phase deploy took the live database to 0071 while the committed receipt was still at 0068, so the next deploy (run 40463262140) was refused with `DRILL_MARKER_MISMATCH`.
+- Drill: `npm run platform:restore-drill` on the owner's machine from a clean checkout of `main` at `3dbf9e15`. Passed on the first attempt.
+- Result: **passed**, `recoveryMilliseconds` 12145. Journal 71 rows, head 0071; every row count matched; 1 account with an authenticated restored session; 98 media objects whose hashes all matched, 33 through the gated route.
+- Receipt: `recovery-receipt.json`, SHA-256 `5a643d4a7fa37b1f130218174aced390a55df1cea1b3b13526c7d6f630641e40`.

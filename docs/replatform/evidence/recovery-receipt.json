@@ -1,33 +1,33 @@
 {
   "version": "explorers-platform-restore-drill/v1",
-  "runId": "8d8aae1e388de194062b1e8fb3a1964f",
+  "runId": "39fac8a3a4ea8497ddc46b84928abc84",
   "result": "passed",
-  "drilledAt": "2026-10-23T20:06:34.589Z",
-  "drillCommit": "ed71ecaaac929853637f6815fe03dfd00dcf0b0f",
-  "manifestDigest": "a5fa72b09d8f682ca8c45ca54b272c0e78732d9064a455df00984fe231738ce3",
-  "migrationMarker": "0068_explorers_category_data_shape",
-  "schemaChecksum": "9751d1032c89010e0af4efcee23cdadb52c5116d54fb315ed637c31bf7fc2a1e",
+  "drilledAt": "2026-10-27T07:07:45.034Z",
+  "drillCommit": "3dbf9e154b71669fa8cb59bb898dcedefe22ff2d",
+  "manifestDigest": "30b9a999e966b11dd7d4d68f5f8b5d4f297777a9118561a816ac572e01430eeb",
+  "migrationMarker": "0071_explorers_samples",
+  "schemaChecksum": "1ae487e31806470234d7ceb43636798d69d94c03bfdf9044d4556b058f8aab1d",
   "cleanup": "database-dropped-container-removed",
   "phases": [
     {
       "phase": "download",
-      "milliseconds": 3707
+      "milliseconds": 3740
     },
     {
       "phase": "decrypt",
-      "milliseconds": 769
+      "milliseconds": 618
     },
     {
       "phase": "acquire-target",
-      "milliseconds": 1970
+      "milliseconds": 2173
     },
     {
       "phase": "bootstrap-roles",
-      "milliseconds": 9
+      "milliseconds": 7
     },
     {
       "phase": "pg-restore",
-      "milliseconds": 1041
+      "milliseconds": 1020
     },
     {
       "phase": "repair-known-drift",
@@ -35,29 +35,29 @@
     },
     {
       "phase": "attest-schema",
-      "milliseconds": 324
+      "milliseconds": 296
     },
     {
       "phase": "attest-runtime-role",
-      "milliseconds": 326
+      "milliseconds": 310
     },
     {
       "phase": "boot",
-      "milliseconds": 2349
+      "milliseconds": 1989
     },
     {
       "phase": "probe",
-      "milliseconds": 323
+      "milliseconds": 320
     },
     {
       "phase": "media",
-      "milliseconds": 1618
+      "milliseconds": 1662
     }
   ],
   "proofs": {
     "journal": {
-      "rows": 68,
-      "currentId": "0068_explorers_category_data_shape"
+      "rows": 71,
+      "currentId": "0071_explorers_samples"
     },
     "identity": {
       "authUsers": 1,
@@ -65,17 +65,17 @@
       "creatorAccounts": 1
     },
     "categories": {
-      "places": 8,
+      "places": 9,
       "books": 5,
       "guides": 0,
       "products": 18
     },
     "media": {
-      "objects": 86,
-      "hashesMatched": 86,
+      "objects": 98,
+      "hashesMatched": 98,
       "gatedRouteResolved": 33
     },
     "rowCountsMatched": true
   },
-  "recoveryMilliseconds": 12446
+  "recoveryMilliseconds": 12145
 }
