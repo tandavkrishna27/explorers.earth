@@ -92,7 +92,7 @@ const checkpointSchema = z.object({
   fixtureSchemaVersion: z.string().min(1).max(128),
   environment: z.enum(["fixture", "staging", "production"]),
   environmentFingerprint: z.string().min(1).max(256),
-  gateValues: z.record(z.string().max(512)),
+  gateValues: z.record(z.string(), z.string().max(512)),
   thresholds: thresholdsSchema,
   source: sourceSchema.optional(),
   nextPage: z.number().int().positive(),
