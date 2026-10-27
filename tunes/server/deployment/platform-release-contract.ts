@@ -12,7 +12,7 @@ const digest = z.string().regex(/^sha256:[a-f0-9]{64}$/);
 const architecture = z.enum(['linux/amd64', 'linux/arm64']);
 const evidence = z.string().regex(/^artifact:[1-9][0-9]{0,19}\/[a-zA-Z0-9_-]{1,96}$/);
 const platform = z.object({ digest, smokeEvidenceRef: evidence }).strict();
-const image = z.object({ repository: short, digest, platforms: z.record(platform).refine(p => Object.keys(p).length >= 1 && Object.keys(p).length <= 2 && Object.keys(p).every(k => architecture.safeParse(k).success)) }).strict();
+const image = z.object({ repository: short, digest, platforms: z.record(z.string(), platform).refine(p => Object.keys(p).length >= 1 && Object.keys(p).length <= 2 && Object.keys(p).every(k => architecture.safeParse(k).success)) }).strict();
 const releaseSchema = z.object({ version: z.literal(1), sourceCommit: z.string().regex(/^[a-f0-9]{40}$/), schemaVersion: z.literal(SCHEMA_FLOOR), producerRunId: z.string().regex(/^[1-9][0-9]{0,19}$/), producerRepository: z.literal('tandavkrishna27/explorers.earth'), producerWorkflow: z.literal('.github/workflows/platform-candidate.yml'), testEvidenceRef: evidence, images: z.object({ api: image, web: image }).strict(), manifestDigest: digest }).strict();
 export type ReleaseManifest = z.infer<typeof releaseSchema>;
 export function canonicalDigest(value: unknown): string {
