@@ -130,7 +130,7 @@ describe("canonical qualification evidence contract", () => {
     });
     const npmConfiguration = builder({ authority: "default", ambient });
     expect(npmConfiguration.NPM_CONFIG_GLOBALCONFIG).not.toBe(npmConfiguration.NPM_CONFIG_USERCONFIG);
-    expect(readFileSync(npmConfiguration.NPM_CONFIG_GLOBALCONFIG, "utf8")).toBe("");
+    expect(readFileSync(String(npmConfiguration.NPM_CONFIG_GLOBALCONFIG), "utf8")).toBe("");
     expect(() => builder({ authority: "c10-postgres", ambient })).toThrow(/owned C10 database/i);
     expect(() => builder({ authority: "default", ambient, ownedDatabase })).toThrow(/foreign database authority/i);
     expect(ambient).toEqual(before);
