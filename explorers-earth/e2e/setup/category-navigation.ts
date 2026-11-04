@@ -430,14 +430,34 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
         });
         // Games is served by the manual Games projection (gamesPublicPageSchema), not the
         // legacy list shape: ids are UUIDs and children live under `recommendations`.
+        const gameRow = (list: Record<string, any>, row: Record<string, any>, index: number) => ({
+          id: fixtureUuid(`game:${row.documentId}`), entityId: fixtureUuid(`game-entity:${row.documentId}`), kind: 'game',
+          collection: { id: fixtureUuid(`game-list:${list.documentId}`), title: list.List_Name, slug: list.slug },
+          title: row.title ?? null,
+          userRating: Number.isInteger(row.user_rating) && row.user_rating >= 1 && row.user_rating <= 10 ? row.user_rating : null,
+          note: row.user_recommendation_note ? { version: 1, format: 'quill-html', html: String(row.user_recommendation_note) } : null,
+          gamePresentation: {
+            version: 'explorers-manual-game/v1', origin: 'manual', providerExternalId: null, providerFacts: null, images: [], coverMediaId: null,
+            details: {
+              releaseYear: /^\d{4}$/.test(String(row.release_year ?? '')) ? Number(row.release_year) : null,
+              platforms: (row.platforms ?? []).filter((v: unknown) => typeof v === 'string').slice(0, 12),
+              genres: (row.genres ?? []).filter((v: unknown) => typeof v === 'string').slice(0, 12),
+              developer: typeof row.developer === 'string' && row.developer.trim() ? row.developer : null,
+            },
+          },
+          displayOrder: row.display_order ?? index,
+          pinPosition: row.is_pinned && Number.isInteger(row.pin_order) ? row.pin_order : null,
+        });
         const gamesPage = (lists: Array<Record<string, any> | null>) => ({
           version: 'explorers-manual-games-page/v1',
           gameLists: lists.map((list, index) => list && ({
-            id: fixtureUuid(`game-list:${list.documentId}`), title: list.List_Name, description: list.Description ?? null, slug: list.slug,
-            heading: null, displayOrder: index, coverMediaId: null, coverUrl: null,
-            recommendations: [], nextCursor: list.recommended_games_next_cursor ?? null,
+            id: fixtureUuid(`game-list:${list.documentId}`), title: list.List_Name, description: list.list_description ?? list.Description ?? null, slug: list.slug,
+            heading: list.top_picks_heading ?? null, displayOrder: list.display_order ?? index, coverMediaId: null, coverUrl: null,
+            recommendations: (list.recommended_games ?? []).map((row: Record<string, any>, rowIndex: number) => gameRow(list, row, rowIndex)),
+            nextCursor: list.recommended_games_next_cursor ?? null,
           })),
-          topPicks: [],
+          topPicks: match[2] ? [] : lists.flatMap(list => list ? (list.recommended_games ?? []).map((row: Record<string, any>, rowIndex: number) => ({ row: gameRow(list, row, rowIndex), pinned: row.is_pinned })) : [])
+            .filter(entry => entry.pinned && entry.row.pinPosition !== null).map(entry => entry.row).slice(0, 15),
           nextCursor: !match[2] && offset + limit < publicLists.length ? `o${offset + limit}` : null,
         });
         const body = match[2]
