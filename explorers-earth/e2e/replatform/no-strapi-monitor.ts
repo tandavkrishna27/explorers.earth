@@ -18,6 +18,9 @@ const STUBS: { name: string; test: (url: URL, resource: string) => boolean }[] =
   // Decorative CSS background textures on the recommendations hub (pages/RecommendationsHub.tsx).
   { name: 'transparenttextures', test: (url, resource) => url.hostname === 'www.transparenttextures.com'
     && url.pathname.startsWith('/patterns/') && resource === 'image' },
+  // Stock avatars in the landing testimonials and fallback category art (LandingPage/components/Testimonials.tsx).
+  { name: 'unsplash', test: (url, resource) => url.hostname === 'images.unsplash.com'
+    && url.pathname.startsWith('/photo-') && resource === 'image' },
 ];
 
 export type Verdict = 'poisoned' | 'local' | 'stub' | 'unknown';

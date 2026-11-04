@@ -23,10 +23,13 @@ const heading = (text: string) => `:is(h1,h2):has-text("${text}")`;
  */
 const CATEGORY_PAGE = '[data-category-page]';
 
-/** One owner path visited at both viewports: desktop claims tree #1, mobile claims tree #2. */
+/**
+ * One owner path visited at both viewports. ProtectedRoutes renders a single tree for every
+ * viewport now, so the desktop case claims its one occurrence and the mobile case visits it too.
+ */
 function owner(path: string, literal: string, lands?: RegExp, marker?: string): RouteCase[] {
   return (['desktop', 'mobile'] as const).map((viewport, index) => ({
-    source: [`ProtectedRoutes.tsx:${literal}#${index + 1}`], url: () => path, as: 'owner', viewport, lands, marker }));
+    source: index === 0 ? [`ProtectedRoutes.tsx:${literal}#1`] : [], url: () => path, as: 'owner', viewport, lands, marker }));
 }
 const pub = (path: string, key: string, marker?: string): RouteCase => ({ source: [`PublicRoutes.tsx:${key}`], url: (h) => `/${h}${path}`, as: 'anon', marker });
 const auth = (path: string): RouteCase => ({ source: [`AuthRoutes.tsx:${path}#1`], url: () => path, as: 'anon' });
@@ -98,16 +101,12 @@ export const ROUTES: RouteCase[] = [
 
 /** Occurrences deliberately not visited, each with the reason. A new occurrence must be claimed here or in ROUTES. */
 export const EXCLUDED: Record<string, string> = {
-  'ProtectedRoutes.tsx:/*#1': 'desktop layout route; every child is visited',
-  'ProtectedRoutes.tsx:/*#2': 'mobile layout route; every child is visited',
-  // The same URLs are registered at top level (AppRoutes.tsx) and inside both protected trees.
+  'ProtectedRoutes.tsx:/*#1': 'layout route (one tree for every viewport); every child is visited',
+  // The same URLs are registered at top level (AppRoutes.tsx) and inside the protected tree.
   // The top-level cases above visit each URL and assert its target; these occurrences are not separately reachable.
   'ProtectedRoutes.tsx:guides#1': 'shadowed by AppRoutes.tsx:/guides (visited); same target',
-  'ProtectedRoutes.tsx:guides#2': 'shadowed by AppRoutes.tsx:/guides (visited); same target',
   'ProtectedRoutes.tsx:hub#1': 'shadowed by AppRoutes.tsx:/hub (visited); same target',
-  'ProtectedRoutes.tsx:hub#2': 'shadowed by AppRoutes.tsx:/hub (visited); same target',
   'ProtectedRoutes.tsx:music#1': 'shadowed by AppRoutes.tsx:/music/* (visited); same target',
-  'ProtectedRoutes.tsx:music#2': 'shadowed by AppRoutes.tsx:/music/* (visited); same target',
   'AuthRoutes.tsx:/email-verification#1': 'Navigate to /login (AuthRoutes.tsx), which is visited',
   'AuthRoutes.tsx:/register#1': 'Navigate to /login (AuthRoutes.tsx), which is visited',
   'AuthRoutes.tsx:/forgot-password#1': 'Navigate to /login',

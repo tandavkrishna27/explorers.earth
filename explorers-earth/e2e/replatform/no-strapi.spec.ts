@@ -142,7 +142,8 @@ test('monitor self-test: every channel to Strapi is seen and refused, and canoni
 });
 
 for (const { route, viewport } of CASES) {
-  const title = `${viewport} ${route.source.join(' + ')} makes no Strapi request`;
+  // A case that claims no occurrence (the mobile visit of a shared owner route) is named by its path.
+  const title = `${viewport} ${route.source.join(' + ') || route.url('')} makes no Strapi request`;
   test(title, async ({ browser }) => {
     const { origin, personas } = fixture();
     const context = await guardedContext(browser, RUN, origin, VIEWPORT[viewport]);
