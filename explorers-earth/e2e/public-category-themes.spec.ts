@@ -19,7 +19,9 @@ test('map adapter allowance preserves wrong-origin and unknown-module denial', a
     await visitor.page.goto('/fixture-owner');
     // Top-level navigation reaches the route boundary even when page CSP blocks cross-origin fetch.
     await visitor.page.goto('https://wrong-origin.invalid/e2e/setup/category-theme-maps-fixture.tsx').catch(() => undefined);
-    await visitor.page.goto('/fixture-owner');
+    // The blocked navigation commits Chromium's error page asynchronously; a goto issued before it
+    // lands is interrupted by it, so retry the return navigation until it owns the page.
+    await expect(async () => { await visitor.page.goto('/fixture-owner'); }).toPass({ timeout: 15_000 });
     await visitor.page.evaluate(async () => { await fetch('/e2e/setup/not-allowed.tsx').catch(() => undefined); });
     expect(visitor.guard.denied).toEqual(['GET external wrong-origin.invalid', 'GET /e2e/setup/not-allowed.tsx']);
     await test.info().attach('expected-containment-denials', { contentType: 'application/json', body: JSON.stringify(visitor.guard.denied) });
@@ -1689,6 +1691,8 @@ test('review fix TV badge has a contrasting semantic pair on poster and modal', 
     expect(visitor.page.viewportSize()).toEqual(viewport);
     await visitor.page.goto('/fixture-owner/movies');
     expect(await visitor.page.evaluate(() => innerWidth)).toBe(viewport.width);
+    // The colour checks below are short soft polls; wait for the cards to render first.
+    await expect(visitor.page.getByText('Series', { exact: true }).last()).toBeVisible();
     const badge = visitor.page.getByText('Series', { exact: true }).last().locator('..');
     await colorExpect(badge).toHaveCSS('color', 'rgb(255, 255, 255)');
     await colorExpect(badge).toHaveCSS('background-color', 'rgb(29, 78, 216)');
