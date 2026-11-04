@@ -1,178 +1,44 @@
-import { expect, test, type Browser, type Page, type Route } from "@playwright/test";
-import { setupMockAuthentication } from "./setup/auth";
-import { denyHostedEgress } from "./setup/deny-hosted-egress";
+import { expect, test, type Browser } from "@playwright/test";
 import { bookFixtureId } from "./setup/books-owner-content";
 import { closeFixture, fixtureState, openFixture } from "./setup/category-navigation";
 import { canonicalAccountFixture } from "../src/test/canonicalAccountFixture";
 import { collectionCoreDtoSchema } from "../../tunes/shared/explorersContract";
 
-const consoleIssues = new WeakMap<Page, string[]>();
-const failedResponses = new WeakMap<Page, string[]>();
-
-const operationName = (route: Route) => {
-  const payload = route.request().postDataJSON() as
-    | { operationName?: string; query?: string }
-    | undefined;
-  return (
-    payload?.operationName ||
-    payload?.query?.match(/(?:query|mutation)\s+(\w+)/)?.[1] ||
-    "Unknown"
-  );
-};
-
-const account = {
-  __typename: "Account",
-  documentId: "mock-account-123",
-  Account_Name: "Test Account",
-  Account_Type: "business",
-  mobile_number: "1234567890",
-  localtunes_integrated: false,
-  public_profile: "Yes",
-  public_recommendations: "Yes",
-  public_music: "No",
-  public_movie: "No",
-  public_guides: "No",
-  public_books: "No",
-  public_games: "No",
-  public_apps: "No",
-  public_products: "No",
-  public_people: "No",
-  pinned_nav_tabs: [],
-  auto_pinning: false,
-  profile_picture: null,
-};
-
-const user = {
-  __typename: "UsersPermissionsUser",
-  documentId: "mock-user-123",
-  username: "testuser",
-  email: "test@explorers.earth",
-  provider: "local",
-  confirmed: true,
-  blocked: false,
-  accounts: [account],
-};
-
-test.beforeEach(async ({ context, page }) => {
-  await denyHostedEgress(page);
-  await setupMockAuthentication(context);
-  await page.route("**/__localtunes/api/music/identity/ensure", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: "{}" }),
-  );
-  await context.addInitScript(() => {
-    sessionStorage.setItem("localtunes_sync_done", "1");
+// The hub runs on the contained owner fixture (canonical session, GET /api/explorers/v1/me,
+// native owner reads). The Strapi-era GraphQL mocks it used before left the canonical account
+// read unanswered, so the app showed "Couldn't load your account" instead of the hub.
+// closeFixture() asserts no denied request and no console error; failed responses are
+// asserted here as before.
+test("recommendations hub renders every supported category cleanly", async ({ browser, baseURL }) => {
+  const handle = await openFixture(browser, baseURL!, fixtureState(), { owner: true });
+  const failedResponses: string[] = [];
+  handle.page.on("response", (response) => {
+    if (response.status() >= 400) failedResponses.push(`${response.status()} ${new URL(response.url()).pathname}`);
   });
+  try {
+    const { page } = handle;
+    await page.goto("/recommendations", { waitUntil: "domcontentloaded" });
+    // The redesigned hub keeps its title as a screen-reader-only h1.
+    await expect(
+      page.getByRole("heading", { level: 1, name: "All Your Recommendations in One Place" }),
+    ).toBeAttached();
 
-  const pageConsoleIssues: string[] = [];
-  const pageFailedResponses: string[] = [];
-  consoleIssues.set(page, pageConsoleIssues);
-  failedResponses.set(page, pageFailedResponses);
-  page.on("console", (message) => {
-    const text = message.text();
-    if (
-      message.type() === "error" ||
-      (message.type() === "warning" && text.includes("go.apollo.dev"))
-    ) {
-      pageConsoleIssues.push(text);
+    const cards = page.locator(".rec-card");
+    await expect(cards).toHaveCount(8);
+    for (const label of [
+      "Places",
+      "Movies & Shows",
+      "Books",
+      "Games",
+      "Apps & Tools",
+      "Products",
+      "People",
+      "Guides",
+    ]) {
+      await expect(cards.getByText(label, { exact: true })).toBeVisible();
     }
-  });
-  page.on("response", (response) => {
-    if (response.status() >= 400) {
-      pageFailedResponses.push(`${response.status()} ${response.url()}`);
-    }
-  });
-
-  await page.route("**/api/playlists?**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ playlists: [] }),
-    });
-  });
-
-  await page.route("**/graphql", async (route) => {
-    const operation = operationName(route);
-    if (
-      operation === "CheckOnboardingStatus" ||
-      operation === "CheckOnboardingForSync" ||
-      operation === "SidebarAccount" ||
-      operation === "MusicIdentityEligibility" ||
-      operation === "SettingsAccount" ||
-      operation === "RecommendationsHubAccount" ||
-      operation === "CategoryNavigationAccount" ||
-      operation === "GetCurrentUser" ||
-      operation === "user"
-    ) {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ data: { usersPermissionsUser: user } }),
-      });
-    }
-    if (operation === "Account") {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ data: { accounts: [account] } }),
-      });
-    }
-    if (operation === "PublicCategoryListCounts") {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          data: {
-            recommendationLists: [],
-            bookLists: [],
-            movieLists: [],
-            gameLists: [],
-            appLists: [],
-            productLists: [],
-            personLists: [],
-            guides: [],
-          },
-        }),
-      });
-    }
-
-    return route.fulfill({
-      status: 500,
-      contentType: "application/json",
-      body: JSON.stringify({
-        data: null,
-        errors: [{ message: `Unhandled operation ${operation}` }],
-      }),
-    });
-  });
-});
-
-test.afterEach(async ({ page }) => {
-  expect(failedResponses.get(page) || []).toEqual([]);
-  expect(consoleIssues.get(page) || []).toEqual([]);
-});
-
-test("recommendations hub renders every supported category cleanly", async ({
-  page,
-}) => {
-  await page.goto("/recommendations", { waitUntil: "domcontentloaded" });
-  await expect(
-    page.getByRole("heading", { name: "All Your Recommendations in One Place" }),
-  ).toBeVisible();
-
-  const cards = page.locator(".rec-card");
-  await expect(cards).toHaveCount(8);
-  for (const label of [
-    "Places",
-    "Movies & Shows",
-    "Books",
-    "Games",
-    "Apps & Tools",
-    "Products",
-    "People",
-    "Guides",
-  ]) {
-    await expect(cards.getByText(label, { exact: true })).toBeVisible();
-  }
+    expect(failedResponses).toEqual([]);
+  } finally { await closeFixture(handle); }
 });
 
 // WP3A: the shared category template. These cases run on the contained owner fixture

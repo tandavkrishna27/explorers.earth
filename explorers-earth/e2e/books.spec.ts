@@ -1,288 +1,116 @@
-import { test, expect } from '@playwright/test';
-import { setupMockAuthentication } from './setup/auth';
-import { denyHostedEgress } from './setup/deny-hosted-egress';
+import { expect, test } from '@playwright/test';
+import { bookFixtureId } from './setup/books-owner-content';
+import { closeFixture, fixtureState, openFixture } from './setup/category-navigation';
+import { canonicalAccountFixture } from '../src/test/canonicalAccountFixture';
+import { categoryTopPicksInputSchema, categoryTopPicksResultSchema, createCollectionResultSchema, createCollectionSchema, createRecommendationSchema, recommendationCoreDtoSchema } from '../../tunes/shared/explorersContract';
+import { bookCoverImportResultSchema, importBookCoversSchema } from '../../tunes/shared/explorersBookCoverContract';
+import { bookCandidatesSchema, bookEntityDtoSchema, emptyBookDetails, resolveProviderBookSchema } from '../../tunes/shared/explorersBookContract';
 
-test.beforeEach(async ({ context, page }) => {
-  await denyHostedEgress(page);
-  await setupMockAuthentication(context);
-  let recommendationCreated = false;
-  const account = {
-    documentId: 'acc-789',
-    username: 'testuser',
-    Account_Name: 'Test Account',
-    Account_Type: 'business',
-    mobile_number: '1234567890',
-    profile_picture: null,
-    public_recommendations: 'No',
-    public_profile: 'Yes',
-    pinned_nav_tabs: [],
-    auto_pinning: false,
-    localtunes_integrated: false,
-    public_books: 'No',
-    public_movie: 'No',
-    public_games: 'No',
-    public_music: 'No',
-    public_guides: 'No',
-    public_apps: 'No',
-    public_products: 'No',
-    public_people: 'No',
-  };
+// Flow 2. Replaces the Strapi-era flow (GraphQL createBookList / createRecommendedBook and a
+// direct Google Books call). Runs on the contained owner fixture, whose native Books reads are
+// built from state.lists.bookLists, and stubs only the three commands the pages really send
+// (create collection, resolve entity, create recommendation) plus the catalog search. Each
+// command is answered only after its body parses against the shared contract, and the
+// created rows are written back into the fixture so the list page reads them natively.
 
-  await page.route('**/graphql', async route => {
-    const payload = route.request().postDataJSON();
+const LIST = 'summer-reads';
+const BOOK = 'clean-code';
+const VOLUME = 'cleanCode2008';
+const provenance = { provider: 'google_books', externalKind: 'volume', externalId: VOLUME, fetchedAt: 1,
+  sourceUrl: `https://www.googleapis.com/books/v1/volumes/${VOLUME}`, mappingVersion: 1 } as const;
+const details = { ...emptyBookDetails(), subtitle: 'A Handbook of Agile Software Craftsmanship', authors: ['Robert C. Martin'], yearText: '2008', pageCount: 464 };
 
-    if (payload?.query?.includes('CheckOnboardingStatus') || payload?.query?.includes('MyAccountForBooks') || payload?.query?.includes('UsersPermissionsUser') || payload?.query?.includes('usersPermissionsUser')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            usersPermissionsUser: {
-              id: 'fixture-user',
-              documentId: 'fixture-user',
-              username: 'testuser',
-              email: 'test@example.test',
-              provider: 'local',
-              confirmed: true,
-              blocked: false,
-              createdAt: '2026-01-01T00:00:00.000Z',
-              updatedAt: '2026-01-01T00:00:00.000Z',
-              accounts: [account],
-            }
-          }
-        })
-      });
-    } else if (payload?.query?.includes('createBookList')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            createBookList: {
-              documentId: 'book-list-123',
-              List_Name: 'My Summer Reads',
-              list_description: null,
-              slug: 'my-summer-reads',
-              visibility: false,
-              cover_image: null,
-              top_reads_heading: null,
-              display_order: 0,
-              account: { documentId: account.documentId, username: account.username },
-            }
-          }
-        })
-      });
-    } else if (payload?.query?.includes('createRecommendedBook')) {
-      recommendationCreated = true;
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            createRecommendedBook: {
-              documentId: 'book-rec-456',
-              volume_id: 'clean-code-id',
-              title: 'Clean Code',
-              display_order: 0,
-              is_pinned: false,
-            }
-          }
-        })
-      });
-    } else if (payload?.query?.includes('BOOK_LISTS_BY_ACCOUNT') || payload?.query?.includes('BookLists')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            bookLists: [
-              {
-                documentId: 'book-list-123',
-                List_Name: 'My Summer Reads',
-                list_description: null,
-                slug: 'my-summer-reads',
-                visibility: false,
-                cover_image: null,
-                top_reads_heading: null,
-                display_order: 0,
-                account: { documentId: account.documentId, username: account.username },
-                recommended_books: []
-              }
-            ]
-          }
-        })
-      });
-    } else if (payload?.query?.includes('BOOKS_BY_LIST') || payload?.query?.includes('BooksByList')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            bookLists: [
-              {
-                documentId: 'book-list-123',
-                List_Name: 'My Summer Reads',
-                list_description: null,
-                slug: 'my-summer-reads',
-                visibility: false,
-                cover_image: null,
-                top_reads_heading: null,
-                display_order: 0,
-                account: { documentId: account.documentId, username: account.username },
-                recommended_books: recommendationCreated ? [
-                  {
-                    documentId: 'book-rec-456',
-                    volume_id: 'clean-code-id',
-                    title: 'Clean Code',
-                    subtitle: 'A Handbook of Agile Software Craftsmanship',
-                    authors: ['Robert C. Martin'],
-                    year: '2008',
-                    cover_url: 'http://books.google.com/books/content?id=clean-code-id&printsec=frontcover',
-                    cover_url_large: null,
-                    subjects: '["Computers"]',
-                    publisher: 'Prentice Hall',
-                    page_count: 464,
-                    google_rating: 4.5,
-                    description: 'Even bad code can function.',
-                    isbn_13: '9780132350884',
-                    preview_link: 'http://books.google.com',
-                    user_recommendation_note: 'Essential guide to programming craft.',
-                    user_rating: 9,
-                    buy_links: '[]',
-                    is_pinned: false,
-                    pin_order: null,
-                    display_order: 0,
-                    media_details: '{}',
-                    book_categories: [],
-                    Media: []
-                  }
-                ] : []
-              }
-            ]
-          }
-        })
-      });
-    } else if (payload?.query?.includes('bookCategories')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: { bookCategories: [] } }),
-      });
-    } else {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: {} })
-      });
+test('Flow 2: Books List and Recommendation creation E2E', async ({ browser, baseURL }) => {
+  const state = fixtureState();
+  state.lists.bookLists = [];
+  const handle = await openFixture(browser, baseURL!, state, { owner: true });
+  const writes: { path: string; body: any }[] = [];
+  const collectionId = bookFixtureId('collection', LIST);
+  const entityId = bookFixtureId('entity', BOOK);
+  await handle.page.route('**/api/explorers/v1/**', async (route) => {
+    const request = route.request(), url = new URL(request.url()), path = url.pathname;
+    if (request.method() === 'GET' && path === '/api/explorers/v1/catalog/books') {
+      writes.push({ path, body: url.searchParams.get('query') });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(bookCandidatesSchema.parse({
+        version: 'explorers-book-candidates/v1', nextCursor: null, expiresAt: Date.now() + 600000,
+        items: [{ provider: 'google_books', externalKind: 'volume', externalId: VOLUME, title: 'Clean Code', preview: details, provenance, buyLinkSuggestion: null }] })) });
     }
-  });
-
-  await page.route('**/books/content**', async route => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'image/png',
-      body: Buffer.from(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-        'base64',
-      ),
-    });
-  });
-
-  await page.route('**/api/instagram/media-proxy**', async route => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'image/png',
-      body: Buffer.from(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-        'base64',
-      ),
-    });
-  });
-
-  await page.route('**/upload', async route => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify([{ url: '/uploads/fixture-book-cover.jpg' }]),
-    });
-  });
-
-  // Mock Google Books API search call
-  await page.route('https://www.googleapis.com/books/v1/volumes**', async route => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        items: [
-          {
-            id: 'clean-code-id',
-            volumeInfo: {
-              title: 'Clean Code',
-              authors: ['Robert C. Martin'],
-              publishedDate: '2008-08-01',
-              pageCount: 464,
-              averageRating: 4.5,
-              imageLinks: {
-                thumbnail: 'http://books.google.com/books/content?id=clean-code-id&printsec=frontcover'
-              }
-            }
-          }
-        ]
-      })
-    });
-  });
-});
-
-test('Flow 2: Books List and Recommendation creation E2E', async ({ page }) => {
-  const consoleErrors: string[] = [];
-  const failedResponses: string[] = [];
-  page.on('console', message => {
-    if (message.type() === 'error') consoleErrors.push(message.text());
-  });
-  page.on('response', response => {
-    if (response.status() >= 400) {
-      failedResponses.push(`${response.status()} ${response.url()}`);
+    if (request.method() === 'POST' && path === '/api/explorers/v1/collections') {
+      const body = createCollectionSchema.parse(request.postDataJSON()); writes.push({ path, body });
+      state.lists.bookLists.push({ documentId: LIST, List_Name: body.title, Title: body.title, slug: body.slug, Visibility: false, visibility: false,
+        list_description: body.description, account: { documentId: state.account.documentId, username: state.account.username }, recommended_books: [] });
+      return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ collection: createCollectionResultSchema.parse({
+        id: collectionId, accountId: canonicalAccountFixture().id, category: 'books', title: body.title, slug: body.slug,
+        visibility: body.visibility, publicationState: body.publicationState, revision: 1, description: body.description,
+        heading: body.heading, coverMediaId: null, isSample: false }) }) });
     }
+    if (request.method() === 'POST' && path === '/api/explorers/v1/entities/resolve') {
+      const body = resolveProviderBookSchema.parse(request.postDataJSON()); writes.push({ path, body });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ entity: bookEntityDtoSchema.parse({
+        id: entityId, kind: 'book', title: 'Clean Code', details, provenance, origin: 'provider' }) }) });
+    }
+    if (request.method() === 'POST' && path === '/api/explorers/v1/recommendations') {
+      const body = createRecommendationSchema.parse(request.postDataJSON()); writes.push({ path, body });
+      state.lists.bookLists[0].recommended_books.push({ documentId: BOOK, title: 'Clean Code', authors: details.authors, user_rating: body.userRating });
+      return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ recommendation: recommendationCoreDtoSchema.parse({
+        id: bookFixtureId('recommendation', BOOK), accountId: canonicalAccountFixture().id, entityId, category: 'books',
+        userRating: body.userRating, publicationState: body.publicationState, revision: 1, mediaIds: [] }) }) });
+    }
+    // A provider book copies its cover after the create; the catalog offered none, so both
+    // slots fall back.
+    if (request.method() === 'POST' && path === `/api/explorers/v1/recommendations/${bookFixtureId('recommendation', BOOK)}/book-covers`) {
+      const body = importBookCoversSchema.parse(request.postDataJSON()); writes.push({ path: 'book-covers', body });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ coverImport: bookCoverImportResultSchema.parse({
+        id: bookFixtureId('recommendation', BOOK), revision: body.expectedRevision + 1, slots: { cover: { status: 'fallback' }, thumbnail: { status: 'fallback' } } }) }) });
+    }
+    // The add page saves the category's Top Picks set together with the book.
+    if (request.method() === 'PUT' && path === '/api/explorers/v1/categories/books/top-picks') {
+      const body = categoryTopPicksInputSchema.parse(request.postDataJSON()); writes.push({ path: 'top-picks', body });
+      body.orderedPins.forEach((pin, position) => {
+        const book = state.lists.bookLists[0].recommended_books.find((item: any) => bookFixtureId('recommendation', item.documentId) === pin.recommendationId);
+        if (book) Object.assign(book, { is_pinned: true, pin_order: position });
+      });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ topPicks: categoryTopPicksResultSchema.parse({
+        operation: 'replace', categoryRevision: String(Number(body.expectedCategoryRevision) + 1), pinRevision: (body.expectedPinRevision ?? 0) + 1,
+        pins: body.orderedPins.map((pin, position) => ({ ...pin, position })) }) }) });
+    }
+    return route.fallback();
   });
-  await page.goto('/recommendations/books');
+  try {
+    const { page } = handle;
+    await page.goto('/recommendations/books', { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: 'New list' }).filter({ visible: true }).first().click();
+    await page.getByPlaceholder('e.g. Summer reads').fill('My Summer Reads');
+    await page.getByRole('button', { name: 'Create list', exact: true }).click();
+    await expect.poll(() => writes.some((w) => w.path === '/api/explorers/v1/collections')).toBe(true);
+    const created = writes.find((w) => w.path === '/api/explorers/v1/collections')!.body;
+    expect(created).toMatchObject({ category: 'books', title: 'My Summer Reads', visibility: 'private', publicationState: 'draft' });
 
-  const addListBtn = page.locator('button:has-text("New List")').first();
-  await expect(addListBtn).toBeVisible();
-  await addListBtn.click();
+    await page.goto(`/recommendations/books/${collectionId}`, { waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: 'Add book' }).first().click();
+    await expect(page).toHaveURL(new RegExp(`/recommendations/books/${collectionId}/add$`));
 
-  const nameInput = page.locator('input[name="List_Name"]');
-  await nameInput.fill('My Summer Reads');
+    await page.getByPlaceholder('Search by title, author, or ISBN...').fill('Clean Code');
+    await page.getByRole('option').filter({ hasText: 'Clean Code' }).click();
+    const note = page.locator('.ql-editor');
+    await expect(note).toBeVisible();
+    await note.fill('Essential guide to programming craft.');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
 
-  const submitBtn = page.locator('button[type="submit"]:has-text("Create List")');
-  await submitBtn.click();
+    await expect.poll(() => writes.some((w) => w.path === '/api/explorers/v1/recommendations')).toBe(true);
+    expect(writes.find((w) => w.path === '/api/explorers/v1/entities/resolve')!.body)
+      .toEqual({ kind: 'provider', category: 'books', provider: 'google_books', externalKind: 'volume', externalId: VOLUME });
+    const recommendation = writes.find((w) => w.path === '/api/explorers/v1/recommendations')!.body;
+    expect(recommendation).toMatchObject({ category: 'books', entityId, collectionId });
+    expect(recommendation.note.html.replaceAll('&nbsp;', ' ')).toContain('Essential guide to programming craft.');
 
-  await page.goto('/recommendations/books/book-list-123');
+    expect(writes.find((w) => w.path === 'book-covers')!.body).toEqual({ expectedRevision: 1 });
+    expect(writes.find((w) => w.path === 'top-picks')!.body.orderedPins)
+      .toEqual([]); // "Pin to Top Reads" was left off, so the category keeps no pins.
 
-  const addBookBtn = page.locator('button:has-text("Add Book")');
-  await expect(addBookBtn).toBeVisible();
-  await addBookBtn.click();
-
-  await expect(page).toHaveURL(/\/recommendations\/books\/book-list-123\/add/);
-
-  const searchInput = page.locator('input[placeholder*="Search by title"]');
-  await searchInput.fill('Clean Code');
-
-  const searchResult = page.locator('button:has-text("Clean Code")');
-  await expect(searchResult).toBeVisible();
-  await searchResult.click();
-
-  const noteEditor = page.locator('.ql-editor');
-  await expect(noteEditor).toBeVisible();
-  await noteEditor.fill('Essential guide to programming craft.');
-
-  const saveBtn = page.locator('button:has-text("Add to List")');
-  await saveBtn.click();
-
-  await expect(page).toHaveURL(/\/recommendations\/books\/book-list-123/);
-  await expect(page.getByRole('heading', { name: 'Publish this list?' })).toBeVisible();
-  await page.getByRole('button', { name: 'Keep Draft' }).click();
-  await expect(page.getByRole('heading', { name: 'Publish this list?' })).toBeHidden();
-  await expect(page.locator('text=Clean Code')).toBeVisible();
-  expect(failedResponses).toEqual([]);
-  expect(consoleErrors).toEqual([]);
+    await expect(page).toHaveURL(new RegExp(`/recommendations/books/${collectionId}$`));
+    await expect(page.getByText('Clean Code', { exact: true }).first()).toBeVisible();
+  } finally {
+    await closeFixture(handle);
+  }
 });

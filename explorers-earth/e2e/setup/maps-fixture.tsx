@@ -41,5 +41,15 @@ function createPlacesLibrary(fixture: PlacesFixture) {
       placePrediction: { placeId: s.placeId, text: { text: s.main }, mainText: { text: s.main }, secondaryText: s.secondary ? { text: s.secondary } : undefined },
     })) }),
   };
-  return { AutocompleteSessionToken, AutocompleteSuggestion, Place };
+  // The classic widget AddressInput (the New list location field) binds to an input. The
+  // journey picks a suggestion by calling `input._autocompleteMock.select()`, which reports
+  // `__mapsFixture.places.legacyPlace` as the chosen place, as Google's place_changed does.
+  class Autocomplete {
+    private listener: () => void = () => {};
+    constructor(input: HTMLInputElement) { (input as any)._autocompleteMock = this; }
+    addListener(_event: string, listener: () => void) { this.listener = listener; return { remove: () => {} }; }
+    getPlace() { return (fixture as any).legacyPlace; }
+    select() { this.listener(); }
+  }
+  return { AutocompleteSessionToken, AutocompleteSuggestion, Place, Autocomplete };
 }
