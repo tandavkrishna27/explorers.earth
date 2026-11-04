@@ -135,9 +135,10 @@ test(LIFECYCLE_CASES[3], async ({ page }) => {
     await deletion(page);
     expect((await control('observe')).account.status).toBe('pending_deletion');
     await recover(page);
-    await expect(page.getByRole('button', { name: 'Reactivate account', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Cancel deletion', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Cancel account deletion', exact: true })).toBeVisible();
     expect((await page.request.get(`${base}/me`)).status()).toBe(401);
-    await page.getByRole('button', { name: 'Reactivate account', exact: true }).click();
+    await page.getByRole('button', { name: 'Cancel deletion', exact: true }).click();
     await expect(page.getByText('Account reactivated', { exact: true })).toBeVisible();
     const state = await control('observe');
     expect(state).toMatchObject({ account: { id: owners[0].accountId, status: 'active' }, bindings: 1, sessions: 0, proofs: 0, operations: [{ kind: 'delete', state: 'cancelled' }, { kind: 'cancel_deletion', state: 'succeeded' }] });
@@ -327,10 +328,10 @@ for (const [offset, kind] of ['deletion', 'deactivation', 'recovery'].entries())
                 await guard(recoveryContext);
                 const second = await recoveryContext.newPage();
                 await recover(second);
-                await expect(second.getByRole('button', { name: 'Reactivate account', exact: true })).toBeVisible();
+                await expect(second.getByRole('button', { name: kind === 'deletion' ? 'Cancel deletion' : 'Reactivate account', exact: true })).toBeVisible();
                 expect((await second.request.get(`${base}/me`)).status()).toBe(401);
                 const completion = second.waitForResponse(r => new URL(r.url()).pathname === `${base}/recovery/complete` && r.request().method() === 'POST');
-                await second.getByRole('button', { name: 'Reactivate account', exact: true }).click();
+                await second.getByRole('button', { name: kind === 'deletion' ? 'Cancel deletion' : 'Reactivate account', exact: true }).click();
                 expect((await completion).status()).toBe(200);
                 await expect(second.getByText('Account reactivated', { exact: true })).toBeVisible();
                 expect((await control('observe', 0)).account.status).toBe('active');

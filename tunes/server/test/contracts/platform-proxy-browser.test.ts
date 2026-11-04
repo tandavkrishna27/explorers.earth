@@ -4,7 +4,8 @@ test('proxy analytics respects the observed production read-budget reset',()=>{
  expect(publicReadBudgetDelayMs('limit=120, remaining=110, reset=40')).toBe(0);
  expect(publicReadBudgetDelayMs('limit=120, remaining=20, reset=42')).toBe(42250);
  expect(publicReadBudgetDelayMs('limit=120, remaining=0, reset=0')).toBe(250);
- for(const header of [undefined,'limit=120, remaining=-1, reset=10','limit=120, remaining=121, reset=10','limit=120, remaining=2, reset=61','limit=999, remaining=20, reset=5'])expect(()=>publicReadBudgetDelayMs(header)).toThrow();
+ expect(publicReadBudgetDelayMs('limit=600, remaining=590, reset=12')).toBe(0);
+ for(const header of [undefined,'limit=120, remaining=-1, reset=10','limit=120, remaining=121, reset=10','limit=120, remaining=2, reset=61','limit=999, remaining=20, reset=5','limit=600, remaining=600, reset=5'])expect(()=>publicReadBudgetDelayMs(header)).toThrow();
 });
 test('only current loader GIF image requests qualify as denied decorations',()=>{
  expect(isOptionalLoaderImage('https://zupimages.net/up/19/34/4820.gif','image')).toBe(true);

@@ -34,7 +34,7 @@ function createPublicCaseScheduler(io:{now:()=>number;wait:(milliseconds:number)
   const match=typeof header==='string'?/^limit=(\d+),\s*remaining=(\d+),\s*reset=(\d+)$/.exec(header):null;
   if(!match)deny();
   const limit=Number(match[1]),available=Number(match[2]),seconds=Number(match[3]);
-  if(limit!==120||!Number.isInteger(available)||available<0||available>119||!Number.isInteger(seconds)||seconds<0||seconds>60)deny();
+  if(!Number.isInteger(limit)||limit<reservation||limit>600||!Number.isInteger(available)||available<0||available>=limit||!Number.isInteger(seconds)||seconds<0||seconds>60)deny();
   if(remaining===undefined||renew){remaining=available;resetAt=io.now()+seconds*1000;renew=false;}
   else remaining=Math.min(remaining,available);
  };
@@ -193,13 +193,15 @@ async function main(): Promise<number> {
   const controlledAccounts=new Map<string,string>();
   registerBeforeCanonicalTerminator(composed.app,()=>{composed.app.post('/api/__games-fixture/control',async(req,res)=>{
    if(req.ip!=='127.0.0.1'||req.get('origin')!==origin||req.get('x-games-fixture-capability')!==controlCapability)return void res.sendStatus(404);
-   const body=req.body;if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).length!==1||(!['arm-storage','storage-state','release-storage','suspend-ownerA','restore-ownerA'].includes(body.action)&&!(typeof body.action==='string'&&/^public-(begin|end)-(desktop|mobile)-[0-9]$/.test(body.action))))return void res.sendStatus(422);
+   const body=req.body;if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).length!==1||(!['arm-storage','storage-state','release-storage','suspend-ownerA','restore-ownerA','expire-handle-cooldown-ownerA'].includes(body.action)&&!(typeof body.action==='string'&&/^public-(begin|end)-(desktop|mobile)-[0-9]$/.test(body.action))))return void res.sendStatus(422);
    try{
     if(body.action.startsWith('public-begin-'))return void res.json(await publicCases.begin(body.action.slice(13)));
     else if(body.action.startsWith('public-end-'))return void res.json(publicCases.end(body.action.slice(11)));
     else if(body.action==='arm-storage'){if(storageSettled)return void res.sendStatus(409);storageEntered=false;storageSettled=new Promise<void>(done=>{releaseStorage=done;});}
     else if(body.action==='release-storage'){releaseStorage?.();releaseStorage=undefined;storageSettled=undefined;}
     else if(body.action==='suspend-ownerA')await db!.query("UPDATE creator_accounts SET status='suspended',suspended_at=now() WHERE id=$1",[controlledAccounts.get('ownerA')]);
+    // A handle change starts a 30-day cooldown; the transition case moves ownerA's last change into the past so it can restore the seeded handle.
+    else if(body.action==='expire-handle-cooldown-ownerA')await db!.query("UPDATE account_handle_holds SET created_at=created_at-make_interval(days=>31) WHERE account_id=$1",[controlledAccounts.get('ownerA')]);
     else if(body.action==='restore-ownerA')await db!.query("UPDATE creator_accounts SET status='active',suspended_at=NULL WHERE id=$1",[controlledAccounts.get('ownerA')]);
     res.json({entered:storageEntered});
    }catch{res.sendStatus(500);}

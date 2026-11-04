@@ -405,6 +405,14 @@ const fixture = JSON.parse(readFileSync(fixturePath, 'utf8')) as Fixture;
 assertFixtureOrigin(fixture);
 if (fixture.origin !== process.env.PLAYWRIGHT_EXTERNAL_BASE_URL) throw new Error('Profile fixture origin mismatch');
 
+// A previous save's success toast (bottom-center) can sit over the Save button, and sonner
+// pauses its dismissal timer while the pointer hovers it, so a click retried on that spot
+// never lands. Park the pointer and let earlier toasts close before every save.
+async function saveAndPublish(page: Page, scope?: ReturnType<Page['locator']>) {
+  await page.mouse.move(0, 0);
+  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0, { timeout: 15_000 });
+  await (scope ?? page).getByRole('button', { name: /Save & Publish/i }).first().click();
+}
 async function signInAs(page: Page, persona: Persona) {
   const separator = persona.cookie.indexOf('=');
   await page.context().addCookies([{ name: persona.cookie.slice(0, separator),
@@ -470,14 +478,14 @@ for (const [width, height, owner] of [[1365, 900, 'ownerA'], [390, 844, 'ownerB'
     let secondSaveFailed = false;
     try {
     await page.locator('[name="accountName"]').fill(`Updated ${width}`);
-    await page.getByRole('button', { name: /Save & Publish/i }).first().click();
+    await saveAndPublish(page);
     await expect.poll(async () => (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
       headers: { Cookie: persona.cookie },
     })).json()).toMatchObject({ account: { displayName: `Updated ${width}` } });
     secondSave?.phase('edit2');
     await page.locator('[name="accountName"]').fill(`Updated twice ${width}`);
     secondSave?.phase('save2');
-    await page.getByRole('button', { name: /Save & Publish/i }).first().click();
+    await saveAndPublish(page);
     secondSave?.phase('poll2');
     await expect.poll(async () => (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
       headers: { Cookie: persona.cookie },
@@ -485,7 +493,7 @@ for (const [width, height, owner] of [[1365, 900, 'ownerA'], [390, 844, 'ownerB'
     } catch (error) { secondSaveFailed = true; throw error; } finally { await secondSave?.finish(secondSaveFailed); }
     const conflict = stalePage.waitForResponse((response) => response.url().endsWith('/api/explorers/v1/account')
       && response.request().method() === 'PATCH' && response.status() === 409);
-    await stalePage.getByRole('button', { name: /Save & Publish/i }).first().click();
+    await saveAndPublish(stalePage);
     await conflict;
     expect((await (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
       headers: { Cookie: persona.cookie },
@@ -500,7 +508,7 @@ for (const [width, height, owner] of [[1365, 900, 'ownerA'], [390, 844, 'ownerB'
       headers: { Cookie: persona.cookie },
     })).json()).toMatchObject({ account: { profileImage: { mimeType: 'image/jpeg' } } });
     await page.locator('[name="accountName"]').fill(`After avatar ${width}`);
-    await page.getByRole('button', { name: /Save & Publish/i }).first().click();
+    await saveAndPublish(page);
     await expect.poll(async () => (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
       headers: { Cookie: persona.cookie },
     })).json()).toMatchObject({ account: { displayName: `After avatar ${width}` } });
@@ -514,7 +522,7 @@ for (const [width, height, owner] of [[1365, 900, 'ownerA'], [390, 844, 'ownerB'
     expect((await galleryUpload).status()).toBe(201);
     await expect(page.getByRole('button', { name: 'Remove image', exact: true })).toBeVisible();
     const galleryPublish = page.waitForResponse(response => new URL(response.url()).pathname === '/api/explorers/v1/account' && response.request().method() === 'PATCH');
-    await page.getByRole('button', { name: /Save & Publish/i }).first().click();
+    await saveAndPublish(page);
     expect((await galleryPublish).status()).toBe(200);
     await expect.poll(async () => (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
       headers: { Cookie: persona.cookie },
@@ -531,11 +539,11 @@ for (const [width, height, owner] of [[1365, 900, 'ownerA'], [390, 844, 'ownerB'
       details: expect.objectContaining({ aspectRatio: '1.91:1' }),
     })] } });
     await page.goto('/settings');
-    await expect(page.getByRole('tab', { name: 'Account', exact: true })).toBeVisible();
-    await page.getByRole('tabpanel', { name: 'Account' }).getByRole('button', { name: 'Account', exact: true }).click();
+    await expect(page.locator('#settings-panel-account [data-profile-account-settings="account"]')).toBeVisible();
+    await page.locator('[data-profile-account-settings="account"]').getByRole('button', { name: 'Account', exact: true }).click();
     await expect(page.getByPlaceholder('Enter your username')).toHaveValue(persona.handle);
     await page.getByRole('radio', { name: 'Business' }).check();
-    await page.getByRole('tabpanel', { name: 'Account' }).getByRole('button', { name: /Save & Publish/i }).click();
+    await saveAndPublish(page, page.locator('[data-profile-account-settings="account"]'));
     await expect.poll(async () => (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
       headers: { Cookie: persona.cookie },
     })).json()).toMatchObject({ account: { accountType: 'Business' } });
@@ -543,7 +551,7 @@ for (const [width, height, owner] of [[1365, 900, 'ownerA'], [390, 844, 'ownerB'
     await page.getByRole('button', { name: /How to reach us/i }).click();
     await page.getByRole('button', { name: 'Title', exact: true }).click();
     await page.locator('[name="title"]').fill(`Studio ${width}`);
-    await page.getByRole('button', { name: /Save & Publish/i }).first().click();
+    await saveAndPublish(page);
     await expect.poll(async () => (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
       headers: { Cookie: persona.cookie },
     })).json()).toMatchObject({ account: { publicAddress: { title: `Studio ${width}`, places: null } } });
@@ -551,14 +559,14 @@ for (const [width, height, owner] of [[1365, 900, 'ownerA'], [390, 844, 'ownerB'
     await page.getByRole('button', { name: /How to reach us/i }).click();
     await expect(page.locator('[name="title"]')).toHaveValue(`Studio ${width}`);
     await page.goto('/settings');
-    await page.getByRole('tabpanel', { name: 'Account' }).getByRole('button', { name: 'Account', exact: true }).click();
+    await page.locator('[data-profile-account-settings="account"]').getByRole('button', { name: 'Account', exact: true }).click();
     await page.getByRole('radio', { name: 'Creator' }).check();
-    await page.getByRole('tabpanel', { name: 'Account' }).getByRole('button', { name: /Save & Publish/i }).click();
+    await saveAndPublish(page, page.locator('[data-profile-account-settings="account"]'));
     await expect.poll(async () => (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
       headers: { Cookie: persona.cookie },
     })).json()).toMatchObject({ account: { accountType: 'Creator' } });
     await page.reload();
-    await page.getByRole('tabpanel', { name: 'Account' }).getByRole('button', { name: 'Account', exact: true }).click();
+    await page.locator('[data-profile-account-settings="account"]').getByRole('button', { name: 'Account', exact: true }).click();
     await expect(page.getByRole('radio', { name: 'Creator' })).toBeChecked();
     const current = (await (await page.request.get(`${fixture.origin}/api/explorers/v1/me`, {
       headers: { Cookie: persona.cookie },

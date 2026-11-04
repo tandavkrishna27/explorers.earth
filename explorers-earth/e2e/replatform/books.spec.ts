@@ -177,23 +177,23 @@ test.afterEach(async({page},info)=>{await captureBooksDiagnostic(page,info);});
 test('owner form create, Add with all fields, publication, repeat edits and archive reload',async({page},info)=>{
  setBooksDiagnosticStage(info,'setup');
  const owner=fixture.personas.ownerA;await signIn(page,owner);const forbidden=monitor(page);await setCategory(page.request,false);
- await page.goto('/recommendations/books');await page.getByRole('button',{name:'New List',exact:true}).filter({visible:true}).first().click();
- const title=`Browser ${info.project.name}`;await page.locator('input[name="List_Name"]').fill(title);await page.locator('textarea[name="list_description"]').fill('Browser list description');
+ await page.goto('/recommendations/books');await page.getByRole('button',{name:/New list$/}).filter({visible:true}).first().click();
+ const title=`Browser ${info.project.name}`;await page.locator('#wp3a-name').fill(title);await page.locator('#wp3a-description').fill('Browser list description');
  const created=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname===`${base}/collections`);
  setBooksDiagnosticStage(info,'create-start');
- await page.getByRole('button',{name:'Create List',exact:true}).click();const list=(await (await created).json()).collection;expect(list.visibility).toBe('private');expect(list.publicationState).toBe('draft');
+ await page.getByRole('dialog',{name:'New list'}).getByRole('button',{name:'Create list',exact:true}).click();const list=(await (await created).json()).collection;expect(list.visibility).toBe('private');expect(list.publicationState).toBe('draft');
  setBooksDiagnosticStage(info,'collection-created');
  await expect(page).toHaveURL(new RegExp(`/recommendations/books/${list.id}$`));
  setBooksDiagnosticStage(info,'list-route-reached');
  await expect(page.getByText('Yes, Publish',{exact:true})).toHaveCount(0);
  setBooksDiagnosticStage(info,'no-publish-confirmed');
  setBooksDiagnosticStage(info,'add-start');
- await page.getByRole('button',{name:'Add Book',exact:true}).click();
+ await page.getByRole('button',{name:/Add book$/}).filter({visible:true}).first().click();
  setBooksDiagnosticStage(info,'add-returned');
  await page.getByPlaceholder('Search by title, author, or ISBN...').fill('fixture');
  setBooksDiagnosticStage(info,'search-filled');
  setBooksDiagnosticStage(info,'downstream');
- await page.getByRole('option').filter({hasText:'Fixture success'}).click();await expect(page.getByRole('combobox',{name:'Category'})).toBeVisible();await page.locator('.ql-editor').fill('Browser rich note 😀');await page.getByRole('button',{name:'4 stars',exact:true}).click();
+ await page.getByRole('option').filter({hasText:'Fixture success'}).click();await expect(page.getByRole('status').filter({hasText:'Fixture success'})).toBeVisible();await expect(page.getByRole('combobox',{name:'Category'})).toHaveCount(0);await page.locator('.ql-editor').fill('Browser rich note 😀');await page.getByRole('button',{name:'4 stars',exact:true}).click();
  await page.getByPlaceholder('Name (e.g. Amazon)').fill('Personal link');await page.getByPlaceholder('https://...').fill('https://example.com/book');await page.getByRole('button',{name:'Add link'}).click();
  await page.locator('input[type=file]').setInputFiles({name:'snapshot.png',mimeType:'image/png',buffer:png});
  const added=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname===`${base}/recommendations`);
@@ -201,13 +201,12 @@ test('owner form create, Add with all fields, publication, repeat edits and arch
  await page.getByRole('button',{name:'Yes, Publish',exact:true}).click();await expect(page.getByRole('button',{name:'Yes, Publish'})).toHaveCount(0);
  const detail=await editable(page.request,'recommendations',recommendation.id);expect(detail.note.html.replaceAll("&nbsp;"," ")).toContain('Browser rich note');expect(detail.userRating).toBe(8);expect(detail.bookContext.buyLinks).toContainEqual({name:'Personal link',url:'https://example.com/book'});expect(detail.mediaIds).toHaveLength(1);expect(detail.bookCovers.cover).not.toBeNull();expect(detail.bookCovers.thumbnail).not.toBeNull();
  await page.goto('/recommendations/books');
- if(info.project.name==='books-mobile')await page.locator('button').filter({has:page.locator('svg.lucide-chevron-down')}).first().click();
- const categorySaved=page.waitForResponse(r=>r.request().method()==='PATCH'&&new URL(r.url()).pathname===`${base}/account`);await page.locator('label').filter({has:page.locator('input[type=checkbox]')}).filter({visible:true}).first().click();await categorySaved;
+ const categorySaved=page.waitForResponse(r=>r.request().method()==='PATCH'&&new URL(r.url()).pathname===`${base}/account`);await page.getByRole('button',{name:'Visibility: Hidden',exact:true}).click();await page.getByRole('menuitemradio',{name:/^Public/}).click();expect((await categorySaved).status()).toBe(200);await expect(page.getByRole('button',{name:'Visibility: Public',exact:true})).toBeVisible();
  await page.reload();await expect(page.getByText(title,{exact:true})).toBeVisible();
  for(const text of ['First edit without reload','Second edit without reload']){
   await page.goto(`/recommendations/books/${list.id}/edit/${recommendation.id}`);const image=page.locator('img[src*="/api/explorers/v1/media/"]').filter({visible:true}).first();await expect(image).toBeVisible();await expect.poll(()=>image.evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth>0)).toBe(true);expect(new URL((await image.getAttribute('src'))!,fixture.origin).origin).toBe(fixture.origin);await page.locator('.ql-editor').fill(text);await page.getByRole('button',{name:'Save',exact:true}).click();await expect(page).toHaveURL(new RegExp(`/recommendations/books/${list.id}$`));expect((await editable(page.request,'recommendations',recommendation.id)).note.html.replaceAll("&nbsp;"," ")).toContain(text);
  }
- await page.goto(`/recommendations/books/${list.id}`);await page.getByRole('button',{name:'Book actions for Fixture success'}).click();await page.getByRole('button',{name:'Delete',exact:true}).click();await expect(page.getByText('This recommendation will be removed from every list in your account.')).toBeVisible();await page.getByRole('button',{name:'Remove',exact:true}).click();await page.reload();await expect(page.getByText('No books in this list yet.')).toBeVisible();expect(forbidden).toEqual([]);
+ await page.goto(`/recommendations/books/${list.id}`);await page.getByRole('button',{name:'More actions for Fixture success',exact:true}).click();const removed=page.waitForResponse(r=>r.request().method()==='DELETE'&&new URL(r.url()).pathname===`${base}/recommendations/${recommendation.id}`);await page.getByRole('menuitem',{name:'Remove from list',exact:true}).click();expect((await removed).status()).toBe(200);await page.reload();await expect(page.getByText('No books yet',{exact:true})).toBeVisible();expect(forbidden).toEqual([]);
  await page.screenshot({path:info.outputPath('owner-books.png'),fullPage:true});
 });
 
@@ -290,12 +289,13 @@ test('15 across lists, rejected 16th, staged unpin plus immediate reorder and ex
  const memberships=await page.request.get(`${base}/categories/books/memberships?limit=100`);expect(memberships.status()).toBe(200);const members=(await memberships.json()).items;
  const extra=members.find((m:any)=>!initial.items.some((pin:any)=>pin.recommendationId===m.recommendationId));expect(extra).toBeTruthy();
  const tooMany=await command(page.request,'put','/categories/books/top-picks',{expectedCategoryRevision:initial.snapshot,expectedPinRevision:initial.pinRevision,orderedPins:[...initial.items.map((pin:any)=>({recommendationId:pin.recommendationId,collectionId:pin.collectionId})),{recommendationId:extra.recommendationId,collectionId:extra.collectionId}]});expect(tooMany.status()).toBe(422);expect((await pins()).items).toHaveLength(15);
- await page.goto(`/recommendations/books/${extra.collectionId}`);await page.getByRole('button',{name:'Pin to Top Reads',exact:true}).first().click();await expect(page.getByText('Max 15 top reads allowed.')).toBeVisible();
- await page.goto('/recommendations/books');await page.getByRole('button',{name:'Manage Top Reads',exact:true}).filter({visible:true}).first().click();
- const unpin=page.getByRole('button',{name:/^Unpin ownerB seed book/}).first();const removedTitle=(await unpin.getAttribute('aria-label'))!.slice(6);await unpin.click();await expect(page.getByText('Manage Top Reads (14/15)',{exact:true})).toBeVisible();
- const moved=page.waitForResponse(r=>r.request().method()==='PATCH'&&new URL(r.url()).pathname===`${base}/categories/books/top-picks/order`);await page.getByRole('button',{name:/^Move .* down$/}).first().click();expect((await moved).status()).toBe(200);expect((await pins()).items).toHaveLength(15);await expect(page.getByText('Manage Top Reads (14/15)',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Close Top Reads',exact:true}).click();await page.reload();expect((await pins()).items).toHaveLength(15);
- await page.getByRole('button',{name:'Manage Top Reads',exact:true}).filter({visible:true}).first().click();await page.getByRole('button',{name:`Unpin ${removedTitle}`,exact:true}).click();
+ await page.goto(`/recommendations/books/${extra.collectionId}`);await page.getByRole('button',{name:/^Pin .* to Top Picks$/,pressed:false}).first().click();await expect(page.getByText('Max 15 top reads allowed.')).toBeVisible();expect((await pins()).items).toHaveLength(15);
+ const manage=()=>page.getByRole('button').filter({hasText:'Manage Top Picks'}).filter({visible:true}).first();const manager=page.getByRole('dialog',{name:'Manage Top Picks'});
+ await page.goto('/recommendations/books');await manage().click();
+ const unpin=manager.getByRole('button',{name:/^Unpin ownerB seed book/}).first();const removedTitle=(await unpin.getAttribute('aria-label'))!.slice(6);await unpin.click();await expect(manager.getByText('14 of 15 pinned',{exact:true})).toBeVisible();
+ let orderWrites=0;const countOrder=(r:import('@playwright/test').Request)=>{if(new URL(r.url()).pathname.startsWith(`${base}/categories/books/top-picks`)&&r.method()!=='GET')orderWrites++;};page.on('request',countOrder);await manager.getByRole('button',{name:/^Move .* down$/}).first().click();expect((await pins()).items.map((pin:any)=>pin.recommendationId)).toEqual(initial.items.map((pin:any)=>pin.recommendationId));expect(orderWrites).toBe(0);page.off('request',countOrder);await expect(manager.getByText('14 of 15 pinned',{exact:true})).toBeVisible();
+ await manager.getByRole('button',{name:'Close',exact:true}).click();await page.reload();expect((await pins()).items).toHaveLength(15);
+ await manage().click();await manager.getByRole('button',{name:`Unpin ${removedTitle}`,exact:true}).click();await expect(manager.getByText('14 of 15 pinned',{exact:true})).toBeVisible();
   // Fixed boolean failure coordinates only; preserve the original Save boundary.
   let initialSaveReady=false,saveClickCompleted=false,saveRequestCount=0;
   const saveResponseStatuses:number[]=[];
@@ -304,11 +304,11 @@ test('15 across lists, rejected 16th, staged unpin plus immediate reorder and ex
   const observeSaveResponse=(response:import('@playwright/test').Response)=>{if(isSaveRequest(response.request()))saveResponseStatuses.push(response.status());};
   page.on('request',observeSaveRequest);page.on('response',observeSaveResponse);
   try{
-   initialSaveReady=await page.getByRole('button',{name:'Save Top Reads',exact:true}).isEnabled().catch(()=>false);
+   initialSaveReady=await page.getByRole('button',{name:'Save Top Picks',exact:true}).isEnabled().catch(()=>false);
    const saved=page.waitForResponse(r=>r.request().method()==='PUT'&&new URL(r.url()).pathname===`${base}/categories/books/top-picks`);
    // Observe a rejection immediately without altering the original awaited promise.
    void saved.catch(()=>{});
-   await page.getByRole('button',{name:'Save Top Reads',exact:true}).click();saveClickCompleted=true;
+   await page.getByRole('button',{name:'Save Top Picks',exact:true}).click();saveClickCompleted=true;
    expect((await saved).status()).toBe(200);
   }catch(saveFailure){
    expect(initialSaveReady).toBe(true);
@@ -367,5 +367,5 @@ test('delayed canonical catalog continuation cannot append after query change or
  await page.waitForTimeout(1800);await expect(page.getByText(/Fixture obsolete/)).toHaveCount(0);if(mode==='query'){await expect(page.getByRole('alert')).toHaveCount(0);}else await expect(page.locator('.ql-editor')).toBeVisible();}
 });
 test('unsent invalid buy URL can be corrected and saved once',async({page})=>{
- await signIn(page,fixture.personas.ownerA);const list=await createList(page.request,'Correct validation draft');let posts=0;page.on('request',r=>{if(r.method()==='POST'&&new URL(r.url()).pathname===`${base}/recommendations`)posts++;});await page.goto(`/recommendations/books/${list.id}/add`);await page.getByPlaceholder('Search by title, author, or ISBN...').fill('fixture');await page.getByRole('option').filter({hasText:'Fixture success'}).click();await expect(page.locator('.ql-editor')).toBeVisible();await page.getByPlaceholder('Name (e.g. Amazon)').fill('Correction');await page.getByPlaceholder('https://...').fill('http://example.com:8080/book');await page.getByRole('button',{name:'Add link',exact:true}).click();await page.getByRole('button',{name:'Save',exact:true}).click();await expect(page.getByText('Invalid content command',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Save',exact:true})).toBeEnabled();expect(posts).toBe(0);await page.getByText('Correction: http://example.com:8080/book',{exact:true}).locator('..').getByRole('button').click();await page.getByPlaceholder('Name (e.g. Amazon)').fill('Correction');await page.getByPlaceholder('https://...').fill('https://example.com/book');await page.getByRole('button',{name:'Add link',exact:true}).click();await page.getByRole('button',{name:'Save',exact:true}).click();await expect(page).toHaveURL(new RegExp(`/books/${list.id}$`));expect(posts).toBe(1);const members=await page.request.get(`${base}/categories/books/memberships?limit=100`);const matching=(await members.json()).items.filter((m:any)=>m.collectionId===list.id);expect(matching).toHaveLength(1);const saved=await editable(page.request,'recommendations',matching[0].recommendationId);expect(saved.bookContext.buyLinks).toEqual([{name:'Google Books',url:'https://books.google.com/buy'},{name:'Correction',url:'https://example.com/book'}]);
+ await signIn(page,fixture.personas.ownerA);const list=await createList(page.request,'Correct validation draft');let posts=0;page.on('request',r=>{if(r.method()==='POST'&&new URL(r.url()).pathname===`${base}/recommendations`)posts++;});await page.goto(`/recommendations/books/${list.id}/add`);await page.getByPlaceholder('Search by title, author, or ISBN...').fill('fixture');await page.getByRole('option').filter({hasText:'Fixture success'}).click();await expect(page.locator('.ql-editor')).toBeVisible();await page.getByPlaceholder('Name (e.g. Amazon)').fill('Correction');await page.getByPlaceholder('https://...').fill('http://example.com:8080/book');await expect(page.getByRole('alert').filter({hasText:/https/i})).toBeVisible();await expect(page.getByRole('button',{name:'Add link',exact:true})).toBeDisabled();await expect(page.getByText('Correction: http://example.com:8080/book',{exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Save',exact:true})).toBeEnabled();expect(posts).toBe(0);await page.getByPlaceholder('https://...').fill('https://example.com/book');await expect(page.getByRole('alert').filter({hasText:/https/i})).toHaveCount(0);await page.getByRole('button',{name:'Add link',exact:true}).click();await page.getByRole('button',{name:'Save',exact:true}).click();await expect(page).toHaveURL(new RegExp(`/books/${list.id}$`));expect(posts).toBe(1);const members=await page.request.get(`${base}/categories/books/memberships?limit=100`);const matching=(await members.json()).items.filter((m:any)=>m.collectionId===list.id);expect(matching).toHaveLength(1);const saved=await editable(page.request,'recommendations',matching[0].recommendationId);expect(saved.bookContext.buyLinks).toEqual([{name:'Google Books',url:'https://books.google.com/buy'},{name:'Correction',url:'https://example.com/book'}]);
 });

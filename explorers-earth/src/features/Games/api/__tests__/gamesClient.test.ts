@@ -35,3 +35,8 @@ it('sends the draft year, platforms and genres with the manual game resolve (GMS
  expect(vi.mocked(explorersApiClient.resolveManualGame).mock.calls[0][0]).toEqual({title:'Manual',releaseYear:2018,platforms:['PC'],genres:['Platform']});
  expect(()=>GamesClient.prepareManualIntent(parent,{...draft,releaseYear:1850})).toThrow();
 });
+// Items have no draft state in the owner UI any more, so a draft-created game could never become public.
+it('creates the recommendation published so a public list shows it',async()=>{
+ vi.mocked(explorersApiClient.createMyRecommendation).mockResolvedValueOnce({id:'rec'} as never);await GamesClient.createManual(GamesClient.prepareManualIntent(parent,draft));
+ expect(vi.mocked(explorersApiClient.createMyRecommendation).mock.calls[0][1]).toMatchObject({publicationState:'published'});
+});
