@@ -222,7 +222,7 @@ Expected, ending in `host is ready for the first deploy`:
 ```
 ok:   Docker version 29.1.3, ...; Docker Compose version 2.40.3...
 ok:   nginx version: nginx/1.24.0 (Ubuntu)
-ok:   node v24.21.0
+ok:   node v24.22.1
 ok:   ...G free under /var/lib/docker
 ok:   ...MB memory available
 ok:   /opt/explorers (0700) and /srv/explorers exist

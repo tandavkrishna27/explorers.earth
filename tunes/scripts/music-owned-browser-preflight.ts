@@ -61,7 +61,7 @@ async function stopChild(child: ChildProcess) {
   }
 }
 async function childMain() {
-  if (process.version !== 'v24.21.0' || !process.send || !process.connected || process.argv.length !== 3) throw new Error(rejection);
+  if (process.version !== 'v24.22.1' || !process.send || !process.connected || process.argv.length !== 3) throw new Error(rejection);
   const input = await bounded(new Promise<any>(done => process.once('message', done)), 10000);
   if (input?.action !== 'initialize' || input.scriptDigest !== scriptDigest() || !/^[a-f0-9]{64}$/.test(input.capability)) throw new Error(rejection);
   let phase = 'admission', barrierSeen = false, admitted = false;
@@ -112,7 +112,7 @@ async function childMain() {
   }
 }
 async function main() {
-  if (JSON.stringify(process.argv.slice(2)) !== JSON.stringify(['--ack', MUSIC_UAT_DATABASE_ACK]) || process.version !== 'v24.21.0') throw new Error(rejection);
+  if (JSON.stringify(process.argv.slice(2)) !== JSON.stringify(['--ack', MUSIC_UAT_DATABASE_ACK]) || process.version !== 'v24.22.1') throw new Error(rejection);
   for (const [key, value] of Object.entries(process.env)) if (value && /^(DATABASE_|DATABASE_URL|DOCKER_|GATE_PROD|STRAPI_|GOOGLE_|YOUTUBE_|EXPLORERS_|MUSIC_|PLAYWRIGHT_|VITE_|NODE_OPTIONS)/i.test(key)) throw new Error(rejection);
   const contract = await import(pathToFileURL(join(root, 'scripts/replatform-e2e.mjs')).href);
   const provenance = contract.snapshotSource(root).provenance, ownDigest = scriptDigest();

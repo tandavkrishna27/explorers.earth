@@ -49,7 +49,7 @@ The app is configured for Netlify deployment via `netlify.toml`.
 |---------|-------|
 | Build command | `npm run build` |
 | Publish directory | `dist/` |
-| Node version | 24.21.0 (24.x) |
+| Node version | 24.22.1 (24.x) |
 
 ### Environment Variables
 

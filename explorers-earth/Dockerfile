@@ -1,5 +1,5 @@
 # ── Stage 1: Build ──────────────────────────────────────────────────────────
-FROM ghcr.io/tandavkrishna27/mirror/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS builder
+FROM ghcr.io/tandavkrishna27/mirror/node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS builder
 
 WORKDIR /app
 
@@ -43,7 +43,7 @@ CMD ["nginx", "-g", "daemon off;"]
 
 # Canonical images use an explicit target; legacy builder/runner remains available
 # until its retirement ticket. No ambient VITE environment files enter this build.
-FROM ghcr.io/tandavkrishna27/mirror/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS platform-builder
+FROM ghcr.io/tandavkrishna27/mirror/node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS platform-builder
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --engine-strict

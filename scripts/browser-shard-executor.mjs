@@ -158,7 +158,7 @@ export async function discoverOwnedShard(request,authority,{owner,platform=proce
     record.provenance=snapshot.attestation.provenance;record.observedHash=snapshot.attestation.observedHash;
     for(const file of snapshot.files){const target=relativeFile(workspace,file.path);await fs.mkdir(dirname(target),{recursive:true});await fs.writeFile(target,file.observed,{flag:'wx',mode:file.mode==='100755'?0o755:0o644});}
     const runtime=authority.runtime;
-    if(runtime.nodeVersion!=='24.21.0')reject('NODE_VERSION_PREREQUISITE');
+    if(runtime.nodeVersion!=='24.22.1')reject('NODE_VERSION_PREREQUISITE');
     const node=await plainPath(runtime.nodePath,'file');
     if(hash(await fs.readFile(node))!==runtime.nodeHash)reject('NODE_BINARY_MISMATCH');
     const roots={};

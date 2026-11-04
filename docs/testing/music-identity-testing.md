@@ -2,7 +2,7 @@
 
 ## Prerequisites and safe target
 
-Use Node 24.21.0 (24.x), npm, and Docker Compose v2. Run from the repository root. Fixture mode is the default and uses deterministic fake Strapi plus disposable PostgreSQL 15. Never create or export `DATABASE_URL`; the only test database authority is `DATABASE_URL_TEST=postgresql://music_migrator@127.0.0.1:55432/music_fixture`, created and validated by bootstrap. Every migration/reset/integration command refuses any different host, port, user, or database name.
+Use Node 24.22.1 (24.x), npm, and Docker Compose v2. Run from the repository root. Fixture mode is the default and uses deterministic fake Strapi plus disposable PostgreSQL 15. Never create or export `DATABASE_URL`; the only test database authority is `DATABASE_URL_TEST=postgresql://music_migrator@127.0.0.1:55432/music_fixture`, created and validated by bootstrap. Every migration/reset/integration command refuses any different host, port, user, or database name.
 
 From a clean checkout:
 
@@ -46,10 +46,10 @@ an nvm-managed or other user-writable Node is not qualification authority.
 
 The Linux host must provide regular, non-symlink `/usr/bin/node`, `/usr/bin/git`,
 `/usr/bin/sha256sum`, and `/usr/bin/find` files owned by root with mode `0755`.
-Node must be exactly v24.21.0. The pinned workflow installs both Node and npm
+Node must be exactly v24.22.1. The pinned workflow installs both Node and npm
 from the official Linux x64 archive only after verifying SHA-256
-`fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6`,
-then protects npm at `/opt/explorers-music-node-v24.21.0`; neither ambient npm
+`6c172a9ab6718f7b801fb5a7bd486af2ee5e32758086a04b84fcce2aa77095e6`,
+then protects npm at `/opt/explorers-music-node-v24.22.1`; neither ambient npm
 nor caller `PATH` is authority. Its npm CLI SHA-256 is fixed as
 `8e5f6f3429f8cdbe693cdc29904e9d5a7b127a494bd15c804bd54c7403bfcbe7`.
 Nightly also installs the lockfile-pinned
@@ -60,14 +60,14 @@ protected `.chromium-executable.sha256` installation manifest, before Node
 starts. Reproduce the fixed-file prerequisite check before qualification:
 
 ```sh
-test "$(/usr/bin/node --version)" = v24.21.0
+test "$(/usr/bin/node --version)" = v24.22.1
 test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/node)" = 0:0:755
 test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/git)" = 0:0:755
 test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/sha256sum)" = 0:0:755
 test "$(/usr/bin/stat -c '%u:%g:%a' /usr/bin/find)" = 0:0:755
-test "$(/usr/bin/stat -c '%u:%g:%a' /opt/explorers-music-node-v24.21.0/bin/npm)" = 0:0:755
-test "$(/usr/bin/stat -c '%u:%g:%a' /opt/explorers-music-node-v24.21.0/lib/node_modules/npm/bin/npm-cli.js)" = 0:0:755
-test -z "$(/usr/bin/find /opt/explorers-music-node-v24.21.0 /opt/explorers-music-playwright -xdev \( ! -uid 0 -o ! -gid 0 -o -perm /022 \) -print -quit)"
+test "$(/usr/bin/stat -c '%u:%g:%a' /opt/explorers-music-node-v24.22.1/bin/npm)" = 0:0:755
+test "$(/usr/bin/stat -c '%u:%g:%a' /opt/explorers-music-node-v24.22.1/lib/node_modules/npm/bin/npm-cli.js)" = 0:0:755
+test -z "$(/usr/bin/find /opt/explorers-music-node-v24.22.1 /opt/explorers-music-playwright -xdev \( ! -uid 0 -o ! -gid 0 -o -perm /022 \) -print -quit)"
 ```
 
 Run the checked-in launcher from the repository root with the command for the

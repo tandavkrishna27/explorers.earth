@@ -1409,7 +1409,7 @@ async function doctor(id: string): Promise<RunResult> {
   const failures: string[] = [];
   const artifacts: string[] = [];
   const [major, minor] = process.versions.node.split(".").map(Number);
-  if (major !== 24 || minor < 21) failures.push("Node ^24.21.0 is required; fix: nvm use");
+  if (major !== 24 || minor < 22) failures.push("Node ^24.22.1 is required; fix: nvm use");
   for (const file of requiredFiles) if (!existsSync(join(root, file))) failures.push(`missing ${file}; fix: restore the repository file`);
   let fixtureStrapiHostPort = DEFAULT_MUSIC_FIXTURE_STRAPI_HOST_PORT;
   try {
