@@ -40,7 +40,7 @@ export async function installSyntheticProfileRoutes(context: BrowserContext, var
       title: "Synthetic workshop", address: "Fixture City", about: "Synthetic business details.",
     });
   }
-  const counters = { publicQueries: 0, deniedExternal: 0, deniedAuthority: 0, deniedUnknown: 0, forwardedData: 0, pageErrors: [] as string[] };
+  const counters = { publicQueries: 0, deniedExternal: 0, deniedAuthority: 0, deniedUnknown: 0, forwardedData: 0, anonymousAnalytics: 0, pageErrors: [] as string[] };
   for (const page of context.pages()) {
     page.on("pageerror", (error) => {
       if (counters.pageErrors.length === 8) return;
@@ -109,6 +109,21 @@ export async function installSyntheticProfileRoutes(context: BrowserContext, var
             : publicGateway.body,
         ),
       });
+      return;
+    }
+    // First-party public-page events are anonymous by design (basis anonymous-v1, no
+    // consent gate): they carry no credential and no cookie. Anything else on this path
+    // is still denied as authority traffic.
+    if (url.pathname === "/api/explorers/analytics/events" && request.method() === "POST") {
+      const event = request.postDataJSON() as { basis?: unknown } | null;
+      const headers = await request.allHeaders();
+      if (event?.basis !== "anonymous-v1" || headers.authorization || headers.cookie) {
+        counters.deniedAuthority += 1;
+        await route.abort("blockedbyclient");
+        return;
+      }
+      counters.anonymousAnalytics += 1;
+      await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ status: "committed", duplicate: false }) });
       return;
     }
     if (/^\/(?:api|accounts|graphql|google-auth|login|__music-fixture|__localtunes)(?:\/|$)/.test(url.pathname)

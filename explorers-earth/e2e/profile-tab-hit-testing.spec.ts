@@ -31,6 +31,7 @@ for (const viewport of viewports) {
       expect.soft(counters.deniedAuthority).toBe(0);
       expect.soft(counters.deniedUnknown).toBe(0);
       expect.soft(counters.forwardedData).toBe(0);
+      expect.soft(counters.anonymousAnalytics).toBeGreaterThanOrEqual(1);
     }
   });
 }
@@ -92,6 +93,7 @@ for (const viewport of viewports) {
         expect.soft(counters.deniedAuthority).toBe(0);
         expect.soft(counters.deniedUnknown).toBe(0);
         expect.soft(counters.forwardedData).toBe(0);
+        expect.soft(counters.anonymousAnalytics).toBeGreaterThanOrEqual(1);
       }
     });
   }
