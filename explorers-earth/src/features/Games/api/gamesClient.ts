@@ -32,7 +32,7 @@ export const GamesClient={
  async observeRecommendation(id:string,signal?:AbortSignal){const value=await explorersApiClient.getMyEditableRecommendation(id,signal);recommendation(value);return value;},
  prepareManualIntent(parent:CollectionObservation,draft:ManualGameDraft):ManualGameIntent{
   collection(parent);const title=resolveManualEntitySchema.parse({kind:'manual',category:'games',details:{title:draft.title}}).details.title;
-  const normalized=createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict().parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'draft',...(draft.curatedTermId!==undefined?{curatedTermId:draft.curatedTermId}:{})});
+  const normalized=createRecommendationObjectSchema.omit({collectionId:true,expectedCollectionRevision:true,category:true,entityId:true}).strict().parse({note:draft.note,userRating:draft.userRating,mediaIds:draft.mediaIds,publicationState:'published',...(draft.curatedTermId!==undefined?{curatedTermId:draft.curatedTermId}:{})});
   const details=gameDetailsSchema.parse({releaseYear:draft.releaseYear??null,platforms:draft.platforms??[],genres:draft.genres??[],developer:draft.developer?.trim()||null});
   const intent=freeze({entityKey:key(),recommendationKey:key(),parent,draft:{title,note:normalized.note,userRating:normalized.userRating,mediaIds:[...normalized.mediaIds],...details,...(normalized.curatedTermId!==undefined?{curatedTermId:normalized.curatedTermId}:{})}});
   const state=useAuthStore.getState();intents.set(intent,{accountId:state.accountId,generation:state.generation,route:route()});return intent;
@@ -42,7 +42,7 @@ export const GamesClient={
   const details={title:intent.draft.title,releaseYear:intent.draft.releaseYear??null,platforms:[...(intent.draft.platforms??[])],genres:[...(intent.draft.genres??[])],...(intent.draft.developer?{developer:intent.draft.developer}:{})};
   const entity=await explorersApiClient.resolveManualGame(details,intent.entityKey,signal);
   current(scope,signal);collection(intent.parent);
-  const result=await explorersApiClient.createMyRecommendation(intent.parent,{entityId:entity.id,note:intent.draft.note,userRating:intent.draft.userRating,mediaIds:[...intent.draft.mediaIds],publicationState:'draft',...(intent.draft.curatedTermId!==undefined?{curatedTermId:intent.draft.curatedTermId}:{})},intent.recommendationKey,signal);
+  const result=await explorersApiClient.createMyRecommendation(intent.parent,{entityId:entity.id,note:intent.draft.note,userRating:intent.draft.userRating,mediaIds:[...intent.draft.mediaIds],publicationState:'published',...(intent.draft.curatedTermId!==undefined?{curatedTermId:intent.draft.curatedTermId}:{})},intent.recommendationKey,signal);
   current(scope,signal);return result;
  },
  createCollection(input:{title:string;slug:string;description?:string|null},commandKey:string,signal?:AbortSignal){return explorersApiClient.createMyCollection({...input,category:'games',visibility:'private',publicationState:'draft'},commandKey,signal);},
