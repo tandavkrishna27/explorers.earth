@@ -13,6 +13,16 @@ function focusableWithin(container: HTMLElement): HTMLElement[] {
   );
 }
 
+// A yet-another-react-lightbox viewer opened from inside a dialog is portalled outside it and
+// owns its own Escape / Tab. While it is showing, the dialog must not react, or one Escape
+// closes the viewer and the dialog underneath it together (PublicBlockingOverlay does the same).
+function isLightboxActive(container: HTMLElement): boolean {
+  const root = document.querySelector<HTMLElement>(".yarl__root");
+  if (!root || container.contains(root) || root.hidden || root.getAttribute("aria-hidden") === "true") return false;
+  const styles = window.getComputedStyle(root);
+  return styles.display !== "none" && styles.visibility !== "hidden";
+}
+
 const RESTORE_TIMEOUT_MS = 5000;
 const LANDMARK = 'main, [role="main"], form, section, [role="region"], nav, header, aside, article';
 
@@ -111,6 +121,7 @@ export function useDialogA11y(open: boolean, containerRef: RefObject<HTMLElement
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (openDialogs[openDialogs.length - 1] !== id || !container) return;
+      if (isLightboxActive(container)) return;
       if (event.key === "Escape") {
         event.stopPropagation();
         onCloseRef.current();

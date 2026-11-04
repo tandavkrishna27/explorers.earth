@@ -122,6 +122,7 @@ function project(selection: SelectionSetNode, value: any): any {
 }
 const placesProjection = parse(`query PublicPlacesFixture { recommendationLists {
   documentId List_Name slug Visibility is_pinned pin_order List_Name_Details
+  person_lists product_lists
   recommended_places { documentId Place_Details Recommendation_Type Contact_Name
     Places_Social_Link Users_Social_URL user_recommendation_note user_rating google_rating
     media_details Media { url alternativeText } recommendation_category { Category_Name }
@@ -188,6 +189,10 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
     // Playwright's abbreviated headers() collection can omit Cookie.
     const hasOwnerSession = async () => ((await request.headerValue('cookie')) ?? '')
       .split(';').some(cookie => cookie.trim() === `${sessionCookie}=${sessionValue}`);
+    // Public media content (coverUrl /api/explorers/v1/media/<id>/content): a contained artwork.
+    if (url.origin === origin && request.method() === 'GET' && /^\/api\/explorers\/v1\/media\/[0-9a-f-]{36}\/content$/.test(url.pathname)) {
+      return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600"><rect width="900" height="600" fill="#203040"/></svg>' });
+    }
     if(url.origin===origin&&url.pathname==='/api/explorers/v1/account'&&url.search===''&&request.method()==='PATCH') {
       const reply=(body:unknown,status=200)=>{if(status>=400)expectedHttpErrors.set(request.url(),status);return route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});};
       const fail=(code:string,status:number)=>reply({error:{code,message:'Contained Books account command rejected',requestId:'books-fixture'}},status);
@@ -369,9 +374,23 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
         if (facet) {
           const slug = facet[2];
           const label = slug.split('-').map(word => word[0].toUpperCase() + word.slice(1)).join(' ');
+          const slugOf = (value: unknown) => String(value ?? '').trim().toLowerCase().replace(/\s+/g, '-');
+          const visible = (root: string) => (state.lists[root] ?? []).filter(list => list.Visibility === true && list.visibility === true);
+          // Rows tagged with the facet term, first membership wins (as the gateway de-duplicates).
+          const tagged = (root: string, relation: string, matches: (row: Record<string, any>) => boolean) => {
+            const seen = new Set<string>();
+            return visible(root).flatMap(list => (list[relation] ?? []) as Record<string, any>[]).filter(row => row && matches(row) && !seen.has(row.documentId) && seen.add(row.documentId)).slice(0, 24);
+          };
           const body = facet[1] === 'movies/genres'
-            ? { genre: { documentId: fixtureUuid(`movie-genre:${slug}`), slug, genre_name: label }, recommended_movies: [], nextCursor: null }
-            : { version: 'explorers-public-people-sector/v1', sector: { documentId: fixtureUuid(`people-sector:${slug}`), slug, Category_name: label }, canonicalSlug: slug, redirectSlug: null, recommended_people: [], nextCursor: null };
+            ? { genre: { documentId: fixtureUuid(`movie-genre:${slug}`), slug, genre_name: label },
+              recommended_movies: tagged('movieLists', 'recommended_movies', row => (row.genres ?? []).some((genre: any) => slugOf(genre?.name ?? genre) === slug)), nextCursor: null }
+            : (() => {
+              const people = tagged('personLists', 'recommended_people', row => slugOf(row.people_category?.slug) === slug);
+              const term = people[0]?.people_category;
+              return { version: 'explorers-public-people-sector/v1',
+                sector: { documentId: term?.documentId ?? fixtureUuid(`people-sector:${slug}`), slug, Category_name: term?.Category_name ?? label },
+                canonicalSlug: slug, redirectSlug: null, recommended_people: people, nextCursor: null };
+            })();
           return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
         }
         const match = url.pathname.match(new RegExp(`^${prefix}/recommendations/([a-z]+)(?:/([A-Za-z0-9_-]+))?$`));
@@ -463,7 +482,8 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
           version: 'explorers-manual-games-page/v1',
           gameLists: lists.map((list, index) => list && ({
             id: fixtureUuid(`game-list:${list.documentId}`), title: list.List_Name, description: list.list_description ?? list.Description ?? null, slug: list.slug,
-            heading: list.top_picks_heading ?? null, displayOrder: list.display_order ?? index, coverMediaId: null, coverUrl: null,
+            heading: list.top_picks_heading ?? null, displayOrder: list.display_order ?? index,
+            ...(list.cover_image ? (() => { const media = fixtureUuid(`game-cover:${list.documentId}`); return { coverMediaId: media, coverUrl: `/api/explorers/v1/media/${media}/content` }; })() : { coverMediaId: null, coverUrl: null }),
             recommendations: (list.recommended_games ?? []).map((row: Record<string, any>, rowIndex: number) => gameRow(list, row, rowIndex)),
             nextCursor: list.nextCursor ?? null,
           })),
@@ -483,7 +503,8 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
         const servedBody = category.route === 'games'
           ? gamesPage(partialBody[category.root] as Array<Record<string, any> | null>)
           : category.route === 'movies' && !match[2]
-            ? { ...partialBody, topPicks: [] }
+            ? { ...partialBody, topPicks: publicLists.flatMap(list => ((list.recommended_movies ?? []) as Record<string, any>[]).filter(row => row?.is_pinned))
+              .sort((a, b) => (a.pin_order ?? 0) - (b.pin_order ?? 0)).slice(0, 15) }
             : partialBody;
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(servedBody) });
       }

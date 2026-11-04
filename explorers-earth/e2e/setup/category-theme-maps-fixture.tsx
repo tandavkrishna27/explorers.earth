@@ -15,7 +15,9 @@ class Polyline {
   setMap(map: unknown) { record('polyline.setMap', Boolean(map)); }
   setPath(path: unknown) { record('polyline.setPath', path); }
 }
-Object.assign(globalThis, { google: { maps: { LatLng, LatLngBounds, Polyline, SymbolPath: { FORWARD_CLOSED_ARROW: 'FORWARD_CLOSED_ARROW' } } } });
+// useMapsUsable only mounts live map components once the marker library is present.
+class AdvancedMarkerElement {}
+Object.assign(globalThis, { google: { maps: { LatLng, LatLngBounds, Polyline, SymbolPath: { FORWARD_CLOSED_ARROW: 'FORWARD_CLOSED_ARROW' }, marker: { AdvancedMarkerElement } } } });
 const MapContext = createContext<any>(null);
 export const APIProvider = ({ children }: { children?: ReactNode; apiKey?: string }) => <>{children}</>;
 export const useApiIsLoaded = () => !(globalThis as any).__categoryMapUnavailable;
