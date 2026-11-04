@@ -101,7 +101,7 @@ function nativeDependencies():Dependencies{
  return{clock:{setTimeout:(fn,ms)=>setTimeout(fn,ms),clearTimeout:timer=>clearTimeout(timer as ReturnType<typeof setTimeout>)},platform:process.platform,argv:process.argv.slice(2),environment:process.env,
   installSignals(fn){process.on('SIGINT',fn);process.on('SIGTERM',fn);const timer=setTimeout(fn,21600000);return()=>{clearTimeout(timer);process.off('SIGINT',fn);process.off('SIGTERM',fn);};},
   async preflight(){
-   if(process.versions.node!=='24.21.0')throw new Refusal();
+   if(process.versions.node!=='24.22.1')throw new Refusal();
    powershellExecutable=await assertGuidesPowerShellRuntime(process.env.GUIDES_POWERSHELL_EXECUTABLE,path.join(root,'tunes/scripts/guides-windows-job.ps1'));
    for(const file of[process.execPath,path.join(root,'tunes/node_modules/tsx/dist/loader.mjs'),path.join(root,'tunes/scripts/guides-windows-job.ps1'),path.join(root,'tunes/scripts/guides-resource-worker.ts'),path.join(root,'tunes/scripts/guides-fixture-host.ts'),path.join(root,'tunes/scripts/music-local-private-files.ps1'),path.join(frontend,'e2e/replatform/guides.spec.ts'),path.join(frontend,'e2e/replatform/guides.playwright.config.ts'),path.join(frontend,'e2e/replatform/guides.vite.config.ts'),path.join(frontend,'node_modules/@playwright/test/cli.js'),path.join(frontend,'node_modules/vite/bin/vite.js'),powershellExecutable])await physical(file,false);
    const contract=await import(pathToFileURL(path.join(root,'scripts/replatform-e2e.mjs')).href);const manifest=await boundedJson(path.join(frontend,'e2e/replatform/suite-manifest.json'),1024*1024) as any;contract.validateManifest(manifest);

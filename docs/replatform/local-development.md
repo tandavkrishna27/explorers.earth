@@ -4,7 +4,7 @@ Ticket 1.2 runs the current Explorers client and Tunes API against disposable lo
 
 ## Prerequisites
 
-- Node.js 24.21.0 (24.x), npm, Git, and Docker with Compose v2. Docker Desktop is supported on Windows; a local Docker socket is required on Linux/macOS. Remote Docker contexts and inherited database/test-authority variables are refused.
+- Node.js 24.22.1 (24.x), npm, Git, and Docker with Compose v2. Docker Desktop is supported on Windows; a local Docker socket is required on Linux/macOS. Remote Docker contexts and inherited database/test-authority variables are refused.
 - Install the checked-in package locks with `npm ci` at the root and `npm ci --prefix tunes` and `npm ci --prefix explorers-earth`. Docker builds the fixture API and web gateway images on first provision.
 - Keep loopback port 51434 available for PostgreSQL's declared binding, 51474 for the gateway, and 5175 for Vite. On Windows, check `netsh interface ipv4 show excludedportrange protocol=tcp` if Docker reports a port allocation failure. No hosted provider secret is needed.
 

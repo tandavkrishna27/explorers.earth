@@ -78,7 +78,7 @@ netstat -ano | findstr :5000
 **Common causes**:
 - TypeScript errors — run `npm run check` (tunes) or `npx tsc -b` (explorers-earth) to see details
 - Missing dependencies — run `npm install` in the affected directory
-- Node version mismatch — ensure Node.js 24.21.0 (24.x)
+- Node version mismatch — ensure Node.js 24.22.1 (24.x)
 
 ### Authentication Issues (tunes)
 

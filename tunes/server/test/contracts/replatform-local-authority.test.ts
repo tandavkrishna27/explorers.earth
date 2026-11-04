@@ -117,7 +117,7 @@ describe("replatform local authority", () => {
     const compose = readFileSync(resolve(root, "docker-compose.replatform.yml"), "utf8");
     const frontend = readFileSync(resolve(root, "explorers-earth/Dockerfile.music-fixture"), "utf8");
     expect(compose).toContain("image: ghcr.io/tandavkrishna27/mirror/postgres:15-alpine@sha256:f7d23353e1b15400d22ebe31189f4d314b87a4c129cc400c8c2d8d4ca127bf81");
-    const node = "ghcr.io/tandavkrishna27/mirror/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1";
+    const node = "ghcr.io/tandavkrishna27/mirror/node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53";
     expect(compose).toContain(`image: ${node}`);
     expect(frontend).toContain(`FROM ${node} AS builder`);
     expect(frontend).toContain("COPY tunes/shared/explorersContract.ts /workspace/tunes/shared/explorersContract.ts");

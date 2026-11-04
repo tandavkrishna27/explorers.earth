@@ -4,7 +4,7 @@
   "description": "Monorepo runner for tunes and explorers-earth",
   "private": true,
   "engines": {
-    "node": "^24.21.0"
+    "node": "^24.22.1"
   },
   "scripts": {
     "dev": "concurrently --names \"TUNES,EXPLORERS-EARTH\" --prefix-colors \"cyan.bold,magenta.bold\" --kill-others-on-fail \"npm run dev --prefix tunes\" \"npm run dev --prefix explorers-earth\"",

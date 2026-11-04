@@ -1,7 +1,7 @@
 /** Pure graph construction. Never invokes Docker, resolves credentials or authorizes release. */
 export {validateApiEnvironment} from './platform-runtime-environment.ts';
 type LocalInput = {authority:'synthetic-local-only';origin:string;project:string;apiImage:string;webImage:string;commit:string;database:string;runtimeRole:string;migratorRole:string;attestationKey:string;files:Record<'runtimePassword'|'migratorPassword'|'apiEnvironment'|'publicConfig'|'runtimeSource'|'webTemplate'|'tls'|'routing',string>};
-const NODE_IMAGE='ghcr.io/tandavkrishna27/mirror/node:24.21.0-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1';
+const NODE_IMAGE='ghcr.io/tandavkrishna27/mirror/node:24.22.1-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53';
 function fail():never{throw new Error('LOCAL_REHEARSAL_INPUT_INVALID');}
 export function buildLocalRuntimePlan(value: unknown): any {
  const v=value as LocalInput;

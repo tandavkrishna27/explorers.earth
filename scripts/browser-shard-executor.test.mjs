@@ -22,7 +22,7 @@ async function fixture(t){
  const nodePath=join(root,'node');await fs.writeFile(nodePath,'fake node');
  const frontend=join(root,'frontend-deps'),tunes=join(root,'tunes-deps');for(const p of [frontend,tunes]){await fs.mkdir(p);await fs.writeFile(join(p,'.package-lock.json'),'installed');}
  await fs.mkdir(join(frontend,'@playwright/test'),{recursive:true});await fs.writeFile(join(frontend,'@playwright/test/cli.js'),'cli');await fs.writeFile(join(frontend,'@playwright/test/package.json'),JSON.stringify({version:'1.61.1'}));
- const authority={allocationRoot,source,plan,producer,lane:'publishing',projects:{'':1},runtime:{nodePath,nodeHash:hash('fake node'),nodeVersion:'24.21.0',playwrightVersion:'1.61.1'},dependencies:{frontend:{root:frontend,installationHash:hash('installed')},tunes:{root:tunes,installationHash:hash('installed')},cliHash:hash('cli')}};
+ const authority={allocationRoot,source,plan,producer,lane:'publishing',projects:{'':1},runtime:{nodePath,nodeHash:hash('fake node'),nodeVersion:'24.22.1',playwrightVersion:'1.61.1'},dependencies:{frontend:{root:frontend,installationHash:hash('installed')},tunes:{root:tunes,installationHash:hash('installed')},cliHash:hash('cli')}};
  let cleanup=0,calls=[];
  const owner={kind:'synthetic-test-only',async run(command,args,options){calls.push({command,args,options});return{status:0,signal:null,stdout:JSON.stringify(report()),stderr:''};},async cleanup(){cleanup++;return{proved:true};}};
  return{authority,owner,calls,get cleanup(){return cleanup;},root};

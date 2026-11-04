@@ -737,7 +737,7 @@ export function retainGuidesPageFailure(record,child,lane){try{
  }catch{return undefined;}}
 export async function main(args=process.argv.slice(2)){
  const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');assertEnvironment(process.env);const options=parseArguments(args);
- if(process.versions.node!=='24.21.0')fail('Protected qualification requires Node24.21.0');
+ if(process.versions.node!=='24.22.1')fail('Protected qualification requires Node24.22.1');
  const manifest=JSON.parse(readFileSync(join(root,MANIFEST)));validateManifest(manifest);
  const source=snapshotSource(root),locks=Object.fromEntries(['','tunes','explorers-earth','tunes/auth-runtime'].map(prefix=>[prefix||'root',validateLockedInstall(root,prefix)]));
  const npmOwner=probeNodeOwnedNpm(process.execPath),npm=npmOwner.npmVersion;

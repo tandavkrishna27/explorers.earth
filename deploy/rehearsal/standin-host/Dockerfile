@@ -18,7 +18,7 @@ RUN apt-get update \
 
 # The pre-deploy and scheduled backups (tunes/deployment/platform-backup.mjs) need
 # Node 24 on the host; apt's nodejs is 18. Same version the workflow and image use.
-ARG NODE_VERSION=24.21.0
+ARG NODE_VERSION=24.22.1
 RUN arch="$(dpkg --print-architecture)"; case "$arch" in amd64) arch=x64 ;; arm64) arch=arm64 ;; esac \
  && curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${arch}.tar.xz" \
     | tar -xJ -C /usr/local --strip-components=1 --exclude='*/include' --exclude='*/share' \

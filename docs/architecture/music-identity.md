@@ -54,6 +54,6 @@ Guest Socket.IO and REST operations have an exact allowlist. Guests may read all
 
 ## Runtime facts and debt
 
-The supported runtime is Node 24.21.0 (24.x). Both clients run React 18.3. Tunes runs Express 5.2 while still carrying `@types/express` 4.17 definitions; that type-definition mismatch is known debt, not evidence that the runtime is Express 4. New Music modules must remain clean under the scoped type gate and the normalized repository diagnostic baseline.
+The supported runtime is Node 24.22.1 (24.x). Both clients run React 18.3. Tunes runs Express 5.2 while still carrying `@types/express` 4.17 definitions; that type-definition mismatch is known debt, not evidence that the runtime is Express 4. New Music modules must remain clean under the scoped type gate and the normalized repository diagnostic baseline.
 
 The standalone native-session login/logout/check/CSRF endpoints are an explicit exception for a separately opened Tunes experience. Secure cookies, origin and CSRF validation, rotation on login, and logout invalidation apply. Native session state is never an embedded Explorer fallback and never substitutes for the Music credential on canonical owner routes.
