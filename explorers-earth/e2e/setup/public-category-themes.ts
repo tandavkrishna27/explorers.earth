@@ -96,9 +96,12 @@ export function seedCategoryThemeState(preset: ThemePresetId) {
   state.lists.recommendationLists[0].recommended_places.push({ ...structuredClone(firstPlace), documentId: 'place-1-2', Place_Details: { ...firstPlace.Place_Details, Title: 'City 1 place 2', Place_Name: 'City 1 place 2', Place_Id: 'fixture-1-2', Geometry: { lat: 26.9150, lng: 75.7900 } } });
   state.lists.guides[0].guide_sections.forEach((section: any, index: number) => {
     section.Timeline[index === 0 ? 'morning' : 'afternoon'] = [{
-      place_id: `guide-place-${index + 1}`, name: `Guide place ${index + 1}`, formatted_address: 'Fixture City',
+      // Legacy timeline places need a stable `id` (publicGuidePhotoViewModel legacyPlace drops one without it).
+      id: `guide-place-${index + 1}`, place_id: `guide-place-${index + 1}`, name: `Guide place ${index + 1}`, formatted_address: 'Fixture City',
       geometry: { location: { lat: 26.9124 + index * .01, lng: 75.7873 + index * .01 } },
-      rating: 4.5, user_ratings_total: 20, photos: [], types: ['cafe'],
+      rating: 4.5, user_ratings_total: 20, types: ['cafe'],
+      // Contained artwork, so the guide views never fall back to the external placeholder host.
+      photos: [{ id: `guide-photo-${index + 1}`, documentId: `guide-photo-${index + 1}`, url: artwork, fileName: 'category-theme-fixture.svg', aspectRatio: '3:2', width: 900, height: 600 }],
     }];
   });
   for (const family of mediaFamilies) {
@@ -118,6 +121,12 @@ export function seedCategoryThemeState(preset: ThemePresetId) {
         genres: family === 'movies' ? [{ id: 18, name: 'Drama' }] : ['Adventure'], subjects: ['Fiction'],
         skills_tags: ['Design'], tags: ['Design'], people_category: { documentId: 'design', Category_name: 'Design' }, screenshots: [artwork], images: [artwork],
       });
+      if (family === 'people') {
+        // The public People read is strict (publicPersonSchema): keep only its fields, with a
+        // UUID-identified sector term, and drop the cross-family presentation extras above.
+        for (const key of ['description', 'overview', 'summary', 'bio', 'poster_path', 'backdrop_path', 'cover_url', 'cover_url_large', 'logo_url', 'avatar_path', 'genres', 'subjects', 'tags', 'screenshots', 'images']) delete item[key];
+        item.people_category = { id: '00000000-0000-4000-8000-00000000de51', documentId: '00000000-0000-4000-8000-00000000de51', slug: 'design', Category_name: 'Design' };
+      }
     }
   }
   return state;

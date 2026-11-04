@@ -59,4 +59,20 @@ describe("useDialogA11y focus restoration (XC-02)", () => {
     expect(opener).toBeEnabled();
     expect(other).toHaveFocus();
   });
+
+  it("leaves Escape to a lightbox opened above the dialog, then closes on the next Escape", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const opener = screen.getByRole("button", { name: /save & publish/i });
+    opener.focus();
+    await act(async () => { opener.click(); });
+    const lightbox = document.createElement("div");
+    lightbox.className = "yarl__root";
+    document.body.appendChild(lightbox);
+    await user.keyboard("{Escape}");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    lightbox.remove();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
 });

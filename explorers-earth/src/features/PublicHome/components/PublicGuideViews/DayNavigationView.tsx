@@ -343,6 +343,9 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
                                 alt={place.name || "Place"}
                                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                                 onError={(e) => {
+                                  // Fall back once: if the placeholder also fails, re-assigning it re-fires onError forever.
+                                  if (e.currentTarget.dataset.fallbackApplied) return;
+                                  e.currentTarget.dataset.fallbackApplied = "true";
                                   e.currentTarget.src = "https://placehold.co/800x600/1a1a1a/666666?text=Place";
                                 }}
                               />
@@ -592,6 +595,9 @@ const DayNavigationView = memo(({ sections, guide, selectedDay: externalSelected
                                     alt={place.name || "Place"}
                                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                                     onError={(e) => {
+                                      // Fall back once: if the placeholder also fails, re-assigning it re-fires onError forever.
+                                      if (e.currentTarget.dataset.fallbackApplied) return;
+                                      e.currentTarget.dataset.fallbackApplied = "true";
                                       e.currentTarget.src = "https://placehold.co/800x600/1a1a1a/666666?text=Place";
                                     }}
                                   />

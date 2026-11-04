@@ -1,6 +1,7 @@
 import { expect, test, type Browser, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { createHash } from 'node:crypto';
 import { Kind, parse, print, visit, type SelectionSetNode } from 'graphql';
 import { canonicalAccountFixture } from '../../src/test/canonicalAccountFixture';
 import { bookFixtureId, createBooksOwnerFixture } from './books-owner-content';
@@ -28,7 +29,12 @@ const recommendationRelationByRoute: Record<string, string> = {
   places: 'recommended_places', movies: 'recommended_movies', books: 'recommended_books', games: 'recommended_games',
   apps: 'recommended_apps', products: 'recommended_products', people: 'recommended_people', guides: 'guide_sections',
 };
-type RequestRecord = { name: string; variables: Record<string, any>; owner: boolean };
+// Deterministic v4-shaped UUID for fixture rows whose gateway contract requires a UUID id.
+const fixtureUuid = (seed: string) => {
+  const hex = createHash('sha256').update(seed).digest('hex');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+};
+type RequestRecord ={ name: string; variables: Record<string, any>; owner: boolean };
 export type FixtureFault = {
   kind?: 'error' | 'partial' | 'lost' | 'expired' | 'offline';
   status?: number;
@@ -116,6 +122,7 @@ function project(selection: SelectionSetNode, value: any): any {
 }
 const placesProjection = parse(`query PublicPlacesFixture { recommendationLists {
   documentId List_Name slug Visibility is_pinned pin_order List_Name_Details
+  person_lists product_lists
   recommended_places { documentId Place_Details Recommendation_Type Contact_Name
     Places_Social_Link Users_Social_URL user_recommendation_note user_rating google_rating
     media_details Media { url alternativeText } recommendation_category { Category_Name }
@@ -182,6 +189,10 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
     // Playwright's abbreviated headers() collection can omit Cookie.
     const hasOwnerSession = async () => ((await request.headerValue('cookie')) ?? '')
       .split(';').some(cookie => cookie.trim() === `${sessionCookie}=${sessionValue}`);
+    // Public media content (coverUrl /api/explorers/v1/media/<id>/content): a contained artwork.
+    if (url.origin === origin && request.method() === 'GET' && /^\/api\/explorers\/v1\/media\/[0-9a-f-]{36}\/content$/.test(url.pathname)) {
+      return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600"><rect width="900" height="600" fill="#203040"/></svg>' });
+    }
     if(url.origin===origin&&url.pathname==='/api/explorers/v1/account'&&url.search===''&&request.method()==='PATCH') {
       const reply=(body:unknown,status=200)=>{if(status>=400)expectedHttpErrors.set(request.url(),status);return route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});};
       const fail=(code:string,status:number)=>reply({error:{code,message:'Contained Books account command rejected',requestId:'books-fixture'}},status);
@@ -356,6 +367,32 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
           if (fault?.kind === 'error') { const status = fault.status ?? 503; expectedHttpErrors.set(request.url(), status); return route.fulfill({ status, contentType: 'application/json', body: JSON.stringify({ error: { code: 'UPSTREAM_UNAVAILABLE' } }) }); }
           return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fault?.kind === 'partial' ? { ...selectedAccount, Bio: null } : selectedAccount) });
         }
+        // Facet reads (explorersPublicProfileRoutes.ts: movies/genres/:slug, people/sectors/:slug).
+        // The contained fixture has no taxonomy rows, so each facet is a real but empty page in
+        // the exact gateway envelope (publicMoviesProjection / publicPeopleSectorPageSchema).
+        const facet = url.pathname.match(new RegExp(`^${prefix}/recommendations/(movies/genres|people/sectors)/([a-z0-9-]+)$`));
+        if (facet) {
+          const slug = facet[2];
+          const label = slug.split('-').map(word => word[0].toUpperCase() + word.slice(1)).join(' ');
+          const slugOf = (value: unknown) => String(value ?? '').trim().toLowerCase().replace(/\s+/g, '-');
+          const visible = (root: string) => (state.lists[root] ?? []).filter(list => list.Visibility === true && list.visibility === true);
+          // Rows tagged with the facet term, first membership wins (as the gateway de-duplicates).
+          const tagged = (root: string, relation: string, matches: (row: Record<string, any>) => boolean) => {
+            const seen = new Set<string>();
+            return visible(root).flatMap(list => (list[relation] ?? []) as Record<string, any>[]).filter(row => row && matches(row) && !seen.has(row.documentId) && seen.add(row.documentId)).slice(0, 24);
+          };
+          const body = facet[1] === 'movies/genres'
+            ? { genre: { documentId: fixtureUuid(`movie-genre:${slug}`), slug, genre_name: label },
+              recommended_movies: tagged('movieLists', 'recommended_movies', row => (row.genres ?? []).some((genre: any) => slugOf(genre?.name ?? genre) === slug)), nextCursor: null }
+            : (() => {
+              const people = tagged('personLists', 'recommended_people', row => slugOf(row.people_category?.slug) === slug);
+              const term = people[0]?.people_category;
+              return { version: 'explorers-public-people-sector/v1',
+                sector: { documentId: term?.documentId ?? fixtureUuid(`people-sector:${slug}`), slug, Category_name: term?.Category_name ?? label },
+                canonicalSlug: slug, redirectSlug: null, recommended_people: people, nextCursor: null };
+            })();
+          return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+        }
         const match = url.pathname.match(new RegExp(`^${prefix}/recommendations/([a-z]+)(?:/([A-Za-z0-9_-]+))?$`));
         const category = match && categories.find((candidate) => candidate.route === match[1]);
         if (!category) return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ version: 'explorers-public-error/v1', error: { code: 'NOT_FOUND' } }) });
@@ -388,7 +425,18 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
             recommended_places_next_cursor: served < total ? `o${served}.fixture` : null,
           };
         };
+        // Movies, Games and People carry an explicit per-list continuation cursor on the
+        // canonical gateway (null when the list is complete), and Movies and Games also an
+        // explicit root `nextCursor`. The SPA rejects a page without them as
+        // PUBLIC_PROFILE_INVALID_RESPONSE, so the fixture has to state them.
+        const childCursorField = { movies: 'recommended_movies_next_cursor', games: 'nextCursor', people: 'recommended_people_next_cursor' }[category.route as string];
+        const childCursor = (list: Record<string, unknown>) => {
+          const total = Array.isArray(list[relation]) ? (list[relation] as unknown[]).length : 0;
+          const end = match[2] ? offset + limit : 12;
+          return end < total ? `o${end}` : null;
+        };
         const pageList = (list: Record<string, unknown>) => ({
+          ...(childCursorField ? { [childCursorField]: childCursor(list) } : {}),
           ...(category.route === 'places' ? project(placesSelection, list) : list),
           // Spread AFTER the projection: project() keeps only selected fields, so the envelope
           // has to be added on top or it is stripped.
@@ -400,14 +448,65 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
             : Array.isArray(list[relation])
               ? { [relation]: (category.route === 'places' ? project(placesSelection, list)[relation] : list[relation]).slice(0, category.route === 'places' ? 24 : 12) }
               : {}),
+          // Books, Apps, Products and Guides also emit `<child>_next_cursor` on each list
+          // (null at the end); Movies, Games and People are covered by childCursorField.
+          ...(category.route !== 'places' && !childCursorField && relation && Array.isArray(list[relation])
+            ? (() => {
+              const total = (list[relation] as unknown[]).length;
+              const end = match[2] ? offset + limit : 12;
+              return { [`${relation}_next_cursor`]: end < total ? `o${end}` : null };
+            })()
+            : {}),
+        });
+        // Games is served by the manual Games projection (gamesPublicPageSchema), not the
+        // legacy list shape: ids are UUIDs and children live under `recommendations`.
+        const gameRow = (list: Record<string, any>, row: Record<string, any>, index: number) => ({
+          id: fixtureUuid(`game:${row.documentId}`), entityId: fixtureUuid(`game-entity:${row.documentId}`), kind: 'game',
+          collection: { id: fixtureUuid(`game-list:${list.documentId}`), title: list.List_Name, slug: list.slug },
+          title: row.title ?? null,
+          userRating: Number.isInteger(row.user_rating) && row.user_rating >= 1 && row.user_rating <= 10 ? row.user_rating : null,
+          note: row.user_recommendation_note ? { version: 1, format: 'quill-html', html: String(row.user_recommendation_note) } : null,
+          gamePresentation: {
+            version: 'explorers-manual-game/v1', origin: 'manual', providerExternalId: null, providerFacts: null, images: [], coverMediaId: null,
+            details: {
+              releaseYear: /^\d{4}$/.test(String(row.release_year ?? '')) ? Number(row.release_year) : null,
+              platforms: (row.platforms ?? []).filter((v: unknown) => typeof v === 'string').slice(0, 12),
+              genres: (row.genres ?? []).filter((v: unknown) => typeof v === 'string').slice(0, 12),
+              developer: typeof row.developer === 'string' && row.developer.trim() ? row.developer : null,
+            },
+          },
+          displayOrder: row.display_order ?? index,
+          pinPosition: row.is_pinned && Number.isInteger(row.pin_order) ? row.pin_order : null,
+        });
+        const gamesPage = (lists: Array<Record<string, any> | null>) => ({
+          version: 'explorers-manual-games-page/v1',
+          gameLists: lists.map((list, index) => list && ({
+            id: fixtureUuid(`game-list:${list.documentId}`), title: list.List_Name, description: list.list_description ?? list.Description ?? null, slug: list.slug,
+            heading: list.top_picks_heading ?? null, displayOrder: list.display_order ?? index,
+            ...(list.cover_image ? (() => { const media = fixtureUuid(`game-cover:${list.documentId}`); return { coverMediaId: media, coverUrl: `/api/explorers/v1/media/${media}/content` }; })() : { coverMediaId: null, coverUrl: null }),
+            recommendations: (list.recommended_games ?? []).map((row: Record<string, any>, rowIndex: number) => gameRow(list, row, rowIndex)),
+            nextCursor: list.nextCursor ?? null,
+          })),
+          topPicks: match[2] ? [] : lists.flatMap(list => list ? (list.recommended_games ?? []).map((row: Record<string, any>, rowIndex: number) => ({ row: gameRow(list, row, rowIndex), pinned: row.is_pinned })) : [])
+            .filter(entry => entry.pinned && entry.row.pinPosition !== null).map(entry => entry.row).slice(0, 15),
+          nextCursor: match[2] ? null : (partialBody as Record<string, any>).nextCursor ?? null,
         });
         const body = match[2]
           ? { [category.root]: publicLists.filter((list) => list.slug === match[2] || category.route === 'guides' && list.documentId === match[2]).map(pageList) }
-          : { [category.root]: publicLists.slice(offset, offset + limit).map(pageList) };
+          : { [category.root]: publicLists.slice(offset, offset + limit).map(pageList),
+            ...(category.route === 'movies' || category.route === 'games' ? { nextCursor: offset + limit < publicLists.length ? `o${offset + limit}` : null } : {}) };
         const partialBody = fault?.kind === 'partial' && !match?.[2]
           ? { ...body, [category.root]: fault.nullRootPage ? (body[category.root] as unknown[]).map(() => null) : [...(body[category.root] as unknown[]), null] }
           : body;
-        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(partialBody) });
+        // publicMoviesProjection also adds topPicks to the category (non-slug) page; the root
+        // cursor is set on `body` above.
+        const servedBody = category.route === 'games'
+          ? gamesPage(partialBody[category.root] as Array<Record<string, any> | null>)
+          : category.route === 'movies' && !match[2]
+            ? { ...partialBody, topPicks: publicLists.flatMap(list => ((list.recommended_movies ?? []) as Record<string, any>[]).filter(row => row?.is_pinned))
+              .sort((a, b) => (a.pin_order ?? 0) - (b.pin_order ?? 0)).slice(0, 15) }
+            : partialBody;
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(servedBody) });
       }
       // Media transport is inert: permission/control rendering only, no playback proof.
       if (url.origin === 'https://www.youtube.com' && url.pathname === '/iframe_api') return route.fulfill({ status: 200, contentType: 'application/javascript', body: '' });

@@ -80,7 +80,7 @@ const Modal: FC<ModalProps> = ({ isOpen, onClose, children, type, ariaLabel }) =
                 e.stopPropagation();
                 onClose();
               }}
-              className={categoryStyles ? "absolute right-2 top-2 z-20 flex min-h-11 min-w-11 items-center justify-center rounded-full border border-[var(--category-control-border)] bg-[var(--category-panel)] p-2 text-[var(--category-text)] backdrop-blur-sm transition-colors duration-200 hover:border-[var(--category-accent)] hover:text-[var(--category-muted)] focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-[var(--category-focus)]" : "absolute right-2 top-2 z-20 flex min-h-11 min-w-11 items-center justify-center rounded-full border border-dashboard bg-dashboard-sidebar p-2 text-dashboard backdrop-blur-sm transition-colors duration-200 hover:border-dashboard-accent hover:text-dashboard-light"}
+              className={categoryStyles ? "absolute right-2 top-2 z-20 flex min-h-11 min-w-11 items-center justify-center rounded-full border border-[var(--category-control-border)] bg-[var(--category-panel)] p-2 text-[var(--category-text)] backdrop-blur-sm transition-colors duration-200 hover:border-[var(--category-accent)] hover:text-[var(--category-muted)] focus-visible:!outline focus-visible:!outline-2 focus-visible:!outline-[var(--category-focus)] focus-visible:!transform-none" : "absolute right-2 top-2 z-20 flex min-h-11 min-w-11 items-center justify-center rounded-full border border-dashboard bg-dashboard-sidebar p-2 text-dashboard backdrop-blur-sm transition-colors duration-200 hover:border-dashboard-accent hover:text-dashboard-light"}
             >
               <CrossIcon stroke={categoryStyles ? "currentColor" : "#ffffff"} size="5" />
             </button>

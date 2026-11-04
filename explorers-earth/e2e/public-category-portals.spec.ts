@@ -60,10 +60,16 @@ test('phone component preserves enabled disabled and null-context glyph presenta
       try {
         await visitor.page.goto(`/e2e/setup/category-theme-portals.html?component=phone&preset=${preset}&enabled=${enabled}`);
         const phone = visitor.page.getByText('Call', { exact: true }).locator('xpath=../button');
-        if (enabled) await expect(phone).toBeEnabled();
-        else await expect(phone).toBeDisabled();
+        // Since 4a3487f1 a place with no contact number omits the Call action instead of rendering it disabled.
+        if (!enabled) {
+          await expect(visitor.page.locator('#root .px-4.mb-20')).toBeAttached();
+          await expect(visitor.page.getByText('Call', { exact: true })).toHaveCount(0);
+          await expect(visitor.page.locator('button:disabled')).toHaveCount(0);
+          continue;
+        }
+        await expect(phone).toBeEnabled();
         await expect(phone.locator('svg path')).toHaveCSS('fill', preset === 'minimal-light' ? 'rgb(15, 23, 42)' : 'rgb(255, 255, 255)');
-        await expect(phone).toHaveCSS('opacity', enabled ? '1' : '0.5');
+        await expect(phone).toHaveCSS('opacity', '1');
       } finally { await closeFixture(visitor); }
     }
   }
@@ -209,7 +215,8 @@ for (const preset of ['minimal-light', 'cinematic-dark', 'default']) {
           if (preset !== 'default') await expect(page.getByRole('heading', { name: 'Share & Download', exact: true })).toHaveCSS('color', preset === 'minimal-light' ? 'rgb(71, 85, 105)' : 'rgb(156, 163, 175)');
           await expect(page.locator('#qr-sticker-container')).toHaveCSS('background-color', 'rgb(0, 0, 0)');
           await expect(page.locator('#qr-sticker-container .p-2')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
-          await expect(page.getByText('Travel like a local', { exact: true })).toHaveCSS('color', 'rgb(0, 0, 0)');
+          await expect(page.locator('#qr-sticker-container p.bg-gray-200') /* translated tagline badge (qrCard.tagline.*); the harness i18n has no resources */).toHaveCSS('color', 'rgb(0, 0, 0)');
+          await expect(page.locator('#qr-sticker-container p.bg-gray-200')).toHaveText('qrCard.tagline.profile');
           await page.locator(preset === 'default' ? '.dashboard-theme' : '[data-category-modal]').getByRole('button').first().click();
         } else if (component === 'qr') {
           const title = page.getByRole('heading', { name: 'Profile QR', exact: true });

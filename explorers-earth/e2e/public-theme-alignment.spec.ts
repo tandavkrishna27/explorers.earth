@@ -87,6 +87,8 @@ test("transparent chrome overlays the root hero and leaves one collision-free of
   const analyticsEndpoints = new Set([
     "https://localtunes.test/api/explorers/analytics/events",
     new URL("/__localtunes/api/explorers/analytics/events", baseURL!).href,
+    // Since 11ed3f35 public-page events POST same-origin (postExplorersAnalyticsEvent baseUrl '').
+    new URL("/api/explorers/analytics/events", baseURL!).href,
   ]);
   await page.route(url => analyticsEndpoints.has(url.href), async route => {
     expect(route.request().method()).toBe("POST");

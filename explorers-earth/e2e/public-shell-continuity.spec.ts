@@ -878,7 +878,7 @@ test('deterministic cold and in-shell transitions meet route-state frame and CLS
   console.info(`[task7-timing-cls] ${JSON.stringify(Object.fromEntries(Object.entries(evidence).map(([width, result]) => [width, result.summary])))}`);
 });
 
-test('WP1 one loader owner: category cold entry never shows a second loader after the Earth', async ({ browser, baseURL }) => {
+test('WP1 one loader owner: category cold entry never shows a second loader after the Earth', async ({ browser, baseURL, browserName }) => {
   const state = fixtureState({ pinned_nav_tabs: ['public_profile', 'public_books'] }, 'public');
   const path = publicPath('books');
   const gate = holdDestination(state, path);
@@ -897,8 +897,11 @@ test('WP1 one loader owner: category cold entry never shows a second loader afte
       requestAnimationFrame(sample);
     });
     // Slow CPU (as on CI) opens the frame where a page reported ready before its read started.
-    const cdp = await visitor.page.context().newCDPSession(visitor.page);
-    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 8 });
+    // CPU throttling is a Chromium-only CDP feature; other engines still run every loader assertion unthrottled.
+    if (browserName === 'chromium') {
+      const cdp = await visitor.page.context().newCDPSession(visitor.page);
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 8 });
+    }
     await visitor.page.goto(path);
     await expect(visitor.page.getByRole('status', { name: 'Earth loading' })).toHaveCount(1);
     gate.release();

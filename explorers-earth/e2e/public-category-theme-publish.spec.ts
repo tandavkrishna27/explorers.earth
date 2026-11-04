@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { categories, closeFixture, openFixture as openContainedFixture, token } from './setup/category-navigation';
+import { categories, closeFixture, openFixture as openContainedFixture } from './setup/category-navigation';
 import { seedCategoryThemeState } from './setup/public-category-themes';
 import { installCategoryThemePublishIntercept, publishPresets } from './setup/category-theme-publish';
 
@@ -29,15 +29,15 @@ for (const [preset, colors] of Object.entries(publishPresets)) {
       const choice = owner.page.locator(`button[data-theme-preset="${preset}"]`);
       await choice.click();
       await expect(choice).toHaveAttribute('aria-pressed', 'true');
-      const before = state.reads.filter(read => read.owner && read.name === 'UsersPermissionsUser').length;
+      const before = state.reads.filter(read => read.owner && read.name === 'GET /api/explorers/v1/me').length;
       await owner.page.getByRole('button', { name: 'Save & Publish', exact: true }).click();
       await expect(owner.page.getByText('Saved & published successfully', { exact: true })).toBeVisible();
       expect(intercepted.violations).toEqual([]);
       expect(intercepted.updates).toHaveLength(1);
-      await expect.poll(() => intercepted.identityAttempts.length).toBe(1);
-      expect(state.reads.filter(read => read.owner && read.name === 'UsersPermissionsUser').length).toBeGreaterThan(before);
+      // The saved account is re-read after the write (Music identity ensure was removed with Music).
+      await expect.poll(() => state.reads.filter(read => read.owner && read.name === 'GET /api/explorers/v1/me').length).toBeGreaterThan(before);
       expect(state.account.social_media.theme_settings).toMatchObject({ preset, accentColor: colors.accent });
-      expect(state.writes.map(write => write.name)).toEqual(['UpdateAccount']);
+      expect(state.writes.map(write => write.name)).toEqual(['PATCH /api/explorers/v1/account']);
       for (const category of categories) {
         const visitor = await openFixture(browser, baseURL!, state, { width: 390, height: 900, touch: true, reducedMotion: 'reduce' });
         try {
@@ -61,63 +61,33 @@ for (const [preset, colors] of Object.entries(publishPresets)) {
   });
 }
 
-test('publish intercept rejects malformed subjects payloads origins methods and nonmutations', async ({ browser, baseURL }, info) => {
+test('publish intercept rejects malformed revisions payloads identity edits and over-posts', async ({ browser, baseURL }, info) => {
   const state = seedCategoryThemeState('minimal-light');
   const owner = await openFixture(browser, baseURL!, state, { owner: true });
   const intercept = await installCategoryThemePublishIntercept(owner.context, state, baseURL!, 'cinematic-dark');
   const original = structuredClone(state.account);
   try {
     await owner.page.goto('/fixture-owner');
-    const mutation = 'mutation UpdateAccount($documentId: ID!, $data: AccountInput!) { updateAccount(documentId: $documentId, data: $data) { documentId } }';
-    const attempts = [
-      { label: 'subject', variables: { documentId: 'wrong-subject', data: {} } },
-      { label: 'payload', variables: { documentId: state.account.documentId, data: { username: 'changed' } } },
-      { label: 'wrong origin', url: 'https://music-fixture.test/graphql' },
-      { label: 'method', method: 'PUT' },
-      { label: 'authority', bearer: 'wrong-synthetic-subject' },
-      { label: 'query instead of mutation', query: 'query UpdateAccount { updateAccount { documentId } }' },
-      { label: 'wrong root', query: 'mutation UpdateAccount { deleteAccount { documentId } }' },
+    const valid = { expectedRevision: 1, themeSettings: { preset: 'cinematic-dark', wallpaperMode: 'solid-color', accentColor: '#10B981', landingTab: 'profile', visibleTabs: { recommendations: true, gallery: false, business: false }, footerBranding: 'enabled' } };
+    // Each attempt differs from a valid save in exactly one way; none may be accepted or persisted.
+    const attempts: Array<{ label: string; body: unknown }> = [
+      { label: 'stale revision', body: { ...valid, expectedRevision: 7 } },
+      { label: 'wrong preset', body: { ...valid, themeSettings: { ...valid.themeSettings, preset: 'neon-cyber' } } },
+      { label: 'identity edit', body: { ...valid, handle: 'someone-else' } },
+      { label: 'nested over-post', body: { ...valid, themeSettings: { ...valid.themeSettings, unapproved_nested_field: { overposted: true } } } },
+      { label: 'top-level over-post', body: { ...valid, unapproved_field: true } },
     ];
-    for (const attempt of attempts) await owner.page.evaluate(async ({ attempt, token, mutation }) => {
-      await fetch(attempt.url ?? '/graphql', { method: attempt.method ?? 'POST', headers: { Authorization: `Bearer ${attempt.bearer ?? token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ operationName: 'UpdateAccount', query: attempt.query ?? mutation, variables: attempt.variables ?? {} }) });
-    }, { attempt, token, mutation });
-    expect(intercept.violations).toHaveLength(7);
+    for (const attempt of attempts) {
+      const status = await owner.page.evaluate(async body => (await fetch('/api/explorers/v1/account', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).status, attempt.body);
+      expect.soft(status, attempt.label).toBe(409);
+    }
+    expect(intercept.violations).toHaveLength(attempts.length);
+    // The five refusals are this case's own expected 409s; anything else stays an error.
+    await expect.poll(() => owner.guard.errors.filter(error => error === 'Failed to load resource: the server responded with a status of 409 (Conflict)').length).toBe(attempts.length);
+    owner.guard.errors.splice(0, owner.guard.errors.length, ...owner.guard.errors.filter(error => error !== 'Failed to load resource: the server responded with a status of 409 (Conflict)'));
     expect(intercept.updates).toEqual([]);
+    expect(state.writes).toEqual([]);
     expect(state.account).toEqual(original);
     await info.attach('expected-publish-violations', { contentType: 'application/json', body: JSON.stringify(intercept.violations) });
-    // A nested over-post must not be accepted or persisted by the mutation boundary.
-    // Each variant gets a fresh intercept so the one-save guard cannot mask permissive payload checks.
-    for (const nested of ['address', 'social', 'theme'] as const) {
-      const nestedState = seedCategoryThemeState('minimal-light');
-      nestedState.account.Addresss = { address: '1 Fixture Lane, Test City', streetName: 'Fixture Lane', postalCode: '00001', state: 'Test State', city: 'Test City', country: 'Test Country' };
-      nestedState.account.social_media.fixture_social = { retain: ['future', 7] };
-      nestedState.account.social_media.theme_settings.fixture_theme = { retain: true };
-      nestedState.account.social_media.theme_settings.recommendations = { layout: 'shelves', fixture_recommendation: { preserve: 42 } };
-      const nestedOriginal = structuredClone(nestedState.account);
-      const nestedOwner = await openFixture(browser, baseURL!, nestedState, { owner: true });
-      const nestedIntercept = await installCategoryThemePublishIntercept(nestedOwner.context, nestedState, baseURL!, 'cinematic-dark');
-      try {
-        await nestedOwner.page.goto('/fixture-owner');
-        // Independent complete normal wire payload, checked against Profile's saved request/source.
-        const data = Object.fromEntries(['Account_Name', 'Account_Type', 'Addresss', 'Bio', 'Feed_Data', 'Primary_Address', 'Public_Profile_Address', 'mobile_number', 'mobile_number_visibility'].map(key => [key, structuredClone(nestedOriginal[key])])) as Record<string, any>;
-        data.social_media = {
-          ...structuredClone(nestedOriginal.social_media),
-          ...Object.fromEntries(['instagram', 'youtube', 'whatsapp', 'website', 'facebook', 'linkedin', 'snapchat', 'tiktok', 'email', 'X', 'spotify', 'youtubeMusic', 'appleMusic'].map(key => [key, { link: '', visibility: false }])),
-          theme_settings: { ...structuredClone(nestedOriginal.social_media.theme_settings), preset: 'cinematic-dark', accentColor: '#10B981' },
-        };
-        const target = nested === 'address' ? data.Addresss : nested === 'social' ? data.social_media : data.social_media.theme_settings;
-        target.unapproved_nested_field = { overposted: true };
-        const response = await nestedOwner.page.evaluate(async ({ token, mutation, documentId, data }) => (await fetch('/graphql', {
-          method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ operationName: 'UpdateAccount', query: mutation, variables: { documentId, data } }),
-        })).json(), { token, mutation, documentId: nestedOriginal.documentId, data });
-        expect.soft(response, nested).toEqual({ errors: [{ message: 'Contained publish violation' }] });
-        expect.soft(nestedIntercept.violations, nested).toHaveLength(1);
-        expect.soft(nestedIntercept.updates, nested).toEqual([]);
-        expect.soft(nestedState.writes, nested).toEqual([]);
-        expect.soft(nestedState.account, nested).toEqual(nestedOriginal);
-        await info.attach(`nested-${nested}-containment`, { contentType: 'application/json', body: JSON.stringify({ response, ...nestedIntercept, accountUnchanged: JSON.stringify(nestedState.account) === JSON.stringify(nestedOriginal) }) });
-      } finally { await closeFixture(nestedOwner); }
-    }
   } finally { await closeFixture(owner); }
 });

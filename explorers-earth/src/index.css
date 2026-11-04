@@ -749,6 +749,13 @@ button:focus-visible {
   transition: transform 0.1s ease;
 }
 
+/* Preserve accessible touch targets and the dashboard's explicit focus ring. Public blocking
+   overlays (place details, guide filters) hold 44px controls too: scaling them on focus shrinks
+   them below the target. */
+[data-public-blocking-overlay] button:focus-visible {
+  transform: none;
+}
+
 /* Preserve accessible touch targets and the dashboard's explicit focus ring. */
 .dashboard-theme button:focus-visible {
   transform: none;

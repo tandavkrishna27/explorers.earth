@@ -5,6 +5,8 @@ import { assertCategoryKeyboardFocus, assertCategoryTokens, assertCompositedCont
 async function openFixture(...args: Parameters<typeof openContainedFixture>) {
   const visitor = await openContainedFixture(...args);
   await visitor.context.route(url => url.origin === new URL(args[1]).origin && url.pathname === '/e2e/setup/category-theme-maps-fixture.tsx', route => route.continue());
+  // Photo-less guide places render the product's placehold.co fallback; serve it locally so it stays contained.
+  await visitor.context.route(url => url.origin === 'https://placehold.co', route => route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="400" height="400" fill="#1a1a1a"/></svg>' }));
   await visitor.context.route(url => url.origin === new URL(args[1]).origin && url.pathname === '/images/category-theme-fixture.svg', route => route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600"><rect width="900" height="600" fill="#203040"/></svg>' }));
   return visitor;
 }
@@ -17,7 +19,9 @@ test('map adapter allowance preserves wrong-origin and unknown-module denial', a
     await visitor.page.goto('/fixture-owner');
     // Top-level navigation reaches the route boundary even when page CSP blocks cross-origin fetch.
     await visitor.page.goto('https://wrong-origin.invalid/e2e/setup/category-theme-maps-fixture.tsx').catch(() => undefined);
-    await visitor.page.goto('/fixture-owner');
+    // The blocked navigation commits Chromium's error page asynchronously; a goto issued before it
+    // lands is interrupted by it, so retry the return navigation until it owns the page.
+    await expect(async () => { await visitor.page.goto('/fixture-owner'); }).toPass({ timeout: 15_000 });
     await visitor.page.evaluate(async () => { await fetch('/e2e/setup/not-allowed.tsx').catch(() => undefined); });
     expect(visitor.guard.denied).toEqual(['GET external wrong-origin.invalid', 'GET /e2e/setup/not-allowed.tsx']);
     await test.info().attach('expected-containment-denials', { contentType: 'application/json', body: JSON.stringify(visitor.guard.denied) });
@@ -227,11 +231,11 @@ for (const preset of ['minimal-light', 'emerald-nature'] as const) {
     guide.Tips_Notes = 'Practical master packing advice for a thoughtful contained journey. '.repeat(9);
     guide.Place_Details = { ...guide.Place_Details, Place_Name: 'Fixture journey city' };
     first.tips = 'Carry a refillable water bottle and allow time for a calm visit. '.repeat(5);
-    const second = { ...structuredClone(first), place_id: 'guide-transfer', name: 'Guide transfer', tips: 'Transfer tip.' };
+    const second = { ...structuredClone(first), id: 'guide-transfer', place_id: 'guide-transfer', name: 'Guide transfer', tips: 'Transfer tip.' };
     section.Timeline.morning.push(second);
     section.Transport = { segments: [{ fromPlaceId: first.place_id, toPlaceId: second.place_id, mode: 'walking', duration: '10 minutes', distance: '1 km' }] };
     section.Recommendation_Activity = { activities: [{ place_id: 'fixture-stay', photos: [{ url: `${baseURL}/images/category-theme-fixture.svg` }] }] };
-    section.Stay = { accommodations: [{ ...structuredClone(first), place_id: 'fixture-stay', name: 'Fixture accommodation' }] };
+    section.Stay = { accommodations: [{ ...structuredClone(first), id: 'fixture-stay', place_id: 'fixture-stay', name: 'Fixture accommodation' }] };
     section.Budget = { morning: [{ name: 'Fixture admission', budgetAmount: 100, budgetCurrency: 'INR' }], afternoon: [], evening: [] };
     const visitor = await openFixture(browser, baseURL!, state, { ...viewport, touch: info.project.name === 'mobile' });
     const { page } = visitor;
@@ -634,6 +638,13 @@ for (const preset of ['minimal-light', 'cinematic-dark'] as const) {
       Title: 'Relaxed guide',
       Guide_Type: 'Relaxed',
     });
+    // The People tab is offered only when the city has linked people (publicLinkedPeople DTO).
+    state.lists.recommendationLists[0].person_lists = [{ documentId: 'linked-people', List_Name: 'City creators', slug: 'city-creators', Visibility: true,
+      display_order: 0, list_description: null, cover_image: null, recommended_people_next_cursor: null,
+      recommended_people: [{ documentId: 'linked-person-1', title: 'Linked person', full_name: 'Linked person', headline: 'Creator',
+        social_urls: null, skills_tags: null, avatar_url: null, platform: null, primary_platform: null, profile_url: null, username_handle: null,
+        location_text: null, follower_count: null, user_recommendation_note: '', user_rating: null, is_pinned: false, pin_order: null, display_order: 0,
+        person_list: { documentId: 'linked-people', List_Name: 'City creators', slug: 'city-creators' }, person_category: null }] }];
     const visitor = await openFixture(browser, baseURL!, state, { ...info.project.use.viewport!, touch: info.project.name === 'mobile', reducedMotion: 'reduce' });
     const { page } = visitor;
     const readable = async (control: ReturnType<typeof page.getByRole>) => {
@@ -654,7 +665,7 @@ for (const preset of ['minimal-light', 'cinematic-dark'] as const) {
       const pill = places.locator('span');
       await reviewExpect(pill).toHaveCSS('color', themes[preset].text);
       await readable(pill);
-      await places.locator('..').getByRole('button', { name: 'People', exact: true }).click();
+      await places.locator('..').getByRole('button', { name: /^People\s+\d+$/ }).click(); // name includes its count
       await reviewExpect(pill).toHaveCSS('color', themes[preset].muted);
       await readable(pill);
       await places.click();
@@ -701,7 +712,11 @@ for (const preset of ['minimal-light', 'cinematic-dark'] as const) {
 }
 
 for (const preset of ['minimal-light', 'cinematic-dark'] as const) {
-  test(`places ${preset} disabled phone glyph and action boundary`, async ({ browser, baseURL }, info) => {
+  // Since 4a3487f1 a place without a contact number omits the Call action instead of
+  // rendering it disabled; with a number the enabled glyph keeps the category ink.
+  // The public places projection carries no contact number at all, so on a public page the Call
+  // action is never offered; its enabled glyph is covered by public-category-portals.spec.ts.
+  test(`places ${preset} phone glyph and action boundary`, async ({ browser, baseURL }, info) => {
     for (const enabled of [false]) {
       const state = seedCategoryThemeState(preset);
       state.lists.recommendationLists[0].recommended_places[0].Contact_Number = enabled ? '123456' : '';
@@ -709,8 +724,12 @@ for (const preset of ['minimal-light', 'cinematic-dark'] as const) {
       try {
         await visitor.page.goto('/fixture-owner/places/city-1');
         await visitor.page.getByRole('button', { name: 'City 1 place 1', exact: true }).click();
-        const phone = visitor.page.locator('[data-public-place-detail]').getByText('Call', { exact: true }).locator('xpath=../button');
-        await expect(phone).toBeDisabled();
+        const detail = visitor.page.locator('[data-public-place-detail]');
+        await expect(detail).toBeVisible();
+        const call = detail.getByText('Call', { exact: true });
+        if (!enabled) { await expect(call).toHaveCount(0); continue; }
+        const phone = call.locator('xpath=../button');
+        await expect(phone).toBeEnabled();
         await colorExpect(phone.locator('svg path')).toHaveCSS('fill', themes[preset].text);
         await colorExpect(phone).toHaveCSS('border-top-color', preset === 'minimal-light' ? 'rgb(100, 116, 139)' : 'rgb(156, 163, 175)');
       } finally { await closeFixture(visitor); }
@@ -758,12 +777,14 @@ for (const preset of ['minimal-light', 'cinematic-dark'] as const) {
     const state = seedCategoryThemeState(preset);
     const section = state.lists.guides[0].guide_sections[0];
     const first = section.Timeline.morning[0];
-    const second = { ...structuredClone(first), place_id: 'guide-transfer', name: 'Guide transfer' };
+    // This case covers the empty-media state of the nested place, so it has no photos.
+    first.photos = [];
+    const second = { ...structuredClone(first), id: 'guide-transfer', place_id: 'guide-transfer', name: 'Guide transfer' };
     first.tips = 'Carry a refillable water bottle.';
     section.Timeline.morning.push(second);
     section.Transport = { segments: [{ fromPlaceId: first.place_id, toPlaceId: second.place_id, mode: 'walking', duration: '10 minutes', distance: '1 km' }] };
     section.Recommendation_Activity = { activities: [{ place_id: 'fixture-stay', photos: [{ url: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="800" height="600"%3E%3Crect width="800" height="600" fill="%23203040"/%3E%3C/svg%3E' }] }] };
-    section.Stay = { accommodations: [{ ...structuredClone(first), place_id: 'fixture-stay', name: 'Fixture accommodation' }] };
+    section.Stay = { accommodations: [{ ...structuredClone(first), id: 'fixture-stay', place_id: 'fixture-stay', name: 'Fixture accommodation' }] };
     section.Budget = { morning: [{ name: 'Fixture admission', budgetAmount: 100, budgetCurrency: 'INR' }], afternoon: [], evening: [] };
     const visitor = await openFixture(browser, baseURL!, state, { ...viewport, touch: info.project.name === 'mobile', reducedMotion: 'reduce' });
     const { page } = visitor;
@@ -817,7 +838,11 @@ for (const preset of ['minimal-light', 'cinematic-dark'] as const) {
         state.lists.recommendationLists = state.lists.recommendationLists.slice(0, 1);
         if (scenario === 'empty') state.lists[target.root] = [];
         if (scenario === 'error' || scenario === 'retry') state.faults.set(readKey, [{ kind: 'error', status: 503 }, { kind: 'error', status: 503 }]);
-        if (scenario === 'partial' || scenario === 'all-null') state.faults.set(readKey, [{ kind: 'partial', nullRootPage: scenario === 'all-null' }, { kind: 'partial', nullRootPage: scenario === 'all-null' }]);
+        // The canonical gateway never emits null list entries, so only Apps and Guides (which still
+        // tolerate them) model partial data that way. For the strict readers a partial state is a
+        // populated page whose invalidation refetch fails: the data is retained beside the notice.
+        const refetchPartial = scenario === 'partial' && !['apps', 'guides'].includes(family);
+        if ((scenario === 'partial' && !refetchPartial) || scenario === 'all-null') state.faults.set(readKey, [{ kind: 'partial', nullRootPage: scenario === 'all-null' }, { kind: 'partial', nullRootPage: scenario === 'all-null' }]);
         let release = () => {};
         if (scenario === 'loading') {
           for (const category of categories) state.account[category.field] = category.field === target.field ? 'Yes' : 'No';
@@ -856,6 +881,16 @@ for (const preset of ['minimal-light', 'cinematic-dark'] as const) {
               await colorExpect(heading).toHaveCSS('color', media ? themes[preset].muted : themes[preset].text);
               await assertCompositedContrast(heading);
             } else if (scenario === 'partial') {
+              if (refetchPartial) {
+                await expect(page.getByText(populatedText, { exact: true }).last()).toBeVisible();
+                // People reloads its own scope and Places restarts on invalidation, so their retained-data
+                // partial is the profile shell's failed revalidation (usePublicProfileShell keeps the shown data).
+                const shellPartial = family === 'people' || family === 'places';
+                state.faults.set(shellPartial ? 'PublicProfileData' : readKey, [{ kind: 'error', status: 503 }, { kind: 'error', status: 503 }]);
+                const eventCategory = { places: 'public_recommendations', movies: 'public_movie', books: 'public_books', games: 'public_games', products: 'public_products' }[shellPartial ? 'books' : family as string];
+                await page.evaluate(detail => window.dispatchEvent(new CustomEvent('explorers-public-profile-invalidation', { detail: { ...detail, timestamp: Date.now() } })),
+                  { version: 'public-profile-invalidation/v1', eventId: `partial-${family}-${preset}`, accountDocumentId: String(state.account.documentId), username: 'fixture-owner', category: eventCategory, action: 'content-changed' });
+              }
               await expect(page.getByRole('status').filter({ hasText: `Some ${singular} data is unavailable.` })).toBeVisible();
               await assertCompositedContrast(page.getByRole('status').filter({ hasText: `Some ${singular} data is unavailable.` }));
               await expect(page.getByText(populatedText, { exact: true }).last()).toBeVisible();
@@ -992,7 +1027,8 @@ for (const [preset, colors] of Object.entries(themes)) {
           const opener = page.getByRole('button', { name: 'City 1 place 1', exact: true });
           await opener.click();
           const overlay = page.getByRole('dialog', { name: 'Place details', exact: true });
-          await expect(overlay).toBeFocused();
+          // Since a76c8836 useDialogA11y moves initial focus to the dialog's close control.
+          await expect(overlay.getByRole('button', { name: 'Close place details', exact: true })).toBeFocused();
           await expect.poll(() => overlay.locator(':scope > div').last().evaluate(element => {
             const transform = getComputedStyle(element).transform;
             return Math.abs(transform === 'none' ? 0 : new DOMMatrix(transform).m42);
@@ -1001,7 +1037,9 @@ for (const [preset, colors] of Object.entries(themes)) {
           await colorExpect(page.locator('[data-public-place-detail]')).toHaveCSS('background-color', colors.panel);
           await colorExpect(page.locator('[data-public-place-detail]').getByRole('heading').first()).toHaveCSS('color', colors.text);
           const close = page.getByRole('button', { name: 'Close place details', exact: true });
+          // Close already holds initial focus; move away and back by keyboard so it is focus-visible.
           await page.keyboard.press('Tab');
+          await page.keyboard.press('Shift+Tab');
           await expect(close).toBeFocused();
           await colorExpect(close).toHaveCSS('color', colors.text);
           expect((await close.boundingBox())!.height).toBeGreaterThanOrEqual(44);
@@ -1108,7 +1146,13 @@ for (const [preset, colors] of Object.entries(themes)) {
         const panel = page.locator('[data-category-detail-panel]');
         await colorExpect(panel).toHaveCSS('background-color', colors.panel);
         await assertCompositedContrast(modalTitle);
-        await colorExpect(page.getByText('A considered recommendation with useful details.', { exact: true }).filter({ visible: true }).last()).toHaveCSS('color', colors.muted);
+        // Manual Games carry no summary and public People no bio (gamesPublicPageSchema / publicPersonSchema),
+        // so their muted secondary text is the genre chip and the handle.
+        const mutedDetail = family === 'games' ? panel.getByText('Adventure', { exact: true }).first()
+          : family === 'people' ? panel.getByText('@person2', { exact: true }).first()
+          : page.getByText('A considered recommendation with useful details.', { exact: true }).filter({ visible: true }).last();
+        await expect(mutedDetail).toBeVisible();
+        await colorExpect(mutedDetail).toHaveCSS('color', colors.muted);
         if (viewport.width === 390 || ['minimal-light', 'cinematic-dark'].includes(preset)) {
           // Movies/Books/Games/Products use the existing unlabeled first header button for onClose.
           const close = ['apps', 'people'].includes(family) ? panel.getByRole('button', { name: /close/i }).first() : panel.getByRole('button').first();
@@ -1134,35 +1178,17 @@ for (const [preset, colors] of Object.entries(themes)) {
   }
 }
 
-for (const family of mediaFamilies) {
-  test(`shared dashboard modal ${family} retains its original palette`, async ({ browser, baseURL }, info) => {
-    const viewport = info.project.use.viewport!;
-    const visitor = await openFixture(browser, baseURL!, seedCategoryThemeState('minimal-light'), { ...viewport, owner: true, theme: 'light', touch: info.project.name === 'mobile' });
-    await visitor.context.route('**/images/category-theme-fixture.svg', route => route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="600" height="400" fill="#203040"/></svg>' }));
-    try {
-      expect(visitor.page.viewportSize()).toEqual(viewport);
-      await visitor.page.goto(`/recommendations/${family}/${family}-list-1`);
-      expect(await visitor.page.evaluate(() => innerWidth)).toBe(viewport.width);
-      const title = visitor.page.getByText(`${names[family]} 2`, { exact: true }).last();
-      await expect(title).toBeVisible();
-      await title.click();
-      const panel = visitor.page.locator('[data-category-detail-panel]');
-      await expect(panel).toBeVisible();
-      await expect(panel).toHaveCSS('background-color', 'rgb(13, 17, 23)');
-      await expect(panel.getByRole('heading', { name: `${names[family]} 2`, level: 2 })).toHaveCSS('color', 'rgb(255, 255, 255)');
-      expect(await panel.evaluate(element => getComputedStyle(element).getPropertyValue('--category-text'))).toBe('');
-      await visitor.page.keyboard.press('Escape');
-      await expect(panel).toBeHidden();
-    } finally { await closeFixture(visitor); }
-  });
-}
+// Removed: 'shared dashboard modal <family> retains its original palette'. The owner dashboard no
+// longer renders the public detail modals (Movie/Book/Game/App/Product/PersonDetailModal are
+// imported only by the public routes), so there is no shared modal left whose palette could leak.
 
 for (const family of mediaFamilies) {
   test(`media category details ${family} readable semantic labels and unclipped controls`, async ({ browser, baseURL }, info) => {
     const viewport = info.project.use.viewport!;
     const state = seedCategoryThemeState('minimal-light');
     for (const lists of Object.values(state.lists)) for (const list of lists) {
-      for (const item of list[`recommended_${family}`] ?? []) Object.assign(item, {
+      // The public People read is strict (publicPersonSchema), so it only takes the rating.
+      for (const item of list[`recommended_${family}`] ?? []) Object.assign(item, family === 'people' ? { user_rating: 8 } : {
         user_rating: 8, price_tier: 'Free', platforms: ['Web'], specifications: { Material: 'Aluminium', Weight: '200g' },
       });
     }
@@ -1180,8 +1206,12 @@ for (const family of mediaFamilies) {
       else await title.click();
       const panel = page.locator('[data-category-detail-panel]');
       await expect(panel).toBeVisible();
-      await colorExpect(panel.getByText("Creator's Rating", { exact: true })).toHaveCSS('color', themes['minimal-light'].text);
-      if (['apps', 'products', 'people'].includes(family)) {
+      // People has no creator rating since 8b1cd41a ("no rating or follower count"); its unclipped
+      // check anchors on the person heading instead.
+      const anchor = family === 'people' ? panel.getByRole('heading', { name: 'Person 2', exact: true, level: 2 }) : panel.getByText("Creator's Rating", { exact: true });
+      if (family === 'people') await expect(panel.getByText("Creator's Rating", { exact: true })).toHaveCount(0);
+      else await colorExpect(anchor).toHaveCSS('color', themes['minimal-light'].text);
+      if (['apps', 'products'].includes(family)) {
         const rating = panel.getByText('8/10', { exact: true });
         await colorExpect(rating).toHaveCSS('color', themes['minimal-light'].text);
         await colorExpect(rating.locator('svg')).toHaveCSS('color', 'rgb(161, 98, 7)');
@@ -1194,8 +1224,8 @@ for (const family of mediaFamilies) {
         await colorExpect(panel.getByRole('button', { name: 'Gallery 1', exact: true })).toHaveCSS('border-top-color', themes['minimal-light'].text);
         await colorExpect(panel.getByText('200g', { exact: true }).locator('..').locator('..')).toHaveCSS('background-color', themes['minimal-light'].card);
       }
-      await panel.getByText("Creator's Rating", { exact: true }).scrollIntoViewIfNeeded();
-      await expect(panel.getByText("Creator's Rating", { exact: true })).toBeInViewport();
+      await anchor.scrollIntoViewIfNeeded();
+      await expect(anchor).toBeInViewport();
       const rect = await panel.boundingBox();
       expect(rect!.x).toBeGreaterThanOrEqual(0);
       expect(rect!.y).toBeGreaterThanOrEqual(0);
@@ -1580,8 +1610,10 @@ test('@once blocking overlay nested YARL owns one Escape before Place cleanup', 
     await expect(page.locator('body')).toHaveCSS('overflow', 'clip');
     await opener.click();
     const placeDialog = page.getByRole('dialog', { name: 'Place details', exact: true });
-    await expect(placeDialog).toBeFocused();
-    await page.getByRole('img', { name: 'Saved place photo', exact: true }).click();
+    // Since a76c8836 useDialogA11y moves initial focus to the dialog's close control.
+    await expect(placeDialog.getByRole('button', { name: 'Close place details', exact: true })).toBeFocused();
+    // The photo is now an interactive img (role=button) that opens the viewer.
+    await page.getByRole('button', { name: 'Saved place photo', exact: true }).click();
     const viewer = page.locator('.yarl__root');
     await expect(viewer).toBeVisible();
     await expect.poll(() => page.evaluate(() => Boolean(document.activeElement?.closest('.yarl__root')))).toBe(true);
@@ -1599,7 +1631,7 @@ test('@once blocking overlay nested YARL owns one Escape before Place cleanup', 
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
       await opener.click();
-      await expect(page.getByRole('dialog', { name: 'Place details', exact: true })).toBeFocused();
+      await expect(page.getByRole('dialog', { name: 'Place details', exact: true }).getByRole('button', { name: 'Close place details', exact: true })).toBeFocused();
       await page.keyboard.press('Escape');
       await expect(page.getByRole('dialog', { name: 'Place details', exact: true })).toHaveCount(0);
       await expect(opener).toBeFocused();
@@ -1608,38 +1640,15 @@ test('@once blocking overlay nested YARL owns one Escape before Place cleanup', 
   } finally { await closeFixture(visitor); }
 });
 
-test('review fix dark dashboard shared hero CTA preserves fill label and icon ink', async ({ browser, baseURL }, info) => {
+// The dashboard half of this case was removed: /recommendations/<category> now renders the
+// dashboard's own CategoryPage + shared/topPicks/TopPicksHero, not the public category heroes, so
+// there is no shared hero CTA on the dashboard left to protect. The public CTA check remains.
+test('review fix public category hero CTA preserves fill label and icon ink', async ({ browser, baseURL }, info) => {
   const viewport = info.project.use.viewport!;
-  const visitor = await openFixture(browser, baseURL!, seedCategoryThemeState('minimal-light'), { ...viewport, owner: true, theme: 'dark', touch: info.project.name === 'mobile' });
+  const visitor = await openFixture(browser, baseURL!, seedCategoryThemeState('minimal-light'), { ...viewport, touch: info.project.name === 'mobile' });
   await visitor.context.route('**/images/category-theme-fixture.svg', route => route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600"><rect width="900" height="600" fill="#203040"/></svg>' }));
   try {
     expect(visitor.page.viewportSize()).toEqual(viewport);
-    for (const family of (info.project.name === 'mobile' ? ['books'] : ['books', 'games', 'movies'])) {
-      await visitor.page.goto(`/recommendations/${family}`);
-      expect(await visitor.page.evaluate(() => innerWidth)).toBe(viewport.width);
-      const manage = visitor.page.getByRole('button', { name: /Manage Top (Reads|Picks)/ }).filter({ visible: true }).first();
-      await expect(manage).toBeVisible();
-      await info.attach(`dashboard-${family}-cta-cascade`, { contentType: 'application/json', body: JSON.stringify(await manage.evaluate(element => {
-        const computed = getComputedStyle(element);
-        const matches: { selector: string; color: string; priority: string }[] = [];
-        const walk = (rules: CSSRuleList) => { for (const rule of rules) {
-          if (rule instanceof CSSStyleRule && rule.style.color) { try { if (element.matches(rule.selectorText)) matches.push({ selector: rule.selectorText, color: rule.style.color, priority: rule.style.getPropertyPriority('color') }); } catch (error) {
-            if (!(error instanceof DOMException) || error.name !== 'SyntaxError') throw error;
-            // Unsupported selectors are irrelevant to this best-effort cascade diagnostic.
-          } }
-          if ('cssRules' in rule && !(rule instanceof CSSMediaRule && !matchMedia(rule.conditionText).matches)) walk((rule as CSSGroupingRule).cssRules);
-        } };
-        for (const sheet of document.styleSheets) { try { walk(sheet.cssRules); } catch (error) {
-          if (!(error instanceof DOMException) || error.name !== 'SecurityError') throw error;
-          // Cross-origin stylesheets are unreadable; the computed-color assertions still run.
-        } }
-        return { color: computed.color, accentInk: computed.getPropertyValue('--dash-accent-text'), ancestors: Array.from((function* () { let node: Element | null = element; while (node) { yield node; node = node.parentElement; } })()).map(node => node.className), matches };
-      })) });
-      await colorExpect(manage).toHaveCSS('background-color', 'rgb(96, 165, 250)');
-      // Original button.text-white !important wins over the less-specific accent contract.
-      await colorExpect(manage).toHaveCSS('color', 'rgb(255, 255, 255)');
-      await colorExpect(manage.locator('svg').first()).toHaveCSS('color', 'rgb(255, 255, 255)');
-    }
     await visitor.page.goto('/fixture-owner/books');
     const categoryCTA = visitor.page.getByRole('button', { name: 'See Details', exact: true }).filter({ visible: true }).first();
     await expect(categoryCTA).toBeVisible();
@@ -1682,6 +1691,8 @@ test('review fix TV badge has a contrasting semantic pair on poster and modal', 
     expect(visitor.page.viewportSize()).toEqual(viewport);
     await visitor.page.goto('/fixture-owner/movies');
     expect(await visitor.page.evaluate(() => innerWidth)).toBe(viewport.width);
+    // The colour checks below are short soft polls; wait for the cards to render first.
+    await expect(visitor.page.getByText('Series', { exact: true }).last()).toBeVisible();
     const badge = visitor.page.getByText('Series', { exact: true }).last().locator('..');
     await colorExpect(badge).toHaveCSS('color', 'rgb(255, 255, 255)');
     await colorExpect(badge).toHaveCSS('background-color', 'rgb(29, 78, 216)');
@@ -1697,7 +1708,8 @@ test('review fix TV badge has a contrasting semantic pair on poster and modal', 
 test('review fix Games list ratings missing action and artwork banner stay readable', async ({ browser, baseURL }, info) => {
   const viewport = info.project.use.viewport!;
   const state = seedCategoryThemeState('minimal-light');
-  for (const list of state.lists.gameLists) for (const game of list.recommended_games) game.igdb_rating = 8.7;
+  // The provider (IGDB) rating was removed with manual Games (adaptPublicGamesPage sets igdb_rating
+  // null), so this case keeps the banner and missing-list ink checks only.
   const visitor = await openFixture(browser, baseURL!, state, { ...viewport, touch: info.project.name === 'mobile' });
   await visitor.context.route('**/images/category-theme-fixture.svg', route => route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600"><rect width="900" height="600" fill="#203040"/></svg>' }));
   try {
@@ -1710,7 +1722,6 @@ test('review fix Games list ratings missing action and artwork banner stay reada
       await expect(title).toBeVisible();
       await colorExpect(title).toHaveCSS('color', cover ? 'rgb(255, 255, 255)' : themes['minimal-light'].text);
       await colorExpect(visitor.page.getByText('A thoughtful collection', { exact: true })).toHaveCSS('color', cover ? 'rgba(255, 255, 255, 0.7)' : themes['minimal-light'].muted);
-      await colorExpect(visitor.page.getByText('8.7', { exact: true }).first()).toHaveCSS('color', themes['minimal-light'].text);
       await visitor.page.screenshot({ path: info.outputPath(`review-games-banner-${cover}-${viewport.width}.png`) });
     }
     await visitor.page.goto('/fixture-owner/games/missing-list');
