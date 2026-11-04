@@ -26,8 +26,8 @@ const API_FLOOR = 40;     // 90% of the 45 distinct successful canonical API pat
 const VIEWPORT = { desktop: { width: 1365, height: 900 }, mobile: { width: 390, height: 844 } } as const;
 const CASES = ROUTES.flatMap((route) => (route.viewport ? [route.viewport] : (['desktop', 'mobile'] as const))
   .map((viewport) => ({ route, viewport })));
-/** A fixed number, not CASES.length: moving a case into EXCLUDED must trip this, not silently lower it. Measured: 176; 182 with the three nested places routes. */
-const ROUTE_FLOOR = 182;
+/** A fixed number, not CASES.length: moving a case into EXCLUDED must trip this, not silently lower it. Measured: 176; 178 on 2026-11-05 (Music cases gone, nested places routes added, every case executed). */
+const ROUTE_FLOOR = 178;
 
 const RUN = new Monitor();
 const executed = new Set<string>();
