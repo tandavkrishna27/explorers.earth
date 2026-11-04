@@ -359,15 +359,25 @@ export function defaultMusicTestChildEnvironment(ambient: NodeJS.ProcessEnv): No
   return child;
 }
 
+let emptyGlobalNpmConfiguration: string | undefined;
+// npm refuses to load one file as both the user and the global config, so the
+// global config gets its own empty file instead of sharing the null device.
+function emptyGlobalNpmConfigurationPath(): string {
+  if (emptyGlobalNpmConfiguration && existsSync(emptyGlobalNpmConfiguration)) return emptyGlobalNpmConfiguration;
+  const file = join(mkdtempSync(join(tmpdir(), "music-npm-global-")), "npmrc");
+  writeFileSync(file, "", { mode: 0o600 });
+  emptyGlobalNpmConfiguration = file;
+  return file;
+}
+
 export function buildQualificationChildEnvironment(input: {
   authority: "default" | "real-tool" | "c10-postgres" | "uat-postgres";
   ambient: NodeJS.ProcessEnv;
   ownedDatabase?: Record<string, string>;
 }): NodeJS.ProcessEnv {
   const child = defaultMusicTestChildEnvironment(input.ambient);
-  const emptyConfiguration = process.platform === "win32" ? "NUL" : "/dev/null";
-  child.NPM_CONFIG_USERCONFIG = emptyConfiguration;
-  child.NPM_CONFIG_GLOBALCONFIG = emptyConfiguration;
+  child.NPM_CONFIG_USERCONFIG = process.platform === "win32" ? "NUL" : "/dev/null";
+  child.NPM_CONFIG_GLOBALCONFIG = emptyGlobalNpmConfigurationPath();
   if (input.authority === "c10-postgres") {
     if (!input.ownedDatabase) throw new Error("owned C10 database environment required");
     Object.assign(child, input.ownedDatabase);

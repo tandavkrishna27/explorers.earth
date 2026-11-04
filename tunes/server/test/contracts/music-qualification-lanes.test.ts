@@ -118,16 +118,19 @@ describe("canonical qualification evidence contract", () => {
       expect(builder({ authority, ambient })).toEqual({
         PATH: "bounded-path",
         NPM_CONFIG_USERCONFIG: process.platform === "win32" ? "NUL" : "/dev/null",
-        NPM_CONFIG_GLOBALCONFIG: process.platform === "win32" ? "NUL" : "/dev/null",
+        NPM_CONFIG_GLOBALCONFIG: expect.any(String),
       });
     }
     const ownedDatabase = { DATABASE_URL_TEST: "postgresql://owned-loopback", MUSIC_C10_POSTGRES_TEST: "1" };
     expect(builder({ authority: "c10-postgres", ambient, ownedDatabase })).toEqual({
       PATH: "bounded-path",
       NPM_CONFIG_USERCONFIG: process.platform === "win32" ? "NUL" : "/dev/null",
-      NPM_CONFIG_GLOBALCONFIG: process.platform === "win32" ? "NUL" : "/dev/null",
+      NPM_CONFIG_GLOBALCONFIG: expect.any(String),
       ...ownedDatabase,
     });
+    const npmConfiguration = builder({ authority: "default", ambient });
+    expect(npmConfiguration.NPM_CONFIG_GLOBALCONFIG).not.toBe(npmConfiguration.NPM_CONFIG_USERCONFIG);
+    expect(readFileSync(String(npmConfiguration.NPM_CONFIG_GLOBALCONFIG), "utf8")).toBe("");
     expect(() => builder({ authority: "c10-postgres", ambient })).toThrow(/owned C10 database/i);
     expect(() => builder({ authority: "default", ambient, ownedDatabase })).toThrow(/foreign database authority/i);
     expect(ambient).toEqual(before);
