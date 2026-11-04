@@ -1100,18 +1100,17 @@ test.describe("public recommendation presentation visual matrix", () => {
       await expect(page).toHaveURL(`/presentation-fixture/${category.path}`);
       await expect(page.getByText(category.ready, { exact: true }).first()).toBeVisible();
 
-      await page.evaluate(() => window.history.back());
-      await expect(page).not.toHaveURL(`/presentation-fixture/${category.path}`);
-      if (new URL(page.url()).pathname === `/presentation-fixture/${category.path}`) {
-        await page.evaluate(() => window.history.back());
-      }
-      await expect(page).toHaveURL("/presentation-fixture");
-      await page.evaluate(() => window.history.forward());
-      await expect(page).not.toHaveURL("/presentation-fixture");
-      if (new URL(page.url()).pathname === "/presentation-fixture") {
-        await page.evaluate(() => window.history.forward());
-      }
-      await expect(page).toHaveURL(`/presentation-fixture/${category.path}`);
+      // A reload may leave a duplicate entry for the same URL (Firefox does), so step
+      // through history until the route actually changes, then require the exact target.
+      const step = async (direction: "back" | "forward", from: string, to: string) => {
+        for (let i = 0; i < 3 && new URL(page.url()).pathname === from; i += 1) {
+          await page.evaluate((d) => (d === "back" ? window.history.back() : window.history.forward()), direction);
+          await expect.poll(() => new URL(page.url()).pathname, { timeout: 3000 }).not.toBe(from).catch(() => undefined);
+        }
+        await expect(page).toHaveURL(to);
+      };
+      await step("back", `/presentation-fixture/${category.path}`, "/presentation-fixture");
+      await step("forward", "/presentation-fixture", `/presentation-fixture/${category.path}`);
       await expect(page.getByText(category.ready, { exact: true }).first()).toBeVisible();
     }
   });
