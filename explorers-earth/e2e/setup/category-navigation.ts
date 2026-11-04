@@ -406,7 +406,18 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
             recommended_places_next_cursor: served < total ? `o${served}.fixture` : null,
           };
         };
+        // Movies, Games and People carry an explicit per-list continuation cursor on the
+        // canonical gateway (null when the list is complete), and Movies and Games also an
+        // explicit root `nextCursor`. The SPA rejects a page without them as
+        // PUBLIC_PROFILE_INVALID_RESPONSE, so the fixture has to state them.
+        const childCursorField = { movies: 'recommended_movies_next_cursor', games: 'nextCursor', people: 'recommended_people_next_cursor' }[category.route as string];
+        const childCursor = (list: Record<string, unknown>) => {
+          const total = Array.isArray(list[relation]) ? (list[relation] as unknown[]).length : 0;
+          const end = match[2] ? offset + limit : 12;
+          return end < total ? `o${end}` : null;
+        };
         const pageList = (list: Record<string, unknown>) => ({
+          ...(childCursorField ? { [childCursorField]: childCursor(list) } : {}),
           ...(category.route === 'places' ? project(placesSelection, list) : list),
           // Spread AFTER the projection: project() keeps only selected fields, so the envelope
           // has to be added on top or it is stripped.
@@ -418,9 +429,9 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
             : Array.isArray(list[relation])
               ? { [relation]: (category.route === 'places' ? project(placesSelection, list)[relation] : list[relation]).slice(0, category.route === 'places' ? 24 : 12) }
               : {}),
-          // Every gateway projection emits `<child>_next_cursor` on each list (null at the end);
-          // the public continuation readers reject a list without it.
-          ...(category.route !== 'places' && relation && Array.isArray(list[relation])
+          // Books, Apps, Products and Guides also emit `<child>_next_cursor` on each list
+          // (null at the end); Movies, Games and People are covered by childCursorField.
+          ...(category.route !== 'places' && !childCursorField && relation && Array.isArray(list[relation])
             ? (() => {
               const total = (list[relation] as unknown[]).length;
               const end = match[2] ? offset + limit : 12;
@@ -454,23 +465,25 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
             id: fixtureUuid(`game-list:${list.documentId}`), title: list.List_Name, description: list.list_description ?? list.Description ?? null, slug: list.slug,
             heading: list.top_picks_heading ?? null, displayOrder: list.display_order ?? index, coverMediaId: null, coverUrl: null,
             recommendations: (list.recommended_games ?? []).map((row: Record<string, any>, rowIndex: number) => gameRow(list, row, rowIndex)),
-            nextCursor: list.recommended_games_next_cursor ?? null,
+            nextCursor: list.nextCursor ?? null,
           })),
           topPicks: match[2] ? [] : lists.flatMap(list => list ? (list.recommended_games ?? []).map((row: Record<string, any>, rowIndex: number) => ({ row: gameRow(list, row, rowIndex), pinned: row.is_pinned })) : [])
             .filter(entry => entry.pinned && entry.row.pinPosition !== null).map(entry => entry.row).slice(0, 15),
-          nextCursor: !match[2] && offset + limit < publicLists.length ? `o${offset + limit}` : null,
+          nextCursor: match[2] ? null : (partialBody as Record<string, any>).nextCursor ?? null,
         });
         const body = match[2]
           ? { [category.root]: publicLists.filter((list) => list.slug === match[2] || category.route === 'guides' && list.documentId === match[2]).map(pageList) }
-          : { [category.root]: publicLists.slice(offset, offset + limit).map(pageList) };
+          : { [category.root]: publicLists.slice(offset, offset + limit).map(pageList),
+            ...(category.route === 'movies' || category.route === 'games' ? { nextCursor: offset + limit < publicLists.length ? `o${offset + limit}` : null } : {}) };
         const partialBody = fault?.kind === 'partial' && !match?.[2]
           ? { ...body, [category.root]: fault.nullRootPage ? (body[category.root] as unknown[]).map(() => null) : [...(body[category.root] as unknown[]), null] }
           : body;
-        // publicMoviesProjection adds topPicks + a root cursor to the category (non-slug) page.
+        // publicMoviesProjection also adds topPicks to the category (non-slug) page; the root
+        // cursor is set on `body` above.
         const servedBody = category.route === 'games'
           ? gamesPage(partialBody[category.root] as Array<Record<string, any> | null>)
           : category.route === 'movies' && !match[2]
-            ? { ...partialBody, topPicks: [], nextCursor: offset + limit < publicLists.length ? `o${offset + limit}` : null }
+            ? { ...partialBody, topPicks: [] }
             : partialBody;
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(servedBody) });
       }

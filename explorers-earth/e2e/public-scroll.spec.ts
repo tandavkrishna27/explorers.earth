@@ -272,7 +272,7 @@ for (const width of [390, 1440]) {
       await expect(visitor.page.getByText('City 13 place 1', { exact: true })).toHaveCount(1);
       await visitor.page.getByRole('button', { name: 'Retry places', exact: true }).click();
       await expect(visitor.page.getByText('City 13 place 25', { exact: true })).toBeVisible();
-      expect(state.reads.filter(read => read.name === 'AppListBySlug').map(read => read.variables.cursor)).toEqual([null, 'o24', 'o24']);
+      expect(state.reads.filter(read => read.name === 'AppListBySlug').map(read => read.variables.cursor)).toEqual([null, 'o24.fixture', 'o24.fixture']);
       expect(state.reads.filter(read => read.name === 'AppListBySlug').every(read => read.variables.limit === 24)).toBe(true);
       await expect(visitor.page.getByRole('button', { name: 'Load more places', exact: true })).toHaveCount(0);
     } finally { await closeFixture(visitor); }
@@ -319,7 +319,7 @@ test('Places removes an open modal when its city becomes unpublished during appe
     await expect(visitor.page.locator('[data-public-place-detail]')).toBeVisible();
     state.lists.recommendationLists[12].Visibility = false;
     release();
-    await expect(visitor.page.getByRole('heading', { name: 'Places unavailable' })).toBeVisible();
+    await expect(visitor.page.getByRole('heading', { name: 'Not found', exact: true })).toBeVisible();
     await expect(visitor.page.locator('[data-public-place-detail]')).toHaveCount(0);
     await expect(visitor.page.getByText('City 13 place 1', { exact: true })).toHaveCount(0);
     expect(state.reads.filter(read => read.name === 'RecommendedPlace')).toEqual([]);
@@ -349,7 +349,7 @@ test('Places preserves an open modal on append and requests o24 only once', asyn
     await expect(visitor.page.getByText('City 13 place 25', { exact: true })).toHaveCount(1);
     await expect(modal).toBeVisible();
     await expect(modal.getByRole('heading', { name: 'City 13 place 1', exact: true })).toBeVisible();
-    expect(state.reads.filter(read => read.name === 'AppListBySlug').map(read => read.variables.cursor)).toEqual([null, 'o24']);
+    expect(state.reads.filter(read => read.name === 'AppListBySlug').map(read => read.variables.cursor)).toEqual([null, 'o24.fixture']);
     await expect(continuation).toHaveCount(0);
   } finally { release(); await closeFixture(visitor); }
 });
@@ -362,7 +362,7 @@ for (const unavailable of ['hidden', 'missing'] as const) {
     const visitor = await openFixture(browser, baseURL!, state, { owner: false, width: 390, height: 500 });
     try {
       await visitor.page.goto(`/fixture-owner/places/${unavailable === 'hidden' ? 'city-13' : 'missing-city'}`);
-      await expect(visitor.page.getByRole('heading', { name: 'Places unavailable' })).toBeVisible();
+      await expect(visitor.page.getByRole('heading', { name: 'Not found', exact: true })).toBeVisible();
       await expect(visitor.page.getByText('City 1 place 1', { exact: true })).toHaveCount(0);
       await expect(visitor.page.locator('[data-public-place-detail]')).toHaveCount(0);
       expect(state.reads.filter(read => read.name === 'RecommendedPlace')).toEqual([]);
@@ -374,11 +374,13 @@ for (const width of [390, 1440]) {
   for (const [category, title] of [['apps', 'App'], ['books', 'Book'], ['movies', 'Movie'], ['games', 'Game'], ['products', 'Product'], ['people', 'Person']] as const) {
     test(`${category} scroll appends beyond 12 and keeps shell at ${width}`, async ({ browser, baseURL }) => {
       const state = fixtureState();
+      // Books lists page by 24 (PublicBookList pageSize), every other list by 12.
+      const size = category === 'books' ? 24 : 12;
       seedLongPublicCollection(state, category, { lists: 1, items: 25 });
       const visitor = await openFixture(browser, baseURL!, state, { owner: false, width, height: 500 });
       let release!: () => void;
       const gate = new Promise<void>(resolve => { release = resolve; });
-      await visitor.context.route(url => url.origin === 'https://music-fixture.test' && url.searchParams.get('cursor') === 'o12', async route => { await gate; await route.fallback(); });
+      await visitor.context.route(url => url.origin === 'https://music-fixture.test' && url.searchParams.get('cursor') === `o${size}`, async route => { await gate; await route.fallback(); });
       const cardTitle = (n: number) => category === 'games'
         ? visitor.page.getByRole('heading', { name: `${title} ${n}`, exact: true })
         : visitor.page.getByText(`${title} ${n}`, { exact: true });
@@ -388,16 +390,16 @@ for (const width of [390, 1440]) {
         await visitor.page.getByRole('button', { name: `Load more ${category}`, exact: true }).scrollIntoViewIfNeeded();
         await expect(visitor.page.getByRole('button', { name: `Load more ${category}`, exact: true })).toBeDisabled();
         await expect(cardTitle(1)).toHaveCount(1);
-        await expect(cardTitle(13)).toHaveCount(0);
+        await expect(cardTitle(size + 1)).toHaveCount(0);
         await expect(visitor.page.getByRole('navigation', { name: 'Public navigation' })).toBeVisible();
         await expect(visitor.page.locator('.earth-loader-wrapper')).toHaveCount(0);
-        await expect(visitor.page.locator('meta[name="description"]')).toHaveAttribute('content', /12\+/);
+        await expect(visitor.page.locator('meta[name="description"]')).toHaveAttribute('content', new RegExp(`${size}\\+`));
         release();
-        await expect(cardTitle(13)).toBeVisible();
+        await expect(cardTitle(size + 1)).toBeVisible();
         for (let n = 1; n <= 24; n++) await expect(cardTitle(n)).toHaveCount(1);
         await expect(visitor.page.getByRole('navigation', { name: 'Public navigation' })).toBeVisible();
         await expect(visitor.page.getByRole('status', { name: 'Earth loading' })).toHaveCount(0);
-        expect(state.reads.filter(read => read.name === 'AppListBySlug').map(read => read.variables.cursor)).toContain('o12');
+        expect(state.reads.filter(read => read.name === 'AppListBySlug').map(read => read.variables.cursor)).toContain(`o${size}`);
       } finally { release(); await closeFixture(visitor); }
     });
   }
