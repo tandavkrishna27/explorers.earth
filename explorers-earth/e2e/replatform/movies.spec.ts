@@ -169,15 +169,15 @@ test('owner manual form all fields snapshot repeat edits and archive reload',asy
   beginMoviesNetwork(page,info,()=>diagnosticStages.get(info)?.stage??'unavailable');
  }
  try{
- await signIn(page);const bad=monitor(page);await page.goto('/recommendations/movies');await page.getByRole('button',{name:'New List',exact:true}).filter({visible:true}).first().click();
- await page.locator('input[name="List_Name"]').fill(`Manual ${info.project.name}`);await page.locator('textarea[name="list_description"]').fill('UAT list description');const created=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname===`${base}/collections`);await page.getByRole('button',{name:'Create List',exact:true}).click();const list=(await (await created).json()).collection;
- await page.getByRole('button',{name:'Add Movie or Show',exact:true}).click();await page.getByRole('button',{name:"Can't find it? Add manually",exact:true}).click();await page.getByPlaceholder('Movie title').first().fill('Manual round-trip');await page.getByPlaceholder('Movie title').nth(1).fill('Original manual');await page.getByPlaceholder('e.g. 2008').fill('2020');await page.getByPlaceholder('e.g. Vince Gilligan').fill('Manual director');await page.getByPlaceholder('e.g. 62').fill('0');await page.getByPlaceholder('Brief description...').fill('Manual overview');await page.locator('.ql-editor').fill('Manual note 😀');await page.locator('input[type=file]').setInputFiles({name:'snapshot.png',mimeType:'image/png',buffer:png});
+ await signIn(page);const bad=monitor(page);await page.goto('/recommendations/movies');await page.getByRole('button',{name:/New list$/}).filter({visible:true}).first().click();
+ await page.locator('#wp3a-name').fill(`Manual ${info.project.name}`);await page.locator('#wp3a-description').fill('UAT list description');const created=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname===`${base}/collections`);await page.getByRole('dialog',{name:'New list'}).getByRole('button',{name:'Create list',exact:true}).click();const list=(await (await created).json()).collection;
+ await page.getByRole('button',{name:/Add movie$/}).filter({visible:true}).first().click();await page.getByRole('button',{name:"Can't find it? Add manually",exact:true}).click();await page.getByPlaceholder('Movie title').first().fill('Manual round-trip');await page.getByPlaceholder('Movie title').nth(1).fill('Original manual');await page.getByPlaceholder('e.g. 2008').fill('2020');await page.getByPlaceholder('e.g. Vince Gilligan').fill('Manual director');await page.getByPlaceholder('e.g. 62').fill('0');await page.getByPlaceholder('Brief description...').fill('Manual overview');await page.locator('.ql-editor').fill('Manual note 😀');await page.locator('input[type=file]').setInputFiles({name:'snapshot.png',mimeType:'image/png',buffer:png});
  const added=page.waitForResponse(r=>r.request().method()==='POST'&&new URL(r.url()).pathname===`${base}/recommendations`);await page.getByRole('button',{name:'Save',exact:true}).click();const r=(await (await added).json()).recommendation;await expect(page).toHaveURL(new RegExp(`/recommendations/movies/${list.id}$`));
  let detail=await editable(page.request,'recommendations',r.id);expect(detail.mediaIds).toHaveLength(1);expect(detail.providerMedia).toBeNull();expect(detail.effectiveMovieDetails.runtimeMinutes).toBe(0);expect(detail.note.html.replaceAll('&nbsp;',' ')).toContain('Manual note 😀');
  let editIteration=0;
  for(const note of ['First edit','Second edit']){diagnosticStage(info,'edit-navigation',editIteration++===0?'first':'second');await page.goto(`/recommendations/movies/${list.id}/edit/${r.id}`);diagnosticStage(info,'edit-form');await page.locator('.ql-editor').fill(note);diagnosticStage(info,'save-start');await page.getByRole('button',{name:'Save',exact:true}).click();diagnosticStage(info,'save-returned');await expect(page).toHaveURL(new RegExp(`/recommendations/movies/${list.id}$`));diagnosticStage(info,'list-route-reached');detail=await editable(page.request,'recommendations',r.id);expect(detail.note.html.replaceAll('&nbsp;',' ')).toContain(note);diagnosticStage(info,'saved-note-confirmed');diagnosticStage(info,'keep-draft-start');await page.getByRole('button',{name:'Keep Draft',exact:true}).click();diagnosticStage(info,'keep-draft-returned');}
  diagnosticStage(info,'archive');
- await page.locator('button').filter({has:page.locator('svg.lucide-ellipsis')}).first().click();const archived=page.waitForResponse(res=>res.request().method()==='DELETE'&&new URL(res.url()).pathname===`${base}/recommendations/${r.id}`);page.once('dialog',dialog=>{expect(dialog.message()).toBe('Archive this recommendation from all lists?');void dialog.accept();});await page.getByRole('button',{name:'Archive recommendation',exact:true}).click();expect((await archived).status()).toBe(200);await page.reload();await expect(page.getByText('No movies added yet.',{exact:true})).toBeVisible();expect(bad).toEqual([]);await page.screenshot({path:info.outputPath('movies-owner.png'),fullPage:true});
+ await page.getByRole('button',{name:'More actions for Manual round-trip',exact:true}).click();const archived=page.waitForResponse(res=>res.request().method()==='DELETE'&&new URL(res.url()).pathname===`${base}/recommendations/${r.id}`);await page.getByRole('menuitem',{name:'Remove from list',exact:true}).click();expect((await archived).status()).toBe(200);await page.reload();await expect(page.getByText('No movies yet',{exact:true})).toBeVisible();expect(bad).toEqual([]);await page.screenshot({path:info.outputPath('movies-owner.png'),fullPage:true});
  // This catch is frozen: the seal in scripts/replatform-e2e.test.mjs compares the printed
  // callback body, so removing it changes protected source. It documents the failure
  // boundary and rethrows unaltered.
@@ -276,22 +276,25 @@ setMoviesPinDiagnosticStage(info, "navigation");
 await page.goto('/recommendations/movies');
 setMoviesPinDiagnosticStage(info, "manager-open");
 await page.getByRole('button').filter({hasText:'Manage Top Picks'}).filter({visible:true}).first().click();
+const manager=page.getByRole('dialog',{name:'Manage Top Picks'});
 setMoviesPinDiagnosticStage(info, "manager-visible");
 await expect(page.getByRole('button',{name:'Save Top Picks',exact:true})).toBeVisible();
-const row=page.locator('li').filter({hasText:'ownerB seed movie 0-0'}).first();
 setMoviesPinDiagnosticStage(info, "unpin-click");
-await row.locator('button').filter({has:page.locator('svg.lucide-minus')}).click();
+await manager.getByRole('button',{name:'Unpin ownerB seed movie 0-0',exact:true}).click();
+await expect(manager.getByText('14 of 15 pinned',{exact:true})).toBeVisible();
 setMoviesPinDiagnosticStage(info, "persisted-fifteen-check");
 expect((await (await page.request.get(`${base}/categories/movies/top-picks?limit=100`)).json()).items).toHaveLength(15);
 setMoviesPinDiagnosticStage(info, "reorder-waiter-register");
-const reordered=page.waitForResponse(r=>r.request().method()==='PATCH'&&new URL(r.url()).pathname===`${base}/categories/movies/top-picks/order`);
+let pinWrites=0;const countPinWrites=(r:import('@playwright/test').Request)=>void(new URL(r.url()).pathname.startsWith(`${base}/categories/movies/top-picks`)&&r.method()!=='GET'&&pinWrites++);page.on('request',countPinWrites);
+const moveDown=manager.getByRole('button',{name:/^Move .* down$/}).first();const movedTitle=(await moveDown.getAttribute('aria-label'))!.replace(/^Move (.*) down$/,'$1');
 setMoviesPinDiagnosticStage(info, "reorder-click");
-await page.locator('li button').filter({has:page.locator('svg.lucide-chevron-down')}).filter({visible:true}).first().click();
+await moveDown.click();
 setMoviesPinDiagnosticStage(info, "reorder-response");
-expect((await reordered).status()).toBe(200);
+await expect(manager.getByRole('button',{name:`Move ${movedTitle} up`,exact:true})).toBeEnabled();
 freezeMoviesPinDiagnostic(info);
+expect(pinWrites).toBe(0);page.off('request',countPinWrites);
 setMoviesPinDiagnosticStage(info, "persisted-fifteen-after-order");
-expect((await (await page.request.get(`${base}/categories/movies/top-picks?limit=100`)).json()).items).toHaveLength(15);
+expect((await (await page.request.get(`${base}/categories/movies/top-picks?limit=100`)).json()).items.map((p:any)=>p.recommendationId)).toEqual(original.items.map((p:any)=>p.recommendationId));
 setMoviesPinDiagnosticStage(info, "save-click");
 await page.getByRole('button',{name:'Save Top Picks',exact:true}).click();
 setMoviesPinDiagnosticStage(info, "persisted-fourteen");
