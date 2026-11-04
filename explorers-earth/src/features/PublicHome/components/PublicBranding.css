@@ -127,6 +127,10 @@
 
 [data-public-profile-chrome] .public-brand-wordmark,
 .public-brand-wordmark {
+  /* The inline SVG is height:100%. Without a definite height on this box WebKit resolves
+     that to 0 and the footer wordmark disappears in Safari; the viewBox ratio gives the
+     box its height from the fixed width, which is what Chromium already rendered. */
+  aspect-ratio: 1470 / 212;
   color: var(--public-chrome-ink);
   height: auto;
   max-height: 2rem;
