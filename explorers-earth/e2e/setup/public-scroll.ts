@@ -17,6 +17,8 @@ export function seedScopedPlaces(state: FixtureState) {
   });
 }
 
+const fixtureUuid = (list: number, item: number) => `00000000-0000-4000-8000-${String(list).padStart(4, '0')}${String(item).padStart(8, '0')}`;
+
 export type ScrollCategory = 'apps' | 'books' | 'movies' | 'games' | 'products' | 'people' | 'guides';
 
 export function seedPublicRoots(state: FixtureState, count = 13) {
@@ -53,7 +55,9 @@ export function seedLongPublicCollection(state: FixtureState, route: ScrollCateg
         case 'movies': return { ...common, tmdb_id: String(n), media_type: 'Movie', original_title: common.title, year: '2026', poster_path: null, backdrop_path: null, genres: [], director: null, runtime: 90, tmdb_rating: null, overview: null, season_count: null, watch_providers: [], Media: [], media_details: null, movie_list: parent, movie_categories: [], cast_details: [] };
         case 'games': return { ...common, igdb_id: n, igdb_slug: `game-${n}`, cover_url: null, cover_url_large: null, igdb_image_id: null, summary: null, release_date: null, release_year: '2026', igdb_rating: null, igdb_rating_count: null, genres: [], platforms: [], developer: null, publisher: null, game_modes: [], screenshot_ids: [], igdb_url: null, media_details: null, game_list: parent, game_categories: [], Media: [] };
         case 'products': return { ...common, product_url: `https://example.test/products/${n}`, brand: 'Fixture Brand', price: 10, currency: 'USD', buy_url: null, logo_url: null, description: null, specifications: {}, images: [], product_list: parent, product_category: null };
-        case 'people': return { ...common, name: common.title, full_name: common.title, username_handle: `person${n}`, handle: `person${n}`, headline: 'Fixture Creator', location: null, avatar_path: null, avatar_url: null, media_details: null, primary_platform: null, platform: null, social_urls: {}, skills_tags: [], tags: [], bio: null, follower_count: null, person_list: parent, person_categories: [], people_category: null };
+        // The public People read is the strict canonical DTO (publicPersonSchema): uuid ids,
+        // no owner-only keys, so this row is built to that shape rather than the owner one.
+        case 'people': return { documentId: fixtureUuid(listIndex + 1, n), title: common.title, full_name: common.title, username_handle: `person${n}`, headline: 'Fixture Creator', location_text: null, avatar_url: null, media_details: null, platform: null, primary_platform: null, profile_url: null, social_urls: {}, skills_tags: [], follower_count: null, user_recommendation_note: '', user_rating: null, is_pinned: false, pin_order: null, display_order: index, person_list: { ...parent, documentId: fixtureUuid(listIndex + 1, 0) }, person_category: null, people_category: null };
         case 'guides': return { documentId: common.documentId, Title: `Day ${n}`, Sequence: n, Description: null, Timeline: { morning: n === 13 ? [{ id: 'station-from', place_id: 'station-from', name: 'Fixture Station', formatted_address: 'Fixture City', types: ['train_station'], photos: [] }, { id: 'station-to', place_id: 'station-to', name: 'Destination Station', formatted_address: 'Destination City', types: ['train_station'], photos: [] }] : [], afternoon: [], evening: [] }, Transport: { segments: n === 13 ? [{ fromPlaceId: 'station-from', toPlaceId: 'station-to', mode: 'public_transit', distanceKm: 30, estimatedMinutes: 60 }] : [] }, Stay: { accommodations: [] }, Budget: { morning: [], afternoon: [], evening: [] }, Media: [] };
       }
     });

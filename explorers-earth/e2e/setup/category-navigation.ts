@@ -124,6 +124,24 @@ const placesProjection = parse(`query PublicPlacesFixture { recommendationLists 
 const placesSelection = placesProjection.kind === Kind.OPERATION_DEFINITION
   && placesProjection.selectionSet.selections[0].kind === Kind.FIELD
   ? placesProjection.selectionSet.selections[0].selectionSet! : undefined!;
+// The public Games read is the manual-games page DTO (gamesPublicPageSchema), not the
+// legacy list shape the other categories still share, so the fixture projects to it.
+function publicGamesPage(body: Record<string, unknown>) {
+  const lists = (body.gameLists as Record<string, any>[]).map((list, displayOrder) => {
+    const collection = { id: bookFixtureId('collection', list.documentId), title: String(list.List_Name ?? ''), slug: String(list.slug ?? '') };
+    const recommendations = ((list.recommended_games ?? []) as Record<string, any>[]).map((row, index) => ({
+      id: bookFixtureId('recommendation', row.documentId), entityId: bookFixtureId('entity', row.documentId), kind: 'game', collection,
+      title: row.title ?? null, userRating: null, note: null,
+      gamePresentation: { version: 'explorers-manual-game/v1', origin: 'manual', providerExternalId: null, providerFacts: null, images: [], coverMediaId: null },
+      displayOrder: typeof row.display_order === 'number' ? row.display_order : index, pinPosition: null,
+    }));
+    return { id: collection.id, title: collection.title, description: null, slug: collection.slug, heading: null,
+      displayOrder: typeof list.display_order === 'number' ? list.display_order : displayOrder,
+      coverMediaId: null, coverUrl: null, recommendations, nextCursor: list.nextCursor ?? null };
+  });
+  return { version: 'explorers-manual-games-page/v1', gameLists: lists, topPicks: [], nextCursor: body.nextCursor ?? null };
+}
+
 export function invalidateGuests(state: FixtureState) { for (const send of state.sockets) send(state.revision); }
 
 export async function installContainedRoutes(context: BrowserContext, origin: string, state: FixtureState) {
@@ -388,7 +406,18 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
             recommended_places_next_cursor: served < total ? `o${served}.fixture` : null,
           };
         };
+        // Movies, Games and People carry an explicit per-list continuation cursor on the
+        // canonical gateway (null when the list is complete), and Movies and Games also an
+        // explicit root `nextCursor`. The SPA rejects a page without them as
+        // PUBLIC_PROFILE_INVALID_RESPONSE, so the fixture has to state them.
+        const childCursorField = { movies: 'recommended_movies_next_cursor', games: 'nextCursor', people: 'recommended_people_next_cursor' }[category.route as string];
+        const childCursor = (list: Record<string, unknown>) => {
+          const total = Array.isArray(list[relation]) ? (list[relation] as unknown[]).length : 0;
+          const end = match[2] ? offset + limit : 12;
+          return end < total ? `o${end}` : null;
+        };
         const pageList = (list: Record<string, unknown>) => ({
+          ...(childCursorField ? { [childCursorField]: childCursor(list) } : {}),
           ...(category.route === 'places' ? project(placesSelection, list) : list),
           // Spread AFTER the projection: project() keeps only selected fields, so the envelope
           // has to be added on top or it is stripped.
@@ -403,11 +432,12 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
         });
         const body = match[2]
           ? { [category.root]: publicLists.filter((list) => list.slug === match[2] || category.route === 'guides' && list.documentId === match[2]).map(pageList) }
-          : { [category.root]: publicLists.slice(offset, offset + limit).map(pageList) };
+          : { [category.root]: publicLists.slice(offset, offset + limit).map(pageList),
+            ...(category.route === 'movies' || category.route === 'games' ? { nextCursor: offset + limit < publicLists.length ? `o${offset + limit}` : null } : {}) };
         const partialBody = fault?.kind === 'partial' && !match?.[2]
           ? { ...body, [category.root]: fault.nullRootPage ? (body[category.root] as unknown[]).map(() => null) : [...(body[category.root] as unknown[]), null] }
           : body;
-        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(partialBody) });
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(category.route === 'games' ? publicGamesPage(partialBody) : partialBody) });
       }
       // Media transport is inert: permission/control rendering only, no playback proof.
       if (url.origin === 'https://www.youtube.com' && url.pathname === '/iframe_api') return route.fulfill({ status: 200, contentType: 'application/javascript', body: '' });
