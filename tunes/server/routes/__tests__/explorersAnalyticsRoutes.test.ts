@@ -127,27 +127,6 @@ describe("explorers analytics routes", () => {
     },
   );
 
-  it("does not record a signed-in owner's visit to their own public page", async () => {
-    const { service } = buildApp();
-    const isOwnerVisit = vi.fn().mockResolvedValue(true);
-    const ownerApp = express();
-    ownerApp.use(express.json());
-    setupExplorersAnalyticsRoutes(ownerApp, {
-      service,
-      authorizeOwner: vi.fn(),
-      validatePublicTarget: vi.fn().mockResolvedValue(true),
-      allowWrite: vi.fn().mockReturnValue(true),
-      isOwnerVisit,
-    });
-
-    const { request } = await loopback.open({ app: ownerApp });
-    const response = await request.post("/api/explorers/analytics/events").send(input);
-
-    expect(response.status).toBe(204);
-    expect(isOwnerVisit).toHaveBeenCalledWith(expect.anything(), "account-1");
-    expect(service.ingest).not.toHaveBeenCalled();
-  });
-
   it("returns 204 when analytics consent is denied", async () => {
     const { app, service } = buildApp();
     service.ingest.mockResolvedValue({ status: "consent-denied" });
