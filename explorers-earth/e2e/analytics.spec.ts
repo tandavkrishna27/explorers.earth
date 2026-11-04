@@ -1,227 +1,60 @@
-import {
-  expect,
-  test,
-  type BrowserContext,
-  type Page,
-  type Route,
-} from '@playwright/test';
-import { setupMockAuthentication } from './setup/auth';
+import { expect, test, type Route } from '@playwright/test';
+import { canonicalAccountFixture } from '../src/test/canonicalAccountFixture';
+import { publicPersonSchema, publicPeopleSectorPageSchema } from '../../tunes/shared/explorersPublicPeopleSectorContract';
 import { denyHostedEgress } from './setup/deny-hosted-egress';
+import { fixtureState, openFixture } from './setup/category-navigation';
+import { ownerContentSummarySchema } from '../../tunes/shared/explorersOwnerContentContract';
 
-const operationName = (route: Route) => {
-  const payload = route.request().postDataJSON() as
-    | { operationName?: string; query?: string }
-    | undefined;
-  return (
-    payload?.operationName ||
-    payload?.query?.match(/(?:query|mutation)\s+(\w+)/)?.[1] ||
-    'Unknown'
-  );
-};
+// The owner dashboard reads canonical analytics over REST: GET /api/explorers/analytics/events
+// on the configured Music/Explorers authority, scoped to the canonical account id and a
+// date-only window, riding the canonical session cookie (no bearer). The contained owner
+// fixture answers the canonical session and account reads; only the analytics read is stubbed.
 
-const account = {
-  documentId: 'acc-123',
-  Account_Name: 'Analytics Fixture',
-  Account_Type: 'personal',
-  mobile_number: '+10000000000',
-  profile_picture: { url: '/images/Profile.jpg', alternativeText: 'Analytics fixture' },
-  bg_picture: { url: '/images/bg-image.jpg', alternativeText: 'Analytics background' },
-  Bio: 'Complete analytics fixture profile.',
-  Primary_Address: { address: 'Fixture City' },
-  social_media: {},
-  users_permissions_users: [],
-  Feed_Data: [],
-  mobile_number_visibility: false,
-  recommendation_lists: [],
-  localtunes_integrated: false,
-  public_profile: 'Yes',
-  public_recommendations: 'Yes',
-  public_music: 'No',
-  public_movie: 'No',
-  public_guides: 'No',
-  public_books: 'No',
-  public_games: 'No',
-  public_apps: 'No',
-  public_products: 'No',
-  public_people: 'No',
-  pinned_nav_tabs: [],
-  auto_pinning: false,
-  createdAt: '2026-01-01T00:00:00.000Z',
-  updatedAt: '2026-01-01T00:00:00.000Z',
-};
+type OwnerHandle = Awaited<ReturnType<typeof openFixture>>;
+type AnalyticsRead = { url: URL; authorization?: string; credentialed: boolean };
 
-async function installAuthenticatedDashboardFixture(
-  context: BrowserContext,
-  page: Page,
-) {
-  await denyHostedEgress(page);
-  await page.route('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json', route =>
+const ownerAccountId = canonicalAccountFixture().id;
+
+async function openOwner(browser: Parameters<typeof openFixture>[0], baseURL: string, width = 1280) {
+  const handle = await openFixture(browser, baseURL, fixtureState(), { owner: true, width, timezoneId: 'Asia/Kolkata' });
+  await denyHostedEgress(handle.page);
+  // World atlas topology for the country map: an empty, valid topology.
+  await handle.page.route('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json', route =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ type: 'Topology', objects: { countries: { type: 'GeometryCollection', geometries: [] } }, arcs: [] }),
     }),
   );
-  await setupMockAuthentication(context);
-  await page.route("**/__localtunes/api/music/identity/ensure", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: "{}" }),
-  );
-  const operations: string[] = [];
+  // Home's content counts: an empty, contract-valid summary.
+  await handle.page.route(url => url.pathname === '/api/explorers/v1/content-summary', route => route.request().method() === 'GET'
+    ? route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ summary: ownerContentSummarySchema.parse({
+      version: 'explorers-owner-content/v2', categories: [] }) }) })
+    : route.fallback());
+  return handle;
+}
 
-  await page.route('**/graphql', async (route) => {
-    const operation = operationName(route);
-    operations.push(operation);
-
-    if (operation === 'GetAccountId') {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            usersPermissionsUser: {
-              createdAt: '2026-01-01T00:00:00.000Z',
-              accounts: [
-                {
-                  documentId: account.documentId,
-                  Account_Name: account.Account_Name,
-                  Account_Type: account.Account_Type,
-                  mobile_number: account.mobile_number,
-                  createdAt: '2026-01-01T00:00:00.000Z',
-                },
-              ],
-            },
-          },
-        }),
-      });
-    }
-
-    if (
-      operation === 'CheckOnboardingStatus' ||
-      operation === 'UsersPermissionsUser' ||
-      operation === 'SidebarAccount' ||
-      operation === 'MusicIdentityEligibility' ||
-      operation === 'SettingsAccount'
-    ) {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            usersPermissionsUser: {
-              id: 'mock-user-123',
-              documentId: 'mock-user-123',
-              email: 'test@explorers.earth',
-              provider: 'local',
-              confirmed: true,
-              blocked: false,
-              username: 'testuser',
-              createdAt: '2026-01-01T00:00:00.000Z',
-              updatedAt: '2026-01-01T00:00:00.000Z',
-              accounts: [account],
-            },
-          },
-        }),
-      });
-    }
-
-    if (operation === 'user') {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            accounts: [account],
-            usersPermissionsUser: {
-              id: 'mock-user-123',
-              documentId: 'mock-user-123',
-              username: 'testuser',
-              email: 'test@explorers.earth',
-              provider: 'local',
-              confirmed: true,
-              blocked: false,
-              accounts: [account],
-            },
-          },
-        }),
-      });
-    }
-
-    if (operation === 'GetDashboardStatus') {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            usersPermissionsUser: {
-              documentId: 'mock-user-123',
-              accounts: [account],
-            },
-          },
-        }),
-      });
-    }
-
-    if (operation === 'GetUserAccount') {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            usersPermissionsUser: {
-              accounts: [account],
-            },
-          },
-        }),
-      });
-    }
-
-    if (operation === 'RecommendationLists') {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: { recommendationLists: [] } }),
-      });
-    }
-
-    if (
-      operation === 'PublicCategoryListCounts' ||
-      operation === 'CheckPublishedLists'
-    ) {
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: {
-            recommendationLists: [],
-            bookLists: [],
-            movieLists: [],
-            gameLists: [],
-            appLists: [],
-            productLists: [],
-            personLists: [],
-            guides: [],
-          },
-        }),
-      });
-    }
-
-    return route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        data: {
-          accounts: [account],
-          usersPermissionsUser: {
-            documentId: 'mock-user-123', username: 'testuser', email: 'test@explorers.earth',
-            provider: 'local', confirmed: true, blocked: false, accounts: [account],
-          },
-          me: { accounts: [account] },
-        },
-      }),
-    });
+async function routeAnalyticsReads(handle: OwnerHandle, respond: (route: Route, url: URL) => Promise<void>) {
+  const reads: AnalyticsRead[] = [];
+  await handle.page.route('**/api/explorers/analytics/events?*', async (route) => {
+    const request = route.request();
+    if (request.method() !== 'GET') return route.fallback();
+    const url = new URL(request.url());
+    const headers = await request.allHeaders();
+    reads.push({ url, authorization: headers.authorization, credentialed: Boolean(headers.cookie) });
+    await respond(route, url);
   });
+  return reads;
+}
 
-  return operations;
+/** Fails on any denied request; console errors must match one of the expected patterns. */
+async function closeOwner(handle: OwnerHandle, expectedConsole: RegExp[] = []) {
+  try {
+    expect(handle.guard.denied).toEqual([]);
+    expect(handle.guard.errors.filter(error => !expectedConsole.some(pattern => pattern.test(error)))).toEqual([]);
+  } finally {
+    await handle.context.close();
+  }
 }
 
 const analyticsRecords = (from: string, to: string) => {
@@ -231,7 +64,7 @@ const analyticsRecords = (from: string, to: string) => {
 
   return [
     {
-      Account_Id: account.documentId,
+      Account_Id: ownerAccountId,
       Location_Id: null,
       Recommendation_Id: null,
       Stats: [
@@ -239,7 +72,7 @@ const analyticsRecords = (from: string, to: string) => {
           type: 'view',
           timestamp,
           page: 'public-profile',
-          canonicalPath: '/fixture-user',
+          canonicalPath: '/fixture-owner',
           country: 'IN',
           utmParams: { utm_source: 'qr_code_scan', utm_medium: 'qr_code' },
         },
@@ -247,7 +80,7 @@ const analyticsRecords = (from: string, to: string) => {
           type: 'view',
           timestamp,
           page: 'public-books',
-          canonicalPath: '/fixture-user/books',
+          canonicalPath: '/fixture-owner/books',
           country: 'US',
           utmParams: { utm_source: 'newsletter', utm_medium: 'email' },
         },
@@ -256,7 +89,7 @@ const analyticsRecords = (from: string, to: string) => {
           timestamp,
           page: 'public-books',
           element: 'book-card-book-1',
-          canonicalPath: '/fixture-user/books',
+          canonicalPath: '/fixture-owner/books',
           country: 'US',
           metadata: { id: 'book-1', title: 'Fixture Book' },
         },
@@ -266,62 +99,39 @@ const analyticsRecords = (from: string, to: string) => {
 };
 
 test.describe('Analytics dashboard E2E', () => {
-  test.use({ timezoneId: 'Asia/Kolkata' });
-
-  test('Home shows a truthful 90-calendar-day value and failure never masquerades as zero', async ({ context, page }) => {
-    const operations = await installAuthenticatedDashboardFixture(context, page);
-    const reads: URL[] = [];
+  test('Home shows a truthful 90-calendar-day value and failure never masquerades as zero', async ({ browser, baseURL }) => {
+    const handle = await openOwner(browser, baseURL!);
     let failure = false;
-    await page.route('**/api/explorers/analytics/events*', async (route) => {
-      reads.push(new URL(route.request().url()));
+    const reads = await routeAnalyticsReads(handle, async (route) => {
       if (failure) return route.fulfill({ status: 503, body: 'fixture unavailable' });
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ events: [] }) });
     });
-    await page.goto('/home');
-    await expect.poll(() => reads.length, { message: `analytics read after GraphQL operations: ${operations.join(',')}` }).toBeGreaterThan(0);
-    await expect(page.getByText('Views · last 90 days')).toBeVisible();
-    const scope = reads.at(-1)!;
-    const fromDate = scope.searchParams.get('fromDate')!;
-    const toDate = scope.searchParams.get('toDate')!;
-    const inclusiveDays = Math.round((Date.parse(`${toDate}T00:00:00Z`) - Date.parse(`${fromDate}T00:00:00Z`)) / 86_400_000) + 1;
-    expect(inclusiveDays).toBe(90);
-    expect(scope.searchParams.get('timeZone')).toBe('Asia/Calcutta');
-    await expect(page.getByText('Views · last 90 days').locator('..')).toContainText('0');
+    try {
+      const { page } = handle;
+      await page.goto('/home');
+      await expect.poll(() => reads.length).toBeGreaterThan(0);
+      await expect(page.getByText('Views · last 90 days')).toBeVisible();
+      const scope = reads.at(-1)!.url;
+      expect(scope.searchParams.get('accountId')).toBe(ownerAccountId);
+      const fromDate = scope.searchParams.get('fromDate')!;
+      const toDate = scope.searchParams.get('toDate')!;
+      const inclusiveDays = Math.round((Date.parse(`${toDate}T00:00:00Z`) - Date.parse(`${fromDate}T00:00:00Z`)) / 86_400_000) + 1;
+      expect(inclusiveDays).toBe(90);
+      expect(scope.searchParams.get('timeZone')).toBe('Asia/Calcutta');
+      await expect(page.getByText('Views · last 90 days').locator('..')).toContainText('0');
 
-    failure = true;
-    await page.reload();
-    await expect(page.getByText('Views · last 90 days').locator('..')).toContainText('Unavailable');
+      failure = true;
+      await page.reload();
+      await expect(page.getByText('Views · last 90 days').locator('..')).toContainText('Unavailable');
+    } finally {
+      await closeOwner(handle, [/status of 503/, /Analytics/]);
+    }
   });
-  test('reads only the authenticated account and refreshes server date scopes', async ({
-    context,
-    page,
-  }) => {
-    const operations = await installAuthenticatedDashboardFixture(context, page);
-    const reads: Array<{ url: URL; authorization?: string }> = [];
-    const consoleIssues: string[] = [];
-    const failedResponses: string[] = [];
-    page.on('console', message => {
-      if (
-        message.type() === 'error' ||
-        (message.type() === 'warning' &&
-          (message.text().includes('go.apollo.dev') ||
-            message.text().includes('width(-1)')))
-      ) {
-        consoleIssues.push(message.text());
-      }
-    });
-    page.on('response', response => {
-      if (response.status() >= 400) {
-        failedResponses.push(`${response.status()} ${response.url()}`);
-      }
-    });
 
-    await page.route('**/api/explorers/analytics/events*', async (route) => {
-      const url = new URL(route.request().url());
-      reads.push({
-        url,
-        authorization: route.request().headers().authorization,
-      });
+  test('reads only the authenticated account and refreshes server date scopes', async ({ browser, baseURL }) => {
+    const handle = await openOwner(browser, baseURL!);
+    const failedResponses: string[] = [];
+    const reads = await routeAnalyticsReads(handle, async (route, url) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -333,111 +143,117 @@ test.describe('Analytics dashboard E2E', () => {
         }),
       });
     });
-
-    await page.goto('/analytics', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('heading', { name: 'Analytics Dashboard' })).toBeVisible();
-    await expect.poll(() => reads.length).toBe(1);
-
-    expect(reads[0].url.searchParams.get('accountId')).toBe(account.documentId);
-    expect(reads[0].authorization).toBe('Bearer mock-jwt-token-xyz');
-    expect(reads[0].url.searchParams.get('fromDate')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(reads[0].url.searchParams.get('toDate')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(reads[0].url.searchParams.get('timeZone')).toBe('Asia/Calcutta');
-
-    await expect(
-      page.getByRole('heading', { name: 'Total Views' }).locator('..').locator('p.text-2xl'),
-    ).toHaveText('2');
-    await expect(
-      page.getByRole('heading', { name: 'Total Clicks' }).locator('..').locator('p.text-2xl'),
-    ).toHaveText('1');
-    await expect(
-      page.getByRole('heading', { name: 'Total QR Views' }).locator('..').locator('p.text-2xl'),
-    ).toHaveText('1');
-    await expect(
-      page.getByRole('heading', { name: 'Total Link Views' }).locator('..').locator('p.text-2xl'),
-    ).toHaveText('1');
-    await expect(page.getByText('India')).toBeVisible();
-    await expect(page.getByText('United States')).toBeVisible();
-    expect(operations).not.toContain('GetPublicPageAnalytics');
-
-    await page.getByRole('button', { name: 'Last 30 Days' }).click();
-    await page.getByRole('button', { name: 'Today', exact: true }).click();
-    await expect.poll(() => reads.length).toBe(2);
-    expect(reads[1].url.searchParams.get('fromDate')).toBe(reads[1].url.searchParams.get('toDate'));
-
-    await page.getByRole('button', { name: 'Today', exact: true }).click();
-    await page.getByRole('button', { name: 'Custom Range', exact: true }).click();
-    const dateInputs = page.locator('input[type="date"]');
-    await dateInputs.nth(0).fill('2026-08-01');
-    await dateInputs.nth(1).fill('2026-08-15');
-    await expect.poll(() => reads.length).toBeGreaterThanOrEqual(3);
-    const custom = reads.at(-1)!;
-    expect(custom.url.searchParams.get('fromDate')).toBe('2026-08-01');
-    expect(custom.url.searchParams.get('toDate')).toBe('2026-08-15');
-    expect(custom.url.searchParams.get('timeZone')).toBe('Asia/Calcutta');
-
-    await dateInputs.nth(0).fill('2026-01-01');
-    await dateInputs.nth(1).fill('2026-04-03');
-    await expect.poll(() => reads.at(-1)?.url.searchParams.get('toDate')).toBe('2026-04-03');
-    const acceptedReads = reads.length;
-    await dateInputs.nth(1).fill('2026-04-04');
-    await expect(page.getByRole('alert')).toHaveText('Choose a date range of 93 days or less.');
-    await page.waitForTimeout(150);
-    expect(reads).toHaveLength(acceptedReads);
-    expect(failedResponses).toEqual([]);
-    expect(consoleIssues).toEqual([]);
-  });
-
-  test('renders empty and failure states without overflowing mobile', async ({
-    context,
-    page,
-  }) => {
-    await installAuthenticatedDashboardFixture(context, page);
-    const consoleIssues: string[] = [];
-    let mode: 'empty' | 'error' = 'empty';
-    page.on('console', message => {
-      const text = message.text();
-      const expectedFailureResponse =
-        mode === 'error' &&
-        text.includes('server responded with a status of 503');
-      if (
-        !expectedFailureResponse &&
-        (message.type() === 'error' ||
-          (message.type() === 'warning' &&
-            (text.includes('go.apollo.dev') || text.includes('width(-1)'))))
-      ) {
-        consoleIssues.push(text);
-      }
-    });
-    await page.setViewportSize({ width: 320, height: 800 });
-
-    await page.route('**/api/explorers/analytics/events*', async (route) => {
-      if (mode === 'error') {
-        return route.fulfill({ status: 503, body: 'fixture unavailable' });
-      }
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ events: [] }),
+    try {
+      const { page } = handle;
+      page.on('response', response => {
+        if (response.status() >= 400) failedResponses.push(`${response.status()} ${response.url()}`);
       });
-    });
 
-    await page.goto('/analytics', { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('heading', { name: 'No Analytics Data' })).toBeVisible();
-    expect(
-      await page.evaluate(
-        () =>
-          document.documentElement.scrollWidth <=
-          document.documentElement.clientWidth + 1,
-      ),
-    ).toBe(true);
+      await page.goto('/analytics', { waitUntil: 'domcontentloaded' });
+      await expect(page.getByRole('heading', { name: 'Analytics Dashboard' })).toBeVisible();
+      // React StrictMode replays the read effect once in development, so the initial load
+      // may issue the same scoped read twice; every initial read must carry the same scope.
+      await expect.poll(() => reads.length).toBeGreaterThanOrEqual(1);
+      expect(new Set(reads.map(read => read.url.search)).size).toBe(1);
+      const initialReads = reads.length;
 
-    mode = 'error';
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('heading', { name: 'Error Loading Analytics' })).toBeVisible();
-    await expect(page.getByText(/503/)).toBeVisible();
-    expect(consoleIssues).toEqual([]);
+      // The owner's canonical account id, never a caller-chosen account; the canonical
+      // session rides the cookie, so no bearer token is sent.
+      expect(reads[0].url.searchParams.get('accountId')).toBe(ownerAccountId);
+      expect(reads[0].authorization).toBeUndefined();
+      expect(reads[0].url.searchParams.get('fromDate')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(reads[0].url.searchParams.get('toDate')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(reads[0].url.searchParams.get('timeZone')).toBe('Asia/Calcutta');
+
+      await expect(
+        page.getByRole('heading', { name: 'Total Views' }).locator('..').locator('p.text-2xl'),
+      ).toHaveText('2');
+      await expect(
+        page.getByRole('heading', { name: 'Total Clicks' }).locator('..').locator('p.text-2xl'),
+      ).toHaveText('1');
+      await expect(
+        page.getByRole('heading', { name: 'Total QR Views' }).locator('..').locator('p.text-2xl'),
+      ).toHaveText('1');
+      await expect(
+        page.getByRole('heading', { name: 'Total Link Views' }).locator('..').locator('p.text-2xl'),
+      ).toHaveText('1');
+      await expect(page.getByText('India')).toBeVisible();
+      await expect(page.getByText('United States')).toBeVisible();
+
+      await page.getByRole('button', { name: 'Last 30 Days' }).click();
+      await page.getByRole('button', { name: 'Today', exact: true }).click();
+      await expect.poll(() => reads.length).toBe(initialReads + 1);
+      expect(reads.at(-1)!.url.searchParams.get('fromDate')).toBe(reads.at(-1)!.url.searchParams.get('toDate'));
+
+      await page.getByRole('button', { name: 'Today', exact: true }).click();
+      await page.getByRole('button', { name: 'Custom Range', exact: true }).click();
+      const dateInputs = page.locator('input[type="date"]');
+      await dateInputs.nth(0).fill('2026-08-01');
+      await dateInputs.nth(1).fill('2026-08-15');
+      await expect.poll(() => reads.length).toBeGreaterThanOrEqual(initialReads + 2);
+      const custom = reads.at(-1)!;
+      expect(custom.url.searchParams.get('fromDate')).toBe('2026-08-01');
+      expect(custom.url.searchParams.get('toDate')).toBe('2026-08-15');
+      expect(custom.url.searchParams.get('timeZone')).toBe('Asia/Calcutta');
+
+      await dateInputs.nth(0).fill('2026-01-01');
+      await dateInputs.nth(1).fill('2026-04-03');
+      await expect.poll(() => reads.at(-1)?.url.searchParams.get('toDate')).toBe('2026-04-03');
+      const acceptedReads = reads.length;
+      await dateInputs.nth(1).fill('2026-04-04');
+      await expect(page.getByRole('alert')).toHaveText('Choose a date range of 93 days or less.');
+      await page.waitForTimeout(150);
+      expect(reads).toHaveLength(acceptedReads);
+      expect(failedResponses).toEqual([]);
+    } finally {
+      await closeOwner(handle);
+    }
   });
+
+  test('renders empty and failure states without overflowing mobile', async ({ browser, baseURL }) => {
+    const handle = await openOwner(browser, baseURL!, 320);
+    let mode: 'empty' | 'error' = 'empty';
+    await routeAnalyticsReads(handle, async (route) => {
+      if (mode === 'error') return route.fulfill({ status: 503, body: 'fixture unavailable' });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ events: [] }) });
+    });
+    try {
+      const { page } = handle;
+      await page.goto('/analytics', { waitUntil: 'domcontentloaded' });
+      await expect(page.getByRole('heading', { name: 'No Analytics Data' })).toBeVisible();
+      expect(
+        await page.evaluate(
+          () =>
+            document.documentElement.scrollWidth <=
+            document.documentElement.clientWidth + 1,
+        ),
+      ).toBe(true);
+      // Only the deliberate 503 below may produce console errors.
+      expect(handle.guard.errors).toEqual([]);
+
+      mode = 'error';
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await expect(page.getByRole('heading', { name: 'Error Loading Analytics' })).toBeVisible();
+      // The raw failure (status, body) goes to the console only; the owner sees translated copy.
+      await expect(page.getByText("We couldn't load your analytics right now. Please try again.")).toBeVisible();
+      await expect(page.getByText(/503|fixture unavailable/)).toHaveCount(0);
+    } finally {
+      await closeOwner(handle, [/status of 503/, /Analytics read failed/]);
+    }
+  });
+});
+
+// Public People rows are parsed with the canonical public DTO, so the fixture must satisfy it.
+const personListId = '5d1f6b1e-0c43-4a8e-9f61-2b7c9e1a4d01';
+const personId = '5d1f6b1e-0c43-4a8e-9f61-2b7c9e1a4d02';
+const buildersSector = { documentId: '5d1f6b1e-0c43-4a8e-9f61-2b7c9e1a4d03', slug: 'builders', Category_name: 'Builders' };
+const publicPerson = publicPersonSchema.parse({
+  documentId: personId, title: 'Fixture Person', full_name: 'Fixture Person', username_handle: 'fixture-person',
+  headline: 'Builder', location_text: null, avatar_url: null, media_details: null, platform: 'website',
+  primary_platform: 'website', profile_url: null, social_urls: {}, skills_tags: [], follower_count: null,
+  user_recommendation_note: '', user_rating: 10, is_pinned: true, pin_order: 1, display_order: 1,
+  person_list: { documentId: personListId, List_Name: 'Fixture Person List', slug: 'fixture-list' },
+  person_category: null, people_category: { ...buildersSector, id: buildersSector.documentId },
 });
 
 test.describe('Public category analytics E2E', () => {
@@ -532,31 +348,13 @@ test.describe('Public category analytics E2E', () => {
       },
       people: {
         title: 'Fixture Person',
-        listId: 'person-list-public-1',
-        itemId: 'person-public-1',
+        listId: personListId,
+        itemId: personId,
         listRoot: 'personLists',
         relation: 'recommended_people',
         operation: 'PublicPeopleData',
         listOperation: 'PersonListBySlug',
-        item: {
-          documentId: 'person-public-1',
-          name: 'Fixture Person',
-          username_handle: 'fixture-person',
-          headline: 'Builder',
-          avatar_path: null,
-          primary_platform: 'website',
-          social_urls: {},
-          skills_tags: [],
-          user_rating: 10,
-          is_pinned: true,
-          pin_order: 1,
-          display_order: 1,
-          person_list: null,
-          people_category: {
-            documentId: 'people-category-builders',
-            Category_name: 'Builders',
-          },
-        },
+        item: publicPerson,
       },
     } as const;
 
@@ -572,6 +370,16 @@ test.describe('Public category analytics E2E', () => {
 
     await page.route('**/api/explorers/v1/profiles/fixture-user**', async (route) => {
       const url = new URL(route.request().url());
+      if (url.pathname.endsWith('/recommendations/people/sectors/builders')) {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(publicPeopleSectorPageSchema.parse({
+            version: 'explorers-public-people-sector/v1', sector: buildersSector, canonicalSlug: 'builders',
+            redirectSlug: null, recommended_people: [publicPerson], nextCursor: null,
+          })),
+        });
+      }
       const match = url.pathname.match(/\/recommendations\/(apps|products|people)(?:\/fixture-list)?$/);
       if (!match) {
         return route.fulfill({
@@ -591,6 +399,7 @@ test.describe('Public category analytics E2E', () => {
         display_order: 1,
         account: { documentId: publicAccount.documentId, username: 'fixture-user' },
         [fixture.relation]: [fixture.item],
+        ...(match[1] === 'people' ? { recommended_people_next_cursor: null } : {}),
       };
       await route.fulfill({
         status: 200,
@@ -700,6 +509,8 @@ test.describe('Public category analytics E2E', () => {
       ),
     );
     expect(itemWrites).toHaveLength(3);
+    // SEC-03: public pages address the creator by public handle, never the internal account id.
+    expect([...new Set(writes.map((write) => write.accountId))]).toEqual(['fixture-user']);
 
     for (const [category, fixture] of Object.entries(fixtures)) {
       const canonicalPath = `/fixture-user/${category}/fixture-list`;
@@ -726,7 +537,7 @@ test.describe('Public category analytics E2E', () => {
           write.recommendationId === fixture.itemId,
         ),
         share: writes.some((write) =>
-          write.accountId === publicAccount.documentId &&
+          write.accountId === publicAccount.username &&
           write.event?.page === `public-${category}` &&
           write.event?.canonicalPath === canonicalPath &&
           write.event?.element === 'share-button' &&

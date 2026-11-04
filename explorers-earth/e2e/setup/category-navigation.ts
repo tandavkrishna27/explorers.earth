@@ -585,11 +585,12 @@ export async function openFixture(browser: Browser, origin: string, state: Fixtu
   theme?: string;
   touch?: boolean;
   reducedMotion?: 'reduce' | 'no-preference';
+  timezoneId?: string;
   safeArea?: { top?: number; right?: number; bottom?: number; left?: number };
 } = {}) {
   const entries: { name: string; value: string }[] = [];
   if (options.theme) entries.push({ name: 'dashboard-theme', value: options.theme });
-  const context = await browser.newContext({ baseURL: origin, serviceWorkers: 'block', hasTouch: options.touch ?? false, reducedMotion: options.reducedMotion, viewport: { width: options.width ?? 1280, height: options.height ?? 900 },
+  const context = await browser.newContext({ baseURL: origin, serviceWorkers: 'block', hasTouch: options.touch ?? false, reducedMotion: options.reducedMotion, timezoneId: options.timezoneId, viewport: { width: options.width ?? 1280, height: options.height ?? 900 },
     storageState: { cookies: options.owner ? [{ name: sessionCookie, value: sessionValue, domain: new URL(origin).hostname, path: '/', expires: -1, httpOnly: true, secure: false, sameSite: 'Lax' }] : [], origins: [{ origin, localStorage: entries }] },
   });
   if (options.safeArea) await context.addInitScript((safeArea) => {
