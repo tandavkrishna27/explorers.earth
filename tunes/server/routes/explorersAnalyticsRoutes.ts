@@ -148,6 +148,8 @@ export interface ExplorersAnalyticsRouteDependencies {
     input: z.infer<typeof explorersAnalyticsInputSchema>,
   ) => Promise<boolean>;
   allowWrite: (request: Request, accountId: string) => boolean;
+  /** True when the signed-in requester owns the target account; their own visits are not recorded. */
+  isOwnerVisit?: (request: Request, accountId: string) => Promise<boolean>;
 }
 
 export function setupExplorersAnalyticsRoutes(
@@ -184,6 +186,9 @@ export function setupExplorersAnalyticsRoutes(
       }
       if (!(await dependencies.validatePublicTarget(parsed.data))) {
         return res.status(404).json({ message: "Analytics target not found" });
+      }
+      if (await dependencies.isOwnerVisit?.(req, parsed.data.accountId)) {
+        return res.status(204).send();
       }
       const result = await dependencies.service.ingest(parsed.data, {
         getIp: () => req.ip || null,

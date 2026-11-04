@@ -39,6 +39,20 @@ export function createCanonicalAnalyticsDependencies(pool: Pool, auth: Explorers
                 return false;
             }
         }, validatePublicTarget: async () => true, allowWrite: (request, key) => limiter.allow(request, key),
+        // Public pages never bootstrap auth, so the SPA cannot tell an owner apart on a full page
+        // load. The session cookie still arrives here; an anonymous request costs nothing extra.
+        isOwnerVisit: async (request, target) => {
+            if (!request.headers.cookie) return false;
+            try {
+                const actor = await requireActor(request, auth, pool);
+                if (!actor) return false;
+                const owner = (await pool.query('SELECT 1 FROM creator_accounts WHERE id=$1 AND (id::text=$2 OR handle_key=lower($2))', [actor.accountId, target])).rows[0];
+                return Boolean(owner);
+            }
+            catch {
+                return false;
+            }
+        },
     };
 }
 /**
