@@ -1,6 +1,7 @@
 import { expect, test, type Browser, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { createHash } from 'node:crypto';
 import { Kind, parse, print, visit, type SelectionSetNode } from 'graphql';
 import { canonicalAccountFixture } from '../../src/test/canonicalAccountFixture';
 import { bookFixtureId, createBooksOwnerFixture } from './books-owner-content';
@@ -28,7 +29,12 @@ const recommendationRelationByRoute: Record<string, string> = {
   places: 'recommended_places', movies: 'recommended_movies', books: 'recommended_books', games: 'recommended_games',
   apps: 'recommended_apps', products: 'recommended_products', people: 'recommended_people', guides: 'guide_sections',
 };
-type RequestRecord = { name: string; variables: Record<string, any>; owner: boolean };
+// Deterministic v4-shaped UUID for fixture rows whose gateway contract requires a UUID id.
+const fixtureUuid = (seed: string) => {
+  const hex = createHash('sha256').update(seed).digest('hex');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+};
+type RequestRecord ={ name: string; variables: Record<string, any>; owner: boolean };
 export type FixtureFault = {
   kind?: 'error' | 'partial' | 'lost' | 'expired' | 'offline';
   status?: number;
@@ -356,6 +362,18 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
           if (fault?.kind === 'error') { const status = fault.status ?? 503; expectedHttpErrors.set(request.url(), status); return route.fulfill({ status, contentType: 'application/json', body: JSON.stringify({ error: { code: 'UPSTREAM_UNAVAILABLE' } }) }); }
           return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fault?.kind === 'partial' ? { ...selectedAccount, Bio: null } : selectedAccount) });
         }
+        // Facet reads (explorersPublicProfileRoutes.ts: movies/genres/:slug, people/sectors/:slug).
+        // The contained fixture has no taxonomy rows, so each facet is a real but empty page in
+        // the exact gateway envelope (publicMoviesProjection / publicPeopleSectorPageSchema).
+        const facet = url.pathname.match(new RegExp(`^${prefix}/recommendations/(movies/genres|people/sectors)/([a-z0-9-]+)$`));
+        if (facet) {
+          const slug = facet[2];
+          const label = slug.split('-').map(word => word[0].toUpperCase() + word.slice(1)).join(' ');
+          const body = facet[1] === 'movies/genres'
+            ? { genre: { documentId: fixtureUuid(`movie-genre:${slug}`), slug, genre_name: label }, recommended_movies: [], nextCursor: null }
+            : { version: 'explorers-public-people-sector/v1', sector: { documentId: fixtureUuid(`people-sector:${slug}`), slug, Category_name: label }, canonicalSlug: slug, redirectSlug: null, recommended_people: [], nextCursor: null };
+          return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+        }
         const match = url.pathname.match(new RegExp(`^${prefix}/recommendations/([a-z]+)(?:/([A-Za-z0-9_-]+))?$`));
         const category = match && categories.find((candidate) => candidate.route === match[1]);
         if (!category) return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ version: 'explorers-public-error/v1', error: { code: 'NOT_FOUND' } }) });
@@ -400,6 +418,27 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
             : Array.isArray(list[relation])
               ? { [relation]: (category.route === 'places' ? project(placesSelection, list)[relation] : list[relation]).slice(0, category.route === 'places' ? 24 : 12) }
               : {}),
+          // Every gateway projection emits `<child>_next_cursor` on each list (null at the end);
+          // the public continuation readers reject a list without it.
+          ...(category.route !== 'places' && relation && Array.isArray(list[relation])
+            ? (() => {
+              const total = (list[relation] as unknown[]).length;
+              const end = match[2] ? offset + limit : 12;
+              return { [`${relation}_next_cursor`]: end < total ? `o${end}` : null };
+            })()
+            : {}),
+        });
+        // Games is served by the manual Games projection (gamesPublicPageSchema), not the
+        // legacy list shape: ids are UUIDs and children live under `recommendations`.
+        const gamesPage = (lists: Array<Record<string, any> | null>) => ({
+          version: 'explorers-manual-games-page/v1',
+          gameLists: lists.map((list, index) => list && ({
+            id: fixtureUuid(`game-list:${list.documentId}`), title: list.List_Name, description: list.Description ?? null, slug: list.slug,
+            heading: null, displayOrder: index, coverMediaId: null, coverUrl: null,
+            recommendations: [], nextCursor: list.recommended_games_next_cursor ?? null,
+          })),
+          topPicks: [],
+          nextCursor: !match[2] && offset + limit < publicLists.length ? `o${offset + limit}` : null,
         });
         const body = match[2]
           ? { [category.root]: publicLists.filter((list) => list.slug === match[2] || category.route === 'guides' && list.documentId === match[2]).map(pageList) }
@@ -407,7 +446,13 @@ export async function installContainedRoutes(context: BrowserContext, origin: st
         const partialBody = fault?.kind === 'partial' && !match?.[2]
           ? { ...body, [category.root]: fault.nullRootPage ? (body[category.root] as unknown[]).map(() => null) : [...(body[category.root] as unknown[]), null] }
           : body;
-        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(partialBody) });
+        // publicMoviesProjection adds topPicks + a root cursor to the category (non-slug) page.
+        const servedBody = category.route === 'games'
+          ? gamesPage(partialBody[category.root] as Array<Record<string, any> | null>)
+          : category.route === 'movies' && !match[2]
+            ? { ...partialBody, topPicks: [], nextCursor: offset + limit < publicLists.length ? `o${offset + limit}` : null }
+            : partialBody;
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(servedBody) });
       }
       // Media transport is inert: permission/control rendering only, no playback proof.
       if (url.origin === 'https://www.youtube.com' && url.pathname === '/iframe_api') return route.fulfill({ status: 200, contentType: 'application/javascript', body: '' });
