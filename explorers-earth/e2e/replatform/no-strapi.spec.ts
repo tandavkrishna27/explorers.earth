@@ -22,7 +22,7 @@ function fixture(): Fixture {
 
 /** Measured on the first green run (2026-10-19), then fixed here. Lower them only with a written reason. */
 const MODULE_FLOOR = 500; // measured 572 distinct /src/ modules
-const API_FLOOR = 40;     // 90% of the 45 distinct successful canonical API paths measured, rounded down
+const API_FLOOR = 37;     // 90% of the 45 measured at first; 37 on 2026-11-05 after the dashboard redesign and Music removal cut the paths the owner pages read
 const VIEWPORT = { desktop: { width: 1365, height: 900 }, mobile: { width: 390, height: 844 } } as const;
 const CASES = ROUTES.flatMap((route) => (route.viewport ? [route.viewport] : (['desktop', 'mobile'] as const))
   .map((viewport) => ({ route, viewport })));
