@@ -23,10 +23,13 @@ const heading = (text: string) => `:is(h1,h2):has-text("${text}")`;
  */
 const CATEGORY_PAGE = '[data-category-page]';
 
-/** One owner path visited at both viewports: desktop claims tree #1, mobile claims tree #2. */
+/**
+ * One owner path visited at both viewports. ProtectedRoutes renders a single tree for every
+ * viewport now, so the desktop case claims its one occurrence and the mobile case visits it too.
+ */
 function owner(path: string, literal: string, lands?: RegExp, marker?: string): RouteCase[] {
   return (['desktop', 'mobile'] as const).map((viewport, index) => ({
-    source: [`ProtectedRoutes.tsx:${literal}#${index + 1}`], url: () => path, as: 'owner', viewport, lands, marker }));
+    source: index === 0 ? [`ProtectedRoutes.tsx:${literal}#1`] : [], url: () => path, as: 'owner', viewport, lands, marker }));
 }
 const pub = (path: string, key: string, marker?: string): RouteCase => ({ source: [`PublicRoutes.tsx:${key}`], url: (h) => `/${h}${path}`, as: 'anon', marker });
 const auth = (path: string): RouteCase => ({ source: [`AuthRoutes.tsx:${path}#1`], url: () => path, as: 'anon' });
@@ -42,17 +45,21 @@ export const ROUTES: RouteCase[] = [
   ...owner('/profile', 'profile', undefined, heading('Profile details')),
   ...owner('/recommendations', 'recommendations', undefined, HUB),
   ...owner('/recommendations/places', 'recommendations/places'),
-  ...owner(`/${ID}/new`, ':listId/new', undefined, heading('Your Recommendation Details')),
-  ...owner(`/${ID}/edit`, ':placeId/edit', undefined, heading('Your Recommendation Details')),
+  ...owner(`/${ID}/new`, ':listId/new', undefined, heading('Add a place')),
+  ...owner(`/${ID}/edit`, ':placeId/edit', undefined, heading('Edit place')),
+  ...owner(`/recommendations/places/${ID}`, 'recommendations/places/:listId'),
+  ...owner(`/recommendations/places/${ID}/add`, 'recommendations/places/:listId/add', undefined, heading('Add a place')),
+  ...owner(`/recommendations/places/${ID}/edit/${ID}`, 'recommendations/places/:listId/edit/:placeId', undefined, heading('Edit place')),
   ...owner('/recommendations/guides', 'recommendations/guides'),
-  ...owner('/recommendations/guides/new', 'recommendations/guides/new', undefined, heading('Create New Guide')),
+  // One editor page per guide now; the older entry points redirect into it or into the new-guide dialog.
+  ...owner('/recommendations/guides/new', 'recommendations/guides/new', /^\/recommendations\/guides$/, heading('New guide')),
   ...owner(`/recommendations/guides/${ID}`, 'recommendations/guides/:guideId'),
-  ...owner(`/recommendations/guides/${ID}/edit`, 'recommendations/guides/:guideId/edit', undefined, heading('Edit Guide')),
+  ...owner(`/recommendations/guides/${ID}/edit`, 'recommendations/guides/:guideId/edit', new RegExp(`^/recommendations/guides/${ID}$`)),
   ...owner(`/recommendations/guides/${ID}/sections/new`, 'recommendations/guides/:guideId/sections/new'),
   ...owner(`/recommendations/guides/${ID}/sections/${ID}/edit`, 'recommendations/guides/:guideId/sections/:sectionId/edit'),
-  ...owner('/guides/new', 'guides/new', undefined, heading('Create New Guide')),
-  ...owner(`/guides/${ID}`, 'guides/:guideId'),
-  ...owner(`/guides/${ID}/edit`, 'guides/:guideId/edit', undefined, heading('Edit Guide')),
+  ...owner('/guides/new', 'guides/new', /^\/recommendations\/guides$/, heading('New guide')),
+  ...owner(`/guides/${ID}`, 'guides/:guideId', new RegExp(`^/recommendations/guides/${ID}$`)),
+  ...owner(`/guides/${ID}/edit`, 'guides/:guideId/edit', new RegExp(`^/recommendations/guides/${ID}$`)),
   ...owner(`/guides/${ID}/sections/new`, 'guides/:guideId/sections/new'),
   ...owner(`/guides/${ID}/sections/${ID}/edit`, 'guides/:guideId/sections/:sectionId/edit'),
   ...owner('/recommendations/music', 'recommendations/music', /^\/recommendations$/, HUB),
@@ -94,16 +101,12 @@ export const ROUTES: RouteCase[] = [
 
 /** Occurrences deliberately not visited, each with the reason. A new occurrence must be claimed here or in ROUTES. */
 export const EXCLUDED: Record<string, string> = {
-  'ProtectedRoutes.tsx:/*#1': 'desktop layout route; every child is visited',
-  'ProtectedRoutes.tsx:/*#2': 'mobile layout route; every child is visited',
-  // The same URLs are registered at top level (AppRoutes.tsx) and inside both protected trees.
+  'ProtectedRoutes.tsx:/*#1': 'layout route (one tree for every viewport); every child is visited',
+  // The same URLs are registered at top level (AppRoutes.tsx) and inside the protected tree.
   // The top-level cases above visit each URL and assert its target; these occurrences are not separately reachable.
   'ProtectedRoutes.tsx:guides#1': 'shadowed by AppRoutes.tsx:/guides (visited); same target',
-  'ProtectedRoutes.tsx:guides#2': 'shadowed by AppRoutes.tsx:/guides (visited); same target',
   'ProtectedRoutes.tsx:hub#1': 'shadowed by AppRoutes.tsx:/hub (visited); same target',
-  'ProtectedRoutes.tsx:hub#2': 'shadowed by AppRoutes.tsx:/hub (visited); same target',
   'ProtectedRoutes.tsx:music#1': 'shadowed by AppRoutes.tsx:/music/* (visited); same target',
-  'ProtectedRoutes.tsx:music#2': 'shadowed by AppRoutes.tsx:/music/* (visited); same target',
   'AuthRoutes.tsx:/email-verification#1': 'Navigate to /login (AuthRoutes.tsx), which is visited',
   'AuthRoutes.tsx:/register#1': 'Navigate to /login (AuthRoutes.tsx), which is visited',
   'AuthRoutes.tsx:/forgot-password#1': 'Navigate to /login',

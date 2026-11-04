@@ -24,7 +24,9 @@ export function isOptionalLoaderImage(value,type){
  return type==='image'&&['https://zupimages.net/up/19/34/4820.gif','https://zupimages.net/up/19/34/6vlb.gif'].includes(value);
 }
 export function publicReadBudgetDelayMs(header){
- const match=typeof header==='string'&&/^limit=120, remaining=(\d+), reset=(\d+)$/.exec(header);
- if(!match||Number(match[1])>120||Number(match[2])>60)throw new Error('PUBLIC_READ_BUDGET_INVALID');
- return Number(match[1])>=90?0:Number(match[2])*1000+250;
+ // The limit is read from the header: public reads are 120/min, public profiles 600/min.
+ const match=typeof header==='string'&&/^limit=(\d+), remaining=(\d+), reset=(\d+)$/.exec(header);
+ const limit=match?Number(match[1]):0;
+ if(!match||limit<1||limit>600||Number(match[2])>=limit||Number(match[3])>60)throw new Error('PUBLIC_READ_BUDGET_INVALID');
+ return Number(match[2])>=90?0:Number(match[3])*1000+250;
 }

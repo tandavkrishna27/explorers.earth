@@ -22,12 +22,12 @@ function fixture(): Fixture {
 
 /** Measured on the first green run (2026-10-19), then fixed here. Lower them only with a written reason. */
 const MODULE_FLOOR = 500; // measured 572 distinct /src/ modules
-const API_FLOOR = 40;     // 90% of the 45 distinct successful canonical API paths measured, rounded down
+const API_FLOOR = 37;     // 90% of the 45 measured at first; 37 on 2026-11-05 after the dashboard redesign and Music removal cut the paths the owner pages read
 const VIEWPORT = { desktop: { width: 1365, height: 900 }, mobile: { width: 390, height: 844 } } as const;
 const CASES = ROUTES.flatMap((route) => (route.viewport ? [route.viewport] : (['desktop', 'mobile'] as const))
   .map((viewport) => ({ route, viewport })));
-/** A fixed number, not CASES.length: moving a case into EXCLUDED must trip this, not silently lower it. Measured: 176. */
-const ROUTE_FLOOR = 176;
+/** A fixed number, not CASES.length: moving a case into EXCLUDED must trip this, not silently lower it. Measured: 176; 178 on 2026-11-05 (Music cases gone, nested places routes added, every case executed). */
+const ROUTE_FLOOR = 178;
 
 const RUN = new Monitor();
 const executed = new Set<string>();
@@ -142,7 +142,8 @@ test('monitor self-test: every channel to Strapi is seen and refused, and canoni
 });
 
 for (const { route, viewport } of CASES) {
-  const title = `${viewport} ${route.source.join(' + ')} makes no Strapi request`;
+  // A case that claims no occurrence (the mobile visit of a shared owner route) is named by its path.
+  const title = `${viewport} ${route.source.join(' + ') || route.url('')} makes no Strapi request`;
   test(title, async ({ browser }) => {
     const { origin, personas } = fixture();
     const context = await guardedContext(browser, RUN, origin, VIEWPORT[viewport]);

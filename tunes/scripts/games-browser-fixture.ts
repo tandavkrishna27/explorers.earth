@@ -34,7 +34,7 @@ function createPublicCaseScheduler(io:{now:()=>number;wait:(milliseconds:number)
   const match=typeof header==='string'?/^limit=(\d+),\s*remaining=(\d+),\s*reset=(\d+)$/.exec(header):null;
   if(!match)deny();
   const limit=Number(match[1]),available=Number(match[2]),seconds=Number(match[3]);
-  if(limit!==120||!Number.isInteger(available)||available<0||available>119||!Number.isInteger(seconds)||seconds<0||seconds>60)deny();
+  if(!Number.isInteger(limit)||limit<reservation||limit>600||!Number.isInteger(available)||available<0||available>=limit||!Number.isInteger(seconds)||seconds<0||seconds>60)deny();
   if(remaining===undefined||renew){remaining=available;resetAt=io.now()+seconds*1000;renew=false;}
   else remaining=Math.min(remaining,available);
  };

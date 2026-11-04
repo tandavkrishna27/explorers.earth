@@ -182,9 +182,18 @@ jobs:
           retention-days: 14
 
   # Protected manual Apps qualification; no provider fetch or release gate is implied.
+  #
+  # Removed from the schedule (and from lane=all) on 2026-11-04. It has never passed on a
+  # hosted runner and cannot, for the reason below: its secret custody in
+  # tunes/scripts/music-uat-database.ts relies on Windows ACL inheritance, and hosted Windows
+  # has no Linux containers for its postgres:15-alpine fixture. Keeping it in the nightly
+  # held the whole workflow red every night, which hid every other regression. It runs only
+  # when dispatched by name (lane=apps-native), or on a developer's Windows machine with
+  # Docker Desktop. Apps browser coverage in the nightly is therefore absent until the
+  # custody model gets a Linux implementation.
   apps-native:
     name: protected Apps manual qualification
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.lane == 'all' || inputs.lane == 'apps-native' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.lane == 'apps-native' }}
     # Do not move this to windows-latest: it was tried on this branch and is impossible on
     # a GitHub-hosted runner. Hosted Windows runners run Docker in Windows-container mode,
     # and `postgres:15-alpine` is a Linux image, so the fixture can never get a database:
